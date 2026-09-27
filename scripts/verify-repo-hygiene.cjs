@@ -220,6 +220,12 @@ const SCRIPTS_ALLOWLIST = new Set([
     "gen-attributes-report.cjs",
     "gen-profile-schema-reference.cjs",
     "gen-api-surface.cjs",
+    // Writes each published package's `THIRD_PARTY_LICENSES.txt` from what its built bundle
+    // carries (source maps), and gates it (`--check`): stale, unshipped (`files[]`) or
+    // unattributable. Minification had stripped every third-party license comment and the
+    // tarballs shipped GeoLeaf's LICENSE alone (27/09/2026). Wired in ci:local and
+    // release:check; declared in the commit that creates it.
+    "gen-third-party-licenses.cjs",
     "gen-config-reference.cjs",
     // Composes an entry from a capability list, DERIVING the five things a
     // hand-written entry copies (installer const, `FULL` order, import

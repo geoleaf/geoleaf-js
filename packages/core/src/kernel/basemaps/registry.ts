@@ -10,6 +10,9 @@
  */
 
 import { Log } from "../../utils/log/index.js";
+// The events a deferred activation re-tests `isStyleLoaded()` on — ONE list for every wait on
+// the style. The measurement that chose them is written out in `setBaseLayer`, below.
+import { STYLE_READY_EVENTS } from "../../utils/general/style-ready.js";
 import {
     _core,
     _map,
@@ -336,28 +339,14 @@ function _applySyncRasterSwitch(
 }
 
 /**
- * Activates a registered basemap by key.
- *
- * Three code paths:
- * - **Vector path**: `setStyle()` — full style replacement via `_applyViaStyleChange()`.
- * - **WMTS async path**: fetch GetCapabilities, then inject raster source.
- * - **Sync raster path**: remove old source/layer, add new one.
- *
- * If the map style is not yet loaded, activation is deferred until `load`.
- */
-/**
- * The events a deferred activation re-tests `isStyleLoaded()` on. Their union is what makes the
- * wake-up reliable — the reasoning, and the measurement behind it, is in `setBaseLayer`.
- */
-const STYLE_READY_EVENTS = ["styledata", "sourcedata", "idle"] as const;
-
-/**
  * Activates a registered basemap.
  *
  * The switch takes one of two paths depending on the target: raster→raster mutates the
- * current style in place, while anything involving a vector basemap goes through a full
- * `setStyle()`. Either way the work is **deferred until the style is loaded**, so the active
- * key is not guaranteed to have changed by the time this returns.
+ * current style in place (a WMTS basemap fetches its GetCapabilities first), while anything
+ * involving a vector basemap goes through a full `setStyle()`. Either way the work is
+ * **deferred until the style is loaded** — re-tested on `styledata`, `sourcedata` and `idle`,
+ * never on the one-shot `load` —, so the active key is not guaranteed to have changed by the
+ * time this returns.
  *
  * An unknown or missing key logs a warning and leaves the current basemap in place.
  *

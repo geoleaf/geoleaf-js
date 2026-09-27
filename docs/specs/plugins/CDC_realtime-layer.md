@@ -4,8 +4,8 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: f0a3997f2
-date: 1er septembre 2026
+verifie_contre: 932f22a78
+date: 27 septembre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules

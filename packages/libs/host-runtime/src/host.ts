@@ -234,6 +234,11 @@ export interface GeoLeafHost {
         mergeFeatures?(layerId: string, features: readonly unknown[]): void;
         /** Removes one feature from the layer's store AND source; `true` when one went. */
         removeFeature?(layerId: string, id: string | number): boolean;
+        /**
+         * Hides the listed features from the map, without touching the store or the filter;
+         * `null` shows them again. Absent from a core older than 3.12.0 — callers test for it.
+         */
+        hideFeatures?(layerId: string, ids: readonly (string | number)[] | null): void;
         [key: string]: unknown;
     };
 

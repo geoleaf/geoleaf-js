@@ -115,6 +115,16 @@ test("[vector-tiles] une couche en tuiles armée par le profil dessine ses étiq
         style.label.visibleByDefault = true;
         await route.fulfill({ json: bundle });
     });
+    // 🛑 Measured on 26/09/2026: at boot, the profile loader created the layer before the map's
+    // style had loaded, and MapLibre threw "Style is not done loading" — logged as a failed layer.
+    // The theme applier's deferred pass created it again, so the labels below were drawn anyway:
+    // only the console said a layer had failed. Seen red on the bundle built before the fix.
+    /** @type {string[]} */
+    const failures = [];
+    page.on("console", (msg) => {
+        const text = msg.text();
+        if (/Failed to load layer|Style is not done loading/.test(text)) failures.push(text);
+    });
     await page.goto("/");
     await page.waitForFunction(
         (id) => /** @type {any} */ (window).GeoLeaf?.GeoJSON?.getLayerById?.(id)?.isVectorTile,
@@ -130,6 +140,7 @@ test("[vector-tiles] une couche en tuiles armée par le profil dessine ses étiq
         })
         .toBeGreaterThan(0);
     expect((await renderedLabels(page, LAYER)).sourceLayer).toBe(LAYER);
+    expect(failures, "la couche en tuiles a échoué au boot avant d'être recréée").toEqual([]);
 });
 
 test("[vector-tiles] une couche en tuiles créée par `Layers.create()` arme les étiquettes qu'elle déclare", async ({

@@ -73,6 +73,7 @@ import {
     topRedoType,
 } from "./history/undo-stack.js";
 import { attachShortcuts, detachShortcuts } from "./history/shortcuts.js";
+import { attachSelectionKeys, detachSelectionKeys } from "./selection/selection-keys.js";
 import {
     _getNativeMap,
     _getBaseLayers,
@@ -207,14 +208,23 @@ function _refreshQueueBadge(): void {
 function _doDelete(): void {
     const snap = getSelection();
     if (!snap || !_adapter) return;
+    const { terradrawId, featureId, layerId } = snap;
     // Capture the feature snapshot before removal so undo can re-add it.
-    const feature = _adapter.getFeature(snap.terradrawId);
-    _adapter.removeFeatures([snap.terradrawId]);
-    const { featureId, layerId } = snap;
+    const feature = _adapter.getFeature(terradrawId);
+    // 🛑 THE SELECTION IS RELEASED BEFORE THE SHAPE IS REMOVED — the order is the fix. Removing
+    // a selected shape makes the drawing engine deselect it FIRST, synchronously, and the
+    // deselect handler reconciles the host as for an abandoned edit: it removed this very copy
+    // and showed the original back, then the engine threw on the id it no longer held — nothing
+    // was deleted, without a word. After a move it committed the move instead, and the deleted
+    // feature was written as updated and announced as saved. Released here, the deselect finds
+    // no selection and does nothing; the original stays hidden until the deletion is answered.
+    clearSelection();
+    // The engine throws on an id it does not hold.
     if (feature) {
+        _adapter.removeFeatures([terradrawId]);
         pushOperation({
             type: "delete",
-            terradrawId: snap.terradrawId,
+            terradrawId,
             featureId,
             layerId,
             feature,
@@ -231,7 +241,7 @@ function _doDelete(): void {
                 // 🛑 The deletion has LEFT — server or outbox. Undo could only put the shape
                 // back on screen, while the tooltip read "Annuler : suppression". The entry
                 // is therefore withdrawn rather than left offering what it cannot do.
-                sealOperations(snap.terradrawId);
+                sealOperations(terradrawId);
                 _notify("success", _getLabel("editor.toast.deleted"));
             })
             .catch(() => {
@@ -241,7 +251,6 @@ function _doDelete(): void {
                 if (_reconcileDeps) showHostFeature(_reconcileDeps, layerId);
             });
     }
-    clearSelection();
     dispatchEditorEvent("geoleaf:editor:feature-deleted", { featureId, layerId });
 }
 
@@ -266,32 +275,16 @@ function _onDelete(): void {
     });
 }
 
-function _handleDeleteKey(e: KeyboardEvent): void {
-    if (e.key !== "Delete" && e.key !== "Backspace") return;
-    if (!getSelection()) return;
-    // Prevent browser back navigation on Backspace when no text is focused.
-    const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return;
-    e.preventDefault();
-    _onDelete();
-}
-
-function _handleEnterKey(e: KeyboardEvent): void {
-    if (e.key !== "Enter") return;
-    // Scoped to select mode only: drawing modes already bind Enter to "finish"
-    // (keyEvents in modes.ts), so we must not intercept it there.
-    if (getEditorActiveTool() !== "select") return;
-    const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
-    if (tag === "input" || tag === "textarea" || tag === "select") return;
-    e.preventDefault();
-    // Disarm select → onToolSelect(null) → setMode(null) + restore popups.
-    deactivateActiveTool();
-}
-
+// Delete deletes the selection (with its confirmation); Enter leaves the select tool. The
+// keys pressed in a text field or a modal dialog are left alone, and Enter on a button or a
+// link is the element's — see `selection/selection-keys.ts`.
 function _registerKeyHandlers(): void {
-    if (typeof document === "undefined") return;
-    document.addEventListener("keydown", _handleDeleteKey);
-    document.addEventListener("keydown", _handleEnterKey);
+    attachSelectionKeys({
+        onDelete: _onDelete,
+        isSelecting: () => getEditorActiveTool() === "select",
+        // Disarm select → onToolSelect(null) → setMode(null) + restore popups.
+        leaveSelecting: deactivateActiveTool,
+    });
 }
 
 // Keeps the offline badge in sync with the queue. Stable identity so the destroy
@@ -411,7 +404,7 @@ async function _startAdapter(
 function _initTerraDraw(): void {
     const map = _getNativeMap();
     const facade = _getMapFacade();
-    _reconcileDeps = facade && map ? { facade, nativeMap: map } : null;
+    _reconcileDeps = facade && map ? { facade } : null;
     if (!map) return;
     _persistence = createPersistenceAdapter(_cfg!, {
         onConflict: dispatchFeatureConflict,
@@ -454,8 +447,6 @@ function _registerDestroyHook(): void {
         // FIRST: an open form's cancel removes its shape through the drawing engine.
         _formModal?.destroy();
         if (typeof document !== "undefined") {
-            document.removeEventListener("keydown", _handleDeleteKey);
-            document.removeEventListener("keydown", _handleEnterKey);
             document.removeEventListener("geoleaf:editor:feature-sync-queued", _onQueueChanged);
             document.removeEventListener("geoleaf:editor:feature-sync-flushed", _onQueueChanged);
             document.removeEventListener("geoleaf:offline:outbox-drained", _onQueueChanged);
@@ -463,6 +454,7 @@ function _registerDestroyHook(): void {
         // Restore core popups/tooltips if the editor is destroyed while a tool is armed.
         _setExclusiveMode(false);
         detachShortcuts();
+        detachSelectionKeys();
         registerBeforeDrainStep(null);
         destroyImageUpload();
         destroyOptionLists();

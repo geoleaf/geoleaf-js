@@ -20,6 +20,7 @@ import { StorageHelperModule as StorageHelper } from "./storage-helper.js";
 import { DBModulesRegistry } from "./db-modules-registry.js";
 import { clearPullMarks, readPullState } from "../report/pull-state.js";
 import { presentRecordFeature, type PreservingPutTally } from "./features.js";
+import { mergeIdentityTwins } from "./identity-twins.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 
@@ -145,7 +146,10 @@ const StorageDB = {
     // proven against a real base of the previous version
     // (`__tests__/capabilities/offline/schema-v6-migration.test.ts`). Decision of
     // 17/09/2026: it carries NO zone index, and no index at all.
-    _dbVersion: 6,
+    // ⚠️ 6 → 7: no store, a DATA repair — the twin records the identity defect left on a
+    // device until 3.4.0 are merged (`db/identity-twins.ts`), proven against a real v6 base
+    // (`schema-v7-twins.test.ts`).
+    _dbVersion: 7,
 
     /**
      * Database instance
@@ -463,6 +467,13 @@ const StorageDB = {
                     );
                 };
             }
+        }
+
+        // v7 — merge the twin records the identity defect left (until 3.4.0). Only a base that
+        // already had `features` (v4 and later) can hold one; a fresh one pays nothing.
+        if (event.oldVersion >= 4 && event.oldVersion < 7) {
+            const tx = (event.target as IDBOpenDBRequest).transaction;
+            if (tx) mergeIdentityTwins(tx);
         }
     },
 

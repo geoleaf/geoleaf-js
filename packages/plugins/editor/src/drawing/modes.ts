@@ -126,6 +126,15 @@ function _selectMode(c: ThemeColors): EditorMode {
     return new TerraDrawSelectMode({
         modeName: MODE_SELECT,
         pointerDistance: SELECT_POINTER_DISTANCE_PX,
+        // The editor owns deletion (confirmation, persistence, undo). Terra Draw's own Delete
+        // binding removes the shape on key-up with none of them. The others are its defaults
+        // (1.32), spelled out because the option's type takes the whole set.
+        keyEvents: {
+            deselect: "Escape",
+            delete: null,
+            rotate: ["Control", "r"],
+            scale: ["Control", "s"],
+        },
         styles: buildSelectStyles(c),
         flags: {
             [MODE_POINT]: { feature: { draggable: true } },

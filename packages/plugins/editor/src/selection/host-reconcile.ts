@@ -10,8 +10,10 @@
  *
  * Hiding is filter-based (non-destructive, reversible in one call); the host
  * source data is only rewritten on save/delete, where a rewrite is unavoidable.
- * Features are matched on `properties.id` (the core convention, which the core promotes to
- * the rendered feature's id) with a fallback to the top-level `feature.id`.
+ * In the store, features are matched on `properties.id` (the core convention, which the core
+ * promotes to the rendered feature's id) with a fallback to the top-level `feature.id`. On the
+ * map, `GeoLeaf.Layers.hideFeatures` (core 3.12.0) matches `properties.id` — and, on a
+ * vector-tile layer, the tile's own feature id too.
  *
  * 🛑 SAVE AND DELETE WRITE THE LAYER STORE (`GeoLeaf.Layers`), not the map source alone.
  * The store is what the layer search, `getFeatureById`, the filter's re-feed and the table
@@ -26,10 +28,13 @@
  * it left its creation queued; a placed point vanished with its marker. Nothing could find
  * either — search, `getFeatureById`, the export — until the next load.
  *
- * ⚠️ The direct path remains for a feature the store does not hold — a vector-tile layer
- * keeps none — and for a core without the seam. It reads the source `gl-<id>` or `<id>`,
- * while the core names a layer's GeoJSON source `gl-src-<id>`: against a real map it finds
- * nothing, warns and skips.
+ * ⚠️ A feature the store does not hold is NOT written: the original is shown back, and the
+ * write that already left (server or outbox) reaches the layer at its next load. A vector-tile
+ * layer keeps no feature by construction; otherwise it is a race — the feature left or was
+ * renamed in the store while it was edited. Until 27/09/2026 a fallback rewrote the map source
+ * instead. It looked for `gl-<id>` / `<id>` while the core names a GeoJSON source
+ * `gl-src-<id>`, so it found nothing; and pointed at the right name it would have been harmful:
+ * a source re-fed under an active filter holds a SUBSET, which the rewrite made the layer's data.
  * https://geoleaf.dev
  */
 
@@ -39,15 +44,12 @@ import { resolveFeatureId } from "../feature-id.js";
 /** Map-facade subset the reconciler needs (from `GeoLeaf.Core.getMap()`). */
 export interface HostMapFacade {
     setLayerFilter(id: string, filter: unknown): void;
-    updateLayerData(id: string, data: unknown): void;
 }
 
 /** Collaborators injected by entry.ts. */
 export interface HostReconcileDeps {
-    /** Core map adapter facade (filter + data update). */
+    /** Core map adapter facade (the hide filter). */
     facade: HostMapFacade;
-    /** Native MapLibre map, for reading the current source data. */
-    nativeMap: unknown;
 }
 
 interface GeoFeature {
@@ -55,10 +57,6 @@ interface GeoFeature {
     id?: string | number;
     geometry: unknown;
     properties: Record<string, unknown> | null;
-}
-interface FeatureCollection {
-    type: "FeatureCollection";
-    features: GeoFeature[];
 }
 
 // ---------------------------------------------------------------------------
@@ -72,20 +70,30 @@ let _hidden: { layerId: string; featureId: string } | null = null;
 // ---------------------------------------------------------------------------
 
 /**
- * Hides the host original by filtering it out of its rendered layer. No-op when
- * `featureId` is empty (feature drawn this session, no host counterpart).
+ * Hides the host original from its rendered layer. No-op when `featureId` is empty (feature
+ * drawn this session, no host counterpart).
+ *
+ * 🛑 THROUGH `GeoLeaf.Layers.hideFeatures` WHEN THE CORE HAS IT (3.12.0): the core composes
+ * the hidden set with the layer's filter. Writing the layer's filter directly — the only path
+ * before, and the fallback for an older core — REPLACED the panel's: selecting a feature under
+ * an active filter put every filtered-out feature back on the map, and releasing it cleared
+ * the filter outright.
  */
 export function hideHostFeature(deps: HostReconcileDeps, layerId: string, featureId: string): void {
     if (!featureId || !layerId) return;
-    deps.facade.setLayerFilter(layerId, _excludeFilter(featureId));
+    const layers = _layersSeam();
+    if (layers?.hideFeatures) layers.hideFeatures(layerId, [featureId]);
+    else deps.facade.setLayerFilter(layerId, _excludeFilter(featureId));
     _hidden = { layerId, featureId };
 }
 
-/** Restores the most recently hidden host feature (clears the filter). */
+/** Restores the most recently hidden host feature — the layer's filter is left as it is. */
 export function showHostFeature(deps: HostReconcileDeps, layerId?: string): void {
     const target = layerId ?? _hidden?.layerId;
     if (!target) return;
-    deps.facade.setLayerFilter(target, null);
+    const layers = _layersSeam();
+    if (layers?.hideFeatures) layers.hideFeatures(target, null);
+    else deps.facade.setLayerFilter(target, null);
     if (_hidden && (!layerId || layerId === _hidden.layerId)) _hidden = null;
 }
 
@@ -102,8 +110,9 @@ export function getHiddenHost(): { layerId: string; featureId: string } | null {
 }
 
 /**
- * Commits a new geometry to the host source feature, then clears the hide
- * filter so the updated original becomes visible again.
+ * Commits a new geometry to the host feature in its layer's store, then clears the hide
+ * filter so the updated original becomes visible again. A feature the store does not hold is
+ * only shown back (see the module header).
  */
 export function commitHostGeometry(
     deps: HostReconcileDeps,
@@ -113,22 +122,8 @@ export function commitHostGeometry(
 ): void {
     if (!featureId || !layerId) return;
     const store = _storeHolding(layerId, featureId);
-    if (store) {
-        store.layers.mergeFeatures?.(layerId, [{ ...store.feature, geometry }]);
-        showHostFeature(deps, layerId);
-        return;
-    }
-    const fc = _readSource(deps.nativeMap, layerId);
-    if (!fc) {
-        _warnNoSource(layerId);
-        showHostFeature(deps, layerId);
-        return;
-    }
-    const next: FeatureCollection = {
-        type: "FeatureCollection",
-        features: fc.features.map((f) => (_matches(f, featureId) ? { ...f, geometry } : f)),
-    };
-    deps.facade.updateLayerData(layerId, next);
+    if (store) store.layers.mergeFeatures?.(layerId, [{ ...store.feature, geometry }]);
+    else _sayNotHeld(layerId, featureId);
     showHostFeature(deps, layerId);
 }
 
@@ -180,7 +175,7 @@ export function addHostFeature(layerId: string, saved: HostableFeature): boolean
  * Server-wins repaint: applies the server's geometry to the host feature, or, when the server
  * state names no feature or carries no geometry, restores the hidden original as it was.
  *
- * @param deps - Map facade and native map.
+ * @param deps - The map facade (the hide filter).
  * @param layerId - Host layer of the feature in conflict.
  * @param serverData - The server's state of the feature, as the conflict carried it.
  */
@@ -201,7 +196,8 @@ export function reloadHostFeature(
 }
 
 /**
- * Removes the host source feature entirely, then clears the hide filter.
+ * Removes the host feature from its layer's store, then clears the hide filter. A feature the
+ * store does not hold is only shown back (see the module header).
  */
 export function removeHostFeature(
     deps: HostReconcileDeps,
@@ -210,22 +206,8 @@ export function removeHostFeature(
 ): void {
     if (!featureId || !layerId) return;
     const store = _storeHolding(layerId, featureId);
-    if (store) {
-        store.layers.removeFeature?.(layerId, featureId);
-        showHostFeature(deps, layerId);
-        return;
-    }
-    const fc = _readSource(deps.nativeMap, layerId);
-    if (!fc) {
-        _warnNoSource(layerId);
-        showHostFeature(deps, layerId);
-        return;
-    }
-    const next: FeatureCollection = {
-        type: "FeatureCollection",
-        features: fc.features.filter((f) => !_matches(f, featureId)),
-    };
-    deps.facade.updateLayerData(layerId, next);
+    if (store) store.layers.removeFeature?.(layerId, featureId);
+    else _sayNotHeld(layerId, featureId);
     showHostFeature(deps, layerId);
 }
 
@@ -267,66 +249,26 @@ function _layersSeam() {
 
 /** MapLibre filter excluding the feature whose `id` property equals featureId. */
 function _excludeFilter(featureId: string): unknown {
-    // `["get","id"]` reads properties.id (the canonical id); the OR with `["id"]`
-    // also covers features carrying an intrinsic top-level id.
+    // The path of a core older than 3.12.0. `["get","id"]` reads properties.id (the canonical
+    // id). `["id"]` never equals a string id: the engine holds a feature id as a number — a
+    // string one is parsed into it — or not at all.
     return ["all", ["!=", ["get", "id"], featureId], ["!=", ["id"], featureId]];
 }
 
-/** True when a feature matches featureId on properties.id or top-level id. */
-function _matches(f: GeoFeature, featureId: string): boolean {
-    const propId = f.properties?.["id"];
-    if (propId != null && String(propId) === featureId) return true;
-    return f.id != null && String(f.id) === featureId;
-}
-
 /**
- * Reads the current FeatureCollection backing a host layer. There is no
- * `getLayerData` on the adapter contract, so go through the native source's
- * `serialize()` (preferred) or the internal `_data` field as a fallback.
+ * Says why the layer does not show the edit yet. Expected on a vector-tile layer — its tiles
+ * carry the change once they are fetched again —, a race anywhere else.
  */
-function _readSource(nativeMap: unknown, layerId: string): FeatureCollection | null {
-    const map = nativeMap as { getSource?(id: string): unknown } | null;
-    if (!map?.getSource) return null;
-
-    const source = (_trySource(map, `gl-${layerId}`) ?? _trySource(map, layerId)) || null;
-    if (!source) return null;
-
-    const data = _sourceData(source);
-    if (
-        data &&
-        typeof data === "object" &&
-        (data as FeatureCollection).type === "FeatureCollection"
-    ) {
-        return data as FeatureCollection;
+function _sayNotHeld(layerId: string, featureId: string): void {
+    if (_isVectorTile(layerId)) {
+        console.info(
+            `[GeoLeaf.Editor] host-reconcile: "${layerId}" is drawn from tiles; the edit of ` +
+                `"${featureId}" shows once its tiles are fetched again.`
+        );
+        return;
     }
-    return null;
-}
-
-function _trySource(map: { getSource?(id: string): unknown }, id: string): unknown {
-    try {
-        return map.getSource?.(id) ?? null;
-    } catch {
-        return null;
-    }
-}
-
-/** Extracts GeoJSON data from a MapLibre GeoJSON source, defensively. */
-function _sourceData(source: unknown): unknown {
-    const s = source as { serialize?(): { data?: unknown }; _data?: unknown };
-    try {
-        if (typeof s.serialize === "function") {
-            const ser = s.serialize();
-            if (ser?.data) return ser.data;
-        }
-    } catch {
-        /* fall through to _data */
-    }
-    return s._data ?? null;
-}
-
-function _warnNoSource(layerId: string): void {
     console.warn(
-        `[GeoLeaf.Editor] host-reconcile: source for layer "${layerId}" not found; ` +
-            "skipped host update to avoid desync."
+        `[GeoLeaf.Editor] host-reconcile: "${featureId}" is not in the store of layer ` +
+            `"${layerId}"; the layer shows the edit at its next load.`
     );
 }

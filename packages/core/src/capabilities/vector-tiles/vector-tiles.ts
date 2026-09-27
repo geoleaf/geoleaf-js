@@ -21,6 +21,7 @@ import { bindFeatureInteractionEvents, GeoJSONShared } from "../../kernel/geojso
 import { getLog } from "../../utils/general/di-accessors.js";
 import { buildVtLayerData } from "./vector-tiles-layer-data.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
+import { whenStyleReady, type StyleReadyMap } from "../../utils/general/style-ready.js";
 import type { VectorTileLayerSpec } from "../../contracts/map-adapter.contract.ts";
 import type {
     GeoJSONAdapter,
@@ -225,6 +226,14 @@ const VectorTiles = {
             `[GeoLeaf.VectorTiles] Creating VT layer: ${layerId} (source-layer: ${vtLayerName})`
         );
         Log.debug(`[GeoLeaf.VectorTiles] URL template: ${tileUrl}`);
+
+        // 🛑 THE MAP'S STYLE FIRST. At boot the profile loader reaches here while the map's own
+        // style is still loading, and MapLibre THROWS on `addSource` then ("Style is not done
+        // loading"): the layer failed, and only a later pass of the theme applier created it. The
+        // GeoJSON path only escapes by the latency of its data fetch; this one has no fetch to
+        // hide behind.
+        const styleMap = adapter.getNativeMap?.() as StyleReadyMap | null | undefined;
+        if (typeof styleMap?.isStyleLoaded === "function") await whenStyleReady(styleMap);
 
         // Delegate all MapLibre building to the adapter (source + sub-layers + registry).
         const spec = _buildVtSpec(def, vtConfig, tileUrl, vtLayerName, styleData, state);

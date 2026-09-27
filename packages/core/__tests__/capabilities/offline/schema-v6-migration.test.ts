@@ -139,9 +139,11 @@ afterEach(async () => {
 });
 
 describe("une base v5 ouverte par le moteur", () => {
-    // Red on 17/09/2026: expected 5 to be 6
-    test("🛑 monte en v6", () => {
-        expect(IndexedDB._db.version).toBe(6);
+    // Red on 17/09/2026: expected 5 to be 6. Since 27/09/2026 the engine goes on to v7 (a data
+    // repair, `schema-v7-twins.test.ts`); what this file proves is the v6 stores and what the
+    // climb from v5 preserves.
+    test("🛑 monte au moins en v6", () => {
+        expect(IndexedDB._db.version).toBeGreaterThanOrEqual(6);
     });
 
     // Red on 17/09/2026: expected [ 'features', 'layers', …(5) ] to include 'conflicts'

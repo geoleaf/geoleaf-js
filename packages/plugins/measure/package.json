@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/measure",
-    "version": "1.0.6",
+    "version": "1.0.7",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Measure Plugin — Distance, surface, GPS & annotation tools with GeoJSON export",
@@ -36,7 +36,8 @@
         "dist/",
         "src/",
         "LICENSE",
-        "README.md"
+        "README.md",
+        "THIRD_PARTY_LICENSES.txt"
     ],
     "scripts": {
         "clean": "rimraf dist",

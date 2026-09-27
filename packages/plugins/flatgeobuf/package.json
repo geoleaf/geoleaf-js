@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/flatgeobuf",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf FlatGeobuf Plugin — Load and spatially filter FlatGeobuf files as GeoJSON layers with HTTP Range bbox support",
@@ -36,7 +36,8 @@
         "dist/",
         "src/",
         "LICENSE",
-        "README.md"
+        "README.md",
+        "THIRD_PARTY_LICENSES.txt"
     ],
     "scripts": {
         "clean": "rimraf dist",

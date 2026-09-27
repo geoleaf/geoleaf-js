@@ -46,6 +46,7 @@ import { DrainHooksContract } from "../../../kernel/shared/drain-hooks-seam.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { coreProfileLayerConfig } from "../config-seam.js";
 import { markerOf, readServerVersion, recordConflict } from "./conflict-store.js";
+import { clearRestoredStatus } from "../poi-restore/poi-restore.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import type {
     FeatureRecord,
@@ -1240,6 +1241,10 @@ async function _drainOnce(): Promise<PushReport> {
             await features.put(settled.record);
             if (settled.editedMeanwhile) {
                 await rebaseFollowers(outbox, entry, settled.record.version);
+            } else {
+                // The entity owes nothing any more: the badge the boot's restore painted on it
+                // goes. Edited meanwhile, it is still owed, and the badge stays with it.
+                clearRestoredStatus(entry.layerId, record);
             }
         }
         await outbox.remove(entry.id);

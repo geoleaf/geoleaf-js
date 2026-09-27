@@ -337,6 +337,10 @@ const GeoJSONModule = {
      * Updates both the MapLibre source (`source.setData()`) and the in-memory
      * state so that subsequent `getLayerData()` calls return the fresh data.
      *
+     * ⚠️ Announces nothing: `geoleaf:layer:updated` is emitted by the writes of
+     * `GeoLeaf.Layers` alone, so an open table or an active filter does not follow this
+     * one — prefer `GeoLeaf.Layers.setData` when they must.
+     *
      * @param {string} layerId - ID of the layer to update.
      * @param {unknown} data - GeoJSON FeatureCollection (or any valid GeoJSON) to set.
      */

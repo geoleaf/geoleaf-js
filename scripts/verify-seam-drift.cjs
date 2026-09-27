@@ -230,7 +230,13 @@ const SEAMS = [
             "avant ré-épinglage : `git diff` ne rend que ces quatre membres optionnels et leurs " +
             "commentaires, aucune des TROIS fonctions appariées n'est touchée, et HOST-SYNC le " +
             "confirme dans le sens que HOST-03 autorise : les quatre existent sur " +
-            "`GeoLeafGlobal.Layers`.",
+            "`GeoLeafGlobal.Layers`. " +
+            "⚠️ 27/09/2026 — HUITIÈME fois, sur un TYPE : `GeoLeafHost.Layers` nomme " +
+            "`hideFeatures` (core 3.12.0) — l'éditeur masque l'entité qu'il édite sans remplacer " +
+            "le filtre de la couche, et doit pouvoir l'appeler. RELU avant ré-épinglage : " +
+            "`git diff` ne rend que ce membre optionnel et son commentaire, aucune des TROIS " +
+            "fonctions appariées n'est touchée, et le membre existe sur `GeoLeafGlobal.Layers` " +
+            "(`LayerDataApi`) : l'hôte reste plus étroit que le core, ce que HOST-03 exige.",
         files: [
             {
                 pkg: "core",
@@ -268,7 +274,7 @@ const SEAMS = [
                 // ⚠️ 2026-09-24 — re-pinned for TYPES again: `Core.listMaps()`, `getMap(mapId)`
                 // and the adapter shape a plugin calls (`HostMapAdapter`). The three paired
                 // functions did not move. Targeted re-pin, this one hash.
-                hash: "d01b221853251c1d73b7b3be8f465c1321ff82b74f2cf946ec9d3860d027c6b2",
+                hash: "fd324dd80796889dfbaced31a7fbe448a097c6ce31e988bac04013d966f8bcee",
             },
         ],
     },

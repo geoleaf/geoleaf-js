@@ -138,6 +138,8 @@
         "gen:profile-schema:audit": "node scripts/gen-profile-schema-reference.cjs --audit",
         "gen:api-surface": "node scripts/gen-api-surface.cjs",
         "gen:api-surface:check": "node scripts/gen-api-surface.cjs --check",
+        "licenses:third-party": "node scripts/gen-third-party-licenses.cjs",
+        "licenses:third-party:check": "node scripts/gen-third-party-licenses.cjs --check",
         "docs:tree": "node scripts/generate-docs-tree.cjs",
         "docs:tree:check": "node scripts/generate-docs-tree.cjs --check",
         "icons:generate": "node scripts/generate-pwa-icons.cjs",

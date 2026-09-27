@@ -40,7 +40,9 @@ const WAIT_MS = 20_000;
 
 /** Makes the layer read the device before the network — the case where the orphan was drawn. */
 async function armOfflineRead(page) {
-    await page.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+    // On the CONTEXT: the service worker fetches the bundle too, and a page route never sees
+    // what it fetches — measured by the witness of `helpers/test.js` (27/09/2026).
+    await page.context().route("**/profiles/tourism/profile-bundle.json**", async (route) => {
         const bundle = await (await route.fetch()).json();
         const cfg = bundle.layerConfigs?.[LAYER];
         if (!cfg)

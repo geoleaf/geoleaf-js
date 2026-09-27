@@ -13,10 +13,17 @@
  *
  * Each test below was seen red on the bundle built before the fix.
  *
+ * 🛑 AND A CREATED FEATURE COULD NOT BE DELETED EITHER, measured on 27/09/2026 once it could be
+ * selected: the editor's deletion removed the SELECTED copy, the drawing engine deselected it
+ * first, and the deselect handler removed that same copy before the engine threw on it (the
+ * mechanism is written out in `44`). The last test deletes a creation still queued: the creation
+ * leaves the outbox, nothing is ever sent. Seen red on the bundle built before that fix.
+ *
  * ⚠️ THE SERVER IS A ROUTE, NOT A BACKEND, as in `44`: the layer's `write.endpoint` is
  * fulfilled by Playwright. The layer is `villes_principales`, loaded at boot by the default
  * theme, made editable, searchable and writable by rewriting the served bundle — its device-
- * first read is switched OFF, so what a reload shows of the capture is the restore's doing.
+ * first read is switched OFF, so what a reload shows of the capture is the restore's doing; the
+ * last test switches it ON, and reads the capture back from the device.
  */
 
 import { test, expect } from "./helpers/test.js";
@@ -37,8 +44,9 @@ const WAIT_MS = 20_000;
  *
  * @param {import("@playwright/test").BrowserContext} context
  * @param {number | "unreachable"} status - What the write endpoint answers.
+ * @param {{ readOffline?: boolean }} [opts] - `readOffline` switches the device-first read ON.
  */
-async function armLayer(context, status) {
+async function armLayer(context, status, { readOffline = false } = {}) {
     await context.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
         const bundle = await (await route.fetch()).json();
         const cfg = bundle.layerConfigs?.[LAYER];
@@ -46,7 +54,7 @@ async function armLayer(context, status) {
         cfg.edition = { create: true, update: true, delete: true };
         cfg.editableGeometryTypes = ["Point"];
         cfg.interactiveShape = true;
-        cfg.offline = { ...(cfg.offline ?? {}), enabled: false };
+        cfg.offline = { ...(cfg.offline ?? {}), enabled: readOffline };
         cfg.searchable = { fields: ["properties.ville"] };
         cfg.write = {
             enabled: true,
@@ -236,13 +244,21 @@ test("[editor] une forme TRACÉE passe à sa couche, et la déplacer atteint sa 
         timeout: 30_000,
     });
 
-    const drawn = await page.evaluate(() => {
-        const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
-        const src = native.getSource("td-point");
-        const data = src?.serialize?.().data ?? src?._data;
-        return (data?.features ?? []).length;
-    });
-    expect(drawn, "la forme est restée dans la couche de dessin").toBe(0);
+    // ⚠️ POLLED, not read once: the drawing engine repaints its source in a frame callback, after
+    // the shape has left its store. Read once, the source still showed it on two runs of four
+    // under two cores (`taskset -c 0,1`), while the handover had happened.
+    await expect
+        .poll(
+            () =>
+                page.evaluate(() => {
+                    const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+                    const src = native.getSource("td-point");
+                    const data = src?.serialize?.().data ?? src?._data;
+                    return (data?.features ?? []).length;
+                }),
+            { timeout: 5000, message: "la forme est restée dans la couche de dessin" }
+        )
+        .toBe(0);
     expect(await heldNamed(page, NAME)).toHaveLength(1);
 
     // Selected THROUGH ITS LAYER — where the layer draws it — then moved and committed: the
@@ -339,4 +355,245 @@ test("[editor] au rechargement, une création en attente revient UNE fois, sous 
 
     // Before the fix: id-less, one copy per restore pass.
     expect(await heldNamed(page, NAME)).toEqual([{ id: entry.localId, propId: entry.localId }]);
+});
+
+test("[editor] une entité CRÉÉE puis supprimée quitte la file : rien ne part", async ({
+    page,
+    context,
+}) => {
+    const NAME = "E2E-68-suppression";
+    /** @type {string[]} */
+    const errors = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    // The server cannot be reached: the creation STAYS queued, and the deletion must withdraw it.
+    await armLayer(context, "unreachable");
+    await boot(page);
+    await loadEditor(page);
+    await awaitSettledCamera(page);
+    // Within the layer's zoom range, as in the test above: the layer draws the feature.
+    await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ zoom: 7 })
+    );
+    await page.waitForFunction(
+        () => !(/** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().isMoving()),
+        null,
+        { timeout: WAIT_MS }
+    );
+
+    await placePoint(page, NAME);
+    const [created] = await heldNamed(page, NAME);
+    expect(created?.id, "la création n'a pas d'identité").toMatch(/^loc:/);
+    // 🛑 NOT WHILE ITS FIRST PUSH IS IN FLIGHT: only a `pending` or `failed` creation is withdrawn
+    // by a deletion (`db/local-edit.ts`). Once failed, the next attempt is thirty seconds away.
+    const owed = async () =>
+        (await readStore(page, { db: GEOLEAF_DB, store: "outbox" })).filter(
+            (r) => r.layerId === LAYER
+        );
+    await expect
+        .poll(async () => (await owed()).map((r) => `${r.kind}:${r.state}`), {
+            timeout: 30_000,
+            message: "la création n'a jamais échoué à partir",
+        })
+        .toEqual(["create:failed"]);
+
+    // Selected THROUGH ITS LAYER, as in the test above, then deleted from the pill.
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.toggleMenu());
+    await page.locator('button.gl-editor-tool-btn[data-tool="select"]').click();
+    await page.waitForFunction(
+        () => {
+            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            try {
+                return !!native?.getLayer?.("td-point");
+            } catch {
+                return false;
+            }
+        },
+        null,
+        { timeout: WAIT_MS }
+    );
+    const where = await page.evaluate(
+        ({ id, n }) => {
+            const G = /** @type {any} */ (window).GeoLeaf;
+            const map = G.Core.getMap().getNativeMap();
+            const f = G.Layers.getFeatures(id).find(
+                (/** @type {any} */ x) => x.properties?.ville === n
+            );
+            const p = map.project(f.geometry.coordinates);
+            const rect = map.getContainer().getBoundingClientRect();
+            return { x: p.x + rect.left, y: p.y + rect.top };
+        },
+        { id: LAYER, n: NAME }
+    );
+    await page.mouse.click(where.x, where.y);
+    await page.waitForFunction(
+        (id) => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const src = map.getSource("td-point");
+            const data = src?.serialize?.()?.data ?? src?._data;
+            return (data?.features ?? []).some((/** @type {any} */ f) => f.properties?.id === id);
+        },
+        created.id,
+        { timeout: 10_000 }
+    );
+    await page.locator('button.gl-editor-action-btn[data-action="delete"]').click();
+    const confirm = page.locator(".gl-form-modal-confirm .gl-form-modal__btn-delete");
+    await expect(confirm, "la suppression ne demande pas de confirmation").toBeVisible({
+        timeout: 5000,
+    });
+    await confirm.click();
+
+    // Before the fix: the layer still held the creation, and the creation stayed owed.
+    await expect
+        .poll(async () => (await heldNamed(page, NAME)).length, {
+            timeout: 10_000,
+            message: "la couche tient encore l'entité supprimée",
+        })
+        .toBe(0);
+    await expect
+        .poll(async () => (await owed()).length, {
+            timeout: 10_000,
+            message: "la création supprimée est restée due",
+        })
+        .toBe(0);
+    const held = (await readStore(page, { db: GEOLEAF_DB, store: "features" })).filter(
+        (r) => r.localId === created.id
+    );
+    expect(held, "l'appareil tient encore la création supprimée").toEqual([]);
+    expect(errors, "la suppression a levé une erreur").toEqual([]);
+});
+
+// 🛑 THE SAME CREATION, READ BACK FROM THE DEVICE. With the layer's device-first read ON, a reload
+// displays the layer from the per-entity store — which holds the creation as the form submitted
+// it, without an `id`. Traced on 17/09/2026 and never proven: under `promoteId: "id"` the map had
+// no id to hand the picker, the picker resolved an empty one, and an empty one persists nothing.
+// Closed by `presentRecordFeature` on the store's read; this test proves the whole chain — read
+// back, selected, moved, and the move joined to the creation still owed.
+test("[editor] lue depuis l'appareil au rechargement, une création en attente se sélectionne et se modifie", async ({
+    page,
+    context,
+}) => {
+    const NAME = "E2E-68-lecture-locale";
+    await armLayer(context, "unreachable", { readOffline: true });
+    await boot(page);
+    await loadEditor(page);
+    await awaitSettledCamera(page);
+    await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ zoom: 7 })
+    );
+    await placePoint(page, NAME);
+    const [created] = await heldNamed(page, NAME);
+    expect(created?.id, "la création n'a pas d'identité").toMatch(/^loc:/);
+    // 🛑 NOT WHILE ITS FIRST PUSH IS IN FLIGHT. A reload that cuts a push leaves the entry
+    // `inFlight`, reclaimed only once stale; and an edit joins only a `pending` or `failed` entry
+    // (`db/local-edit.ts`) — one made on an entry in flight stacks a second one. Measured under
+    // the full suite's load: `["create", "update"]`, then `create:inFlight` for 30 s.
+    const owed = async () =>
+        (await readStore(page, { db: GEOLEAF_DB, store: "outbox" }))
+            .filter((r) => r.layerId === LAYER)
+            .map((r) => `${r.kind}:${r.state}`);
+    await expect
+        .poll(owed, { timeout: 30_000, message: "la création n'a jamais échoué à partir" })
+        .toEqual(["create:failed"]);
+
+    await page.reload();
+    await boot(page);
+    // The layer is the device's now: the store holds the creation and nothing else.
+    await expect
+        .poll(async () => heldNamed(page, NAME), {
+            timeout: WAIT_MS,
+            message: "la couche relue depuis l'appareil ne porte pas la création sous sa clé",
+        })
+        .toEqual([{ id: created.id, propId: created.id }]);
+
+    await loadEditor(page);
+    await awaitSettledCamera(page);
+    // ⚠️ CENTRED ON THE CAPTURE, and RE-ISSUED until it holds: measured, after this reload the
+    // camera was moved again once settled (zoom 4.2, under the layer's `minzoom`), and the click
+    // below fell on a layer that drew nothing.
+    await expect
+        .poll(
+            () =>
+                page.evaluate(
+                    ({ id, n }) => {
+                        const G = /** @type {any} */ (window).GeoLeaf;
+                        const map = G.Core.getMap().getNativeMap();
+                        if (map.isMoving()) return false;
+                        if (map.getZoom() >= 6.9) return true;
+                        const f = G.Layers.getFeatures(id).find(
+                            (/** @type {any} */ x) => x.properties?.ville === n
+                        );
+                        map.jumpTo({ center: f.geometry.coordinates, zoom: 7 });
+                        return false;
+                    },
+                    { id: LAYER, n: NAME }
+                ),
+            { timeout: WAIT_MS, message: "la carte ne tient pas le cadrage sur la création" }
+        )
+        .toBe(true);
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.toggleMenu());
+    await page.locator('button.gl-editor-tool-btn[data-tool="select"]').click();
+    await page.waitForFunction(
+        () => {
+            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            try {
+                return !!native?.getLayer?.("td-point");
+            } catch {
+                return false;
+            }
+        },
+        null,
+        { timeout: WAIT_MS }
+    );
+    const where = await page.evaluate(
+        ({ id, n }) => {
+            const G = /** @type {any} */ (window).GeoLeaf;
+            const map = G.Core.getMap().getNativeMap();
+            const f = G.Layers.getFeatures(id).find(
+                (/** @type {any} */ x) => x.properties?.ville === n
+            );
+            const p = map.project(f.geometry.coordinates);
+            const rect = map.getContainer().getBoundingClientRect();
+            return { x: p.x + rect.left, y: p.y + rect.top };
+        },
+        { id: LAYER, n: NAME }
+    );
+    await page.mouse.click(where.x, where.y);
+    // The picker hands the drawing engine a copy carrying the feature's id — the step an id-less
+    // feature could not pass.
+    await page.waitForFunction(
+        (id) => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const src = map.getSource("td-point");
+            const data = src?.serialize?.()?.data ?? src?._data;
+            return (data?.features ?? []).some((/** @type {any} */ f) => f.properties?.id === id);
+        },
+        created.id,
+        { timeout: 10_000 }
+    );
+    const recordOf = async () =>
+        (await readStore(page, { db: GEOLEAF_DB, store: "features" })).find(
+            (r) => r.localId === created.id
+        );
+    const placed = (await recordOf())?.feature?.geometry?.coordinates;
+    // Still failed, and not retried: its next attempt is thirty seconds away.
+    expect(await owed(), "la création est repartie au rechargement").toEqual(["create:failed"]);
+    await page.mouse.move(where.x, where.y);
+    await page.mouse.down();
+    await page.mouse.move(where.x + 40, where.y - 40, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.press("Enter");
+
+    await expect
+        .poll(async () => JSON.stringify((await recordOf())?.feature?.geometry?.coordinates), {
+            timeout: 10_000,
+            message: "le déplacement n'a pas atteint la création relue",
+        })
+        .not.toBe(JSON.stringify(placed));
+    const outbox = (await readStore(page, { db: GEOLEAF_DB, store: "outbox" })).filter(
+        (r) => r.layerId === LAYER
+    );
+    expect(
+        outbox.map((r) => r.kind),
+        "la modification n'a pas rejoint la création"
+    ).toEqual(["create"]);
 });

@@ -105,10 +105,10 @@
  * triggers nothing.** Measured on 17/08/2026: of the map's 49 events, 48 are cited
  * by emitting code, this one by none. ⚠️ **The table above announced it as "POI
  * marker clicked" for months, and three `@example`s of this very file showed how to
- * subscribe** — in the API's most-read document. The exact class of the phantom POI
- * API `CLAUDE.md` records as having already cost this repo: an extract right in
- * appearance, that nothing compiles or executes, and that an integrator copies
- * before wondering why their code does not react. (That API's name is not spelled
+ * subscribe** — in the API's most-read document. The class of a phantom POI API that
+ * has already cost this repository once: an extract right in appearance, that nothing
+ * compiles or executes, and that an integrator copies before wondering why their code
+ * does not react. (That API's name is not spelled
  * here on purpose: the `poi-dissolution` guard —
  * `__tests__/guards/extracted-features.guard.test.js` — refuses the token in
  * `src/`, and it bit on this very sentence. A guard that punishes the citation is

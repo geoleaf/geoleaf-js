@@ -708,6 +708,8 @@ export const EXPECTED_FACADE_MEMBERS = {
     // `_LayerVisibilityManager` in `global.d.ts`.
     // `search` and `focus` admitted 2026-09-25: finding a feature by
     // reference in what the map holds, and framing then selecting it.
+    // `hideFeatures` admitted 2026-09-27 (3.12.0): hiding the feature being edited
+    // WITHOUT replacing the layer's filter, which the editor's direct write did.
     Layers: [
         "addFeature",
         "clear",
@@ -720,6 +722,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "getStyle",
         "getVisibilitySource",
         "hasLayer",
+        "hideFeatures",
         "isEnabled",
         "isUserOverridden",
         "isVisible",

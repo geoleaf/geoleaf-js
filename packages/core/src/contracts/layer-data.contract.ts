@@ -454,8 +454,34 @@ export interface LayerDataApi {
      * is left as it is.
      */
     setVisibleSubset(layerId: string, predicate: (f: GeoJSON.Feature) => boolean): void;
-    /** Restores full visibility (clears any active subset). */
+    /**
+     * Shows again what the subset hid — and lifts the panel's filter with it, which writes the
+     * same place. Features hidden by `hideFeatures` stay hidden.
+     */
     clearVisibleSubset(layerId: string): void;
+    /**
+     * Hides the listed features from the map, WITHOUT touching the store or the layer's
+     * filter — for a feature being edited, whose copy is drawn elsewhere meanwhile.
+     * `null` (or an empty list) shows them again.
+     *
+     * Composed with the layer's filter, never substituted for it: the layer shows what passes
+     * that filter and is not hidden. (The panel's filter and `setVisibleSubset` share one place
+     * — the last of the two to write wins; the hidden set alone is kept apart.) On a clustered
+     * layer, a hidden point still counts in its cluster's bubble: clustering is done by the
+     * source, before any filter. Until 3.12.0 the editor hid its original by REPLACING the
+     * layer's filter: selecting a feature under an active filter put every filtered-out feature
+     * back on the map, and releasing it cleared the filter outright. One hidden set per layer:
+     * a second call replaces the first. Features are matched on `properties.id`, compared as
+     * strings — the key a GeoJSON source promotes to its feature id — and, on a vector-tile
+     * layer, on the tile's own feature id too.
+     *
+     * @param layerId - The layer.
+     * @param ids - The features to hide, or `null` to show them again.
+     * @example
+     * GeoLeaf?.Layers?.hideFeatures("sites", ["PT-42"]);
+     * GeoLeaf?.Layers?.hideFeatures("sites", null);
+     */
+    hideFeatures(layerId: string, ids: readonly (string | number)[] | null): void;
 
     // ── reactive paint (sync badge, hover/select) — adapter.setFeatureState passthrough ──
 

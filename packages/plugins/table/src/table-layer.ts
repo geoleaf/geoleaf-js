@@ -191,6 +191,18 @@ export function attachMapEvents(
         }
     });
 
+    // 🛑 The layer's STORE changed — a creation, an edit, a deletion, a restore. The open table
+    // kept its rows until the next filter or visibility change, and they contradicted the map
+    // exactly as they did while the subscription above was dead. Only the layer on display
+    // refreshes, and a burst (a restore, a merge) refreshes once.
+    let refreshRowsTimer: ReturnType<typeof setTimeout> | null = null;
+    document.addEventListener("geoleaf:layer:updated", (e: Event) => {
+        const layerId = (e as CustomEvent<{ layerId?: string }>).detail?.layerId;
+        if (!tableState._isVisible || !layerId || tableState._currentLayerId !== layerId) return;
+        if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
+        refreshRowsTimer = setTimeout(refreshCallback, 150);
+    });
+
     map.on("geoleaf:geojson:layers-loaded", () => {
         Log.debug("[Table] layers-loaded event received, refreshing selector");
         debouncedRefreshSelector();

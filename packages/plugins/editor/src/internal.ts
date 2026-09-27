@@ -60,12 +60,11 @@ export function _notify(kind: "success" | "error" | "info" | "warn", message: st
 /** Core map adapter facade (`GeoLeaf.Core.getMap()`) surface used by host reconciliation. */
 interface EditorMapFacade {
     setLayerFilter(id: string, filter: unknown): void;
-    updateLayerData(id: string, data: unknown): void;
 }
 
 /**
  * Returns the core map adapter facade (`GeoLeaf.Core.getMap()`), or null.
- * Exposes `setLayerFilter` / `updateLayerData` used by host reconciliation.
+ * Exposes `setLayerFilter`, the hide filter of host reconciliation.
  */
 export function _getMapFacade(): EditorMapFacade | null {
     const facade = getGeoLeaf()?.Core?.getMap?.() as EditorMapFacade | undefined;

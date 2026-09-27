@@ -29,7 +29,7 @@ import type {
 } from "../../contracts/map-adapter.contract.ts";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
-import { MaplibreLayerRegistry, SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
+import { MaplibreLayerRegistry, SENTINEL_POI } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
 import { applyPoiFilter, type ClusterLayerIds } from "./maplibre-poi-builders.js";
 import {
@@ -57,7 +57,6 @@ import {
     fromMapLibreBounds,
     POSITION_MAP,
     applyLayerZoomRange,
-    withGeometryGuard,
 } from "./maplibre-primitives.js";
 import { buildGeoJSONLayer, buildClusterGroup } from "./maplibre-layer-builders.js";
 import { isDiffableSource, toSourceDiff } from "./maplibre-source-diff.js";
@@ -101,6 +100,10 @@ export class MaplibreAdapter implements IMapAdapter {
     private readonly _openPopups: Set<MaplibrePopup> = new Set();
     private readonly _markers: Map<string, MaplibreMarker> = new Map();
     private readonly _clusterIds: Map<string, ClusterLayerIds> = new Map();
+    /** Each layer's filters, by owner — see {@link MaplibreAdapter._composeFilterSlots}. */
+    private readonly _filterSlots: Map<string, Map<string, unknown>> = new Map();
+    /** The filter each sub-layer was built with — see {@link MaplibreAdapter._builtFilter}. */
+    private readonly _builtFilters: Map<string, unknown> = new Map();
     /** Engine ids placed outside this adapter and declared to it, by declarer. */
     private readonly _declaredStyleIds: Map<string, Required<DeclaredStyleIds>> = new Map();
 
@@ -236,6 +239,8 @@ export class MaplibreAdapter implements IMapAdapter {
         }
         this._markers.clear();
         this._clusterIds.clear();
+        this._filterSlots.clear();
+        this._builtFilters.clear();
         this._declaredStyleIds.clear();
         this._controls.clear();
         this._layerRegistry.clear();
@@ -395,6 +400,7 @@ export class MaplibreAdapter implements IMapAdapter {
 
         for (const subId of entry.subLayerIds) {
             if (map.getLayer(subId)) map.removeLayer(subId);
+            this._builtFilters.delete(subId);
         }
         if (map.getSource(entry.sourceId)) {
             map.removeSource(entry.sourceId);
@@ -410,6 +416,8 @@ export class MaplibreAdapter implements IMapAdapter {
             }
         }
         this._layerRegistry.unregister(id);
+        // A layer created again under this id starts with no filter.
+        this._filterSlots.delete(id);
     }
 
     /** Returns `true` if the layer is registered in the adapter. */
@@ -501,19 +509,37 @@ export class MaplibreAdapter implements IMapAdapter {
     // ── Layer filtering ──────────────────────────────────────────────────────
 
     /**
-     * Applies a filter expression to a registered layer's sub-layers.
-     * For cluster groups, filters the unclustered-point layer specifically.
-     * Pass `null` to clear the filter.
+     * Applies `owner`'s filter expression to a registered layer's sub-layers, AND-ed with the
+     * other owners' filters (`_composeFilterSlots`). For cluster groups, filters the
+     * unclustered-point layer specifically. Pass `null` to clear `owner`'s filter — the other
+     * owners' stay.
      *
-     * 🛑 The caller's filter is COMPOSED with each sub-layer's geometry guard, never
-     * substituted for it. `setFilter` replaces a layer's filter wholesale, so a plain
-     * assignment here would strip the guard for exactly as long as a filter is active —
-     * and clearing it would strip the guard for good. The guard is derived per sub-layer
-     * from its registered TYPE (`toSubLayerId`), not by parsing the id's suffix: a layer
-     * id may itself contain a dash.
+     * 🛑 The caller's filter is COMPOSED with the filter each sub-layer was BUILT with, never
+     * substituted for it. `setFilter` replaces a layer's filter wholesale, and the builders
+     * put there predicates the drawing depends on: a typed sub-layer's geometry guard, a
+     * clustered layer's `point_count` predicates (the unclustered circle, the bubbles, their
+     * count), an icon sub-layer's `symbolId`. A plain assignment stripped them for as long as
+     * a filter was active — a clustered layer drew its centroids as points and its points as
+     * bubbles — and clearing it stripped them for good. The built filter is read from the
+     * engine the first time a caller filters the sub-layer: until then, only the builders
+     * have written it — a filter written through `getNativeMap()` before that is taken for
+     * the built one, one written after is replaced.
+     *
+     * ⚠️ A bubble carries none of its points' properties — only `cluster`, `cluster_id`,
+     * `point_count` and `point_count_abbreviated`. A filter that REQUIRES a property value
+     * therefore hides every bubble; one that passes a feature lacking the property — such as
+     * `hideFeatures`' exclusion — keeps them. The core's own filter re-feeds a clustered layer
+     * instead (`geojson-filter.ts`). A cluster group (`createClusterGroup`) filters its
+     * unclustered points only, and never hides a bubble.
+     *
+     * @param id - The layer.
+     * @param filter - A MapLibre filter expression, or `null` to clear `owner`'s.
+     * @param owner - Whose filter it is: `"filter"` (the default — the panel's and the
+     *   visible subset's) or `"hidden"` (`GeoLeaf.Layers.hideFeatures`).
      */
-    setLayerFilter(id: string, filter: unknown): void {
+    setLayerFilter(id: string, filter: unknown, owner = "filter"): void {
         const map = this._requireMap();
+        filter = this._composeFilterSlots(id, owner, filter);
 
         // Check if this is a cluster group first
         if (this._clusterIds.has(id)) {
@@ -521,27 +547,45 @@ export class MaplibreAdapter implements IMapAdapter {
             return;
         }
 
-        // Regular GeoJSON layer — apply filter to all sub-layers
-        const entry = this._layerRegistry.get(id);
-        // ⚠️ Vector-tile layers are left alone: their sub-layers are built WITHOUT a guard
-        // (a source-layer is homogeneous by construction, so there is nothing to confine),
-        // and injecting one here would make a re-set filter differ from the creation-time
-        // one — the very inconsistency this method exists to prevent.
-        const guarded = new Map<string, MaplibreFilter | null>();
-        if (!entry?.isVectorTile) {
-            for (const type of entry?.subLayerTypes ?? []) {
-                guarded.set(toSubLayerId(id, type), withGeometryGuard(type, filter));
-            }
-        }
+        // Every sub-layer, whatever built it — a vector-tile one included, built with no
+        // filter: the caller's is then drawn as it is.
         for (const subId of this._layerRegistry.getSubLayerIds(id)) {
             if (!map.getLayer(subId)) continue;
-            // Sub-layers registered under `customSubLayerIds` alone (the cluster pair) carry
-            // no type here; they keep the caller's filter verbatim, as they always did.
-            const next = guarded.has(subId)
-                ? guarded.get(subId)
-                : ((filter ?? null) as MaplibreFilter);
+            const built = this._builtFilter(map, subId);
+            const next = built == null ? filter : filter == null ? built : ["all", built, filter];
             map.setFilter(subId, (next ?? null) as MaplibreFilter);
         }
+    }
+
+    /**
+     * The filter sub-layer `subId` was built with: read from the engine the first time a caller
+     * filters it, then kept — from then on, the engine holds a composition.
+     */
+    private _builtFilter(map: MaplibreMap, subId: string): unknown {
+        if (!this._builtFilters.has(subId)) {
+            this._builtFilters.set(subId, map.getFilter(subId) ?? null);
+        }
+        return this._builtFilters.get(subId) ?? null;
+    }
+
+    /**
+     * Records `filter` as `owner`'s on layer `id`, and returns what the layer must draw: the
+     * one filter left, all of them AND-ed, or `null` when none is.
+     *
+     * 🛑 One filter per OWNER, because two callers write this layer's filter and neither may
+     * erase the other: the panel's (and the visible subset's) under `"filter"`, the hidden
+     * set of an edited feature under `"hidden"` (`GeoLeaf.Layers.hideFeatures`). With one
+     * slot, selecting a feature under an active filter replaced it — every filtered-out
+     * feature came back — and releasing it cleared the filter outright.
+     */
+    private _composeFilterSlots(id: string, owner: string, filter: unknown): unknown {
+        let slots = this._filterSlots.get(id);
+        if (!slots) this._filterSlots.set(id, (slots = new Map<string, unknown>()));
+        if (filter == null) slots.delete(owner);
+        else slots.set(owner, filter);
+        const active = [...slots.values()];
+        if (active.length === 0) return null;
+        return active.length === 1 ? active[0] : ["all", ...active];
     }
 
     /**

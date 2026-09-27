@@ -153,10 +153,10 @@ function _rearmAbsorber(outbox: IDBObjectStore, absorber: OutboxEntry & { seq: n
 }
 
 /** Key prefix the pull gives a record known only by its server identity (`pull/layer-pull.ts`). */
-const SERVER_KEY_PREFIX = "srv:";
+export const SERVER_KEY_PREFIX = "srv:";
 
 /** Key prefix of a client identity (`write/local-edit-api.ts`). */
-const CLIENT_KEY_PREFIX = "loc:";
+export const CLIENT_KEY_PREFIX = "loc:";
 
 /**
  * Resolves the identity an edit names to the key the store holds the entity under.

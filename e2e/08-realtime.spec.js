@@ -264,12 +264,17 @@ test.describe("08-realtime", () => {
         // "this profile's second USGS-backed layer". That layer DOES NOT EXIST
         // in `tourism` — a `world-disasters` inheritance, never re-verified at
         // migration.
-        await page.route("**earthquake.usgs.gov/**", (route) => route.abort("failed"));
+        //
+        // 🛑 Both routes on the CONTEXT: the service worker fetches too, and a page route never
+        // sees what it fetches — measured by the witness of `helpers/test.js` (27/09/2026), on
+        // the snapshot. A worker reaching the REAL USGS feed would fill the layer, and the
+        // assertion below would pass with no fallback at all.
+        await page.context().route("**earthquake.usgs.gov/**", (route) => route.abort("failed"));
 
         let snapshotHits = 0;
-        await page.route(
-            "**/epicentres_seismes/data/epicentres_seismes_snapshot.geojson",
-            (route) => {
+        await page
+            .context()
+            .route("**/epicentres_seismes/data/epicentres_seismes_snapshot.geojson", (route) => {
                 snapshotHits += 1;
                 return snapshotHits === 1
                     ? route.fulfill({
@@ -278,8 +283,7 @@ test.describe("08-realtime", () => {
                           body: JSON.stringify(EMPTY_FC),
                       })
                     : route.continue();
-            }
-        );
+            });
 
         await page.goto("/");
         await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
@@ -296,6 +300,9 @@ test.describe("08-realtime", () => {
         // FeatureCollection): whatever it holds can only come from the fallback
         // snapshot served by the PollingSource.
         expect(featureCount).toBeGreaterThan(0);
+        // …and the fallback was indeed asked for: without it, a count above zero says nothing
+        // of where the entities came from.
+        expect(snapshotHits, "le repli n'a jamais été demandé").toBeGreaterThanOrEqual(2);
     });
 
     // ── The test with no subject left, and why it is not "re-armed" ──────────────────
@@ -510,23 +517,26 @@ test.describe("08-realtime", () => {
                 { timeout: 12000 }
             )
             .toBe("sse");
+        // ⚠️ Polled on the SSE ROW, not on a non-zero count: the layer boots from its local
+        // snapshot, so a count is above zero before the stream says anything — measured once
+        // under the full suite's load, `features[0]` was a snapshot entity (27/09/2026).
         await expect
             .poll(
                 async () =>
-                    page.evaluate(
-                        () =>
+                    page.evaluate(() => {
+                        const f =
                             globalThis.GeoLeaf?.GeoJSON?.getLayerData?.("epicentres_seismes")
-                                ?.features?.length ?? 0
-                    ),
+                                ?.features?.[0];
+                        return f
+                            ? {
+                                  id: f.properties?._realtimeId ?? f.properties?.id,
+                                  name: f.properties?.name,
+                              }
+                            : null;
+                    }),
                 { timeout: 12000 }
             )
-            .toBeGreaterThan(0);
-
-        const row = await page.evaluate(() => {
-            const f = globalThis.GeoLeaf.GeoJSON.getLayerData("epicentres_seismes").features[0];
-            return { id: f.properties?._realtimeId ?? f.properties?.id, name: f.properties?.name };
-        });
-        expect(row).toMatchObject({ id: "sse-1", name: "SSE Point" });
+            .toMatchObject({ id: "sse-1", name: "SSE Point" });
         expect(blockingErrors(logs)).toHaveLength(0);
     });
 });

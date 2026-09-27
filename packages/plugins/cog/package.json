@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/cog",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf COG Plugin — Load and render Cloud Optimized GeoTIFF files as MapLibre image layers",
@@ -36,7 +36,8 @@
         "dist/",
         "src/",
         "LICENSE",
-        "README.md"
+        "README.md",
+        "THIRD_PARTY_LICENSES.txt"
     ],
     "scripts": {
         "clean": "rimraf dist",

@@ -221,6 +221,62 @@ function _applyRestoredStatus(feature: GeoJSON.Feature): void {
     feature.properties = props;
 }
 
+/** The layer members {@link clearRestoredStatus} reads, beyond the restore's own. */
+interface BadgeLayerLike {
+    hasLayer?(layerId: string): boolean;
+    getFeatureById?(layerId: string, id: string | number): GeoJSON.Feature | null;
+    patchFeature?(
+        layerId: string,
+        id: string | number,
+        patch: Record<string, unknown>,
+        opts?: { rerender?: boolean }
+    ): void;
+}
+
+/**
+ * Lifts the restored "pending" badge off an entity the drain has just pushed.
+ *
+ * The restore bakes the badge into the feature it puts back on its layer; the drain writes the
+ * server's answer into the RECORD only. Without this, the layer kept saying "owed" of an entity
+ * the server already held, until the next load. The module that sets the badge is the one that
+ * lifts it.
+ *
+ * The feature is addressed by the identity the restore gave it, derived from the record AS
+ * SENT — before the server's identity was written back: a pushed creation is still named by its
+ * client key on its layer. Only a feature carrying the restored badge is touched, so a push
+ * never re-renders a layer the restore did not decorate.
+ *
+ * Never throws: a decoration must not fail a drain.
+ *
+ * @param layerId - The entity's layer.
+ * @param sent - The record the drain sent: its feature, its key, and its server identity.
+ * @example
+ * clearRestoredStatus("sites", { feature, localId: "loc:3f2…", serverId: null });
+ */
+export function clearRestoredStatus(
+    layerId: string,
+    sent: { feature?: unknown; localId: string; serverId?: string | null }
+): void {
+    if (!RESTORED_SYNC_STATUS) return;
+    try {
+        const layers = _resolveLayers() as BadgeLayerLike | undefined;
+        if (!layers?.patchFeature || !layers.getFeatureById || !layers.hasLayer?.(layerId)) return;
+        const presented = presentRecordFeature({
+            feature: sent.feature,
+            localId: sent.localId,
+            serverId: sent.serverId ?? null,
+        }) as { id?: string | number; properties?: { id?: unknown } } | null | undefined;
+        const id = presented?.id ?? (presented?.properties?.id as string | number | undefined);
+        if (id == null) return;
+        const held = layers.getFeatureById(layerId, id);
+        if (held?.properties?.["_syncStatus"] !== RESTORED_SYNC_STATUS) return;
+        // `null`, not a status of our own: the paint tests for "pending", and absent is plain.
+        layers.patchFeature(layerId, id, { _syncStatus: null }, { rerender: true });
+    } catch (err) {
+        Log.warn(`[PoiRestore] pending badge not lifted on ${layerId}:`, err);
+    }
+}
+
 /** Applies the net ops per layer: delete → `removeFeature`, else batched upsert. */
 async function _applyNetOps(
     byLayer: Map<string, Map<string, NetOp>>,

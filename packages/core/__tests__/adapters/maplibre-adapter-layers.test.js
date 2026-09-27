@@ -100,7 +100,11 @@ beforeEach(() => {
         getLayer: vi.fn((id) => _layers[id] || null),
         setLayoutProperty: vi.fn(),
         setPaintProperty: vi.fn(),
-        setFilter: vi.fn(),
+        // Keeps what it is given, as the engine does: `getFilter` reads it back.
+        setFilter: vi.fn((id, filter) => {
+            if (_layers[id]) _layers[id].filter = filter;
+        }),
+        getFilter: vi.fn((id) => _layers[id]?.filter ?? null),
         addImage: vi.fn(),
         removeImage: vi.fn(),
         hasImage: vi.fn().mockReturnValue(false),
@@ -369,6 +373,37 @@ describe("MaplibreAdapter — Layers", () => {
             ]);
         });
 
+        // 🛑 One filter per OWNER (3.12.0). Hiding an edited feature wrote the layer's only
+        // filter, and so replaced the panel's: every filtered-out feature came back, and
+        // releasing the edit cleared the filter outright.
+        it("composes two owners' filters, and clearing one leaves the other", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("own", {
+                type: "FeatureCollection",
+                features: [{ geometry: { type: "Point" } }],
+            });
+            const panel = ["==", ["get", "type"], "park"];
+            const hidden = ["!=", ["get", "id"], "7"];
+            adapter.setLayerFilter("own", panel);
+            adapter.setLayerFilter("own", hidden, "hidden");
+            expect(mockMapInstance.setFilter).toHaveBeenLastCalledWith("gl-own-circle", [
+                "all",
+                POINT_GUARD,
+                ["all", panel, hidden],
+            ]);
+            adapter.setLayerFilter("own", null, "hidden");
+            expect(mockMapInstance.setFilter).toHaveBeenLastCalledWith("gl-own-circle", [
+                "all",
+                POINT_GUARD,
+                panel,
+            ]);
+            adapter.setLayerFilter("own", null);
+            expect(mockMapInstance.setFilter).toHaveBeenLastCalledWith(
+                "gl-own-circle",
+                POINT_GUARD
+            );
+        });
+
         // 🛑 Clearing must restore the GUARD, never `null`. A bare null would re-open the
         // defect for exactly as long as no filter is active.
         it("restores the guard alone when null is passed", () => {
@@ -379,6 +414,50 @@ describe("MaplibreAdapter — Layers", () => {
             });
             adapter.setLayerFilter("f2", null);
             expect(mockMapInstance.setFilter).toHaveBeenCalledWith("gl-f2-circle", POINT_GUARD);
+        });
+
+        // 🛑 A clustered layer's sub-layers are BUILT with the cluster predicates: the
+        // unclustered circle with `!point_count`, the bubbles and their count with
+        // `point_count`. A caller's filter was substituted for them — every centroid drawn as
+        // a point, every point as a bubble — and clearing it removed them for good.
+        it("composes with a clustered layer's own predicates, and gives them back", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer(
+                "grp",
+                { type: "FeatureCollection", features: [{ geometry: { type: "Point" } }] },
+                { cluster: true }
+            );
+            const subIds = adapter.getLayerRegistry().getSubLayerIds("grp");
+            const built = new Map(subIds.map((s) => [s, mockMapInstance.getFilter(s)]));
+            const withCluster = [...built.values()].filter((f) =>
+                JSON.stringify(f).includes("point_count")
+            );
+            expect(withCluster).toHaveLength(3);
+
+            const hidden = ["!=", ["get", "id"], "7"];
+            adapter.setLayerFilter("grp", hidden, "hidden");
+            for (const s of subIds) {
+                expect(mockMapInstance.getFilter(s)).toEqual(["all", built.get(s), hidden]);
+            }
+            adapter.setLayerFilter("grp", null, "hidden");
+            for (const s of subIds) expect(mockMapInstance.getFilter(s)).toEqual(built.get(s));
+        });
+
+        // 🛑 The built filters are read once and kept: a layer removed then created again under
+        // the same id — clustered this time — must be read again, or its filter would compose
+        // with the old circle's guard and draw the centroids as points once more.
+        it("forgets a removed layer's built filters", () => {
+            const adapter = createInitedAdapter();
+            const pts = { type: "FeatureCollection", features: [{ geometry: { type: "Point" } }] };
+            adapter.addGeoJSONLayer("again", pts);
+            adapter.setLayerFilter("again", ["==", ["get", "type"], "park"]);
+            adapter.removeLayer("again");
+            adapter.addGeoJSONLayer("again", pts, { cluster: true });
+            const built = mockMapInstance.getFilter("gl-again-circle");
+            expect(JSON.stringify(built)).toContain("point_count");
+            const hidden = ["!=", ["get", "id"], "7"];
+            adapter.setLayerFilter("again", hidden, "hidden");
+            expect(mockMapInstance.getFilter("gl-again-circle")).toEqual(["all", built, hidden]);
         });
 
         it("gives each sub-layer of a mixed layer its own guard", () => {

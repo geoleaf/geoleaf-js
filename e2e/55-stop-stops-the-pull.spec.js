@@ -71,7 +71,9 @@ function row(id) {
  * @param {import("@playwright/test").Page} page
  */
 async function armPullSource(page) {
-    await page.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+    // On the CONTEXT: the service worker fetches the bundle too, and a page route never sees
+    // what it fetches — measured by the witness of `helpers/test.js` (27/09/2026).
+    await page.context().route("**/profiles/tourism/profile-bundle.json**", async (route) => {
         const response = await route.fetch();
         if (route.request().method() !== "GET" || response.status() !== 200) {
             await route.fulfill({ response });

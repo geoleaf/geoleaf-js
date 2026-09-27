@@ -290,10 +290,9 @@ const _GUARDED_GEOMETRY: Readonly<Partial<Record<SubLayerType, readonly string[]
  * `clusters` / `cluster-count` answer `null`: a clustered source is point-only by construction,
  * and the `point_count` filters are the ones that matter there.
  *
- * ⚠️ NOT exported, and it should stay that way: every caller outside this module goes
- * through {@link withGeometryGuard}, which is what keeps a re-set filter from silently
- * REPLACING the guard instead of composing with it. Exporting the bare guard would offer
- * the wrong door.
+ * ⚠️ NOT exported, and it should stay that way: a builder outside this module that composes a
+ * guard takes it through {@link withGeometryGuard}, together with whatever filter the sub-layer
+ * needs. Exporting the bare guard would offer the wrong door.
  *
  * @param type - The sub-layer family.
  * @returns A MapLibre filter expression, or `null`.
@@ -308,9 +307,11 @@ function geometryGuard(type: SubLayerType): MaplibreFilter | null {
 /**
  * Combines a sub-layer's geometry guard with a caller-supplied filter.
  *
- * ⚠️ Every path that (re-)sets a filter must go through this. `setLayerFilter` and the cluster
- * patch both REPLACE a layer's filter wholesale; either one dropping the guard would bring the
- * defect back for exactly as long as a filter is active.
+ * ⚠️ A builder that composes a guard with a filter of its own goes through this — the icon
+ * sub-layer, the cluster patch (`maplibre-layer-builders.ts`); the cluster bubbles need no guard
+ * and set their filter as it is. A filter set LATER does not come here:
+ * `MaplibreAdapter.setLayerFilter` composes the caller's with the filter the sub-layer was
+ * built with, read back from the engine, so the guard comes along with the rest of it.
  *
  * @param type - The sub-layer family.
  * @param filter - The caller's filter, or `null` / `undefined` for none.

@@ -56,10 +56,15 @@ Plugins:
 
 ## Dependencies
 
-GeoLeaf depends on the following open-source libraries:
+GeoLeaf needs **MapLibre GL JS** (https://maplibre.org, BSD 3-Clause License), a peer
+dependency that the host application installs: it is not bundled in any GeoLeaf package.
 
-- **MapLibre GL JS** (https://maplibre.org) - BSD 3-Clause License
-- **Additional dependencies** - See `package.json` for complete list
+The third-party code a GeoLeaf package **does** bundle is listed, with its license texts, in the
+`THIRD_PARTY_LICENSES.txt` file at the root of that package's npm tarball. The file is generated
+from the package's own built bundle, so it names what the bundle actually carries — not what its
+`package.json` declares — and it copies the license comments of the bundled source files, and,
+for a dependency published already built, of the original sources its own source map carries:
+that is where the notices of code a package vendors from others are kept.
 
 ---
 

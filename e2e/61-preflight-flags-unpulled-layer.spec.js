@@ -54,7 +54,9 @@ test.beforeEach(async ({ context }) => {
 
 /** Gives `sites_rosario` a pull source, in the served bundle (GET 200 only — see spec 54). */
 async function armPullSource(page) {
-    await page.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+    // On the CONTEXT: the service worker fetches the bundle too, and a page route never sees
+    // what it fetches — measured by the witness of `helpers/test.js` (27/09/2026).
+    await page.context().route("**/profiles/tourism/profile-bundle.json**", async (route) => {
         const response = await route.fetch();
         if (route.request().method() !== "GET" || response.status() !== 200) {
             await route.fulfill({ response });

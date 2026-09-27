@@ -27,6 +27,7 @@ import { getFilterConfig } from "./config.js";
 import { renderFilterPanel } from "./panel/render.js";
 import { applyFilterFromPanel, resolveOptionsWithData } from "./apply.js";
 import { resetPanelControls } from "./panel/write.js";
+import { readActiveFilter } from "./panel/state.js";
 import { Core } from "../../api/geoleaf.core.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
@@ -81,12 +82,24 @@ function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
         } else if (action === "filter-close") panel.classList.remove("gl-is-open");
     };
 
+    // 🛑 A layer's store changed — a creation, an edit, a deletion, a restore: an active filter
+    // judges it again. It did not: on the GPU path a new feature was absent from the filter's
+    // id list, so hidden even when it passed; on the re-feed path it was shown even when it
+    // failed, and the "no feature matches" line kept the last pass's verdict. No filter
+    // active, nothing to judge. A filter pass writes the map, never the store, so it cannot
+    // fire this event again.
+    const onLayerUpdated = (): void => {
+        if (readActiveFilter(_panel, config).length > 0) debouncedApply();
+    };
+
     panel.addEventListener("click", onClick);
     panel.addEventListener("input", debouncedApply);
     panel.addEventListener("change", debouncedApply);
+    document.addEventListener("geoleaf:layer:updated", onLayerUpdated);
     _cleanups.push(() => panel.removeEventListener("click", onClick));
     _cleanups.push(() => panel.removeEventListener("input", debouncedApply));
     _cleanups.push(() => panel.removeEventListener("change", debouncedApply));
+    _cleanups.push(() => document.removeEventListener("geoleaf:layer:updated", onLayerUpdated));
 }
 
 /** Wires the structural toolbar toggle button (`#gl-filter-toggle`) to the panel. */

@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/editor",
-    "version": "1.5.3",
+    "version": "1.5.4",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Editor Plugin — Geometry creation & editing (Point/Line/Polyline/Polygon) with Terra Draw, responsive form catalog, and online/offline persistence",
@@ -36,7 +36,8 @@
         "dist/",
         "src/",
         "LICENSE",
-        "README.md"
+        "README.md",
+        "THIRD_PARTY_LICENSES.txt"
     ],
     "scripts": {
         "clean": "rimraf dist",

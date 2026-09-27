@@ -48,7 +48,7 @@ describe("StorageDB.init — success", () => {
 
         expect(db).toBeInstanceOf(IDBDatabase);
         expect(db.name).toBe(DB_NAME);
-        expect(db.version).toBe(6);
+        expect(db.version).toBe(7);
         expect(IndexedDB._db).toBe(db);
     });
 

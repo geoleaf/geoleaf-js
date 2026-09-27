@@ -85,6 +85,25 @@ export interface GeoLeafLayerToggleDetail {
 }
 
 /**
+ * Detail payload for `geoleaf:layer:updated`.
+ *
+ * Dispatched once per mutation of a layer's store through `GeoLeaf.Layers` — `setData`,
+ * `clear`, `addFeature`, `removeFeature` (when it removed something), `updateFeatureId`,
+ * `mergeFeatures`, and `patchFeature` with `{ rerender: true }`. NOT by a silent
+ * `patchFeature`, which changes state only; NOT by the loading of a layer
+ * (`geoleaf:geojson:layers-loaded` says that); NOT by a filter or `setVisibleSubset`, which
+ * change what is DRAWN, never what the store holds; and NOT by a writer of a whole collection
+ * outside `GeoLeaf.Layers` — a real-time layer's ticks, an OGC layer's auto-refresh, a direct
+ * `GeoLeaf.GeoJSON.updateLayerData`: the store changes, and nothing announces it.
+ *
+ * What derives from the store listens to it: the open table, the active filter.
+ */
+export interface GeoLeafLayerUpdatedDetail {
+    /** GeoLeaf layer id whose store just changed. */
+    layerId: string;
+}
+
+/**
  * Detail payload for `geoleaf:layer:added`.
  *
  * Dispatched once per GeoLeaf layer right after its MapLibre source + sub-layers
@@ -873,6 +892,8 @@ export interface GeoLeafEventMap {
     // what changes is that emitting it through `dispatchGeoLeafEvent` is now type-illegal.
     "geoleaf:layer:toggle": GeoLeafLayerToggleDetail;
     "geoleaf:layer:added": GeoLeafLayerAddedDetail;
+    /** A layer's store changed — see {@link GeoLeafLayerUpdatedDetail} for what does and does not fire it. */
+    "geoleaf:layer:updated": GeoLeafLayerUpdatedDetail;
     "geoleaf:feature:click": GeoLeafFeatureClickDetail;
     "geoleaf:feature:hover": GeoLeafFeatureHoverDetail;
     "geoleaf:filter:apply": GeoLeafFilterApplyDetail;

@@ -1,0 +1,68 @@
+{
+    "schemaVersion": 2,
+    "lot": "cloture-lots-2-3",
+    "scope": [
+        "packages/core/src/capabilities/offline/db/identity-twins.ts",
+        "packages/core/src/utils/general/style-ready.ts",
+        "packages/plugins/editor/src/selection/selection-keys.ts",
+        "scripts/gen-third-party-licenses.cjs"
+    ],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/db/identity-twins.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La réparation de la montée v7 : fusionne les jumeaux qu'a laissés l'ancien défaut d'identité (clé nue, `serverId: null`, à côté du `srv:<id>` du rapatriement)",
+            "confidence": "haute",
+            "rationale": "Un stock et non un flux — le producteur est fermé depuis la 3.4.0 —, donc une passe unique dans la transaction de montée, qui couvre `features` ET `outbox` : la règle tourne sur « quel jumeau la file nomme-t-elle ? », qu'un rapatriement ne peut pas lire. Hors d'`indexeddb.ts`, qui passe déjà les mille lignes ; sous `db/` parce qu'il écrit dans la montée. Tenu par `__tests__/capabilities/offline/schema-v7-twins.test.ts`, contre une base v6 réelle, quatre cibles vues rouges avant la montée"
+        },
+        "packages/core/src/utils/general/style-ready.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "`whenStyleReady` — la seule attente fiable du style d'une carte (prédicat re-testé sur `styledata`, `sourcedata`, `idle`) et la liste de ces événements",
+            "confidence": "haute",
+            "rationale": "Extrait du registre des fonds de carte, qui l'avait payé (un seul `styledata` tombe avant la bascule) : la couche en tuiles s'y attend désormais avant de construire sa source, et le registre en lit la même liste. Sous `utils/general/` et non `adapters/maplibre/` : une capacité ne peut pas importer l'adaptateur, et le module ne prend qu'une vue structurelle de la carte, sans import du moteur. Tenu par `__tests__/utils/style-ready.test.ts` et `__tests__/geojson/vector-tiles.test.js`, vu rouge avant le correctif"
+        },
+        "packages/plugins/editor/src/selection/selection-keys.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Les touches de la sélection : Suppr supprime (confirmation comprise), Entrée quitte l'outil de sélection — jamais une touche tapée dans un champ ou pressée dans une fenêtre modale, ni Entrée sur un bouton ou un lien",
+            "confidence": "haute",
+            "rationale": "Sorti d'`entry.ts`, que la garde « fenêtre » portait au-delà du plafond de 700 lignes (PC-08) ; patron d'`history/shortcuts.ts` (attacher / détacher, idempotent). La garde ferme une variante de la suppression muette : Entrée sur le bouton de la confirmation désarmait l'outil sous une fenêtre restée ouverte. La règle bouton/lien est venue ensuite : la pastille d'outils est une fenêtre sans être modale, et Entrée sur ses boutons quittait l'outil. Tenu par `src/__tests__/selection-keys.test.ts` (chaque garde vue rouge par mutation : la fenêtre modale, le bouton, `role=button`) et `e2e/44`"
+        },
+        "scripts/gen-third-party-licenses.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Génère le `THIRD_PARTY_LICENSES.txt` de chaque paquet publié qui embarque du code tiers, d'après les sourcemaps de son bundle, et le garde (`--check`, TPL)",
+            "confidence": "haute",
+            "rationale": "Mesuré le 27/09/2026 : neuf paquets embarquaient du code tiers, la minification en retirait tout commentaire de licence, et les tarballs ne portaient que la LICENSE de GeoLeaf. Dérivé du bundle, pas de `dependencies` : ce que l'arbre a gardé, transitifs compris. Branché dans `ci:local` et `release:check`, avant PUB ; vu rouge sur le cas réel (neuf `files[]` qui ne livraient pas le fichier) et par mutation (fichier tronqué)"
+        }
+    }
+}

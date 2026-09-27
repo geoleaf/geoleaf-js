@@ -396,6 +396,20 @@ describe("modes", () => {
         );
     });
 
+    it("🛑 the select mode leaves the Delete key to the editor, and keeps its other keys", async () => {
+        // Terra Draw's select mode deletes the selected shape itself on Delete's key-up: no
+        // confirmation, no persistence, no undo entry, and a deselect the editor reconciles as a
+        // cancelled edit. The editor owns deletion; `null` switches that one binding off, and
+        // Escape still deselects.
+        const { TerraDrawSelectMode } = await import("terra-draw");
+        vi.mocked(TerraDrawSelectMode).mockClear();
+        buildTerraDrawModes(_cfg());
+        const opts = vi.mocked(TerraDrawSelectMode).mock.calls[0]?.[0] as {
+            keyEvents?: Record<string, unknown>;
+        };
+        expect(opts.keyEvents).toMatchObject({ delete: null, deselect: "Escape" });
+    });
+
     it("buildTerraDrawModes — no duplicate modes", () => {
         const modes = buildTerraDrawModes(_cfg());
         const names = modes.map((m) => (m as { mode: string }).mode);

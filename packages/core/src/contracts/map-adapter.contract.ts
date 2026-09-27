@@ -286,11 +286,17 @@ export interface IMapAdapter {
      * Maps to `map.setFilter()` with a MapLibre expression
      * array (e.g. `["==", ["get", "type"], "park"]`).
      *
+     * A layer holds one filter PER OWNER, and draws what passes all of them: a call writes and
+     * clears its own owner's filter only. The default owner, `"filter"`, is the panel's and the
+     * visible subset's; `GeoLeaf.Layers.hideFeatures` writes `"hidden"`. Until 3.12.0 a layer
+     * held one filter, and hiding an edited feature replaced the panel's.
+     *
      * @param id - Layer identifier.
      * @param filter - Engine-specific filter expression (`unknown`).
-     *   Pass `null` to clear the filter.
+     *   Pass `null` to clear this owner's filter.
+     * @param owner - The filter slot written. Defaults to `"filter"`.
      */
-    setLayerFilter(id: string, filter: unknown): void;
+    setLayerFilter(id: string, filter: unknown, owner?: string): void;
 
     /**
      * Updates the zoom range of an existing layer, on every one of its sub-layers.

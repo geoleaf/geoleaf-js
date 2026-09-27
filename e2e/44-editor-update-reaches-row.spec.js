@@ -23,6 +23,17 @@
  * ⚠️ The entity is seeded as a DOWNLOAD leaves it — `srv:<id>`, a server identity and the
  * freshness marker that came with it — rather than pulled for real: a pull needs an OGC source
  * this deliverable does not carry (`DNS-05` strips it), and what is under test starts after it.
+ *
+ * 🛑 AND A DELETED ONE REACHES IT TOO — the defect the two deletion tests exist for, measured on
+ * 27/09/2026 on the shipped bundle. Delete from the pill or the `Delete` key, confirm, and
+ * NOTHING: no `feature-deleted`, no queued write, the feature still in its layer, and a page
+ * error for anyone looking. Removing a SELECTED shape makes the drawing engine deselect it first,
+ * synchronously, and the editor's deselect handler reconciled the host as for a cancelled edit:
+ * it removed that very copy and showed the original back, then the engine threw on an id it no
+ * longer held. After a move, the deselect committed the move instead — the deletion left, but
+ * preceded by an update and a `feature-saved` for a feature being deleted. No test deleted
+ * anything, and no drawing-engine fake of the unit suite deselects on removal: only the real
+ * engine says it. Both tests were seen red on the bundle built before the fix.
  */
 
 import { test, expect } from "./helpers/test.js";
@@ -129,7 +140,21 @@ async function projectMidVertex(page) {
     }, LAYER);
 }
 
-test("[editor] une entité rapatriée, modifiée, atteint SA ligne serveur", async ({ page }) => {
+/**
+ * Serves the entity, seeds it as a download leaves it, arms the editor and SELECTS the entity's
+ * copy at its middle vertex — the ground every test below starts from.
+ *
+ * The write endpoint answers every request with the row the server now holds, and records it.
+ * From the selection on, the page's errors and the editor's write events are recorded too.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<{
+ *   sent: { method: string, url: string, body: string | null }[],
+ *   errors: string[],
+ *   mid: { x: number, y: number },
+ * }>}
+ */
+async function openServedEntity(page) {
     /** @type {{ method: string, url: string, body: string | null }[]} */
     const sent = [];
     await page.route(`${ENDPOINT}**`, async (route) => {
@@ -194,7 +219,7 @@ test("[editor] une entité rapatriée, modifiée, atteint SA ligne serveur", asy
     // mid-drag, and the drag is lost in silence (see `helpers/camera.js`).
     await awaitSettledCamera(page);
 
-    // Select, move a vertex, commit — the gestures of spec 38, on a writable layer this time.
+    // Select — the gesture of spec 38, on a writable layer this time.
     const mid = await projectMidVertex(page);
     await page.mouse.click(mid.x, mid.y);
     await page.waitForFunction(
@@ -207,6 +232,76 @@ test("[editor] une entité rapatriée, modifiée, atteint SA ligne serveur", asy
         null,
         { timeout: 10000 }
     );
+
+    /** @type {string[]} */
+    const errors = [];
+    page.on("pageerror", (err) => errors.push(err.message));
+    await page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        w.__editorWrites = [];
+        for (const name of ["feature-deleted", "feature-saved", "feature-sync-queued"]) {
+            document.addEventListener(`geoleaf:editor:${name}`, (e) =>
+                w.__editorWrites.push({ name, detail: /** @type {CustomEvent} */ (e).detail })
+            );
+        }
+    });
+    return { sent, errors, mid };
+}
+
+/**
+ * The editor's write events since the selection, in order.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<{ name: string, detail: any }[]>}
+ */
+function editorWrites(page) {
+    return page.evaluate(() => /** @type {any} */ (window).__editorWrites);
+}
+
+/**
+ * Answers the deletion's confirmation.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function confirmDeletion(page) {
+    const confirm = page.locator(".gl-form-modal-confirm .gl-form-modal__btn-delete");
+    await expect(confirm, "la suppression ne demande pas de confirmation").toBeVisible({
+        timeout: 5000,
+    });
+    await confirm.click();
+}
+
+/**
+ * Waits until the deletion has left the layer: announced, then out of the layer's store.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function expectDeletedFromLayer(page) {
+    await expect
+        .poll(
+            async () =>
+                (await editorWrites(page))
+                    .filter((w) => w.name === "feature-deleted")
+                    .map((w) => w.detail),
+            { timeout: 10000, message: "aucune suppression annoncée" }
+        )
+        .toEqual([{ featureId: ROW_ID, layerId: LAYER }]);
+    await expect
+        .poll(
+            async () =>
+                page.evaluate(
+                    (id) => /** @type {any} */ (window).GeoLeaf.Layers.getFeatureCount(id),
+                    LAYER
+                ),
+            { timeout: 10000, message: "la couche tient encore l'entité supprimée" }
+        )
+        .toBe(0);
+}
+
+test("[editor] une entité rapatriée, modifiée, atteint SA ligne serveur", async ({ page }) => {
+    const { sent, mid } = await openServedEntity(page);
+
+    // Move a vertex, commit.
     await page.mouse.move(mid.x, mid.y);
     await page.mouse.down();
     await page.mouse.move(mid.x, mid.y - 40, { steps: 8 });
@@ -252,4 +347,109 @@ test("[editor] une entité rapatriée, modifiée, atteint SA ligne serveur", asy
 
     const outbox = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
     expect(outbox.filter((r) => r.layerId === LAYER)).toHaveLength(0);
+});
+
+test("[editor] une entité rapatriée, supprimée par la pastille, quitte sa couche et atteint SA ligne serveur", async ({
+    page,
+}) => {
+    const { sent, errors } = await openServedEntity(page);
+
+    await page.locator('button.gl-editor-action-btn[data-action="delete"]').click();
+    await confirmDeletion(page);
+
+    // Before the fix: nothing announced, the layer still holding the entity.
+    await expectDeletedFromLayer(page);
+
+    // ⚠️ The outbox is NOT read here: queuing a write asks for a drain, which the route answers
+    // at once — measured, the entry is often gone before a read reaches it. The request says
+    // which entry left, and under which key.
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Storage.pushOutbox());
+    await expect
+        .poll(async () => sent.length, { timeout: 20000, message: "rien n'est parti au serveur" })
+        .toBeGreaterThan(0);
+
+    // THE SUBJECT: the request the drain built — the row, and the marker the download left.
+    expect(sent.map((r) => r.method)).toEqual(["DELETE"]);
+    expect(sent[0].url).toContain(`id=eq.${ROW_ID}`);
+    expect(sent[0].url).toContain(`updated_at=eq.${encodeURIComponent(PULLED_AT)}`);
+
+    // Answered: nothing is owed any more, and the device no longer holds the entity.
+    await expect
+        .poll(
+            async () => {
+                const owed = await readStore(page, { db: GEOLEAF_DB, store: "outbox" });
+                const held = await readStore(page, { db: GEOLEAF_DB, store: "features" });
+                return [...owed, ...held].filter((r) => r.layerId === LAYER).length;
+            },
+            { timeout: 10000, message: "la suppression poussée reste due ou tenue" }
+        )
+        .toBe(0);
+    expect(errors, "la suppression a levé une erreur").toEqual([]);
+});
+
+test("[editor] une entité rapatriée, modifiée PUIS supprimée au clavier, n'écrit que sa suppression", async ({
+    page,
+}) => {
+    const { errors, mid } = await openServedEntity(page);
+
+    // A move, NOT committed: the selection is still open when the deletion comes.
+    await page.mouse.move(mid.x, mid.y);
+    await page.mouse.down();
+    await page.mouse.move(mid.x, mid.y - 40, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.press("Delete");
+    await confirmDeletion(page);
+
+    await expectDeletedFromLayer(page);
+    // A negative needs a window: before the fix, the move was committed as an update a few
+    // milliseconds after the deletion was queued, and announced as saved.
+    await page.waitForTimeout(1000);
+
+    const writes = await editorWrites(page);
+    expect(
+        writes.filter((w) => w.name === "feature-sync-queued").map((w) => w.detail.kind),
+        "la suppression a écrit autre chose qu'elle-même"
+    ).toEqual(["delete"]);
+    expect(
+        writes.filter((w) => w.name === "feature-saved"),
+        "une entité supprimée a été annoncée enregistrée"
+    ).toEqual([]);
+    expect(errors, "la suppression a levé une erreur").toEqual([]);
+});
+
+// 🛑 THE SAME SILENCE, REACHED FROM THE KEYBOARD — measured on 27/09/2026, after the fix above.
+// The editor listens for Enter and Delete on the whole document, and only excluded text fields.
+// Enter on the confirmation's own button was taken for "leave the select tool": the button's
+// activation was cancelled, the tool disarmed, the drawing engine deselected, and the dialog stayed
+// open over a selection that no longer existed — its "Supprimer" then did nothing, without a word.
+// Delete, pressed again inside the dialog, stacked a second confirmation over the first.
+test("[editor] une suppression confirmée AU CLAVIER part, sans empiler de seconde confirmation", async ({
+    page,
+}) => {
+    const { errors } = await openServedEntity(page);
+
+    const dialogs = page.locator(".gl-form-modal-confirm");
+    await page.keyboard.press("Delete");
+    await expect(dialogs, "la suppression ne demande pas de confirmation").toHaveCount(1, {
+        timeout: 5000,
+    });
+
+    // The focus is in the dialog now. A negative needs a window: a stacked dialog would be
+    // created synchronously by the key, so a short one is enough.
+    await page.keyboard.press("Delete");
+    await page.waitForTimeout(300);
+    expect(await dialogs.count(), "une seconde confirmation s'est empilée").toBe(1);
+
+    // The first action (cancel) holds the focus; the confirmation is the next one.
+    await page.keyboard.press("Tab");
+    await expect(
+        page.locator(".gl-form-modal-confirm .gl-form-modal__btn-delete"),
+        "le bouton de confirmation n'a pas le focus"
+    ).toBeFocused();
+    await page.keyboard.press("Enter");
+
+    // Before the fix: the dialog still open, nothing announced, the layer still holding it.
+    await expectDeletedFromLayer(page);
+    await expect(dialogs, "la confirmation est restée ouverte").toHaveCount(0);
+    expect(errors, "la suppression a levé une erreur").toEqual([]);
 });

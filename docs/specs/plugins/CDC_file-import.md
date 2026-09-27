@@ -4,8 +4,8 @@ title: file-import — la conversion de fichiers géographiques vers GeoJSON
 plugin_id: file-import
 package: "@geoleaf-plugins/file-import"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: fab770b1
-date: 1er septembre 2026
+verifie_contre: 932f22a78
+date: 27 septembre 2026
 ---
 
 # file-import — la conversion de fichiers géographiques vers GeoJSON

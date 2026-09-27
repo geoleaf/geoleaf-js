@@ -295,6 +295,49 @@ describe("geojson/vector-tiles — branches T18", () => {
             expect(initializeLayerLabels).not.toHaveBeenCalled();
         });
 
+        // Measured on the shipped bundle (26/09/2026): at boot the profile loader created a VT layer
+        // while the map's style was still loading, and MapLibre THREW "Style is not done loading" —
+        // the layer failed, and only a later pass of the theme applier created it. And a style
+        // event landing before `isStyleLoaded()` flips must not be taken for the flip itself.
+        it("🛑 waits for the map's style before building the layer — MapLibre throws while it loads", async () => {
+            let loaded = false;
+            const listeners = new Map();
+            mockMap.isStyleLoaded = () => loaded;
+            mockMap.on = vi.fn((type, fn) => {
+                if (!listeners.has(type)) listeners.set(type, new Set());
+                listeners.get(type).add(fn);
+            });
+            mockMap.off = vi.fn((type, fn) => listeners.get(type)?.delete(fn));
+            const emit = (type) => [...(listeners.get(type) ?? [])].forEach((fn) => fn());
+            const settle = async () => {
+                for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+            };
+            adapterMock.addVectorTileLayer = vi.fn(() => {
+                if (!loaded) throw new Error("Style is not done loading.");
+                return ["gl-vts-fill"];
+            });
+            const def = {
+                id: "vts",
+                _profileId: "p1",
+                _layerDirectory: "dir-s",
+                vectorTiles: { enabled: true, interactive: false },
+            };
+
+            const pending = VectorTiles.loadVectorTileLayer("vts", "L", def, {});
+            pending.catch(() => {});
+            await settle();
+            emit("styledata"); // lands before the flip: nothing is built yet
+            await settle();
+            expect(adapterMock.addVectorTileLayer).not.toHaveBeenCalled();
+
+            loaded = true;
+            emit("sourcedata"); // the emission that carries the flip
+            await expect(pending).resolves.toMatchObject({ id: "vts", isVectorTile: true });
+            expect(adapterMock.addVectorTileLayer).toHaveBeenCalledTimes(1);
+            // Detached from all three once ready.
+            expect([...listeners.values()].every((set) => set.size === 0)).toBe(true);
+        });
+
         it("calls LayerManager.updateLayerVisibilityByZoom when present", async () => {
             const updateFn = vi.fn();
             _g.GeoLeaf = {

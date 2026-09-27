@@ -11,6 +11,98 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.12.0] - 2026-09-27
+
+### Added
+
+- **`geoleaf:layer:updated`** (`{ layerId }`): a layer's store changed through `GeoLeaf.Layers` —
+  once per call of `setData`, `clear`, `addFeature`, `removeFeature` (when it removed something),
+  `updateFeatureId`, `mergeFeatures`, and `patchFeature` with `{ rerender: true }`. Not for a
+  silent `patchFeature`, a visible subset or a layer's load — nor for a writer of a whole
+  collection outside `GeoLeaf.Layers`: a real-time layer's ticks, an OGC layer's auto-refresh, a
+  direct `GeoLeaf.GeoJSON.updateLayerData`. The open table and the active filter now listen to it.
+- **`GeoLeaf.Layers.hideFeatures(layerId, ids | null)`** hides features, matched on
+  `properties.id` — and, on a vector-tile layer, on the tile's own feature id too — without
+  touching the store or the layer's filter: the layer shows what passes its filter and is not
+  hidden (on a clustered layer, a hidden point still counts in its bubble). The editor hides the
+  feature it edits this way.
+- `IMapAdapter.setLayerFilter(id, filter, owner?)`: a layer holds one filter per owner and draws
+  what passes all of them. The default owner, `"filter"`, is the one every existing call writes.
+- **`THIRD_PARTY_LICENSES.txt` in every package that bundles third-party code** — the core and
+  `@geoleaf-plugins/cog` 1.0.5, `editor` 1.5.4, `file-import` 1.0.6, `flatgeobuf` 1.0.4,
+  `measure` 1.0.7, `navigation` 1.0.2, `print` 1.3.2 and `realtime-layer` 1.0.5. Minification
+  had stripped every license comment of the code these packages bundle, and their tarballs
+  carried GeoLeaf's own license alone. The file lists what the built bundle actually carries,
+  with each license text as its authors ship it — or, for a package that ships none, the
+  standard text of the license it declares, said as such — followed by the license comments of
+  the bundled source files, and, for a package published already built (jsPDF, Terra Draw), of
+  the original sources its own source map carries: the notices of the code a package vendors
+  (Adobe's JPEG encoder and Google's WebP decoder in jsPDF, rbush and Turf in Terra Draw, pdf.js
+  code in geotiff, Zstandard in zstddec) live there and nowhere else. They are copied as those
+  sources carry them — where an upstream notice is reduced to its copyright line or to an
+  attribution, so is the copy.
+
+### Fixed
+
+- **A filter set on a clustered layer no longer draws its clusters as points and its points as
+  bubbles** (`IMapAdapter.setLayerFilter`). The caller's filter replaced the predicates a
+  clustered layer's sub-layers are built with, and clearing it removed them for good. The filter
+  is now composed with the one each sub-layer was built with, which also keeps the geometry guard
+  and an icon layer's own filter. A bubble carries none of its points' properties, so a filter
+  that requires a property value still hides every bubble, while one that passes a feature
+  lacking it — `hideFeatures`' exclusion — keeps them (the core's own filter re-feeds a clustered
+  layer instead).
+- **The open table follows its layer** (`@geoleaf-plugins/table` 1.1.1, with core 3.12.0). A feature created,
+  edited or deleted did not reach the open table until the next filter or visibility change.
+- **An active filter judges a feature added, edited or restored.** Such a feature was hidden
+  even when it passed — or, on layers the filter re-feeds, shown even when it failed — and the
+  « no feature matches » line kept the previous verdict.
+- **Editing a feature under an active filter no longer lifts the filter**
+  (`@geoleaf-plugins/editor` 1.5.4, with core 3.12.0). Selecting a feature put every filtered-out
+  feature back on the map, and releasing it cleared the filter while the panel still showed it
+  active. With an older core the editor behaves as before.
+- **The editor deletes the selected feature from its interface** (`@geoleaf-plugins/editor`
+  1.5.4). Deleting from the pill's button or with the `Delete` key, then confirming, deleted
+  nothing: no `geoleaf:editor:feature-deleted`, no write, the feature still in its layer, and no
+  message. Removing a selected shape makes the drawing engine deselect it first, and the
+  editor's deselect handler put the original back as for an abandoned edit, then the engine threw.
+  After a move, the deletion did leave, but the move was also written as an update and the
+  feature announced by `geoleaf:editor:feature-saved`. The selection is now released before the
+  shape is removed: the deletion is the only write, the feature leaves its layer once the write
+  answers, and deleting a creation still in the offline outbox withdraws it — nothing is sent.
+- **A deletion confirmed from the keyboard is carried out** (`@geoleaf-plugins/editor` 1.5.4).
+  With the select tool armed, `Enter` on the confirmation's own button was taken for « leave the
+  select tool »: the button did not activate, the selection dropped under a dialog still open,
+  and its « Delete » then deleted nothing, without a word. `Delete` pressed inside the dialog
+  opened a second confirmation over the first. A key pressed in a modal dialog now belongs to
+  the dialog. And the drawing engine's own `Delete` binding, which removed a selected shape with no
+  confirmation, no undo and no write, is switched off — `Escape` still deselects.
+- **`Enter` presses the tools pill's buttons** (`@geoleaf-plugins/editor` 1.5.4). With the select
+  tool armed, `Enter` on the pill's Delete, Undo or Redo button left the select tool instead, and
+  the button never activated. `Enter` on a button or a link is now the button's or the link's.
+- **The pending-sync badge leaves an entity once it is pushed.** At load, the entities still owed
+  to the server are put back on their layer with the orange « pending » stroke. When the drain
+  then pushed one, the server's answer reached the device's store but not the layer: the stroke
+  stayed until the next load, saying « owed » of an entity the server already held. It now goes
+  as soon as the push is answered — unless the entity was edited again while the push was in
+  flight, in which case it is still owed and keeps it.
+- **A vector-tile layer is created once at boot, without an error.** The profile loader reached
+  the layer while the map's own style was still loading, and MapLibre refused the source with
+  « Style is not done loading »: the layer was logged as failed, and only a later pass of the
+  theme applier created it. Its creation now waits for the map's style.
+- **The editor no longer rewrites a map source it cannot find** (`@geoleaf-plugins/editor`
+  1.5.4). When a saved or deleted feature was not in its layer's store, a fallback rewrote the
+  map source instead — looking for a source name the core never uses, so it found nothing and
+  only warned. It is removed: the original is shown back, and the write, which has already left,
+  reaches the layer at its next load. On a vector-tile layer, which keeps no feature, this is said
+  as information, not as a warning.
+- **A device that edited existing features before 3.4.0 no longer draws them twice.** Until
+  3.4.0, modifying an existing feature through the offline queue wrote a second record for it,
+  which no later download could merge: the layer drew the feature twice. The local database moves
+  to version 7, and its upgrade merges each pair once — keeping the record that carries unsent
+  work, with its server identity back, and removing the other. When both carry unsent work,
+  nothing is removed and the pair is logged.
+
 ## [3.11.2] - 2026-09-27
 
 ### Removed

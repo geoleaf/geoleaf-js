@@ -4,8 +4,8 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e92b43128
-date: 20 septembre 2026
+verifie_contre: bcb57395c
+date: 27 septembre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
@@ -293,14 +293,15 @@ posé sur le mauvais bus est indiscernable d'un abonnement absent. La liste se r
 grep -rn 'addEventListener("geoleaf:\|\.on("geoleaf:' packages/plugins/table/src/ | grep -v __tests__
 ```
 
-| Événement                            | Bus        | Où               | Effet                                             |
-| ------------------------------------ | ---------- | ---------------- | ------------------------------------------------- |
-| `geoleaf:map:ready`                  | `document` | `lifecycle.ts`   | Construit **seulement** si `defaultVisible`       |
-| `geoleaf:toolbar:action`             | `document` | `entry.ts`       | Filtré sur `table` — construit puis bascule       |
-| `geoleaf:filters:applied`            | `document` | `table-layer.ts` | Recharge les lignes de la couche active           |
-| `geoleaf:theme:applied`              | `document` | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                |
-| `geoleaf:geojson:layers-loaded`      | carte      | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                |
-| `geoleaf:geojson:visibility-changed` | carte      | `table-layer.ts` | Recharge, ou retombe sur une autre couche visible |
+| Événement                            | Bus        | Où               | Effet                                                                                                                                                                        |
+| ------------------------------------ | ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:map:ready`                  | `document` | `lifecycle.ts`   | Construit **seulement** si `defaultVisible`                                                                                                                                  |
+| `geoleaf:toolbar:action`             | `document` | `entry.ts`       | Filtré sur `table` — construit puis bascule                                                                                                                                  |
+| `geoleaf:filters:applied`            | `document` | `table-layer.ts` | Recharge les lignes de la couche active                                                                                                                                      |
+| `geoleaf:layer:updated`              | `document` | `table-layer.ts` | Recharge les lignes si c'est la couche affichée, une fois par rafale (1.1.1 ; core 3.12.0) — une création, une édition ou une suppression n'atteignait pas le tableau ouvert |
+| `geoleaf:theme:applied`              | `document` | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                           |
+| `geoleaf:geojson:layers-loaded`      | carte      | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                           |
+| `geoleaf:geojson:visibility-changed` | carte      | `table-layer.ts` | Recharge, ou retombe sur une autre couche visible                                                                                                                            |
 
 🛑 **Le troisième était mort DEUX FOIS jusqu'au 25/08/2026, et une seule des deux corrections
 n'aurait rien réparé.** Il s'abonnait à `geoleaf:filters:changed` — un nom qu'aucun émetteur ne

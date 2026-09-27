@@ -104,13 +104,67 @@ export async function turnReliefOff(context) {
 /** @typedef {import("@playwright/test").PlaywrightTestArgs & import("@playwright/test").PlaywrightTestOptions} TestArgs */
 /** @typedef {import("@playwright/test").PlaywrightWorkerArgs & import("@playwright/test").PlaywrightWorkerOptions} WorkerArgs */
 
+// 🛑 A `page.route` NEVER SEES WHAT THE SERVICE WORKER FETCHES — and the spec is not told.
+// `sw-core.js` answers every GET of a page it controls, and when it goes to the network it is
+// the WORKER that fetches: only a `context.route` sees that request. A spec whose `page.route`
+// fills a GET the worker ends up serving was running against the real network — or no network —
+// while its route sat unused, and it could pass all the same: `e2e/45` did, for a while, with a
+// conflict record that the INSTRUMENT had produced (`readOutcome: "unreadable"`). Whether it
+// bites depends on when the worker takes control, so the same spec gave two verdicts.
+//
+// The witness below is laid next to every `page.route`, on the context, for the same URL: a
+// request the worker emitted that matches a spec's page route is one that route missed. The test
+// fails at teardown and names it — the remedy of a case is a `context.route`, or a boot without
+// the worker (`helpers/connector.js`). It lets every request through (`fallback`), so it
+// changes nothing it watches.
+//
+// ⚠️ CHROMIUM ONLY: `request.serviceWorker()` is null elsewhere, and the witness then stays
+// silent — on WebKit this class is not watched.
+
+/**
+ * Lays, next to every `page.route` of the test, a context route that records the requests a
+ * service worker emitted for the same URL — requests the page route never saw.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {import("@playwright/test").BrowserContext} context
+ * @returns {string[]} The escaped requests, `METHOD url`, filled as they happen.
+ */
+function watchServiceWorkerEscapes(page, context) {
+    /** @type {string[]} */
+    const escaped = [];
+    const pageRoute = page.route.bind(page);
+    page.route = /** @type {typeof page.route} */ (
+        async (url, handler, options) => {
+            await context.route(url, (route) => {
+                const request = route.request();
+                if (request.serviceWorker()) escaped.push(`${request.method()} ${request.url()}`);
+                return route.fallback();
+            });
+            return pageRoute(url, handler, options);
+        }
+    );
+    return escaped;
+}
+
 export const test = base.extend(
-    /** @type {import("@playwright/test").Fixtures<ReliefOption & { _relief: void }, {}, TestArgs, WorkerArgs>} */ ({
+    /** @type {import("@playwright/test").Fixtures<ReliefOption & { _relief: void, _swEscapes: void }, {}, TestArgs, WorkerArgs>} */ ({
         relief: [false, { option: true }],
         _relief: [
             async ({ context, relief }, use) => {
                 if (!relief) await turnReliefOff(context);
                 await use();
+            },
+            { auto: true },
+        ],
+        _swEscapes: [
+            async ({ page, context }, use) => {
+                const escaped = watchServiceWorkerEscapes(page, context);
+                await use();
+                expect(
+                    escaped,
+                    "une requête du service worker a contourné un `page.route` de la spec — " +
+                        "la remplir par `context.route`"
+                ).toEqual([]);
             },
             { auto: true },
         ],

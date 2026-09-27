@@ -38,12 +38,13 @@ afterEach(async () => {
 // would make three references diverge for a readability gain this comment
 // makes unnecessary. What the file guards is not ONE version, it is the
 // schema's SHAPE — and what must not come back into it.
-describe("la forme du schéma — v6", () => {
+describe("la forme du schéma — v7", () => {
     // Red on 17/09/2026 at the v6 bump: expected 6 to be 5. The garde did its job — it is
-    // the reason the store count is written down rather than derived.
-    test("la base s'ouvre en v6 avec les huit stores", async () => {
+    // the reason the store count is written down rather than derived. Red again on 27/09/2026
+    // at the v7 bump (expected 7 to be 6) — a data repair, which adds no store.
+    test("la base s'ouvre en v7 avec les huit stores", async () => {
         const db = await IndexedDB.init();
-        expect(db.version).toBe(6);
+        expect(db.version).toBe(7);
         expect(Array.from(db.objectStoreNames).sort()).toEqual([
             "conflicts",
             "features",

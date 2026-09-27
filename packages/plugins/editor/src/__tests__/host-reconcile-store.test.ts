@@ -13,8 +13,9 @@
  * subset as the layer's whole data.
  *
  * The store is written through its unit mutations (`mergeFeatures`, `removeFeature`), which
- * feed the source themselves. The direct path stays for a feature the store does not hold
- * (a vector-tile layer keeps none), or a core without the seam.
+ * feed the source themselves. A feature the store does not hold (a vector-tile layer keeps
+ * none) is only shown back: the direct path that stayed for it was removed on 27/09/2026 — it
+ * looked for a source name the core never uses, and would have re-frozen a filtered subset.
  *
  * 🛑 A CREATION reaches the store too (`addHostFeature`), under the identity its write
  * returned. It used not to: nothing could find, move or delete it until the next load.
@@ -23,8 +24,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
     addHostFeature,
     commitHostGeometry,
+    hideHostFeature,
     removeHostFeature,
     resetHostReconcile,
+    showHostFeature,
     type HostReconcileDeps,
 } from "../selection/host-reconcile.js";
 
@@ -67,12 +70,14 @@ function makeDeps(sourceFc: unknown): HostReconcileDeps & {
 } {
     const setLayerFilter = vi.fn();
     const updateLayerData = vi.fn();
-    return {
-        facade: { setLayerFilter, updateLayerData },
+    // A source that answers under any name, and an `updateLayerData` on the facade: a rewrite
+    // through the map would be SEEN.
+    const facade = { setLayerFilter, updateLayerData };
+    const deps = {
+        facade,
         nativeMap: { getSource: vi.fn(() => ({ serialize: () => ({ data: sourceFc }) })) },
-        setLayerFilter,
-        updateLayerData,
     };
+    return { ...deps, setLayerFilter, updateLayerData };
 }
 
 const pt = (id: string, x: number): F => ({
@@ -127,12 +132,58 @@ describe("a deletion reaches the store", () => {
     });
 });
 
-describe("the direct path stays where the store cannot answer", () => {
-    it("a layer the store does not hold is rewritten at the source, as before", () => {
+describe("where the store cannot answer, nothing is rewritten at the source", () => {
+    it("🛑 a layer the store does not hold is shown back, its source untouched", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
         mountStore({});
         const deps = makeDeps({ type: "FeatureCollection", features: [pt("f1", 0)] });
         commitHostGeometry(deps, "VT", "f1", { type: "Point", coordinates: [9, 9] });
-        expect(deps.updateLayerData).toHaveBeenCalledTimes(1);
+        expect(deps.updateLayerData).not.toHaveBeenCalled();
+        expect(deps.setLayerFilter).toHaveBeenLastCalledWith("VT", null);
+        warn.mockRestore();
+    });
+
+    it("a vector-tile layer says the tiles carry the edit once fetched again — not a warning", () => {
+        const info = vi.spyOn(console, "info").mockImplementation(() => {});
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        mountStore({});
+        _g.GeoLeaf.GeoJSON = { getLayerById: () => ({ isVectorTile: true }) };
+        removeHostFeature(makeDeps(null), "VT", "f1");
+        expect(info).toHaveBeenCalled();
+        expect(warn).not.toHaveBeenCalled();
+        info.mockRestore();
+        warn.mockRestore();
+    });
+});
+
+// 🛑 Hiding an edited original through the core's `hideFeatures` (3.12.0), never through the
+// layer's filter: written directly, the hide REPLACED the panel's filter — selecting a feature
+// under an active filter put every filtered-out feature back, and releasing it cleared the
+// filter outright (`e2e/69`). An older core has no `hideFeatures`: the direct filter stays.
+describe("the edited original is hidden without touching the layer's filter", () => {
+    it("🛑 hide and show go through `GeoLeaf.Layers.hideFeatures` when the core has it", () => {
+        const api = mountStore({ L: [pt("f1", 0)] });
+        const hideFeatures = vi.fn();
+        Object.assign(api, { hideFeatures });
+        const deps = makeDeps(null);
+
+        hideHostFeature(deps, "L", "f1");
+        showHostFeature(deps, "L");
+
+        expect(hideFeatures.mock.calls).toEqual([
+            ["L", ["f1"]],
+            ["L", null],
+        ]);
+        expect(deps.setLayerFilter).not.toHaveBeenCalled();
+    });
+
+    it("an older core without it: the layer's filter, as before", () => {
+        mountStore({ L: [pt("f1", 0)] });
+        const deps = makeDeps(null);
+        hideHostFeature(deps, "L", "f1");
+        showHostFeature(deps, "L");
+        expect(deps.setLayerFilter).toHaveBeenCalledTimes(2);
+        expect(deps.setLayerFilter).toHaveBeenLastCalledWith("L", null);
     });
 });
 

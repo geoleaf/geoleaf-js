@@ -4,8 +4,8 @@ title: cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte
 plugin_id: cog
 package: "@geoleaf-plugins/cog"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: f744a8ac9
-date: 24 septembre 2026
+verifie_contre: d78caf730
+date: 27 septembre 2026
 ---
 
 # cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte

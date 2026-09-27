@@ -34,19 +34,12 @@ export default defineConfig({
     // the second net that caught 26 dead links, and the only protection in
     // place while `docs:build` is not wired into `ci:local`.
     //
-    // The exception below is a ROOT exception, not a wrong link (2026-07-30).
-    // `NOTICE.md` ships in the npm tarball (the core's `files[]` contains
-    // `docs/` AND `LICENSE`), and for that reader `../LICENSE` resolves exactly
-    // onto `packages/core/LICENSE`, which exists. For the site, `NOTICE.md`
-    // becomes `/docs/NOTICE.html` and `../LICENSE` leaves the site: no single
-    // string can resolve in both roots at once. The choice is thus between
-    // duplicating the legal file and declaring the exception — we declare, and
-    // keep ONE source of truth.
-    // ⚠️ The motive is the ROOTS' DIVERGENCE; any other dead target must redden.
-    // ⚠️ The pattern matches the form VitePress NORMALISES (`./../LICENSE`), not
-    // the form written in the markdown (`../LICENSE`) — verified by seeing it
-    // fail first.
-    ignoreDeadLinks: [/^\.\/\.\.\/LICENSE$/],
+    // ⚠️ No exception left (27/09/2026). One existed for `NOTICE.md`'s `../LICENSE`, when the
+    // page shipped in the npm tarball and that relative link had to resolve in two roots at
+    // once. Both motives fell: `docs/` left the core's `files[]` on 11/08 — what the tarballs
+    // carry for licenses is now `THIRD_PARTY_LICENSES.txt`, generated from the bundles — and
+    // `NOTICE.md` links the LICENSE by its absolute URL. Every dead link reddens.
+    ignoreDeadLinks: false,
 
     head: [
         ["link", { rel: "icon", href: "/docs/favicon.ico" }],

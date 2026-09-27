@@ -1355,6 +1355,16 @@ const STEPS = [
         name: "Stubs de type CSS — le dist/ que la publication livre (avant PUB)",
         run: ["node", "scripts/emit-css-type-stubs.cjs"],
     },
+    // TPL — what a bundle CARRIES of third-party code, and the license texts that must go with it
+    // (`gen-third-party-licenses.cjs`). Measured on 2026-09-27: nine published packages bundled
+    // third-party code, minification stripped every license comment, and each tarball shipped
+    // only GeoLeaf's own LICENSE. Derived from the built source maps, so it runs after the build;
+    // and before PUB, which judges the tarball this file enters.
+    {
+        name: "Licences tierces des bundles (TPL — embarqué ⇒ attribué, livré)",
+        release: true,
+        run: ["node", "scripts/gen-third-party-licenses.cjs", "--check"],
+    },
     {
         name: "Parité dépôt ↔ registre npm (PUB)",
         release: true,

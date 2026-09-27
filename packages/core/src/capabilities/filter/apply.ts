@@ -14,8 +14,10 @@
  * `setData` fallback. The engine predicate (`featurePasses`) covers every kind,
  * every geometry (lines included) and honours the per-layer `layers` scope.
  *
- * **The single writer of the layer filter.** A second, pure-native path lived in
- * `taxonomy-options.ts` until S5/N-4; it was retired rather than wired (see that module).
+ * **The single writer of the panel's filter.** A second, pure-native path lived in
+ * `taxonomy-options.ts` until S5/N-4; it was retired rather than wired (see that module). The
+ * layer's `"filter"` place is shared with `GeoLeaf.Layers.setVisibleSubset` — the last of the
+ * two to write wins —, and `hideFeatures` writes a place of its own (`"hidden"`).
  */
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/index.js";

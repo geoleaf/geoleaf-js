@@ -31,6 +31,7 @@
  */
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
+import { dispatchGeoLeafEvent } from "../events/event-bus.js";
 import { GeoJSONShared } from "./shared.js";
 import { GeoJSONCore, applyLayerDiff } from "./core.js";
 import { loadLayerDefinition } from "./loader/profile.js";
@@ -39,6 +40,7 @@ import { readFeaturePropId } from "./geojson-filter.js";
 import { searchLayers } from "./layer-search.js";
 import { focusFeature } from "./layer-focus.js";
 import type { LayerDataDiff } from "../../contracts/map-adapter.contract.js";
+import type { GeoLeafLayerUpdatedDetail } from "../../contracts/event-bus.contract.js";
 import type {
     CreatedLayer,
     LayerDataApi,
@@ -221,50 +223,35 @@ async function createLayer(def: LayerDefinition): Promise<CreatedLayer | null> {
  * Writes a layer's base features (adapter `setData` + in-memory state, via
  * `GeoJSONCore.updateLayerData`). Single funnel for every base-dataset mutation;
  * `patchFeature` (silent) bypasses it on purpose.
- *
- * 🛑 REFUSAL UPHELD — `geoleaf:layer:updated` is NOT emitted, and it is not an
- * oversight. A public event with no listener is a promise that can no longer be
- * taken back: it enters the contract, gets typed, gets documented, and must be
- * maintained for nobody.
- *
- * ⚠️ **REOPENING CONDITION, verifiable — it is what makes this refusal falsifiable
- * rather than definitive**: a **SUBSCRIBER** exists in source, in this repo OR in
- * a manifest read by `scripts/verify-consumer-contract.cjs`.
- *
- * 🔻 **AND THE CONDITION IS NOW OBSERVABLE — it was not when written
- * (17/08/2026).** The manifest did declare a `requested_events` block, accepted by
- * `KNOWN_TOP_LEVEL`, but **no `CC` rule read its content**: the refutation could
- * arrive with nothing seeing it. A refusal whose reopening condition is
- * unobservable is not refutable — it is an opinion. `CC-13` now reads that block
- * and yields one **NOTE** per entry.
- *
- * 📌 **REQUESTED ≠ SUBSCRIBED, and the state changed without the refusal moving.**
- * Measured on 17/08/2026: downstream **requests** `geoleaf:layer:updated`
- * (manifest, `requested_events`). The refusal **holds** — the condition requires a
- * subscriber, and a request is not one. But "nobody asked for it" can no longer be
- * said: what is missing is an `on("geoleaf:layer:updated", …)` in real code, not a
- * wish in a contract.
- *
- * ⚠️ **`grep -rn "layer:updated"` is no longer the right measure**: it only sees
- * this repo, and half the condition lives downstream. The oracle is now **`CC-13`**,
- * which reads both sides — but which **SKIPS on the public clone**
- * (`GEOLEAF_CONSUMERS` undefined): a green there says nothing about this
- * condition.
- *
- * ⚠️ This refusal cited "filter/search, **addpoi**" as consumers to come. `addpoi`
- * **no longer exists** — merged into `editor`. A refusal note naming a vanished
- * consumer goes stale without ever turning red: whoever re-reads it concludes
- * either that the listener is coming, or that the refusal is void, and both are
- * false. Hence the rewrite as a measurable condition rather than a list of names —
- * a CONDITIONED refusal, never a definitive one.
- *
- * ⚠️ And WHEN it fires would remain to be said, which the question "should it be
- * written?" masks: on `setData`? on `patchFeature`, which deliberately bypasses
- * this funnel? both? at what granularity? An event whose trigger is not decided is
- * worse than no event.
  */
 function writeBase(layerId: string, features: StoreFeature[]): void {
     GeoJSONCore.updateLayerData(layerId, { type: "FeatureCollection", features });
+}
+
+/**
+ * Says that a layer's store changed: `geoleaf:layer:updated`, once per mutation made through
+ * this API, for a layer that exists.
+ *
+ * 🛑 THIS WAS A REFUSAL UNTIL 27/09/2026, AND ITS CONDITION IS WHAT LIFTED IT. A public event
+ * with no listener is a promise that cannot be taken back, so the refusal held until a
+ * SUBSCRIBER existed. Two exist now, in this repository: the open table (which kept its rows
+ * until the next filter or visibility change) and the active filter (which did not re-judge a
+ * new feature — hidden on its GPU path even when it passed, shown on its re-feed path even when
+ * it failed). Both had been measured wrong for want of it.
+ *
+ * ⚠️ WHEN it fires is decided, and narrow: after `setData`, `clear`, `addFeature`,
+ * `removeFeature` (when it removed something), `updateFeatureId`, `mergeFeatures`, and
+ * `patchFeature` with `{ rerender: true }`. Not after a silent `patchFeature`, which changes
+ * state only; not at a layer's load; not for a filter or a visible subset, which change what is
+ * drawn and not what is held — and not for a writer of a whole collection around this API (a
+ * real-time layer's ticks, an OGC layer's auto-refresh, `GeoJSONCore.updateLayerData`): the
+ * store changes unannounced. The granularity is the call, not the feature: a merge of a
+ * thousand features is one event.
+ */
+function announce(layerId: string): void {
+    if (!GeoJSONShared.state.layers.has(layerId)) return;
+    const detail: GeoLeafLayerUpdatedDetail = { layerId };
+    dispatchGeoLeafEvent("geoleaf:layer:updated", detail);
 }
 
 /**
@@ -355,10 +342,10 @@ function updateFeatureIdImpl(
     layerId: string,
     oldId: string | number,
     newId: string | number
-): void {
+): boolean {
     const features = rawFeatures(layerId);
     const target = features.find((f) => matchId(f, oldId));
-    if (!target) return;
+    if (!target) return false;
     const previousId = diffId(target);
     target.id = newId;
     (target.properties ??= {}).id = newId;
@@ -370,9 +357,10 @@ function updateFeatureIdImpl(
     const collides = features.some((f) => f !== target && matchId(f, newId));
     if (previousId == null || collides) {
         writeBase(layerId, features);
-        return;
+        return true;
     }
     applyLayerDiff(layerId, { remove: [previousId], add: [toContractFeature(target)] }, features);
+    return true;
 }
 
 function patchFeatureImpl(
@@ -380,10 +368,10 @@ function patchFeatureImpl(
     id: string | number,
     patch: Record<string, unknown>,
     opts?: { rerender?: boolean }
-): void {
+): boolean {
     const features = rawFeatures(layerId);
     const target = features.find((f) => matchId(f, id));
-    if (!target) return;
+    if (!target) return false;
     // Bake into properties so the flag survives a source rebuild.
     target.properties = { ...(target.properties ?? {}), ...patch };
     // Silent by default (state only); rebuild + emit only when requested.
@@ -392,12 +380,12 @@ function patchFeatureImpl(
         // the search index would keep the properties as they were (`layer-search.ts`).
         const entry = GeoJSONShared.getLayerById(layerId);
         if (entry) entry._searchIndex = undefined;
-        return;
+        return false;
     }
     const targetId = diffId(target);
     if (targetId == null) {
         writeBase(layerId, features);
-        return;
+        return true;
     }
     // ⚠️ `update` only touches what the source already holds: a patch on an id the source
     // does not carry is skipped without a word. The one way that arises is right after the
@@ -405,6 +393,7 @@ function patchFeatureImpl(
     // clearing the filter re-feeds from the store.
     const addOrUpdateProperties = Object.entries(patch).map(([key, value]) => ({ key, value }));
     applyLayerDiff(layerId, { update: [{ id: targetId, addOrUpdateProperties }] }, features);
+    return true;
 }
 
 function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]): void {
@@ -444,6 +433,27 @@ function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]
         return;
     }
     applyLayerDiff(layerId, { add: features }, result);
+}
+
+/** The filter slot `hideFeatures` writes — never the panel's (`setLayerFilter`, `owner`). */
+const HIDDEN_FILTER_OWNER = "hidden";
+
+/**
+ * A filter that keeps every feature but the listed ones, compared as strings — an id `42` and an
+ * id `"42"` are the same feature to the store (`matchId`), and must be to the map.
+ *
+ * ⚠️ WHICH id depends on the source. A GeoJSON source promotes `properties.id`
+ * (`promoteId: "id"`), and the engine's feature id is then `parseInt(properties.id)`: matching
+ * `["id"]` there hid "12.5" and "12-A" with "12", and a cluster bubble whose cluster id was
+ * listed — so `properties.id` ALONE, like the panel's own id filter (`geojson-filter.ts`). A
+ * vector-tile source is not promoted: its feature id is the tile's own, the one the editor hides
+ * by, and it is matched too.
+ */
+function hiddenFilter(ids: readonly (string | number)[], vectorTile: boolean): unknown {
+    const listed = [...new Set(ids.map(String))];
+    const byProperty = ["match", ["to-string", ["get", "id"]], listed, false, true];
+    if (!vectorTile) return byProperty;
+    return ["all", byProperty, ["match", ["to-string", ["id"]], listed, false, true]];
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -513,23 +523,41 @@ export function buildLayersPublicApi(): LayerDataApi {
 
         setData(layerId: string, features: GeoJSON.Feature[]): void {
             writeBase(layerId, features as unknown as StoreFeature[]);
+            announce(layerId);
         },
 
         clear(layerId: string): void {
             writeBase(layerId, []);
+            announce(layerId);
         },
 
         // ── unit mutations ──
-        // One-line delegations: each implementation, with the reasoning for its diff,
-        // sits at module level above.
+        // Delegations: each implementation, with the reasoning for its diff, sits at module
+        // level above; the announcement is made here, once, when something changed.
 
-        addFeature: addFeatureImpl,
+        addFeature(layerId: string, feature: GeoJSON.Feature): void {
+            addFeatureImpl(layerId, feature);
+            announce(layerId);
+        },
 
-        removeFeature: removeFeatureImpl,
+        removeFeature(layerId: string, id: string | number): boolean {
+            const removed = removeFeatureImpl(layerId, id);
+            if (removed) announce(layerId);
+            return removed;
+        },
 
-        updateFeatureId: updateFeatureIdImpl,
+        updateFeatureId(layerId: string, oldId: string | number, newId: string | number): void {
+            if (updateFeatureIdImpl(layerId, oldId, newId)) announce(layerId);
+        },
 
-        patchFeature: patchFeatureImpl,
+        patchFeature(
+            layerId: string,
+            id: string | number,
+            patch: Record<string, unknown>,
+            opts?: { rerender?: boolean }
+        ): void {
+            if (patchFeatureImpl(layerId, id, patch, opts)) announce(layerId);
+        },
 
         // ── filtered display WITHOUT mutating the base ──
 
@@ -545,6 +573,17 @@ export function buildLayersPublicApi(): LayerDataApi {
             GeoJSONCore.clearFeatureFilter({ layerIds: layerId });
         },
 
+        hideFeatures(layerId: string, ids: readonly (string | number)[] | null): void {
+            const adapter = GeoJSONShared.state.adapter;
+            if (typeof adapter?.setLayerFilter !== "function") return;
+            const vectorTile = GeoJSONShared.state.layers.get(layerId)?.isVectorTile === true;
+            adapter.setLayerFilter(
+                layerId,
+                ids && ids.length > 0 ? hiddenFilter(ids, vectorTile) : null,
+                HIDDEN_FILTER_OWNER
+            );
+        },
+
         // ── reactive paint (adapter passthrough) ──
 
         setFeatureState(layerId: string, id: string | number, state: LayerFeatureState): void {
@@ -554,6 +593,9 @@ export function buildLayersPublicApi(): LayerDataApi {
 
         // ── offline replay merge (dedup by id) ──
 
-        mergeFeatures: mergeFeaturesImpl,
+        mergeFeatures(layerId: string, features: readonly GeoJSON.Feature[]): void {
+            mergeFeaturesImpl(layerId, features);
+            announce(layerId);
+        },
     };
 }

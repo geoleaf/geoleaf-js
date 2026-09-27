@@ -3,7 +3,7 @@ type: spec-kernel
 title: kernel — @geoleaf/core
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 81a014305
+verifie_contre: 5ca3453ab
 date: 27 septembre 2026
 ---
 
@@ -299,9 +299,12 @@ avait que trois étapes.
 ⚠️ **La garde doit survivre à tout filtre reposé, et deux chemins la remplaçaient.**
 `adapter.setLayerFilter()` — la couture unique qu'empruntent le filtre GPU par ids, la capacité
 `filter` et le plugin `editor` — écrasait le filtre de chaque sous-couche ; le rustinage
-`point_count` du chemin cluster faisait de même. Les deux composent maintenant
-(`withGeometryGuard()`). **Vider un filtre restaure la garde, jamais `null`** : sinon le défaut
-rouvrirait exactement pendant qu'aucun filtre n'est actif.
+`point_count` du chemin cluster faisait de même. Le rustinage compose à la construction
+(`withGeometryGuard()`) ; `setLayerFilter` compose avec le filtre que la sous-couche a reçu à sa
+construction, relu dans le moteur (3.12.0 — garde, prédicats `point_count`, `symbolId`). **Vider
+un filtre restaure ce filtre de construction, jamais `null`** : sinon le défaut rouvrirait
+exactement pendant qu'aucun filtre n'est actif. Preuve sur le bundle livré, pour les grappes :
+`e2e/70-clustered-layer-keeps-clusters.spec.js`.
 
 ✅ **Et c'est la garde qui rend CORRECT le repli « je ne sais pas ».** Une couche dont les données
 d'amorce sont **vides** — celle de l'itinéraire l'est délibérément, elle est écrite à l'exécution —
@@ -878,12 +881,14 @@ puisqu'il est public.
 
 ### Le filtre de couche — une passe, toute géométrie
 
-`GeoJSONCore.filterFeatures(predicate, options)` est le seul écrivain du filtre de couche : la
-capacité `filter` et `GeoLeaf.Layers.setVisibleSubset` passent tous deux par lui. Il applique le
-prédicat à **chaque** couche chargée, quelle que soit sa géométrie. `options.geometryType` restreint
-la passe à une famille (`point`, `line`, `polygon`). Une couche la rejoint sous n'importe quel nom
-que son profil peut déclarer (`polyline`, `multiline`, `multipolygon`, `fill-extrusion`…), par la
-table de familles de `kernel/config/layer-geometry.ts`, la même pour tout le core.
+`GeoJSONCore.filterFeatures(predicate, options)` est le seul écrivain de la place `"filter"` du
+filtre de couche : la capacité `filter` et `GeoLeaf.Layers.setVisibleSubset` passent tous deux par
+lui, et le dernier des deux qui écrit l'emporte (`hideFeatures` écrit sa propre place, `"hidden"`).
+`filterFeatures` applique le prédicat à **chaque** couche chargée, quelle que soit sa géométrie.
+`options.geometryType` restreint la passe à une famille (`point`, `line`, `polygon`). Une couche la
+rejoint sous n'importe quel nom que son profil peut déclarer (`polyline`, `multiline`,
+`multipolygon`, `fill-extrusion`…), par la table de familles de `kernel/config/layer-geometry.ts`,
+la même pour tout le core.
 
 🛑 **Jusqu'en 3.10.3, une couche de lignes n'était jamais filtrée**, sauf si elle déclarait
 `search.enabled: true`, une clé que le schéma refusait depuis le 08/07. La capacité filtrait en
@@ -894,6 +899,25 @@ bundle livré : `e2e/64-filter-reaches-line-layers.spec.js`.
 ⚠️ **Une couche en tuiles vectorielles n'est pas filtrée** : son entrée ne porte aucune entité, et le
 prédicat n'a rien à juger. Limite écrite, non construite — voir
 [`capacites/vector-tiles.md`](capacites/vector-tiles.md).
+
+🛑 **Un filtre par PROPRIÉTAIRE sur une couche (3.12.0).** `adapter.setLayerFilter(id, filter,
+owner?)` écrit l'emplacement de son propriétaire — `"filter"` par défaut, celui du panneau et du
+sous-ensemble visible ; `"hidden"` pour `GeoLeaf.Layers.hideFeatures` —, et la couche dessine ce qui
+passe TOUS les emplacements (`["all", …]`), composés à leur tour avec le filtre que chaque
+sous-couche a reçu à sa construction : garde de géométrie, prédicats `point_count` d'une couche en
+grappes, `symbolId` des icônes. Les substituer faisait dessiner à une couche en grappes ses
+centroïdes en points et ses points en bulles, et les effacer les retirait pour de bon. Avec un seul
+emplacement, le masque de l'entité éditée REMPLAÇAIT le filtre du panneau : la sélectionner ramenait
+toutes les entités filtrées, la relâcher effaçait le filtre. Preuve sur le bundle livré :
+`e2e/69-store-mutations-reach-derivatives.spec.js`.
+
+📌 **Le magasin annonce ses mutations (3.12.0)** : `geoleaf:layer:updated`, une fois par appel de
+`GeoLeaf.Layers` qui l'a changé. Le refus de l'émettre tenait tant qu'aucun abonné n'existait ; le
+tableau ouvert et le filtre actif, qui ne suivaient aucune mutation, en sont les deux premiers
+(`kernel/geojson/layers-public-api.ts`, `announce`). ⚠️ Un écrivain de collection entière HORS de
+`GeoLeaf.Layers` n'est PAS annoncé : un tic de couche temps réel, le rafraîchissement automatique
+d'une couche OGC, un appel direct à `GeoLeaf.GeoJSON.updateLayerData`. Tous réécrivent le magasin
+(`GeoJSONShared.setLayerCollection`), et les deux abonnés ne le savent pas.
 
 ### Le registre de panes — héberger un panneau que le kernel ne nomme pas
 

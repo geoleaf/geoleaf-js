@@ -115,7 +115,8 @@ The package also declares public subpaths — `./kernel`, `./globals`, `./helper
 ## Documentation
 
 The full documentation is published at **[geoleaf.dev/docs](https://www.geoleaf.dev/docs/)**. It is
-not shipped inside the npm tarball, which carries only `dist/`, this README and the licence.
+not shipped inside the npm tarball, which carries only `dist/`, this README, the licence and
+`THIRD_PARTY_LICENSES.txt`.
 
 | To…                                        | Read                                                                                                  |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
@@ -154,8 +155,9 @@ not published. Writing one outside it is not a supported path — see
 ## Licence
 
 **MIT**, with no exception — for the core as for every plugin. Full text in [`LICENSE`](LICENSE);
-third-party attributions (including MapLibre GL JS, BSD-3-Clause) in
-[NOTICE](https://www.geoleaf.dev/docs/NOTICE.html).
+the licenses of the third-party code the bundle carries in
+[`THIRD_PARTY_LICENSES.txt`](THIRD_PARTY_LICENSES.txt); attributions (including MapLibre GL JS,
+BSD-3-Clause, a peer dependency) in [NOTICE](https://www.geoleaf.dev/docs/NOTICE.html).
 
 Commercial use, modification and redistribution are permitted, provided the licence notice is kept
 and changes are documented.

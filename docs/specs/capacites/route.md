@@ -182,9 +182,10 @@ configuration `modules.route.*` et par ses écouteurs. Le dynamique passe par le
 générique `GeoLeaf.Layers.setData(layerId, …)`, qui réécrit les entités de la couche — c'est par là
 qu'un plugin d'itinéraire publie ses points rôlés.
 
-🛑 **Mais `setData` ne déclenche AUCUNE re-dérivation.** Il ne passe par aucun événement : le refus
-d'émettre `geoleaf:layer:updated` est écrit, motivé, et assorti de sa condition de réouverture dans
-`kernel/geojson/layers-public-api.ts`. Or la capacité n'a que deux déclencheurs —
+🛑 **Mais `setData` ne déclenche AUCUNE re-dérivation de cette capacité.** Depuis la 3.12.0,
+`setData` annonce bien `geoleaf:layer:updated` (le refus de l'émettre, dans
+`kernel/geojson/layers-public-api.ts`, est tombé avec ses deux premiers abonnés, le tableau et le
+filtre) ; la capacité ne l'écoute pas. Elle n'a que deux déclencheurs —
 `geoleaf:layer:added`, émis par l'adaptateur à la **construction** de la couche
 (`adapters/maplibre/maplibre-layer-builders.ts`, ses deux seuls sites d'émission), et
 `geoleaf:map:ready`, tiré une fois. Une donnée réécrite après le boot n'est donc redécorée qu'à la
