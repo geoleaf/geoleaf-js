@@ -31,12 +31,21 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.11.0 <Badge type="tip" text="2026-09-26" />
+## Release v3.11.1 <Badge type="tip" text="2026-09-27" />
 
-The pre-departure check says whether the write session will let the captures made off-network reach
-the server.
+The filter panel says when the filter keeps no feature.
 
 **Highlights:**
+
+- **Fixed** — a filter that matched nothing hid every feature without a word, and an empty map
+  could not be told from a failure. The panel now reads « Aucune entité ne correspond aux filtres »
+  (key `ui.filter_panel.no_match`, overridable through the profile's `labels`) between its controls
+  and its buttons, and clears it as soon as an application keeps a feature. When nothing was judged
+  (no layer loaded, or vector-tile layers only), it stays silent. A screen reader announces it
+  (`role="status"`).
+
+Release v3.11.0 (2026-09-26) — the pre-departure check says whether the write session will let the
+captures made off-network reach the server:
 
 - **New** — `GeoLeaf.Storage.preflight()` carries `session`: `valid` with its expiry, `expired`, or
   `absent`, as the one holding the token tells it, or `null` when nobody does. An expired or absent
