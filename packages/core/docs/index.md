@@ -31,11 +31,24 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.11.1 <Badge type="tip" text="2026-09-27" />
+## Release v3.11.2 <Badge type="tip" text="2026-09-27" />
 
-The filter panel says when the filter keeps no feature.
+A feature created with the editor is in its layer at once, under its identity.
 
 **Highlights:**
+
+- **Fixed** — a point placed or a shape drawn with `@geoleaf-plugins/editor` 1.5.3 enters its
+  layer's store (`GeoLeaf.Layers`) under the identity its write returned: the server's id, or the
+  client key (`loc:…`) for a write the offline outbox holds. It is found by `getFeatureById` and
+  `search`, selected through its layer, and its later edits reach the outbox or the server under
+  that identity. `geoleaf:editor:feature-saved` carries that key instead of `""`.
+- **Fixed** — a queued creation comes back once, under its identity, at the next load, instead of
+  one anonymous copy per restore pass. The client key no longer leaves for the server as an `id`
+  attribute, and an edit no longer sends back a photo token already delivered.
+- **Removed** — `@geoleaf-plugins/offline-ui` 1.6.2 drops a dictionary key the core already
+  carries and reads first. Nothing changes for an integrator.
+
+Release v3.11.1 (2026-09-27) — the filter panel says when the filter keeps no feature:
 
 - **Fixed** — a filter that matched nothing hid every feature without a word, and an empty map
   could not be told from a failure. The panel now reads « Aucune entité ne correspond aux filtres »

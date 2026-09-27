@@ -232,6 +232,14 @@ function processLine(line, current, currentSection) {
 /**
  * Parse CHANGELOG.md (Keep a Changelog format) and return the last N versions
  * as objects matching the news.json patchnotes schema.
+ *
+ * Only a `## [x.y.z] - YYYY-MM-DD` heading opens a version — the core's. Any other `## `
+ * heading closes the current one, so `[Unreleased]` and a section dated under a plugin's own
+ * name are left out of the notes.
+ *
+ * @param {string} changelogPath Path to the changelog.
+ * @param {number} [maxVersions=5] How many versions to return, newest first.
+ * @returns {Array<object>} The patchnotes entries.
  */
 function parseChangelog(changelogPath, maxVersions = 5) {
     const lines = fs.readFileSync(changelogPath, "utf-8").split("\n");
@@ -254,6 +262,16 @@ function parseChangelog(changelogPath, maxVersions = 5) {
                 suppressions: [],
             };
             currentSection = null;
+            continue;
+        }
+        // Any other `## ` heading ends the current version. A publication without the core is
+        // dated under its own name (`## \`@geoleaf/field-renderer\` 1.4.0 · … - date`), and its
+        // `###` sections are not the core's: read on, its `### Removed — BREAKING` flagged the
+        // core release above it as breaking, and its bullets joined that release's notes.
+        if (line.startsWith("## ")) {
+            if (current) versions.push(current);
+            current = null;
+            if (versions.length >= maxVersions) break;
             continue;
         }
         if (current) currentSection = processLine(line, current, currentSection);
@@ -378,4 +396,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { syncDir, resolveSiteRoot, DeployError };
+module.exports = { syncDir, resolveSiteRoot, parseChangelog, DeployError };

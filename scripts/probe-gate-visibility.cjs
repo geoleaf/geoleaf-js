@@ -843,6 +843,66 @@ try {
         };
     });
 
+    // The site's `news.json` is parsed out of the core's changelog by the same script. A
+    // publication without the core is dated under its own `## ` heading, below the core
+    // release that follows it: read as part of that release, its `### Removed — BREAKING`
+    // announced core 3.11.2 as breaking on the site. The positive case (a real core breaking
+    // section still flags its release) keeps a parser that never flags anything from passing.
+    assertThat(
+        "deploy-docs : une section datée à un autre nom ne se fond pas dans la version du core",
+        () => {
+            delete require.cache[require.resolve("./deploy-docs.cjs")];
+            const { parseChangelog } = require("./deploy-docs.cjs");
+            const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-probe-news-"));
+            try {
+                const file = path.join(scratch, "CHANGELOG.md");
+                fs.writeFileSync(
+                    file,
+                    [
+                        "## [Unreleased]",
+                        "",
+                        "## [2.0.1] - 2026-01-03",
+                        "### Fixed",
+                        "- core fix",
+                        "## `@x/plugin` 1.1.0 - 2026-01-02",
+                        "### Removed — BREAKING: plugin break",
+                        "### Fixed",
+                        "- plugin fix",
+                        "## [2.0.0] - 2026-01-01",
+                        "### Removed — BREAKING: core break",
+                        "### Removed",
+                        "- core removal",
+                    ].join("\n")
+                );
+                const notes = parseChangelog(file);
+                const byVersion = Object.fromEntries(notes.map((n) => [n.version, n]));
+                const failures = [];
+                const top = byVersion["2.0.1"];
+                if (!top) failures.push("2.0.1 absente");
+                else {
+                    if (top.breaking)
+                        failures.push("2.0.1 marquée breaking par la section du greffon");
+                    if (top.correctifs.join("|") !== "core fix") {
+                        failures.push(`2.0.1 correctifs = ${JSON.stringify(top.correctifs)}`);
+                    }
+                }
+                if (!byVersion["2.0.0"]?.breaking)
+                    failures.push("2.0.0 n'est plus marquée breaking");
+                if (notes.map((n) => n.version).join(",") !== "2.0.1,2.0.0") {
+                    failures.push(`versions lues : ${notes.map((n) => n.version).join(",")}`);
+                }
+                return {
+                    ok: failures.length === 0,
+                    detail: failures.length
+                        ? failures.join(" · ")
+                        : "section d'un greffon exclue, breaking du core gardé",
+                };
+            } finally {
+                fs.rmSync(scratch, { recursive: true, force: true });
+            }
+        }
+    );
+
     // Does the "every ci:local script is tracked" gate still resolve a
     // graph?
     //
