@@ -1,0 +1,29 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "scaleConfig": {
+        "minScale": 7500000,
+
+        "maxScale": 0
+    },
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "casing": {
+            "enabled": true,
+            "color": "#555555",
+            "opacity": 0.7,
+            "widthPx": 0.8
+        },
+        "color": "#e0e0e0",
+        "opacity": 1,
+        "weight": 1.2,
+        "dashArray": "5 4"
+    },
+    "legend": {
+        "label": "Réseau ferroviaire"
+    }
+}

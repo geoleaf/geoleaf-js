@@ -1,0 +1,12 @@
+{
+    "_comment": "Déclaration d'origine du fond hors-ligne `ign-plan-3d` (12/09/2026). Son style, ses glyphes, son sprite et ses tuiles vectorielles vivent tous sur https://data.geopf.fr (sondé). Depuis la règle d'origine de la préparation hors-ligne, une origine tierce n'est rapatriée que déclarée `cacheable: true` et `prefetch: true`. `prefetch` affirme que les conditions de l'origine permettent de télécharger avant usage : les CGU de la Géoplateforme (cartes.gouv.fr/cgu, art. 3.2, lues le 12/09/2026) limitent les tuiles vectorielles (TMS) à 400 requêtes/s par IP et ne contiennent aucune interdiction de téléchargement ; le rapatriement plafonne à 2 requêtes concurrentes. Le moteur hors-ligne reste éteint dans ce profil (`enabled: false`) : la déclaration n'a aucun effet d'exécution ici, elle rend le fond préparable par construction et la garde `offline-basemap-declared` la lit.",
+    "enabled": false,
+    "dataOrigins": [
+        {
+            "origin": "https://data.geopf.fr",
+            "roles": ["tiles", "glyphs", "sprites"],
+            "cacheable": true,
+            "prefetch": true
+        }
+    ]
+}

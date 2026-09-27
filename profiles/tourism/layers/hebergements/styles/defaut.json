@@ -1,0 +1,58 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "shape": "circle",
+        "radius": 8,
+        "fillColor": "#add42d",
+        "fillOpacity": 1,
+        "color": "#232323",
+        "opacity": 1,
+        "weight": 0
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.fclass",
+                "operator": "==",
+                "value": "camp_site"
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 8,
+                "fillColor": "#add42d",
+                "fillOpacity": 1,
+                "color": "#232323",
+                "opacity": 1,
+                "weight": 0
+            },
+            "legend": {
+                "label": "camp_site"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.fclass",
+                "operator": "==",
+                "value": "hotel"
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 8,
+                "fillColor": "#ffdc62",
+                "fillOpacity": 1,
+                "color": "#232323",
+                "opacity": 1,
+                "weight": 0
+            },
+            "legend": {
+                "label": "hotel"
+            }
+        }
+    ]
+}

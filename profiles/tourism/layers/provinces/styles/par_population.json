@@ -1,0 +1,222 @@
+{
+    "id": "par_population",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "NAM",
+        "font": {
+            "family": "Segoe UI",
+            "sizePt": 7,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#323232",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "fillColor": "#edf8fb",
+        "fillOpacity": 0.902,
+        "color": "#464646",
+        "opacity": 0.902,
+        "weight": 0.98
+    },
+    "styleRules": [
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 0
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 400000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#edf8fb",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 400000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 700000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#ccece6",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 700000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 1000000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#99d8c9",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 1000000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 1400000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#66c2a4",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 1400000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 2000000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#41ae76",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 2000000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<",
+                        "value": 4000000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#238b45",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        },
+        {
+            "when": {
+                "all": [
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": ">=",
+                        "value": 4000000
+                    },
+                    {
+                        "field": "properties.argentina_population_population_2022",
+                        "operator": "<=",
+                        "value": 20000000
+                    }
+                ]
+            },
+            "style": {
+                "fillColor": "#005824",
+                "fillOpacity": 0.902,
+                "color": "#464646",
+                "opacity": 0.902,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Provinces"
+            }
+        }
+    ],
+    "legend": {
+        "label": "Provinces"
+    }
+}

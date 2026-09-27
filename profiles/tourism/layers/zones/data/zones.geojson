@@ -1,0 +1,1 @@
+{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"nom":"Zone démo","categorie":"etude","surface_ha":120,"description":"Entité d'exemple pour tester sélection / édition de sommets / suppression / undo-redo."},"geometry":{"type":"Polygon","coordinates":[[[-60.7,-32.98],[-60.66,-32.98],[-60.66,-32.95],[-60.7,-32.95],[-60.7,-32.98]]]}}]}

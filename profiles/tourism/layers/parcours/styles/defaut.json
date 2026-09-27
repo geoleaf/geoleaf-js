@@ -1,0 +1,38 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "nom",
+        "font": {
+            "family": "Open Sans",
+            "sizePt": 7,
+            "weight": 50,
+            "bold": false,
+            "italic": false
+        },
+        "color": "#1d4ed8",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "opacity": 1,
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "style": {
+        "casing": {
+            "enabled": true,
+            "color": "#1e3a8a",
+            "opacity": 1,
+            "widthPx": 1
+        },
+        "color": "#3b82f6",
+        "opacity": 1,
+        "weight": 3
+    },
+    "legend": {
+        "label": "Parcours (démo édition)"
+    }
+}

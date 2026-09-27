@@ -1,0 +1,16 @@
+{
+    "enabled": true,
+    "showButton": false,
+    "arrivalRadiusMetres": 30,
+    "offRouteThresholdMetres": 40,
+    "confirmExit": 3,
+    "confirmReturn": 2,
+    "retryAfterFixes": 2,
+    "maxRetryFixes": 8,
+    "voiceEnabled": true,
+    "voiceAnnounceAtMetres": 200,
+    "keepScreenAwake": true,
+    "followZoom": 17.5,
+    "followPitch": 60,
+    "cameraMaxTransitionMs": 1000
+}

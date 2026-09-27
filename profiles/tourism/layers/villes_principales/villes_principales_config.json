@@ -1,0 +1,54 @@
+{
+    "id": "villes_principales",
+    "label": "villes principales",
+    "zIndex": 94,
+    "geometry": "point",
+    "_comment_offline": "Déclaration de lecture hors-ligne (tâche 4.3). Couche NON éditable — et c'est délibéré : elle démontre l'invariant S6 dans le sens qui compte, une couche rapatriable en lecture seule. Le rapatriement ne confère JAMAIS l'éditabilité. Elle est aussi chargée par le thème par défaut, ce qui rend la lecture locale OBSERVABLE au boot — `sites_rosario` ne l'est pas, et une preuve prise sur une couche non chargée ne prouve rien.",
+    "offline": {
+        "enabled": true,
+        "maxFeatures": 5000
+    },
+    "data": {
+        "directory": "data",
+        "file": "villes_principales.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "défaut",
+                "file": "defaut.json"
+            },
+            {
+                "id": "population",
+                "label": "population",
+                "file": "population.json"
+            }
+        ]
+    },
+    "interactiveShape": false,
+    "table": {
+        "enabled": false
+    },
+    "clustering": {
+        "enabled": false,
+        "maxClusterRadius": 80,
+        "disableClusteringAtZoom": 12
+    },
+    "attributes": {
+        "titleField": "properties.ville",
+        "fields": [
+            {
+                "field": "properties.ville",
+                "label": "ville",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip"]
+                }
+            }
+        ]
+    }
+}

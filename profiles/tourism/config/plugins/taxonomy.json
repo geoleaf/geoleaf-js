@@ -1,0 +1,116 @@
+{
+    "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Geometry colour stays with each layer's styleRules, and so does point SIZE (no marker.radius: a marker is declared per CATEGORY, but one category serves layers with different radii — cultures 8, sites_rosario 9 — so a radius here would flatten them). Palette: five clearly distinct hues, readability over convention (activites is orange, not a third green). Each category ALSO carries its own iconColor — a light shade of its own disc, so the glyphs are told apart at a glance instead of all being white. The three sub-categories that declare a marker of their own get a lighter tint still (override); the others declare none and inherit their category's (inheritance). Note `nature.parc` and `Environnement.PARC` case-fold to the same label — the paint expression nests by category first, so each keeps its parent's colour.",
+    "enabled": true,
+    "icons": {
+        "spriteUrl": "profiles/tourism/icons/sprite_tourism.svg",
+        "symbolPrefix": "tourism-poi-cat-"
+    },
+    "render": {
+        "popup": { "showIconCategory": true, "showIconSubcategory": true, "colorBadges": true },
+        "tooltip": { "showIconCategory": true, "showIconSubcategory": false },
+        "sidepanel": {
+            "showIconCategory": true,
+            "showIconSubcategory": true,
+            "colorBadges": true
+        }
+    },
+    "layers": {
+        "hebergements": { "use": "poi-cat" },
+        "cultures": { "use": "poi-cat" },
+        "sites_rosario": { "use": "poi-cat" },
+        "villes_principales": { "use": "poi-cat" },
+        "sites_de_conservation_wdpa": { "use": "poi-cat" },
+        "aires_protegees_nationales_sib": { "use": "poi-cat" }
+    },
+    "taxonomies": {
+        "poi-cat": {
+            "categoryField": "categoryId",
+            "subCategoryField": "subcategoryId",
+            "categories": {
+                "activites": {
+                    "svgId": "activity-generic",
+                    "iconColor": "#ffe0b2",
+                    "marker": { "fill": "#e65100", "stroke": "#bf360c", "strokeWidth": 2 },
+                    "label": "Activités",
+                    "subcategories": {
+                        "randonnee": { "svgId": "activity-mountain", "label": "Randonnée" },
+                        "velo": { "svgId": "activity-vehicle", "label": "Vélo" },
+                        "balade": { "svgId": "activity-generic", "label": "Balade" }
+                    }
+                },
+                "CULTURES": {
+                    "svgId": "culture-building",
+                    "iconColor": "#e1bee7",
+                    "marker": { "fill": "#6a1b9a", "stroke": "#38006b", "strokeWidth": 2 },
+                    "label": "Culture",
+                    "subcategories": {
+                        "SITE ARCHEOLOGIQUE": {
+                            "svgId": "culture-building",
+                            "label": "Site archéologique"
+                        },
+                        "MUSEE": {
+                            "svgId": "culture-building",
+                            "iconColor": "#f3e5f5",
+                            "marker": { "fill": "#8e24aa", "stroke": "#38006b", "strokeWidth": 2 },
+                            "label": "Musée"
+                        }
+                    }
+                },
+                "nature": {
+                    "svgId": "nature-mountain",
+                    "iconColor": "#b2dfdb",
+                    "marker": { "fill": "#00695c", "stroke": "#003d33", "strokeWidth": 2 },
+                    "label": "Nature",
+                    "subcategories": {
+                        "parc": { "svgId": "nature-mountain", "label": "Parc" },
+                        "reserve": {
+                            "svgId": "nature-protected",
+                            "iconColor": "#e0f2f1",
+                            "marker": { "fill": "#00897b", "stroke": "#003d33", "strokeWidth": 2 },
+                            "label": "Réserve"
+                        },
+                        "viewpoint": { "svgId": "nature-mountain", "label": "Point de vue" },
+                        "jardin": { "svgId": "nature-forest", "label": "Jardin" },
+                        "lac": { "svgId": "nature-water", "label": "Lac" },
+                        "foret": { "svgId": "nature-forest", "label": "Forêt" }
+                    }
+                },
+                "HEBERGEMENT": {
+                    "svgId": "lodging-hotel",
+                    "iconColor": "#bbdefb",
+                    "marker": { "fill": "#1565c0", "stroke": "#0d47a1", "strokeWidth": 2 },
+                    "label": "Hébergements",
+                    "subcategories": {
+                        "CAMPING": {
+                            "svgId": "lodging-camping",
+                            "iconColor": "#e3f2fd",
+                            "marker": { "fill": "#1e88e5", "stroke": "#0d47a1", "strokeWidth": 2 },
+                            "label": "Camping"
+                        },
+                        "HOTEL": { "svgId": "lodging-hotel", "label": "Hôtel" }
+                    }
+                },
+                "Environnement": {
+                    "svgId": "nature-protected",
+                    "iconColor": "#c8e6c9",
+                    "marker": { "fill": "#2e7d32", "stroke": "#1b5e20", "strokeWidth": 2 },
+                    "label": "Environnement",
+                    "subcategories": {
+                        "PARC": { "svgId": "nature-mountain", "label": "Parc national" }
+                    }
+                }
+            },
+            "fieldMappings": {
+                "fclass": {
+                    "archaeological": {
+                        "categoryId": "CULTURES",
+                        "subCategoryId": "SITE ARCHEOLOGIQUE"
+                    },
+                    "museum": { "categoryId": "CULTURES", "subCategoryId": "MUSEE" },
+                    "camp_site": { "categoryId": "HEBERGEMENT", "subCategoryId": "CAMPING" },
+                    "hotel": { "categoryId": "HEBERGEMENT", "subCategoryId": "HOTEL" }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,98 @@
+{
+    "basemaps": {
+        "street": {
+            "id": "street",
+            "label": "Street",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, TomTom",
+            "minZoom": 3,
+            "maxZoom": 16,
+            "offline": false
+        },
+        "satellite": {
+            "id": "satellite",
+            "label": "Satellite",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
+            "minZoom": 5,
+            "maxZoom": 18,
+            "offline": false
+        },
+        "topo": {
+            "id": "topo",
+            "label": "Topographique",
+            "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+            "attribution": "Map data: &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, <a href='http://viewfinderpanoramas.org'>SRTM</a> | Map style: &copy; <a href='https://opentopomap.org'>OpenTopoMap</a> (<a href='https://creativecommons.org/licenses/by-sa/3.0/'>CC-BY-SA</a>)",
+            "minZoom": 5,
+            "maxZoom": 17,
+            "offline": false
+        },
+        "positron": {
+            "id": "positron",
+            "label": "Clair",
+            "url": "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            "subdomains": "abcd",
+            "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+            "minZoom": 3,
+            "maxZoom": 19,
+            "offline": false
+        },
+        "dark-matter": {
+            "id": "dark-matter",
+            "label": "Sombre",
+            "url": "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png",
+            "subdomains": "abcd",
+            "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+            "minZoom": 3,
+            "maxZoom": 19,
+            "offline": false
+        },
+        "voyager": {
+            "id": "voyager",
+            "label": "Lite",
+            "url": "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+            "subdomains": "abcd",
+            "attribution": "&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors &copy; <a href='https://carto.com/attributions'>CARTO</a>",
+            "minZoom": 3,
+            "maxZoom": 19,
+            "offline": false
+        },
+        "terrain-terrarium": {
+            "id": "terrain-terrarium",
+            "label": "Relief 3D",
+            "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+            "attribution": "Map data: &copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors, <a href='http://viewfinderpanoramas.org'>SRTM</a> | Map style: &copy; <a href='https://opentopomap.org'>OpenTopoMap</a> (<a href='https://creativecommons.org/licenses/by-sa/3.0/'>CC-BY-SA</a>)",
+            "minZoom": 5,
+            "maxZoom": 17,
+            "defaultBasemap": true,
+            "offline": false,
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 1.5,
+                "default3D": true,
+                "pitch": 60,
+                "bearing": 0
+            }
+        },
+        "satellite-3d": {
+            "id": "satellite-3d",
+            "label": "Satellite 3D",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics",
+            "minZoom": 5,
+            "maxZoom": 18,
+            "offline": false,
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 1.5,
+                "default3D": true,
+                "pitch": 60,
+                "bearing": 0
+            }
+        }
+    }
+}
