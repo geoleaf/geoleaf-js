@@ -157,7 +157,6 @@ function _paintField(wrap: HTMLElement, message: string | null): void {
  * Iterates `schema` and calls `ComponentRegistry.get(type).formRender()` for each field.
  * Maintains an internal value map updated via each component's `onChange` callback.
  * Fields with a `computed` key are rendered read-only (geo-compute values set externally via `setValues`).
- * Fields with `dependsOn` + `optionsByCategory` get their select options filtered when the parent changes.
  *
  * ⚠️ Values are addressed through {@link readAt} / {@link writeAt}, so a
  * dotted `id` designates a path in the object and not a literal key — unless
@@ -206,44 +205,6 @@ export function createFieldRendererBridge(
     });
 
     _wireErrorClearing(container, errors);
-
-    // Wire cascade: fields with dependsOn + optionsByCategory filter their options
-    // when the parent field's select changes.
-    schema.forEach((field) => {
-        if (!field.dependsOn || !field.optionsByCategory) return;
-        const parentId = field.dependsOn as string;
-        const optsByCategory = field.optionsByCategory as Record<
-            string,
-            Array<{ value: string; label: string }>
-        >;
-
-        const parentEl = renderedEls.get(parentId);
-        const childEl = renderedEls.get(field.id);
-        if (!parentEl || !childEl) return;
-
-        const parentSelect = parentEl.querySelector<HTMLSelectElement>("select");
-        const childSelect = childEl.querySelector<HTMLSelectElement>("select");
-        if (!parentSelect || !childSelect) return;
-
-        parentSelect.addEventListener("change", () => {
-            const opts = optsByCategory[parentSelect.value] ?? [];
-            childSelect.innerHTML = "";
-            if (field.emptyLabel) {
-                const empty = document.createElement("option");
-                empty.value = "";
-                empty.textContent = field.emptyLabel as string;
-                childSelect.appendChild(empty);
-            }
-            opts.forEach((o) => {
-                const opt = document.createElement("option");
-                opt.value = o.value;
-                opt.textContent = o.label;
-                childSelect.appendChild(opt);
-            });
-            // Reset dependent value when parent changes
-            writeAt(values, field.id, "");
-        });
-    });
 
     return {
         el: container,

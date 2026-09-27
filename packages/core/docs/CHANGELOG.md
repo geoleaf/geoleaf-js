@@ -11,6 +11,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Removed — BREAKING: the dropdown cascade of `@geoleaf/field-renderer` 1.4.0
+
+`createFieldRendererBridge` no longer filters a dropdown's choices by the value of another one.
+A field carrying `dependsOn` and `optionsByCategory` now renders its own `options`, like any
+dropdown; the two keys are ignored.
+
+**Why it goes, and without an announcement.** Its one reader, the category → subcategory
+adapter of the former `@geoleaf-plugins/addpoi`, left with that plugin. No profile can declare
+it: the layer schema never carried either key and refuses unknown ones. No consumer measured
+uses it. And it was wrong on the path 1.3.0 had just made usable off-network: when either list
+loaded from a URL (`fetchOptions`), the cascade kept listening to, or filling, a `<select>` the
+list had already replaced. It also filtered nothing when a form opened on a value already
+chosen, and without an `emptyLabel` it showed one choice while the saved value was empty.
+Fixing it meant rewriting it and opening two profile keys for a feature nobody asked for. As
+with `createFocusTrap` in this same library, the removal is direct.
+
+`@geoleaf-plugins/editor` 1.5.2 bundles the library and ships the same change. Its forms never
+reached the cascade.
+
 ## [3.11.1] - 2026-09-27
 
 ### Fixed

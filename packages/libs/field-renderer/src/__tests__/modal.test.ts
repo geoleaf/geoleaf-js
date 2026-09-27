@@ -8,7 +8,6 @@ import { createFieldRendererBridge } from "../field-renderer-bridge.js";
 import { createResponsiveModal } from "../ui/responsive-modal.js";
 import { ComponentRegistry } from "../registry.js";
 import { textComponent } from "../types/text.js";
-import { dropdownComponent } from "../types/dropdown.js";
 import type { FieldConfig } from "../contract.js";
 
 // ---------------------------------------------------------------------------
@@ -189,109 +188,6 @@ describe("createFieldRendererBridge", () => {
     it("falls back to text component for unknown type", () => {
         const unknownSchema: FieldConfig[] = [{ id: "x", type: "unknown-type-xyz", label: "X" }];
         expect(() => createFieldRendererBridge(unknownSchema, {}, { lang: "fr" })).not.toThrow();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// createFieldRendererBridge — cascade dependsOn / optionsByCategory
-// ---------------------------------------------------------------------------
-
-describe("createFieldRendererBridge — cascade dependsOn", () => {
-    beforeEach(() => {
-        installI18n();
-        ComponentRegistry.register(dropdownComponent);
-    });
-
-    const optionsByCategory = {
-        nature: [
-            { value: "forest", label: "Forêt" },
-            { value: "lake", label: "Lac" },
-        ],
-        urban: [{ value: "park", label: "Parc" }],
-    };
-
-    const cascadeSchema: FieldConfig[] = [
-        {
-            id: "category",
-            type: "dropdown",
-            label: "Catégorie",
-            options: [
-                { value: "nature", label: "Nature" },
-                { value: "urban", label: "Urbain" },
-            ],
-            emptyLabel: "—",
-        },
-        {
-            id: "subcategory",
-            type: "dropdown",
-            label: "Sous-catégorie",
-            options: [
-                { value: "forest", label: "Forêt" },
-                { value: "lake", label: "Lac" },
-                { value: "park", label: "Parc" },
-            ],
-            optionsByCategory,
-            dependsOn: "category",
-            emptyLabel: "—",
-        },
-    ];
-
-    it("filters subcategory options when category changes", () => {
-        const bridge = createFieldRendererBridge(cascadeSchema, {}, { lang: "fr" });
-        const selects = bridge.el.querySelectorAll<HTMLSelectElement>("select");
-        const catSelect = selects[0];
-        const subSelect = selects[1];
-
-        // Select "nature"
-        catSelect.value = "nature";
-        catSelect.dispatchEvent(new Event("change"));
-
-        const subValues = Array.from(subSelect.options).map((o) => o.value);
-        expect(subValues).toContain("forest");
-        expect(subValues).toContain("lake");
-        expect(subValues).not.toContain("park");
-    });
-
-    it("updates subcategory options when category changes again", () => {
-        const bridge = createFieldRendererBridge(cascadeSchema, {}, { lang: "fr" });
-        const selects = bridge.el.querySelectorAll<HTMLSelectElement>("select");
-        const catSelect = selects[0];
-        const subSelect = selects[1];
-
-        catSelect.value = "nature";
-        catSelect.dispatchEvent(new Event("change"));
-        catSelect.value = "urban";
-        catSelect.dispatchEvent(new Event("change"));
-
-        const subValues = Array.from(subSelect.options).map((o) => o.value);
-        expect(subValues).toContain("park");
-        expect(subValues).not.toContain("forest");
-    });
-
-    it("resets subcategory value when category changes", () => {
-        const bridge = createFieldRendererBridge(
-            cascadeSchema,
-            { category: "nature", subcategory: "forest" },
-            { lang: "fr" }
-        );
-        const selects = bridge.el.querySelectorAll<HTMLSelectElement>("select");
-        const catSelect = selects[0];
-        catSelect.value = "urban";
-        catSelect.dispatchEvent(new Event("change"));
-        expect(bridge.getValues()["subcategory"]).toBe("");
-    });
-
-    it("preserves emptyLabel option in filtered list", () => {
-        const bridge = createFieldRendererBridge(cascadeSchema, {}, { lang: "fr" });
-        const selects = bridge.el.querySelectorAll<HTMLSelectElement>("select");
-        const catSelect = selects[0];
-        const subSelect = selects[1];
-
-        catSelect.value = "urban";
-        catSelect.dispatchEvent(new Event("change"));
-
-        expect(subSelect.options[0].value).toBe("");
-        expect(subSelect.options[0].textContent).toBe("—");
     });
 });
 

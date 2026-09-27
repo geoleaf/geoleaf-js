@@ -1,7 +1,7 @@
 {
     "_comment": "TTC-01/02 — paires `fichier:TScode` d'erreurs DORMANTES dans les suites .ts, gelées à la pose (B-D1 : une gate qui naîtrait rouge sur tout le corpus serait désarmée dans la semaine). Cette liste ne peut que RÉTRÉCIR : corriger une erreur puis resserrer via --update-baseline. Les clés ne portent pas de numéro de ligne, délibérément — les lignes dérivent à chaque édition sans information.",
     "_generated": "node scripts/check-test-typecheck.cjs --update-baseline",
-    "count": 270,
+    "count": 268,
     "entries": [
         "packages/core/__tests__/adapters/maplibre-pmtiles.test.ts:TS2532",
         "packages/core/__tests__/app/boot-injected-config.test.ts:TS2345",
@@ -57,8 +57,6 @@
         "packages/libs/field-renderer/src/__tests__/image-compress.test.ts:TS2375",
         "packages/libs/field-renderer/src/__tests__/lang-catalogue.test.ts:TS18046",
         "packages/libs/field-renderer/src/__tests__/lang-catalogue.test.ts:TS2339",
-        "packages/libs/field-renderer/src/__tests__/modal.test.ts:TS18048",
-        "packages/libs/field-renderer/src/__tests__/modal.test.ts:TS2532",
         "packages/libs/field-renderer/src/__tests__/shared-scaffolding.test.ts:TS2488",
         "packages/libs/field-renderer/src/__tests__/shared-scaffolding.test.ts:TS2532",
         "packages/libs/field-renderer/src/__tests__/types-contact.test.ts:TS2322",
