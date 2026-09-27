@@ -227,6 +227,7 @@ const lang_fr: LangDict = {
     "ui.filter_panel.tags_title_fallback": "Afficher les tags",
     "ui.filter_panel.no_categories": "Aucune cat\u00e9gorie disponible sur les layers visibles",
     "ui.filter_panel.no_tags": "Aucun tag disponible sur les layers visibles",
+    "ui.filter_panel.no_match": "Aucune entit\u00e9 ne correspond aux filtres",
     "ui.filter_panel.loading": "Chargement...",
 
     // ── UI texts / Notifications ─────────────────────────────────────────────

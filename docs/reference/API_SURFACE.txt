@@ -1543,8 +1543,8 @@ CallSignature | GeoLeaf Core API.capabilities/feature-info/types.FeatureInfoPubl
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.closeSidePanel.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.isSidePanelOpen.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.openSidePanel.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources | doc:707faed0db71
-CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel | doc:dd744b0c6375
+CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources | doc:d9f2dd85bff0
+CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel | doc:158fcaa80737
 CallSignature | GeoLeaf Core API.capabilities/filter/apply.resolveOptionsWithData.resolveOptionsWithData | doc:9a2c17003c57
 CallSignature | GeoLeaf Core API.capabilities/filter/config.getFilterConfig.getFilterConfig | doc:a85519513922
 CallSignature | GeoLeaf Core API.capabilities/filter/engine/field-access.featureCentroid.featureCentroid | doc:1d6fc614a51f
@@ -1578,6 +1578,7 @@ CallSignature | GeoLeaf Core API.capabilities/filter/panel/render.renderFilterPa
 CallSignature | GeoLeaf Core API.capabilities/filter/panel/state.readActiveFilter.readActiveFilter | doc:3213cfbf4883
 CallSignature | GeoLeaf Core API.capabilities/filter/panel/write.resetPanelControls.resetPanelControls | doc:08349d2b7ef5
 CallSignature | GeoLeaf Core API.capabilities/filter/panel/write.writePanelControls.writePanelControls | doc:fc1fa0c8f6ea
+CallSignature | GeoLeaf Core API.capabilities/filter/panel/write.writePanelMatchStatus.writePanelMatchStatus | doc:cdfda4c8c423
 CallSignature | GeoLeaf Core API.capabilities/filter/public-api.buildPublicApi.buildPublicApi | doc:f145a47e211a
 CallSignature | GeoLeaf Core API.capabilities/filter/serialize.deserializeActiveFilter.deserializeActiveFilter | doc:4de3fb40e20e
 CallSignature | GeoLeaf Core API.capabilities/filter/serialize.normalizeSubValues.normalizeSubValues | doc:2a54718a731a
@@ -4580,6 +4581,7 @@ Function | GeoLeaf Core API.capabilities/filter/panel/render.renderFilterPanel |
 Function | GeoLeaf Core API.capabilities/filter/panel/state.readActiveFilter | doc:-
 Function | GeoLeaf Core API.capabilities/filter/panel/write.resetPanelControls | doc:-
 Function | GeoLeaf Core API.capabilities/filter/panel/write.writePanelControls | doc:-
+Function | GeoLeaf Core API.capabilities/filter/panel/write.writePanelMatchStatus | doc:-
 Function | GeoLeaf Core API.capabilities/filter/public-api.buildPublicApi | doc:-
 Function | GeoLeaf Core API.capabilities/filter/serialize.deserializeActiveFilter | doc:-
 Function | GeoLeaf Core API.capabilities/filter/serialize.normalizeSubValues | doc:-
@@ -5529,6 +5531,7 @@ Interface | GeoLeaf Core API.capabilities/filter/engine/types.FeatureLike | doc:
 Interface | GeoLeaf Core API.capabilities/filter/engine/types.ProximitySelection | doc:71a2dae559f7
 Interface | GeoLeaf Core API.capabilities/filter/engine/types.RangeSelection | doc:47c2b9ce28cd
 Interface | GeoLeaf Core API.capabilities/filter/panel/render.FieldOptions | doc:240e6da3294a
+Interface | GeoLeaf Core API.capabilities/filter/panel/write.FilterMatchStats | doc:545b37efb09c
 Interface | GeoLeaf Core API.capabilities/filter/types.FilterActionsConfig | doc:bea59c888ee4
 Interface | GeoLeaf Core API.capabilities/filter/types.FilterConfig | doc:b177c8872d21
 Interface | GeoLeaf Core API.capabilities/filter/types.FilterFieldDescriptor | doc:131d12092ae9
@@ -10209,6 +10212,8 @@ Parameter | GeoLeaf Core API.capabilities/filter/panel/write.resetPanelControls.
 Parameter | GeoLeaf Core API.capabilities/filter/panel/write.writePanelControls.writePanelControls.config | doc:-
 Parameter | GeoLeaf Core API.capabilities/filter/panel/write.writePanelControls.writePanelControls.panel | doc:-
 Parameter | GeoLeaf Core API.capabilities/filter/panel/write.writePanelControls.writePanelControls.state | doc:-
+Parameter | GeoLeaf Core API.capabilities/filter/panel/write.writePanelMatchStatus.writePanelMatchStatus.panel | doc:1d15fa552a52
+Parameter | GeoLeaf Core API.capabilities/filter/panel/write.writePanelMatchStatus.writePanelMatchStatus.stats | doc:1e2a6b7e919e
 Parameter | GeoLeaf Core API.capabilities/filter/serialize.deserializeActiveFilter.deserializeActiveFilter.config | doc:-
 Parameter | GeoLeaf Core API.capabilities/filter/serialize.deserializeActiveFilter.deserializeActiveFilter.state | doc:-
 Parameter | GeoLeaf Core API.capabilities/filter/serialize.normalizeSubValues.normalizeSubValues.raw | doc:e2cb5f454730
@@ -14843,6 +14848,8 @@ Property | GeoLeaf Core API.capabilities/filter/panel/proximity/proximity-circle
 Property | GeoLeaf Core API.capabilities/filter/panel/proximity/proximity-circle.createProximityCircle.createProximityCircle.latlng.__type.lng | doc:-
 Property | GeoLeaf Core API.capabilities/filter/panel/render.FieldOptions.categories | doc:f99c4016ad3b
 Property | GeoLeaf Core API.capabilities/filter/panel/render.FieldOptions.values | doc:ceec1c9e84dd
+Property | GeoLeaf Core API.capabilities/filter/panel/write.FilterMatchStats.total | doc:8320b735a039
+Property | GeoLeaf Core API.capabilities/filter/panel/write.FilterMatchStats.visible | doc:cbf5c84d195f
 Property | GeoLeaf Core API.capabilities/filter/types.FilterActionsConfig.applyLabel | doc:-
 Property | GeoLeaf Core API.capabilities/filter/types.FilterActionsConfig.resetLabel | doc:-
 Property | GeoLeaf Core API.capabilities/filter/types.FilterConfig.actions | doc:347d249d59d0

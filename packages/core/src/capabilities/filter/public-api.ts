@@ -29,7 +29,7 @@ import { readActiveFilter } from "./panel/state.js";
 import { applyActiveFilterToSources, applyFilterFromPanel } from "./apply.js";
 import { expandActiveFilter } from "./taxonomy-options.js";
 import { serializeActiveFilter, deserializeActiveFilter } from "./serialize.js";
-import { writePanelControls, resetPanelControls } from "./panel/write.js";
+import { writePanelControls, resetPanelControls, writePanelMatchStatus } from "./panel/write.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 import type { FilterProximityApi, FilterPublicApi, SerializedFilterState } from "./types.js";
@@ -62,8 +62,12 @@ export function buildPublicApi(): FilterPublicApi {
 
         applyFilter: (state: SerializedFilterState): void => {
             const config = getFilterConfig();
-            writePanelControls(_panel(), state, config);
-            applyActiveFilterToSources(expandActiveFilter(deserializeActiveFilter(state, config)));
+            const panel = _panel();
+            writePanelControls(panel, state, config);
+            const stats = applyActiveFilterToSources(
+                expandActiveFilter(deserializeActiveFilter(state, config))
+            );
+            writePanelMatchStatus(panel, stats);
             dispatchGeoLeafEvent("geoleaf:filters:applied", {});
         },
 

@@ -67,8 +67,22 @@ export function renderFilterPanel(config: FilterConfig, options: OptionsByField 
         if (group) body.appendChild(group);
     }
     panel.appendChild(body);
+    panel.appendChild(_status());
     panel.appendChild(_footer(config));
     return panel;
+}
+
+/**
+ * The status line, between the body and the footer: visible without scrolling, in the desktop
+ * tab as in the mobile sheet. Rendered EMPTY and always present — `writePanelMatchStatus` only
+ * changes its text, because a live region inserted or unhidden at the moment its text arrives
+ * is not reliably announced.
+ */
+function _status(): HTMLElement {
+    return createElement("p", {
+        className: "gl-filter-panel__status",
+        attributes: { role: "status", "aria-live": "polite" },
+    });
 }
 
 function _header(config: FilterConfig): HTMLElement {

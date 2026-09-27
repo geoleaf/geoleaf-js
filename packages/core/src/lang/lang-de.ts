@@ -160,6 +160,7 @@ const lang_de: LangDict = {
     "ui.filter_panel.tags_title_fallback": "Tags anzeigen",
     "ui.filter_panel.no_categories": "Keine Kategorien in sichtbaren Ebenen vorhanden",
     "ui.filter_panel.no_tags": "Keine Tags in sichtbaren Ebenen vorhanden",
+    "ui.filter_panel.no_match": "Kein Objekt entspricht den Filtern",
     "ui.filter_panel.loading": "Laden...",
     "ui.notification.close_char": "\u00d7",
     "ui.branding.default_text": "Entwickelt von \u00a9 GeoLeaf with MapLibre",

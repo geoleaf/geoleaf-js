@@ -90,6 +90,22 @@ describe("GeoLeaf.Filter — serialisation contract", () => {
         expect(notified).toBe(true);
     });
 
+    it("applyFilter() says in the panel when the restored state keeps no feature", () => {
+        // A permalink restore goes through here, not through the panel pipeline: a link whose
+        // filter matches nothing must open on the same message the panel would have shown.
+        configGet.mockReturnValue(CONFIG);
+        const p = mountPanel();
+        applyToSources.mockReturnValueOnce({ filtered: 4, total: 4, visible: 0 });
+        buildPublicApi().applyFilter({ fields: [{ id: "searchText", kind: "text", text: "xyz" }] });
+        expect(p.querySelector(".gl-filter-panel__status").textContent).toBe(
+            "Aucune entité ne correspond aux filtres"
+        );
+
+        applyToSources.mockReturnValueOnce({ filtered: 3, total: 4, visible: 1 });
+        buildPublicApi().applyFilter({ fields: [{ id: "searchText", kind: "text", text: "x" }] });
+        expect(p.querySelector(".gl-filter-panel__status").textContent).toBe("");
+    });
+
     it("hasActiveFilters() reflects the panel", () => {
         configGet.mockReturnValue(CONFIG);
         const p = mountPanel();

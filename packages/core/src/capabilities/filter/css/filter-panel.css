@@ -263,6 +263,19 @@
         border-top: 1px solid var(--gl-color-border-soft);
     }
 
+    /* Status line: says when the last application kept no feature. A live region, rendered
+       empty and always present, so it is never `display: none` — empty, it takes no room. */
+    .gl-filter-panel__status {
+        margin: 0;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        color: var(--gl-color-text-main);
+    }
+
+    .gl-filter-panel__status:empty {
+        padding: 0;
+    }
+
     /* Filter group section title (Categories, Tags…) — filter capability renderer (S5). */
     .gl-filter-panel__group-title {
         margin: 0 0 0.25rem;
@@ -367,6 +380,11 @@
         background: transparent;
         padding: 0;
         flex: 1 1 auto;
+    }
+
+    /* Status line aligned with the body, which the sheet renders without inline padding. */
+    .gl-sheet-panel__body #gl-filter-panel.gl-sheet-content .gl-filter-panel__status {
+        padding-inline: 0;
     }
 
     /* Filter footer, flush with the sheet. */

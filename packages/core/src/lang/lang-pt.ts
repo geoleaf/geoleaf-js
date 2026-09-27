@@ -158,6 +158,7 @@ const lang_pt: LangDict = {
     "ui.filter_panel.tags_title_fallback": "Mostrar etiquetas",
     "ui.filter_panel.no_categories": "Nenhuma categoria dispon\u00edvel nas camadas vis\u00edveis",
     "ui.filter_panel.no_tags": "Nenhuma etiqueta dispon\u00edvel nas camadas vis\u00edveis",
+    "ui.filter_panel.no_match": "Nenhuma entidade corresponde aos filtros",
     "ui.filter_panel.loading": "A carregar...",
     "ui.notification.close_char": "\u00d7",
     "ui.branding.default_text": "Desenvolvido por \u00a9 GeoLeaf with MapLibre",

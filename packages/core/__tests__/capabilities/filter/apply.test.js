@@ -25,6 +25,10 @@ import {
     applyFilterFromPanel,
     resolveOptionsWithData,
 } from "../../../src/capabilities/filter/apply.js";
+import { renderFilterPanel } from "../../../src/capabilities/filter/panel/render.js";
+
+/** The fr label (`getLabel` falls back to fr when i18n has not been initialised). */
+const NO_MATCH = "Aucune entité ne correspond aux filtres";
 
 describe("capabilities/filter/apply — applyActiveFilterToSources", () => {
     beforeEach(() => {
@@ -69,11 +73,17 @@ describe("capabilities/filter/apply — applyActiveFilterToSources", () => {
         expect(predicate({ type: "Feature", properties: { actif: false } }, "lyr")).toBe(false);
     });
 
-    it("ne fait rien si le noyau GeoJSON n'expose pas la couture", async () => {
+    it("rend les comptes du noyau — ce qu'il a jugé et ce qu'il a gardé", () => {
+        filterFeatures.mockReturnValueOnce({ filtered: 5, total: 5, visible: 0 });
+        expect(applyActiveFilterToSources([])).toEqual({ filtered: 5, total: 5, visible: 0 });
+    });
+
+    it("ne fait rien si le noyau GeoJSON n'expose pas la couture, et ne rend aucun compte", async () => {
         vi.resetModules();
         vi.doMock("../../../src/kernel/geojson/core.js", () => ({ GeoJSONCore: {} }));
         const mod = await import("../../../src/capabilities/filter/apply.ts");
         expect(() => mod.applyActiveFilterToSources([])).not.toThrow();
+        expect(mod.applyActiveFilterToSources([])).toBeNull();
         vi.doUnmock("../../../src/kernel/geojson/core.js");
         vi.resetModules();
     });
@@ -115,6 +125,65 @@ describe("capabilities/filter/apply — applyFilterFromPanel", () => {
             true
         );
         expect(predicate({ type: "Feature", properties: { categorie: "autre" } }, "l")).toBe(false);
+    });
+});
+
+describe("capabilities/filter/apply — le panneau dit quand le filtre ne garde rien", () => {
+    // A filter that keeps nothing hides every feature: without a word, an empty map cannot be
+    // told from a failure. The kernel counts what it judged and kept; the panel says it.
+    let panel;
+    const status = () => panel.querySelector(".gl-filter-panel__status");
+
+    beforeEach(() => {
+        filterFeatures.mockReset();
+        dispatchGeoLeafEvent.mockClear();
+        readActiveFilter.mockReset().mockReturnValue([]);
+        panel = renderFilterPanel({ fields: [] });
+    });
+
+    it("pose le message quand des entités ont été jugées et qu'aucune n'est gardée", () => {
+        filterFeatures.mockReturnValueOnce({ filtered: 5, total: 5, visible: 0 });
+        applyFilterFromPanel(panel, { fields: [] });
+        expect(status().textContent).toBe(NO_MATCH);
+        // A live region: the text change is what a screen reader announces.
+        expect(status().getAttribute("role")).toBe("status");
+    });
+
+    it("se tait quand au moins une entité est gardée", () => {
+        filterFeatures.mockReturnValueOnce({ filtered: 2, total: 5, visible: 3 });
+        applyFilterFromPanel(panel, { fields: [] });
+        expect(status().textContent).toBe("");
+    });
+
+    it("se tait quand rien n'a été jugé — rien de chargé, ou des tuiles seulement", () => {
+        // Zero judged is not the filter's doing: a vector-tile layer keeps no feature in memory
+        // and stays whole under the filter, and an app with nothing loaded has nothing to hide.
+        filterFeatures.mockReturnValueOnce({ filtered: 0, total: 0, visible: 0 });
+        applyFilterFromPanel(panel, { fields: [] });
+        expect(status().textContent).toBe("");
+    });
+
+    it("efface le message à l'application suivante qui garde des entités", () => {
+        filterFeatures.mockReturnValueOnce({ filtered: 5, total: 5, visible: 0 });
+        applyFilterFromPanel(panel, { fields: [] });
+        expect(status().textContent).toBe(NO_MATCH);
+
+        filterFeatures.mockReturnValueOnce({ filtered: 0, total: 5, visible: 5 });
+        applyFilterFromPanel(panel, { fields: [] });
+        expect(status().textContent).toBe("");
+    });
+
+    it("n'écrit rien sans comptes, et n'empêche ni l'application ni le signal", () => {
+        filterFeatures.mockReturnValueOnce(undefined);
+        expect(() => applyFilterFromPanel(panel, { fields: [] })).not.toThrow();
+        expect(status().textContent).toBe("");
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
+    });
+
+    it("n'échoue pas sans panneau monté", () => {
+        filterFeatures.mockReturnValueOnce({ filtered: 5, total: 5, visible: 0 });
+        expect(() => applyFilterFromPanel(null, { fields: [] })).not.toThrow();
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
     });
 });
 

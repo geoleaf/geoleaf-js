@@ -11,6 +11,21 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.11.1] - 2026-09-26
+
+### Fixed
+
+- **The filter panel says when the filter keeps no feature.** A filter that matched nothing hid
+  every feature without a word, and an empty map could not be told from a failure. The panel now
+  reads « Aucune entité ne correspond aux filtres » (key `ui.filter_panel.no_match`, in the six
+  dictionaries, overridable through the profile's `labels`) between its controls and its
+  buttons, and clears it as soon as an application keeps a feature. The count covers every
+  feature the filter judged: every loaded layer, a hidden one included, and no vector-tile layer.
+  When nothing was judged (no layer loaded, or vector-tile layers only), the panel stays silent,
+  since the filter is not what empties the map. A permalink restore (`GeoLeaf.Filter.applyFilter`)
+  shows the same message. The line is a live region (`role="status"`), so a screen reader
+  announces it. `geoleaf:filters:applied` keeps its empty payload.
+
 ## [3.11.0] - 2026-09-26
 
 ### Added

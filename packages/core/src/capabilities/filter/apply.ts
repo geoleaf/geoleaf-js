@@ -23,16 +23,19 @@ import { GeoJSONCore } from "../../kernel/geojson/index.js";
 import { readActiveFilter } from "./panel/state.js";
 import { expandActiveFilter, resolveFieldOptions } from "./taxonomy-options.js";
 import { featurePasses, distinctFieldValues } from "./engine/index.js";
+import { writePanelMatchStatus } from "./panel/write.js";
 import type { ActiveField, FeatureLike } from "./engine/types.js";
 import type { OptionsByField } from "./panel/render.js";
+import type { FilterMatchStats } from "./panel/write.js";
 import type { FilterConfig, FilterFieldDescriptor } from "./types.js";
 
 /** GeoJSON kernel seam — id-based GPU `setLayerFilter` + `setData` fallback (RM-P1(b)). */
 interface GeoJSONFilterLike {
+    /** What the predicate judged and kept; `undefined` from a seam that does not count. */
     filterFeatures(
         predicate: (feature: FeatureLike, layerId: string) => boolean,
         options?: { geometryType?: string }
-    ): void;
+    ): FilterMatchStats | undefined;
     /** Live features of the loaded GeoJSON layers (optionally scoped) — for `"auto"` options. */
     getFeatures?(options?: { layerIds?: string[] }): FeatureLike[];
 }
@@ -76,12 +79,14 @@ export function resolveOptionsWithData(config: FilterConfig): OptionsByField {
 
 /**
  * Reads the panel DOM, expands taxonomy selections, applies the filter to every
- * source and notifies listeners (`geoleaf:filters:applied`). Single entry point for
- * Apply / control changes / permalink restore.
+ * source, says in the panel when no feature was kept (`writePanelMatchStatus`) and
+ * notifies listeners (`geoleaf:filters:applied`, empty payload). Single entry point for
+ * Apply / control changes / reset; the permalink restore goes through
+ * `GeoLeaf.Filter.applyFilter`, which does the same from a serialised state.
  */
 export function applyFilterFromPanel(panelEl: HTMLElement | null, config: FilterConfig): void {
     const active = expandActiveFilter(readActiveFilter(panelEl, config));
-    applyActiveFilterToSources(active);
+    writePanelMatchStatus(panelEl, applyActiveFilterToSources(active));
     dispatchGeoLeafEvent("geoleaf:filters:applied", {});
 }
 
@@ -89,16 +94,18 @@ export function applyFilterFromPanel(panelEl: HTMLElement | null, config: Filter
  * Applies an already-expanded active filter to every loaded GeoJSON layer, in ONE pass.
  * Geometry-agnostic; the per-layer `layers` scope is honoured via `featurePasses`.
  *
+ * Returns what the kernel counted — features judged (`total`) and kept (`visible`) over every
+ * layer holding features in memory — or `null` when the kernel seam is absent or returns no counts.
+ *
  * One pass, not one per geometry: the three passes this replaced (`polygon`, `line`, `point`)
  * reached only the layers whose kind folded into one of them, so a layer created empty and filled
  * later (`unknown`) was never filtered — while the predicate never looked at the geometry.
  * A vector-tile layer keeps no feature in memory and is not filtered by the panel.
  */
-export function applyActiveFilterToSources(active: ActiveField[]): void {
+export function applyActiveFilterToSources(active: ActiveField[]): FilterMatchStats | null {
     const gj = GeoJSONCore as unknown as GeoJSONFilterLike;
-    if (gj && typeof gj.filterFeatures === "function") {
-        const predicate = (feature: FeatureLike, layerId: string): boolean =>
-            featurePasses(active, feature, layerId);
-        gj.filterFeatures(predicate);
-    }
+    if (!gj || typeof gj.filterFeatures !== "function") return null;
+    const predicate = (feature: FeatureLike, layerId: string): boolean =>
+        featurePasses(active, feature, layerId);
+    return gj.filterFeatures(predicate) ?? null;
 }

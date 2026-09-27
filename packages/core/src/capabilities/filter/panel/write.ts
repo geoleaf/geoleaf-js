@@ -21,8 +21,12 @@
  * sub-category checked, an earlier version, a permalink — cannot tell apart two
  * checkboxes carrying the same id (a sub-category listed under two categories, or a
  * sub-category and a category sharing an id) and checks all of them, as it always did.
+ *
+ * It also writes the panel's status line, which says when an application kept no feature
+ * (`writePanelMatchStatus`).
  */
 
+import { getLabel } from "../../../utils/i18n/i18n.js";
 import { normalizeSubValues } from "../serialize.js";
 import type {
     FilterConfig,
@@ -159,6 +163,40 @@ function _writeRange(group: HTMLElement, sf: SerializedFilterField | undefined):
 function _writeBoolean(group: HTMLElement, sf: SerializedFilterField | undefined): void {
     const input = group.querySelector<HTMLInputElement>("input[type='checkbox']");
     if (input) input.checked = sf?.bool === true;
+}
+
+/** What one application of the filter kept, counted over the layers it judged. */
+export interface FilterMatchStats {
+    /** Features the predicate judged — every loaded layer holding features in memory. */
+    total: number;
+    /** Features the predicate kept. */
+    visible: number;
+}
+
+/**
+ * Says in the panel when the last application of the filter kept no feature at all.
+ *
+ * Writes the `ui.filter_panel.no_match` label into the panel's status line when features were
+ * judged and none was kept, and empties it otherwise — including when nothing was judged
+ * (`total === 0`: no layer loaded, or only vector-tile layers, which the filter does not reach),
+ * since the filter is then not what leaves the map empty. Missing stats (the kernel seam is
+ * absent) empty it too.
+ *
+ * Only the text changes: the status line is a live region rendered once with the panel, and a
+ * region inserted or unhidden at the moment its text arrives is not reliably announced.
+ *
+ * @param panel - The mounted filter panel, or `null` (nothing is written).
+ * @param stats - The counts of the application that just ran, or `null` / `undefined` when
+ *   none are known.
+ */
+export function writePanelMatchStatus(
+    panel: HTMLElement | null,
+    stats: FilterMatchStats | null | undefined
+): void {
+    const status = panel?.querySelector<HTMLElement>(".gl-filter-panel__status");
+    if (!status) return;
+    const noMatch = stats != null && stats.total > 0 && stats.visible === 0;
+    status.textContent = noMatch ? getLabel("ui.filter_panel.no_match") : "";
 }
 
 /** Clears every control of the panel back to its unconstrained state (reset). */

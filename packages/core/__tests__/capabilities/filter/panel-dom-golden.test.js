@@ -188,6 +188,10 @@ const GOLDEN = [
     // own wording; it is the fr value because `getLabel` falls back to fr when i18n has not
     // been initialised, which is the case in this suite.
     '        p.gl-filter-panel__tree-empty text="Aucune catégorie disponible sur les layers visibles"',
+    // The status line that says when an application kept no feature. Rendered EMPTY and always
+    // present: a live region only announces a text change, not its own insertion. Its text is
+    // written by `writePanelMatchStatus`, never at render time.
+    '  p.gl-filter-panel__status role="status" aria-live="polite"',
     "  div.gl-filter-panel__footer",
     '    button.gl-filter-panel__action.gl-filter-panel__action--apply type="button" data:glAction="filter-apply" text="Appliquer"',
     '    button.gl-filter-panel__action.gl-filter-panel__action--reset type="button" data:glAction="filter-reset" text="Réinitialiser"',
