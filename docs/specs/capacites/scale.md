@@ -4,7 +4,7 @@ title: scale — la barre d'échelle graphique, l'échelle numérique éditable 
 capability_id: scale
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5302afc4d
+verifie_contre: 1a7608c60
 date: 26 septembre 2026
 ---
 

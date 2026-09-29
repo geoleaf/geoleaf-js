@@ -150,9 +150,15 @@ function gatedModule(
 
         // `init` and `destroy` go together or the registry throws
         // (`app/module-registry.ts` validates the disjunction at register time).
+        // Destroyed, the module is no longer running: `isEnabled()` answers `false` until the
+        // next `init()` decides again — else `getActiveModules()` would go on listing it.
         destroy(): void {
             if (!enabled) return;
-            inner.destroy?.();
+            try {
+                inner.destroy?.();
+            } finally {
+                enabled = false;
+            }
         },
     };
 

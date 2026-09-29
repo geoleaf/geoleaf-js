@@ -138,6 +138,28 @@ const KERNEL_APP_BOUNDARY = {
         "kernel layer must not import app/ — the dependency runs app/ → (api|globals|kernel|utils), never the reverse (KERNEL S13 study, S14 move; the four roots replaced modules/ at R.9). Put the shared symbol in kernel/ instead.",
 };
 
+// ENGINE — only adapters/maplibre/** may value-import the engine (socle S4, block 6ter bis).
+// A constant because a second block sets the same rule on kernel files (6ter bis-kernel): flat
+// config OVERRIDES a rule key per file, so that block must carry this pattern too.
+const ENGINE_VALUE_BOUNDARY = {
+    group: ["maplibre-gl", "maplibre-gl/*"],
+    allowTypeImports: true,
+    message:
+        "Only adapters/maplibre/** may value-import the engine. Elsewhere use IMapAdapter or the injected `maplibregl` global; type-only imports (`import type`) are allowed.",
+};
+
+// KERNEL → CAPABILITY — the kernel never value-imports a capability (core 3.13.0). A capability
+// is optional by nature: pinned by a kernel import, it sits in the eager closure of every
+// bundle, whatever the entry's manifest says. The dependency is INVERTED instead: the kernel
+// owns a slot, the capability fills it — `kernel/shared/legend-slot.ts`, and before it
+// `app/boot-modules/shared.module.ts`. Type imports stay open: they emit nothing.
+const KERNEL_CAPABILITY_BOUNDARY = {
+    group: ["**/capabilities/*", "**/capabilities/**"],
+    allowTypeImports: true,
+    message:
+        "kernel/ must not value-import a capability — a capability is optional, and a kernel import pins it into every bundle. Invert it: the kernel owns a slot the capability fills (kernel/shared/legend-slot.ts). Type-only imports are allowed.",
+};
+
 /** @type {import("eslint").Linter.Config[]} */
 export default [
     // ── 1. Global ignores ──────────────────────────────────────────────────────
@@ -780,15 +802,23 @@ export default [
             "@typescript-eslint/no-restricted-imports": [
                 "error",
                 {
-                    patterns: [
-                        {
-                            group: ["maplibre-gl", "maplibre-gl/*"],
-                            allowTypeImports: true,
-                            message:
-                                "Only adapters/maplibre/** may value-import the engine. Elsewhere use IMapAdapter or the injected `maplibregl` global; type-only imports (`import type`) are allowed.",
-                        },
-                    ],
+                    patterns: [ENGINE_VALUE_BOUNDARY],
                 },
+            ],
+        },
+    },
+
+    // ── 6ter bis-kernel. Kernel → capability boundary (core 3.13.0) ───────────
+    // See KERNEL_CAPABILITY_BOUNDARY above. Same rule key as 6ter bis, on a subset of its files:
+    // flat config overrides per rule key, so the engine pattern is re-included — dropping it
+    // would lift the engine boundary from the whole kernel in silence. Seen red on the tree it
+    // was written against: `style-selector.ts` and `ui-sync.ts` imported the legend capability.
+    {
+        files: ["packages/core/src/kernel/**/*.ts"],
+        rules: {
+            "@typescript-eslint/no-restricted-imports": [
+                "error",
+                { patterns: [ENGINE_VALUE_BOUNDARY, KERNEL_CAPABILITY_BOUNDARY] },
             ],
         },
     },

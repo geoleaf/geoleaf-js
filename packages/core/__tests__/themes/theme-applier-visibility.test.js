@@ -60,6 +60,10 @@ vi.mock("../../src/api/geoleaf.layer-manager.js", () => ({
 vi.mock("../../src/kernel/layer-manager/style-selector.js", () => ({
     StyleSelector: { setCurrentStyle: vi.fn() },
 }));
+const mockReconcileStyleFields = vi.hoisted(() => vi.fn());
+vi.mock("../../src/kernel/geojson/field-reconciliation.js", () => ({
+    reconcileStyleFields: mockReconcileStyleFields,
+}));
 import { ThemeApplierVisibility as TA } from "../../src/kernel/themes/theme-applier/visibility.js";
 import { StyleLoader } from "../../src/utils/loaders/style-loader.js";
 import { LayerManagerStyle } from "../../src/kernel/geojson/layers/style.js";
@@ -151,6 +155,17 @@ describe("theme-applier/visibility (Phase 5.34)", () => {
                 .mockResolvedValue({ styleData: { id: "s" } });
             await TA._setLayerVisibilityAndStyle("layer-style", true, "default");
             expect(LayerManagerStyle.setLayerStyle).toHaveBeenCalled();
+        });
+
+        it("confronts the theme's style with the layer's data — its rules may test new fields", async () => {
+            mockLayersMap.set("layer-style", {
+                config: { styles: { available: [{ id: "default", file: "style.json" }] } },
+                _layerDirectory: "dir",
+            });
+            const styleData = { id: "s", styleRules: [{ when: { field: "statut" } }] };
+            StyleLoader.loadAndValidateStyle = vi.fn().mockResolvedValue({ styleData });
+            await TA._setLayerVisibilityAndStyle("layer-style", true, "default");
+            expect(mockReconcileStyleFields).toHaveBeenCalledWith("layer-style", styleData);
         });
     });
 });

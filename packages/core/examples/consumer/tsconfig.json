@@ -91,6 +91,18 @@
     // important les types depuis le paquet publié — c'est le critère de sortie du sprint.
     // Type-only à l'exécution : rien ne l'importe, donc `rollup.consumer.mjs` (input =
     // entry.ts seul) ne le bundle pas et la mesure `size:consumer` reste intacte.
-    "include": ["entry.ts", "published-types.ts", "extension-contract.ts"],
+    // `profile-types.ts` types a profile through `@geoleaf/core/schemas` and resolves the
+    // shipped JSON Schema through `@geoleaf/core/schemas/<name>.schema.json` — the release-time
+    // witness of the profile contract. Type-only as well: `size:consumer` stays intact.
+    // `storage-write-cycle.ts` calls every write-cycle member of the ambient `GeoLeaf.Storage`
+    // the way an integrator does: it stops compiling if one falls back into the `unknown`
+    // tail. Compiled, never bundled.
+    "include": [
+        "entry.ts",
+        "published-types.ts",
+        "extension-contract.ts",
+        "profile-types.ts",
+        "storage-write-cycle.ts"
+    ],
     "exclude": []
 }

@@ -32,6 +32,9 @@ import { LabelsModule } from "./module.js";
 import { LabelButtonManager } from "./label-button-manager.js";
 import { LabelRenderer } from "./label-renderer.js";
 import { Labels } from "../../api/geoleaf.labels.js";
+import { provideDeclaredFields } from "../../kernel/shared/index.js";
+import { getLabelsConfig } from "./config.js";
+import { labelDeclaredFields } from "./declared-fields.js";
 
 /** Self-sufficient installer for the Labels capability (per-layer text labels). */
 export const LABELS_INSTALLER: CapabilityInstaller = {
@@ -42,6 +45,11 @@ export const LABELS_INSTALLER: CapabilityInstaller = {
         gl._LabelButtonManager = LabelButtonManager;
         gl._LabelRenderer = LabelRenderer;
         gl.Labels = Labels;
+        // The kernel's load-time field diagnostic asks each reader which fields it reads. The
+        // gate is read at EACH call: this pass runs before the profile is merged.
+        provideDeclaredFields(LABELS_CAPABILITY.id, (ctx) =>
+            getLabelsConfig().enabled === false ? [] : labelDeclaredFields(ctx)
+        );
     },
 
     createModule() {

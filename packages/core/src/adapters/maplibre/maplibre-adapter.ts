@@ -87,6 +87,9 @@ interface PluginsRegistryLike {
     isLoaded?: (name: string) => boolean;
 }
 
+/** The `name` of the error `init()` throws when no engine is in reach — matched by the boot. */
+const ENGINE_MISSING_ERROR = "GeoLeafEngineMissingError";
+
 /** MapLibre GL JS adapter — implements `IMapAdapter`. One instance per map. */
 export class MaplibreAdapter implements IMapAdapter {
     private _map: MaplibreMap | null = null;
@@ -136,6 +139,19 @@ export class MaplibreAdapter implements IMapAdapter {
 
     init(options: MapInitOptions): void {
         if (this._ready) throw new Error("MaplibreAdapter: init() has already been called.");
+        // Named BEFORE anything reads the engine: without it, `new maplibregl.Map` threw a bare
+        // ReferenceError that the boot could only report as `reason: "map"` — the answer it also
+        // gives for a missing container.
+        if (!MaplibreAdapter.hasEngine()) {
+            const err = new Error(
+                "MaplibreAdapter: MapLibre GL JS was not found. MapLibre 6 no longer sets " +
+                    "`globalThis.maplibregl`: pass the engine to `GeoLeaf.boot({ maplibregl })` " +
+                    "or `GeoLeaf.mount(el, { maplibregl })`, or assign it to `globalThis.maplibregl`."
+            );
+            err.name = ENGINE_MISSING_ERROR;
+            this._initError = err;
+            throw err;
+        }
         // pmtiles:// — registered BEFORE the map exists: MapLibre resolves protocols at
         // source load, and a basemap declared in the initial style would race a later
         // registration. The library itself loads lazily, on the first pmtiles:// request.
@@ -215,6 +231,27 @@ export class MaplibreAdapter implements IMapAdapter {
             typeof maplibregl === "undefined" ? undefined : maplibregl.GPUInitializationError;
         if (typeof ctor === "function" && error instanceof ctor) return true;
         return error instanceof Error && error.name === "GPUInitializationError";
+    }
+
+    /**
+     * Whether a MapLibre GL JS engine is in reach — the ambient `maplibregl` global the adapter
+     * builds with, carrying a `Map` constructor.
+     *
+     * @returns `false` when no engine was installed, `true` otherwise.
+     */
+    static hasEngine(): boolean {
+        return typeof maplibregl !== "undefined" && typeof maplibregl?.Map === "function";
+    }
+
+    /**
+     * Whether `error` is the one {@link MaplibreAdapter.init} throws when no engine is in reach
+     * (see {@link MaplibreAdapter.hasEngine}).
+     *
+     * @param error - Whatever the map construction threw.
+     * @returns `true` for a missing engine.
+     */
+    static isEngineMissingError(error: unknown): boolean {
+        return error instanceof Error && error.name === ENGINE_MISSING_ERROR;
     }
 
     /** Destroys the map instance and releases all resources. After destroy(), no other method may be called. */

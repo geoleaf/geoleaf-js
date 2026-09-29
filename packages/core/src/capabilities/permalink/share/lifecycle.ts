@@ -75,12 +75,21 @@ export const ShareLifecycle = {
      * no modal is open, so ordering against `openShareModal` never matters.
      */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:toolbar:action", _onToolbarAction);
-            document.removeEventListener("geoleaf:desktop-panel:tabs-ready", _onDesktopTabsReady);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:toolbar:action", _onToolbarAction);
+                document.removeEventListener(
+                    "geoleaf:desktop-panel:tabs-ready",
+                    _onDesktopTabsReady
+                );
+            }
+            closeShareModal();
+            removeShareButtonsFromDocument();
+        } finally {
+            _started = false;
         }
-        closeShareModal();
-        removeShareButtonsFromDocument();
-        _started = false;
     },
 };

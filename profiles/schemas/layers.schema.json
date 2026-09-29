@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/layers",
     "title": "GeoLeaf Layers Index",
-    "description": "layers.json — index of all layers loaded for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). layerTemplates[].template/.instances stay permissive (partial layer-config, merged at runtime — see PROFILE_CONTRACT_SPEC §7).",
+    "description": "layers.json — index of all layers loaded for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). layerTemplates[].template/.instances stay permissive (partial layer-config, merged at runtime — see PROFILE_CONTRACT_SPEC §7).",
     "type": "object",
     "additionalProperties": false,
     "patternProperties": { "^_comment": {} },

@@ -272,8 +272,11 @@ function main() {
     // would have had users hand-editing lists that no longer exist.
     log.info(`  1. npm install  (links the new workspace — this alone enrolls it in every gate)`);
     log.info(`  2. Implement src/public-api.ts and src/entry.ts`);
-    log.info(`  3. node scripts/verify-plugin-contract.cjs --plugin=${name} --fail`);
-    log.info(`  4. Set a size budget for "${name}" in BUDGETS (scripts/check-bundle-size.cjs) —`);
+    log.info(`  3. Name \`modules.${name}\` under \`modules.properties\` of`);
+    log.info(`     profiles/schemas/profile.schema.json, open (additionalProperties: true) —`);
+    log.info(`     the schema ships with the core, and PC-15 refuses a block it does not name.`);
+    log.info(`  4. node scripts/verify-plugin-contract.cjs --plugin=${name} --fail`);
+    log.info(`  5. Set a size budget for "${name}" in BUDGETS (scripts/check-bundle-size.cjs) —`);
     log.info(`     the plugin list is derived, but its threshold is measured data.`);
 }
 

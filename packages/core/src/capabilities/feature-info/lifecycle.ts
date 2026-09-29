@@ -42,13 +42,19 @@ export const FeatureInfoLifecycle = {
 
     /** Test seam: detaches listeners and tears down DOM elements. */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:feature:click", onFeatureClick);
-            document.removeEventListener("geoleaf:feature:hover", onFeatureHover);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:feature:click", onFeatureClick);
+                document.removeEventListener("geoleaf:feature:hover", onFeatureHover);
+            }
+            destroyPopup();
+            destroyTooltip();
+            destroySidePanel();
+        } finally {
+            _started = false;
         }
-        destroyPopup();
-        destroyTooltip();
-        destroySidePanel();
-        _started = false;
     },
 };

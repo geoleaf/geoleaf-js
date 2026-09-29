@@ -13,7 +13,8 @@
 import { GeoJSONCore } from "../geojson/core.js";
 import { StyleLoader } from "../../utils/loaders/style-loader.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
-import { LegendContract } from "../../capabilities/legend/legend-seam.js";
+import { availableLegend } from "../shared/legend-slot.js";
+import { reconcileStyleFields } from "../geojson/field-reconciliation.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
 import { Log } from "../../utils/log/index.js";
 
@@ -73,9 +74,9 @@ function _applyStyleResult(
     const GeoLeaf = getGeoLeaf();
     (GeoLeaf?.Labels as LabelsLike | undefined)?.initializeLayerLabels?.(layerId);
     (GeoLeaf?._LabelButtonManager as LabelButtonManagerLike | undefined)?.syncImmediate?.(layerId);
-    if (LegendContract.isAvailable()) {
-        LegendContract.loadLayerLegend(layerData.config.id, styleId, layerData.config);
-    }
+    availableLegend()?.loadLayerLegend(layerData.config.id, styleId, layerData.config);
+    // The switched style may test fields the load-time diagnostic never saw.
+    reconcileStyleFields(layerId, res.styleData);
 }
 
 /**

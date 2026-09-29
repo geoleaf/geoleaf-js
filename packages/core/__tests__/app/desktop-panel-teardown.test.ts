@@ -144,6 +144,26 @@ describe("Core.destroy() démonte le panneau desktop (tâches 2.9 / 2.8)", () =>
         expect(document.querySelectorAll("#gl-right-panel")).toHaveLength(1);
     });
 
+    it("🛑 les boutons de thème ne laissent aucun écouteur sur globalThis", () => {
+        // Measured by the `71-mount-remount` E2E: one more `geoleaf:ui-theme-changed` listener
+        // on `window` per mount — posted by every theme button, never removed, and keeping the
+        // detached button alive. Red before the fix.
+        const add = vi.spyOn(globalThis, "addEventListener");
+        const remove = vi.spyOn(globalThis, "removeEventListener");
+        bootPanel("map-teardown-5");
+        const posted = add.mock.calls.filter(([type]) => type === "geoleaf:ui-theme-changed");
+        expect(posted.length).toBeGreaterThan(0);
+
+        Core.destroy("map-teardown-5");
+
+        const released = remove.mock.calls.filter(([type]) => type === "geoleaf:ui-theme-changed");
+        expect(released.map(([, handler]) => handler)).toEqual(
+            posted.map(([, handler]) => handler)
+        );
+        add.mockRestore();
+        remove.mockRestore();
+    });
+
     it("le teardown est idempotent — un second Core.destroy ne jette pas", () => {
         bootPanel("map-teardown-4");
         Core.destroy("map-teardown-4");

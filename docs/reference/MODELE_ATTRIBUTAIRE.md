@@ -71,7 +71,7 @@ chemin de rendu, et le retrait du mode `"all"` ne les touche donc pas.
 | tourism | aires_protegees_nationales_sib | `attributes.link_wikipedia` | Wikipedia | `string` | `link` | `· · S` | rendered | — | — |
 | tourism | aires_protegees_nationales_sib | `attributes.tags` | Tags | `string[]` | `tags` | `· · S` | rendered | — | — |
 | tourism | aires_protegees_nationales_sib | `properties.Name ★` | Itinéraire | `string` | `action` | `· P S` | rendered | — | — |
-| tourism | cultures | `properties.NAME` | NAME | `string` | `text` | `T · ·` | rendered | — | — |
+| tourism | cultures | `properties.name ★` | Nom | `string` | `text` | `T · ·` | rendered | — | — |
 | tourism | cultures | `properties.name ★` | Nom | `string` | `text` | `· P S` | rendered | title | — |
 | tourism | cultures | `properties.fclass` | Type | `string` | `text` | `· P ·` | rendered | — | — |
 | tourism | cultures | `properties.categoryId` | Catégorie | `string` | `badge` | `· P S` | rendered | category | — |

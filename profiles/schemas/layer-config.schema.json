@@ -2,7 +2,8 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/layer-config",
     "title": "GeoLeaf Layer Config",
-    "description": "Per-layer configuration file (layers/*/[name]_config.json). Defines data source, styles, popup, table, clustering. Hardened in Sprint S1 (PRF-SCHEMA). Polymorphic / plugin-extended blocks (data, popup.fields, sidepanelConfig.detailLayout, realtimeLayer, write) stay permissive — see PROFILE_CONTRACT_SPEC §7. ⚠️ `formSchema` was in that list until task 7.2 and is GONE, key and all: it was a second field list, parallel to `attributes.fields[]` and reconciled with it by nothing. Capture is now a projection of the single list (`attributes.fields[].edit`), which is strict rather than permissive. Aliases geometryType↔geometry and tooltipMode↔tooltip.mode are tolerated and flagged in the anomaly registry.",
+    "description": "Per-layer configuration file (layers/*/[name]_config.json). Defines data source, styles, popup, table, clustering. Strict schema (PRF-SCHEMA, Profile Contract v1). Polymorphic / plugin-extended blocks (data, popup.fields, sidepanelConfig.detailLayout, realtimeLayer, write) stay permissive — see PROFILE_CONTRACT_SPEC §7. ⚠️ There is no `formSchema` key: capture is a projection of the single field list (`attributes.fields[].edit`), which is strict rather than permissive. Aliases geometryType↔geometry and tooltipMode↔tooltip.mode are tolerated.",
+    "$comment": "Every `required` inside a conditional or combinator branch (`if`, `then`, `anyOf`, `contains`…) names its keys in that branch's `properties`, as `true`. The marker constrains nothing; without it, ajv's `strictRequired` refuses to compile the schema. The repository's validator compiles every schema under `strict: true`.",
     "type": "object",
     "required": ["id"],
     "additionalProperties": false,
@@ -55,7 +56,7 @@
                 "multipoint",
                 "fill-extrusion"
             ],
-            "description": "Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate (ANO-007). Enum mirrors `geometry` (gate-safe: profile values ⊆ enum)."
+            "description": "Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate. Enum mirrors `geometry` (gate-safe: profile values ⊆ enum)."
         },
         "interactiveShape": {
             "type": "boolean",
@@ -93,7 +94,7 @@
         "edition": {
             "type": "object",
             "additionalProperties": false,
-            "description": "What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so \"full edition\" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused.",
+            "description": "What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so \"full edition\" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. The permission is enforced on EVERY write path, online included: the editor's persistence factory wraps every adapter it returns with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route — `online`, `offline` and `auto` modes alike, whatever the write dialect. ⚠️ The editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused.",
             "properties": {
                 "create": {
                     "type": "boolean",
@@ -128,11 +129,11 @@
         },
         "type": {
             "type": "string",
-            "description": "Optional layer type tag (semantics under inventory — see anomaly registry)."
+            "description": "Optional layer type tag."
         },
         "data": {
             "type": "object",
-            "description": "Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive; full inventory in B5/B7.",
+            "description": "Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive.",
             "additionalProperties": true,
             "properties": {
                 "directory": {
@@ -145,11 +146,11 @@
                 },
                 "dataUrl": {
                     "type": "string",
-                    "description": "Remote GeoJSON URL fetched by the core loader (WFS, opendata APIs). Read by geojson/loader/profile.ts:81 and theme-applier/deferred.ts:270."
+                    "description": "Remote GeoJSON URL fetched by the core loader (WFS, opendata APIs). Read by the GeoJSON loader's `_resolveLayerUrl` and by the theme applier's `_resolveDataFilePath`."
                 },
                 "url": {
                     "type": "string",
-                    "description": "Source URL of a PLUGIN-BACKED layer (e.g. flatgeobuf), resolved by the plugin rather than the core loader. ⚠️ NOT an alias of `dataUrl`, despite having been described as one until 02/08/2026: theme-applier/deferred.ts:265 reads it ONLY when `plugin` is set, and falls through to `dataUrl` otherwise. The two keys select two different loaders — merging them would break the plugin path. Convergence tracked in the backlog, not done in passing."
+                    "description": "Source URL of a PLUGIN-BACKED layer (e.g. flatgeobuf), resolved by the plugin rather than the core loader. ⚠️ NOT an alias of `dataUrl`: the theme applier's `_resolveDataFilePath` reads it ONLY when `plugin` is set, and falls through to `dataUrl` otherwise. The two keys select two different loaders — merging them would break the plugin path."
                 },
                 "licence": {
                     "type": "string",
@@ -414,20 +415,20 @@
         },
         "realtimeLayer": {
             "type": "object",
-            "description": "Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7.",
+            "description": "Read by nothing: @geoleaf-plugins/realtime-layer takes its per-layer configuration from `data.realtime`. Kept only so that a layer which already sets this key is not refused.",
             "additionalProperties": true
         },
         "write": {
             "type": "object",
-            "description": "Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read.",
+            "description": "Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read.",
             "additionalProperties": false,
             "patternProperties": {
                 "^_comment": {}
             },
             "required": ["enabled"],
-            "$comment": "`endpoint` est requis SEULEMENT quand `enabled` est vrai, et la conditionnelle n'est pas un assouplissement de confort. Le build des variantes livrées RETIRE les liaisons vers le backend de développement : il supprime `endpoint` et repasse `enabled` à faux. Avec un `required` inconditionnel, ce retrait — qui est voulu, documenté et gaté — produisait une configuration que le schéma du dépôt interdit, à chaque build. La conditionnelle garde ce qui compte : une cible d'écriture ACTIVE sans URL reste une erreur.",
+            "$comment": "`endpoint` is required ONLY when `enabled` is true, and the condition is not a convenience. When the deploy build unbinds a layer from the development backend, it deletes `endpoint` and sets `enabled` back to false. An unconditional `required` would make that intended output invalid against this very schema. The condition keeps what matters: an ACTIVE write target without a URL is still an error.",
             "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
-            "then": { "required": ["endpoint"] },
+            "then": { "properties": { "endpoint": true }, "required": ["endpoint"] },
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -510,15 +511,15 @@
         },
         "offline": {
             "type": "object",
-            "description": "Per-layer offline READ declaration (task 4.3). `enabled: true` makes the layer loader read its entities from the IndexedDB `features` store instead of refetching. ⚠️ Declares a READ, never write access: contract invariant S6 — pull never grants editability, which is decided by the layer's online edition flags alone. A layer whose store is empty falls back to the network, so declaring is safe before the first pull.",
+            "description": "Per-layer offline READ declaration. `enabled: true` makes the layer loader read its entities from the IndexedDB `features` store instead of refetching. ⚠️ Declares a READ, never write access: pull never grants editability, which is decided by the layer's online edition flags alone. A layer whose store is empty falls back to the network, so declaring is safe before the first pull.",
             "additionalProperties": false,
             "patternProperties": {
                 "^_comment": {}
             },
             "required": ["enabled"],
-            "$comment": "`maxFeatures` est requis DÈS QUE `enabled` est vrai, et le motif n'est pas la rigueur : sans la clé, le chargeur retombe sur son plafond par défaut de 10 000 (`kernel/geojson/loader/ogc-api-loader.ts`, DEFAULT_MAX_FEATURES) et une couche de 30 000 entités est SILENCIEUSEMENT servie au tiers. Ce n'est pas un défaut de configuration visible : la carte est complète à l'œil. Exiger la déclaration force l'intégrateur à trancher le plafond au moment où il active le hors-ligne, plutôt qu'à le subir. Ancré sur `enabled` et non sur `source` délibérément — une couche qui lit le magasin local subit la même troncature que celle qui le remplit. ⚠️ Les deux couches hors-ligne livrées déclarent déjà la clé : cette règle sort VERTE sur le dépôt, donc son cas négatif ne vit que dans `packages/core/__tests__/config/offline-maxfeatures-opposability.test.js`.",
+            "$comment": "`maxFeatures` is required AS SOON AS `enabled` is true, and the reason is not rigour: without the key, the OGC API loader falls back to its default cap of 10 000 (`DEFAULT_MAX_FEATURES`, `packages/core/src/kernel/geojson/loader/ogc-api-loader.ts`), and a larger layer is served truncated, SILENTLY — the map looks complete. Requiring the declaration makes the integrator choose the cap when enabling offline, rather than suffer it. Anchored on `enabled` and not on `source`, deliberately: a layer that reads the local store is truncated just like the one that fills it. The repository's own offline layers all declare the key, so its negative cases live in `packages/core/__tests__/config/offline-maxfeatures-opposability.test.ts`.",
             "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
-            "then": { "required": ["maxFeatures"] },
+            "then": { "properties": { "maxFeatures": true }, "required": ["maxFeatures"] },
             "properties": {
                 "enabled": {
                     "type": "boolean",
@@ -527,16 +528,16 @@
                 "maxFeatures": {
                     "type": "integer",
                     "minimum": 1,
-                    "description": "Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures), and REQUIRED as soon as `enabled` is true. Without it the OGC loader falls back to its own default of 10 000 and a larger layer is truncated in silence. ⚠️ This description claimed until R9 that the loader \"stops only after accumulating a whole page and never truncates\" — true until 19/08/2026, when the exact cut moved into the loader, which now cuts at the bound and reports it through the collection's `truncated` member. The pull no longer cuts anything itself; it reads that member."
+                    "description": "Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures), and REQUIRED as soon as `enabled` is true. Without it the OGC loader falls back to its own default of 10 000 and a larger layer is truncated in silence. The loader cuts at the bound and reports it through the collection's `truncated` member; the pull reads that member and cuts nothing itself."
                 },
                 "maxAgeMs": {
                     "type": "integer",
                     "minimum": 1,
-                    "description": "Staleness threshold in milliseconds (task 4.8). A layer whose last successful pull is older than this is reported `pulledStale` by GeoLeaf.Storage.getSyncReport(). ⚠️ Deliberately WITHOUT a default: absent means a pulled layer is reported `pulled` forever. Inventing a default would make the report raise staleness warnings no integrator asked for and none could silence — a status that cannot be computed is not guessed."
+                    "description": "Staleness threshold in milliseconds. A layer whose last successful pull is older than this is reported `pulledStale` by GeoLeaf.Storage.getSyncReport(). ⚠️ Deliberately WITHOUT a default: absent means a pulled layer is reported `pulled` forever. Inventing a default would make the report raise staleness warnings no integrator asked for and none could silence — a status that cannot be computed is not guessed."
                 },
                 "source": {
                     "type": "object",
-                    "description": "Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch of task 4.3, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature.",
+                    "description": "Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature.",
                     "additionalProperties": false,
                     "patternProperties": {
                         "^_comment": {}
@@ -553,12 +554,12 @@
                         },
                         "versionProperty": {
                             "type": "string",
-                            "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen."
+                            "description": "Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which the sync compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen."
                         },
                         "delta": {
                             "type": "object",
                             "description": "Declares that the source serves CHANGES and DELETIONS, so a pull after a complete one asks only for what changed. Absent, every pull is complete (the fallback): it rewrites only the entities whose `versionProperty` changed, and removes from the device the synchronised ones it no longer returns. Present, once a complete pull of the same source and extent has recorded the greatest marker it was served, the next pull sends OGC API Features `datetime=<marker>/..` and removes the tombstones it receives — it removes nothing else, since a delta answers only what changed. What the server must guarantee is written in `packages/core/docs/SERVER_CONTRACT.md`.",
-                            "$comment": "Les deux clés sont requises ensemble, et le motif n'est pas la rigueur : un filtre de fraîcheur sans pierres tombales ne verrait JAMAIS une suppression — la couche garderait pour toujours ce que le serveur a supprimé, sans rien qui le dise. `freshness` est une énumération à une valeur : `datetime` est le seul filtre temporel que la partie 1 d'OGC API Features impose à un serveur, et la clé reste ouverte à un second mécanisme sans renommage. Cas négatifs dans `packages/core/__tests__/config/offline-delta-opposability.test.ts`.",
+                            "$comment": "Both keys are required together, and the reason is not rigour: a freshness filter without tombstones would NEVER see a deletion — the layer would keep forever what the server deleted, with nothing to say so. `freshness` is a one-value enum: `datetime` is the only temporal filter OGC API Features Part 1 requires of a server, and the key leaves room for a second mechanism without a rename. Negative cases in `packages/core/__tests__/config/offline-delta-opposability.test.ts`.",
                             "additionalProperties": false,
                             "patternProperties": {
                                 "^_comment": {}
@@ -584,7 +585,7 @@
     },
     "allOf": [
         {
-            "$comment": "A14 — a field in edition obliges its layer to declare BOTH its editability and its write target. Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. ⚠️ REANCHORED on `edition.update` (was `enableEdition: true`). `update` and NOT `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. ⚠️ **This rule HAS live subjects since task 7.2 (07/08/2026), and this comment claimed the opposite in both its halves.** It read « zero of the 48 layer configs carries `attributes.fields[].edit` » — there are **24** configs, not 48 (7.1b retired 24 that nobody read), and **2** of them now carry `edit`: `tourism/sites_rosario` (11 fields) and `_reference/reference-points` (1). So `validate:profiles` finally exercises this rule on real data. That does NOT retire `core/__tests__/config/attributes-opposability.test.js`: two live subjects prove the POSITIVE case only, and the suite is what holds the four negative ones — `write` missing, `edition` missing, `edition.update: false`, and the green positive. It stays mandatory.",
+            "$comment": "A field in edition obliges its layer to declare BOTH its editability (`edition.update: true`) and its write target (`write`). Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. Anchored on `update` and NOT on `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. The repository's profiles only exercise the positive case; the negative ones live in `packages/core/__tests__/config/attributes-opposability.test.js`.",
             "if": {
                 "type": "object",
                 "required": ["attributes"],
@@ -597,6 +598,7 @@
                                 "type": "array",
                                 "contains": {
                                     "type": "object",
+                                    "properties": { "edit": true },
                                     "required": ["edit"]
                                 }
                             }
@@ -607,6 +609,7 @@
             "then": {
                 "required": ["edition", "write"],
                 "properties": {
+                    "write": true,
                     "edition": {
                         "type": "object",
                         "required": ["update"],
@@ -784,7 +787,7 @@
         "attributeOptions": {
             "type": "object",
             "description": "Per-widget extras. Every key here is read by a field-renderer component, EXCEPT `locale` (date) and `format` (number), which are declared by the contract and land with the rendering slice, and the six `action` keys, which are read by the core popup renderer — field-renderer has no action component. `additionalProperties: false` is what turns a typo into a build error instead of silence.",
-            "$comment": "⚠️ Known asymmetry, measured 02/08/2026: this definition is FLAT, so the schema checks 'is this key known at all', not 'is this key legal for this widget'. The TS contract IS per-widget (AttributeWidgetOptions[W]). Only `action` carries a per-widget constraint below, because its `actionId` is load-bearing. Closing the general case means 23 more branches — versé au backlog, pas fait au passage.",
+            "$comment": "⚠️ Known asymmetry: this definition is FLAT, so the schema checks 'is this key known at all', not 'is this key legal for this widget' — while the TypeScript contract IS per widget (`AttributeWidgetOptions[W]`). A legal key on the wrong widget is therefore accepted; it is inert at render, since a renderer reads the keys it knows and ignores the others. A typo, the dangerous case, is refused. Per-widget rules exist only where an option or a widget choice is load-bearing, in `attributeField.allOf`.",
             "additionalProperties": false,
             "properties": {
                 "actionId": {
@@ -1017,7 +1020,6 @@
                         "presentation": {
                             "type": "object",
                             "description": "Presentation modifiers that belong to the SURFACE, not to the value — which is why they are not per-widget options.",
-                            "$comment": "Added 02/08/2026, at a pre-flight: the frozen descriptor could not express 79 declarations the profiles already carry (accordion 35, defaultOpen 32, style 12, variant hero 4). Being `additionalProperties: false`, the migration would have FAILED validation rather than degrade silently — the good failure mode, but the gap was real.",
                             "additionalProperties": false,
                             "properties": {
                                 "accordion": {
@@ -1043,8 +1045,8 @@
                 },
                 "edit": {
                     "type": "object",
-                    "description": "Capture projection. Declaring it on ANY field triggers the A14 rule at layer level. `widget` and `options` are OVERRIDES: absent, the capture reuses the field-level pair — true for 10 of the 11 fields migrated at task 7.2, which is why they are optional rather than required.",
-                    "$comment": "⚠️ Why a SECOND (widget, options) pair rather than a derivation from the display one, measured 07/08/2026 at the `formSchema` migration: `AttributeWidgetOptions` is indexed BY WIDGET. `BadgeOptions` is `{placeholder?}` and has nowhere to hold a choice list; `DropdownOptions` carries `options`. One `widget` slot therefore admits exactly one typed options bag, so two projections that need two widgets need two pairs — a hard-coded badge→dropdown table could not have supplied `statut`'s three choices at all, and would have fallen through the SILENT `?? ComponentRegistry.get(\"text\")` of field-renderer-bridge.ts. The alternative was to align the display widget on the capture one, which costs the coloured pill `resolveBadgeStyle()` feeds. Arbitrated by Mattieu: `edit` becomes a real projection, symmetric with `display`, which already overrides via `presentation`.",
+                    "description": "Capture projection. Declaring it on ANY field obliges the layer to declare `edition.update: true` and `write` (a rule at the root of this schema). `widget` and `options` are OVERRIDES: absent, the capture reuses the field-level pair, which is why they are optional rather than required.",
+                    "$comment": "⚠️ Why a SECOND (widget, options) pair rather than a derivation from the display one: `AttributeWidgetOptions` is indexed BY WIDGET. `BadgeOptions` is `{placeholder?}` and has nowhere to hold a choice list; `DropdownOptions` carries `options`. One `widget` slot therefore admits exactly one typed options bag, so two projections that need two widgets need two pairs — a hard-coded badge→dropdown table could not supply a field's choices, and a widget field-renderer does not know falls back SILENTLY to its `text` component. Aligning the display widget on the capture one would cost the coloured pill a badge is read as. So `edit` is a real projection, symmetric with `display`.",
                     "additionalProperties": false,
                     "dependencies": {
                         "options": ["widget"]
@@ -1091,16 +1093,18 @@
             },
             "anyOf": [
                 {
-                    "$comment": "Q3 (étendu 02/08) — a field neither read nor captured has no reason to be declared. ⚠️ This sentence ended with « `uses` alone IS legal: a field can be a table column only » until task 7.3 measured it: the `uses` block was REMOVED at 7.1′ (decision A3‴, it added a fourth list of field names without replacing any), so the exception it granted has had no subject since. A field that is only a table column is named by `table.columns[]`, which needs no entry here.",
+                    "$comment": "A field neither read (`display`) nor captured (`edit`) has no reason to be declared. A field that is only a table column is named by `table.columns[]`, which needs no entry here.",
+                    "properties": { "display": true },
                     "required": ["display"]
                 },
                 {
+                    "properties": { "edit": true },
                     "required": ["edit"]
                 }
             ],
             "allOf": [
                 {
-                    "$comment": "A10 — the whitelist of legal (primitive, widget) pairs, grouped by primitive. Six branches instead of 23: the constraint IS the pair, and this form states it once per primitive. ⚠️ EXTENDED at task 7.2 to constrain `edit.widget` as well: the captured value has the same `primitive` as the read one, so the pair table is the same table. Stating it in the same six branches is what stops the two projections from drifting apart.",
+                    "$comment": "The whitelist of legal (primitive, widget) pairs, grouped by primitive: one branch per primitive rather than one per widget, because the constraint IS the pair. The same branches constrain `edit.widget` as well: the captured value has the same `primitive` as the read one, so the pair table is the same table. Stating it in the same branches is what stops the two projections from drifting apart.",
                     "if": {
                         "properties": {
                             "primitive": {
@@ -1150,7 +1154,7 @@
                     }
                 },
                 {
-                    "$comment": "A17 — a field whose READING widget holds an object (`badge`, `link`, `price`) while its value is a `string` MUST name its capture widget explicitly. Without this, `edit` with no `widget` inherits the reading one and silently captures an object into a scalar. Mesuré au 7.2 : c'est exactement la forme de `sites_rosario.statut` (`primitive: \"string\"`, `widget: \"badge\"`), et rien ne l'aurait signalée.",
+                    "$comment": "A field whose READING widget holds an object (`badge`, `link`, `price`) while its value is a `string` MUST name its capture widget explicitly. Without this, `edit` with no `widget` inherits the reading one and silently captures an object into a scalar.",
                     "if": {
                         "type": "object",
                         "required": ["widget", "edit"],
@@ -1167,13 +1171,14 @@
                         "properties": {
                             "edit": {
                                 "type": "object",
+                                "properties": { "widget": true },
                                 "required": ["widget"]
                             }
                         }
                     }
                 },
                 {
-                    "$comment": "`action` is the one widget carrying a per-widget option rule: without `actionId` the button renders nothing at all, so a field declaring it is a silent no-op. And it is display-only — field-renderer registers no action component, and a button is a gesture, not a value to type in (Q6).",
+                    "$comment": "`action` carries its own option rule: without `actionId` the button renders nothing at all, so a field declaring it is a silent no-op. And it is display-only — field-renderer registers no action component, and a button is a gesture, not a value to type in.",
                     "if": {
                         "properties": {
                             "widget": {
@@ -1190,6 +1195,7 @@
                         "properties": {
                             "options": {
                                 "type": "object",
+                                "properties": { "actionId": true },
                                 "required": ["actionId"]
                             }
                         }

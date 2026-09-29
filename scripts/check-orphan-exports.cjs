@@ -1030,6 +1030,19 @@ const ALLOWLIST = {
     // `__tests__/ui/panel-panes.test.ts` went red on the spot. That is the only reason it is
     // not in the shipped bundle — hence the emphasis here.
     "kernel/ui/panel-panes.ts": ["PaneHost", "clearPanelPanes"],
+
+    // ── The application lifecycle behind `GeoLeaf.mount()` (core 3.13.0) ───────────────────
+    //
+    // `MountContext` and `MountController` are the parameter and the return type of
+    // `createMountController()`, which IS exported and consumed (`app/boot-install.ts`, once per
+    // bundle). TypeScript must NAME both to emit that function's declaration — the TS4023 class
+    // of the entries above. The caller passes an object literal and keeps the result untyped.
+    //
+    // `GeoLeafMountError` and `MountFailureReason` are what `GeoLeafMount.ready` rejects with.
+    // Their consumer is the integrator, who reads `name`, `reason` and `phase` off the rejection —
+    // outside this repository by construction, so no import will ever appear here. Exported so
+    // the published declarations and the TypeDoc reference name the error `ready` documents.
+    "app/mount.ts": ["MountContext", "MountController", "GeoLeafMountError", "MountFailureReason"],
 };
 
 /** `"*"` | tableau de symboles | undefined. */

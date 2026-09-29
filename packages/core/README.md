@@ -108,7 +108,37 @@ Full signatures live at [geoleaf.dev/docs/api/](https://www.geoleaf.dev/docs/api
 
 The package also declares public subpaths — `./kernel`, `./globals`, `./helpers`, `./boot`,
 `./facades/*`, `./capabilities/*`, `./contracts/*`, `./presets/*` — documented in the
-[Architecture Guide](https://www.geoleaf.dev/docs/ARCHITECTURE_GUIDE.html).
+[Architecture Guide](https://www.geoleaf.dev/docs/ARCHITECTURE_GUIDE.html), and `./schemas`, below.
+
+### Validating a profile
+
+The JSON Schemas that judge a profile's files ship with the package, at
+`@geoleaf/core/schemas/<name>.schema.json`, and TypeScript types generated from them at
+`@geoleaf/core/schemas` (`type`-only). No schema describes a whole profile: each file validates
+alone — `profile.json` against `profile`, `config/core/ui.json` against `ui`,
+`layers/<id>/<id>_config.json` against `layer-config`, and so on.
+
+```ts
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { Ajv } from "ajv";
+import type { GeoLeafProfile } from "@geoleaf/core/schemas";
+
+const require = createRequire(import.meta.url);
+const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+const validateProfile = ajv.compile(
+    JSON.parse(readFileSync(require.resolve("@geoleaf/core/schemas/profile.schema.json"), "utf8"))
+);
+
+const profile: GeoLeafProfile = JSON.parse(
+    readFileSync("profiles/my-profile/profile.json", "utf8")
+);
+if (!validateProfile(profile)) console.error(validateProfile.errors);
+```
+
+The types are an upper bound of the schemas — the verdict belongs to the schemas. Which schema
+judges which file, and the editor setup:
+[JSON Schema documentation](https://www.geoleaf.dev/docs/schema/README.html).
 
 ---
 

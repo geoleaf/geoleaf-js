@@ -16,9 +16,14 @@
  *   - layers/<id>/<id>_config.json         → layer-config.schema.json
  *   - layers/<id>/styles/*.json            → style.schema.json
  *
- * Plugin configs (config/plugins/*.json) are owned and validated by their
- * plugin, not the core contract — they are intentionally skipped here
- * (config-contract scope B7).
+ * Module configs (config/plugins/*.json) are skipped on purpose: no JSON Schema
+ * describes them — no plugin ships one. What checks those keys is runtime code
+ * (see `lib/profile-schemas.cjs`, which holds the file → schema table).
+ *
+ * The schemas compile under ajv's `strict: true`: the package ships them, and an integrator
+ * whose tooling validates in strict mode must be able to compile every one. This script is
+ * where that holds — a schema that stops compiling strictly fails here, named, before any
+ * profile is read.
  *
  * Run: node scripts/validate-profiles.cjs   |   npm run validate:profiles
  * Exits 1 on any violation — used as a pre-commit gate (CI frozen).
@@ -28,12 +33,16 @@
 const Ajv = require("ajv");
 const fs = require("fs");
 const path = require("path");
+const {
+    PROFILES_DIR,
+    SCHEMAS_DIR,
+    collectTargets,
+    listDirs,
+} = require("./lib/profile-schemas.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
-const SCHEMAS_DIR = path.join(ROOT, "profiles/schemas");
-const PROFILES_DIR = path.join(ROOT, "profiles");
 
-const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+const ajv = new Ajv({ allErrors: true, allowUnionTypes: true, strict: true });
 // ajv-formats is optional: the contract schemas use no "format" keyword that
 // requires it, and the package is not a declared dependency. Loaded if present.
 try {
@@ -74,67 +83,15 @@ for (const name of SCHEMA_NAMES) {
     const schema = JSON.parse(
         fs.readFileSync(path.join(SCHEMAS_DIR, `${name}.schema.json`), "utf8")
     );
-    validators[name] = ajv.compile(schema);
-}
-
-// config/core/<file> → schema name
-const CORE_SCHEMA_BY_FILE = {
-    "layers.json": "layers",
-    "basemaps.json": "basemaps",
-    "features.json": "features",
-    "ui.json": "ui",
-    "themes.json": "themes",
-    "mapping.json": "mapping",
-};
-
-function listJson(dir) {
-    if (!fs.existsSync(dir)) return [];
-    return fs
-        .readdirSync(dir, { withFileTypes: true })
-        .filter((e) => e.isFile() && e.name.endsWith(".json"))
-        .map((e) => e.name);
-}
-
-function listDirs(dir) {
-    if (!fs.existsSync(dir)) return [];
-    return fs
-        .readdirSync(dir, { withFileTypes: true })
-        .filter((e) => e.isDirectory())
-        .map((e) => e.name);
-}
-
-/** Collect [relativePath, schemaName] pairs to validate for one profile. */
-function collectTargets(profileDir) {
-    const targets = [];
-
-    if (fs.existsSync(path.join(profileDir, "profile.json"))) {
-        targets.push(["profile.json", "profile"]);
+    try {
+        validators[name] = ajv.compile(schema);
+    } catch (e) {
+        console.error(
+            `✗ ${name}.schema.json ne compile pas sous ajv \`strict: true\` — ${e.message}\n` +
+                "  Le paquet livre ce schéma : un intégrateur en mode strict ne pourrait pas le compiler."
+        );
+        process.exit(1);
     }
-
-    // config/core/*.json (known contract files only)
-    const coreDir = path.join(profileDir, "config", "core");
-    for (const file of listJson(coreDir)) {
-        const schemaName = CORE_SCHEMA_BY_FILE[file];
-        if (schemaName) targets.push([path.join("config", "core", file), schemaName]);
-    }
-
-    // config/plugins/*.json → intentionally skipped (plugin-owned)
-
-    // layers/<id>/<id>_config.json + layers/<id>/styles/*.json
-    const layersDir = path.join(profileDir, "layers");
-    for (const layerId of listDirs(layersDir)) {
-        const layerDir = path.join(layersDir, layerId);
-        for (const file of listJson(layerDir)) {
-            if (file.endsWith("_config.json")) {
-                targets.push([path.join("layers", layerId, file), "layer-config"]);
-            }
-        }
-        for (const file of listJson(path.join(layerDir, "styles"))) {
-            targets.push([path.join("layers", layerId, "styles", file), "style"]);
-        }
-    }
-
-    return targets;
 }
 
 const DEPLOY_DIR = path.join(ROOT, "deploy");

@@ -414,6 +414,7 @@ interface, et une page sans voile ne reçoit aucun DOM. S'abonner **avant** `Geo
 | `geoleaf.config.json` introuvable ou invalide, ou promesse de `loadConfig` rejetée | `config`                        | Recharger            | le boot s'arrête                                                      |
 | `profile.json` introuvable, JSON invalide ou structure refusée                     | `profile`                       | Recharger            | `geoleaf:profile:failed` (`fatal: true`) ; le boot s'arrête           |
 | Ressource **déclarée** du profil en échec — cascade, ou absente du bundle          | —                               | Continuer quand même | `geoleaf:profile:failed` (`fatal: false`) ; la révélation est retenue |
+| Aucun moteur MapLibre GL JS (ni `globalThis.maplibregl`, ni l'option `maplibregl`) | `engine`                        | Recharger            | aucune carte                                                          |
 | WebGL2 indisponible (`GPUInitializationError`)                                     | `webgl`                         | Recharger            | aucune carte                                                          |
 | Étendue absente, ou construction de la carte en échec                              | `map`                           | Recharger            | aucune carte                                                          |
 | Un module de la chaîne d'interface jette (`ui`, ou un module dont `ui` dépend)     | `module` (`module` le nomme)    | Recharger            | les modules suivants ne démarrent pas                                 |
@@ -443,6 +444,12 @@ interface, et une page sans voile ne reçoit aucun DOM. S'abonner **avant** `Geo
   cartes s'en souvient (`wasDestroyed`, interne) : l'adaptateur, réinitialisable, ne le peut pas.
   Mesuré avant : le module `ui` levait « map is not ready », le boot échouait, et l'écran d'échec
   restait par-dessus la carte que l'hôte venait de recréer.
+- **Démonter pendant le boot n'est pas un échec** (3.13.0) : `unmount()` sur la poignée de
+  `GeoLeaf.mount()`, ou un `mount()` qui prend la main, rejette `ready` (`"unmounted"`), émet
+  `geoleaf:boot:aborted` avec `reason: "unmounted"` et masque le voile. Le boot s'arrête à son
+  point d'arrêt suivant — après la configuration, après le profil, après `beforeBoot`, entre deux
+  modules — sans rien signaler de plus. Le démontage attend cet arrêt avant de détruire le
+  registre puis la carte (`CDC_kernel.md`, §Cycle de vie de l'application).
 
 ### ModuleRegistry — dépendance circulaire
 

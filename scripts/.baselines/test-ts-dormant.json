@@ -1,7 +1,7 @@
 {
     "_comment": "TTC-01/02 — paires `fichier:TScode` d'erreurs DORMANTES dans les suites .ts, gelées à la pose (B-D1 : une gate qui naîtrait rouge sur tout le corpus serait désarmée dans la semaine). Cette liste ne peut que RÉTRÉCIR : corriger une erreur puis resserrer via --update-baseline. Les clés ne portent pas de numéro de ligne, délibérément — les lignes dérivent à chaque édition sans information.",
     "_generated": "node scripts/check-test-typecheck.cjs --update-baseline",
-    "count": 268,
+    "count": 267,
     "entries": [
         "packages/core/__tests__/adapters/maplibre-pmtiles.test.ts:TS2532",
         "packages/core/__tests__/app/boot-injected-config.test.ts:TS2345",
@@ -131,7 +131,6 @@
         "packages/plugins/geocoding/src/__tests__/config-contract.test.ts:TS2532",
         "packages/plugins/geocoding/src/__tests__/config-contract.test.ts:TS7005",
         "packages/plugins/geocoding/src/__tests__/config-contract.test.ts:TS7006",
-        "packages/plugins/geocoding/src/__tests__/config-contract.test.ts:TS7017",
         "packages/plugins/geocoding/src/__tests__/config-contract.test.ts:TS7034",
         "packages/plugins/geocoding/src/__tests__/control.test.ts:TS2345",
         "packages/plugins/geocoding/src/__tests__/control.test.ts:TS2722",

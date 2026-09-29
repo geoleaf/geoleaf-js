@@ -67,7 +67,7 @@ export { PROFILE_STORAGE_KEY, SELECTED_PROFILE_STORAGE_KEY } from "./profile-sto
 // `capabilities/legend/lifecycle.ts` registers its teardown here, and cannot import deep under
 // `kernel/**`. Again the gesture the rule DESIGNATES. The motive is a measured defect:
 // `Core.destroy()` runs THIS seam and nothing else, while the legend's teardown was reachable
-// only through `ModuleRegistry.destroy()`, which no production path calls — so a destroy landing
+// only through `ModuleRegistry.destroy()`, which `Core.destroy()` does not call — so a destroy landing
 // in the legend's debounced rebuild mounted its control on the destroyed map, and threw.
 //
 // ⚠️ `runLifecycleTeardowns` is NOT here, deliberately: its only caller is `kernel/map/facade.ts`,
@@ -84,3 +84,30 @@ export { registerLifecycleTeardown } from "./lifecycle.js";
 // reveal and the boot (`app/`), outside `capabilities/`, which import the module directly. A
 // capability waits for the application; it never declares it ready.
 export { whenAppReady } from "./app-ready.js";
+
+// The legend slot (core 3.13.0) — re-exported because the boundary requires it: the legend
+// capability's installer fills it, and cannot import deep under `kernel/**`. Again the gesture
+// the rule DESIGNATES. The motive is an architecture defect: the style selector and the theme
+// applier imported the legend capability, statically, and pinned it into every bundle; the kernel
+// now owns the slot, and the ESLint `KERNEL_CAPABILITY_BOUNDARY` refuses a new edge.
+//
+// ⚠️ `availableLegend` is NOT here, deliberately: its only callers are in `kernel/`, which imports
+// the module directly. A capability fills the slot; it never reads it.
+export { provideLegend, type LegendSink } from "./legend-slot.js";
+
+// The declared-fields slot (core 3.13.0) — re-exported because the boundary requires it: the
+// capabilities that read a layer's data by a name the profile declares (taxonomy, feature-info,
+// labels, filter) fill it from their installers, and cannot import deep under `kernel/**`. Again
+// the gesture the rule DESIGNATES. The motive is a measured defect: a declared name absent from
+// the data read `undefined`, and every reader fell back to its default without a word.
+//
+// ⚠️ `declaredFieldProviders` is NOT here, deliberately: its only caller is the kernel's
+// reconciliation (`kernel/geojson/field-reconciliation.ts`), which imports the module directly. A
+// capability fills the slot; it never reads it.
+export {
+    provideDeclaredFields,
+    type DeclaredField,
+    type DeclaredFieldFeature,
+    type DeclaredFieldsContext,
+    type DeclaredFieldsProvider,
+} from "./declared-fields-slot.js";

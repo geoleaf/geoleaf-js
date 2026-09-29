@@ -139,17 +139,23 @@ export const FilterLifecycle = {
 
     /** Detaches listeners, unmounts the panel and removes the shims (module destroy / test). */
     _reset(): void {
-        if (_debounceTimer) {
-            clearTimeout(_debounceTimer);
-            _debounceTimer = null;
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (_debounceTimer) {
+                clearTimeout(_debounceTimer);
+                _debounceTimer = null;
+            }
+            _cleanups.forEach((fn) => fn());
+            _cleanups = [];
+            _panel?.remove();
+            _panel = null;
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:app:ready", _onAppReady);
+            }
+        } finally {
+            _started = false;
         }
-        _cleanups.forEach((fn) => fn());
-        _cleanups = [];
-        _panel?.remove();
-        _panel = null;
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:app:ready", _onAppReady);
-        }
-        _started = false;
     },
 };

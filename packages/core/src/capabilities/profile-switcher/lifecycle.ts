@@ -116,16 +116,24 @@ export const ProfileSwitcherLifecycle = {
 
     /** Detaches the listener and removes the selector (module destroy / test seam). */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            if (_seamHandler) {
-                document.removeEventListener("geoleaf:layer-manager:panel", _seamHandler);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                if (_seamHandler) {
+                    document.removeEventListener("geoleaf:layer-manager:panel", _seamHandler);
+                }
+                // Query the whole document: the selector lives in a container this
+                // capability does not own, and the class is its own, so nothing else can
+                // match. Removing the node is also what releases its change listener.
+                document
+                    .querySelectorAll(`.${PROFILE_SWITCHER_CLASS}`)
+                    .forEach((el) => el.remove());
             }
-            // Query the whole document: the selector lives in a container this
-            // capability does not own, and the class is its own, so nothing else can
-            // match. Removing the node is also what releases its change listener.
-            document.querySelectorAll(`.${PROFILE_SWITCHER_CLASS}`).forEach((el) => el.remove());
+            _seamHandler = null;
+        } finally {
+            _started = false;
         }
-        _seamHandler = null;
-        _started = false;
     },
 };

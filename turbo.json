@@ -44,7 +44,17 @@
                 "rollup.consumer.mjs",
                 "$TURBO_ROOT$/postcss.config.mjs",
                 "package.json",
-                "$TURBO_ROOT$/packages/build-config/**"
+                "$TURBO_ROOT$/packages/build-config/**",
+                // The build ends in two ROOT scripts, and the second copies `profiles/schemas/`
+                // into `dist/schemas/`. None of it was an input: a schema edit, or a change to
+                // either script, left the core in cache HIT — and the tarball shipped the
+                // previous schemas and types. `emit-ambient-types.cjs` was missing already.
+                // Same list in `build:all`, the path `build-deploy.cjs` takes.
+                "$TURBO_ROOT$/profiles/schemas/**",
+                "$TURBO_ROOT$/scripts/emit-ambient-types.cjs",
+                "$TURBO_ROOT$/scripts/emit-profile-schemas.cjs",
+                "$TURBO_ROOT$/scripts/lib/profile-schemas.cjs",
+                "$TURBO_ROOT$/scripts/lib/packages.cjs"
             ]
         },
         // ⚠️ Cet override est né d'une COPIE PARTIELLE de la tâche `build` générique, et il en
@@ -71,7 +81,17 @@
                 "package.json",
                 "tsconfig.json",
                 "tsconfig.declarations.json",
-                "$TURBO_ROOT$/packages/build-config/**"
+                "$TURBO_ROOT$/packages/build-config/**",
+                // The build ends in two ROOT scripts, and the second copies `profiles/schemas/`
+                // into `dist/schemas/`. None of it was an input: a schema edit, or a change to
+                // either script, left the core in cache HIT — and the tarball shipped the
+                // previous schemas and types. `emit-ambient-types.cjs` was missing already.
+                // Same list in `build:all`, the path `build-deploy.cjs` takes.
+                "$TURBO_ROOT$/profiles/schemas/**",
+                "$TURBO_ROOT$/scripts/emit-ambient-types.cjs",
+                "$TURBO_ROOT$/scripts/emit-profile-schemas.cjs",
+                "$TURBO_ROOT$/scripts/lib/profile-schemas.cjs",
+                "$TURBO_ROOT$/scripts/lib/packages.cjs"
             ]
         },
         // ⚠️ `test-utils/**` ajouté aux QUATRE tâches `test*` le 01/08/2026.

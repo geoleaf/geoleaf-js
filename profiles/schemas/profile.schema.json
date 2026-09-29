@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/profile",
     "title": "GeoLeaf Profile",
-    "description": "profile.json — core profile metadata and configuration. UI, basemaps, search and table config live in separate files referenced via the Files section. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA): additionalProperties:false on fixed-shape objects, _comment* tolerated. modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
+    "description": "profile.json — core profile metadata and configuration. UI, basemaps, search and table config live in separate files referenced via the Files section. Strict schema (PRF-SCHEMA, Profile Contract v1): additionalProperties:false on fixed-shape objects, _comment* tolerated. modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
     "type": "object",
     "required": ["id"],
     "additionalProperties": false,
@@ -176,7 +176,7 @@
         },
         "modules": {
             "type": "object",
-            "description": "Per-plugin configuration blocks, keyed by module id (Plugin Contract v1, INV-CONFIG). The keys inside each block are owned and validated by the plugin, not by the core — each block stays additionalProperties:true on purpose.",
+            "description": "Configuration blocks keyed by module id — in-core capabilities such as `offline`, and plugins (Plugin Contract v1, INV-CONFIG). Every block stays additionalProperties:true: the schema does not describe its keys. A block is named below only if something reads it. For a plugin block, neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored.",
             "additionalProperties": {
                 "type": "object"
             },
@@ -184,62 +184,52 @@
                 "offline": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "In-core offline capability (S14 Phase B) — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema)."
-                },
-                "geocoding": {
-                    "type": "object",
-                    "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/geocoding — keys validated by the plugin, not the core."
-                },
-                "routing": {
-                    "type": "object",
-                    "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/routing — keys validated by the plugin, not the core. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name."
-                },
-                "print": {
-                    "type": "object",
-                    "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/print — keys validated by the plugin, not the core."
-                },
-                "measure": {
-                    "type": "object",
-                    "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/measure — keys validated by the plugin, not the core."
+                    "description": "In-core offline capability — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema)."
                 },
                 "editor": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/editor — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/editor, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 },
-                "cog": {
+                "geocoding": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/cog — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/geocoding, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 },
-                "fileImport": {
+                "measure": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/file-import — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/measure, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 },
-                "flatgeobuf": {
+                "navigation": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/flatgeobuf — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/navigation, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 },
-                "realtimeLayer": {
+                "offline-ui": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/realtime-layer — keys validated by the plugin, not the core."
+                    "description": "One key is read here, by the core's toolbar guard rather than by the plugin: `showButton` (boolean, default false) shows the cache button of @geoleaf-plugins/offline-ui, with `ui.showCacheButton` as legacy fallback. Nothing else in this block is read, and nothing reports a key it does not know."
                 },
-                "websocket": {
+                "position-share": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/websocket — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/position-share, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 },
-                "connector": {
+                "print": {
                     "type": "object",
                     "additionalProperties": true,
-                    "description": "Owned by @geoleaf-plugins/connector — keys validated by the plugin, not the core."
+                    "description": "Read by @geoleaf-plugins/print, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
+                },
+                "routing": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Read by @geoleaf-plugins/routing, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name."
+                },
+                "table": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Read by @geoleaf-plugins/table, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
                 }
             }
         }

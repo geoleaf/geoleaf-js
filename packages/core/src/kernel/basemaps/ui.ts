@@ -98,7 +98,11 @@ function _createLeftPanel(doc: Document): HTMLElement {
     const panel = doc.createElement("div");
     panel.id = "gl-left-panel";
     panel.className = "gl-left-panel";
-    const mapContainer = doc.getElementById("geoleaf-map") || doc.querySelector(".gl-map");
+    // The engine's own container first — `GeoLeaf.mount(el)` may hand an element of any id.
+    const mapContainer =
+        doc.querySelector(".maplibregl-map") ||
+        doc.getElementById("geoleaf-map") ||
+        doc.querySelector(".gl-map");
     (mapContainer || doc.body).appendChild(panel);
     return panel;
 }

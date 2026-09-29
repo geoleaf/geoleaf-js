@@ -54,6 +54,19 @@ export class ModuleRegistry implements IModuleRegistry {
     private _initialized = false;
 
     /**
+     * `true` while the `init()` loop is running. `destroy()` refuses to run then: it would tear
+     * down modules the loop has not reached yet, and the loop would start them afterwards,
+     * tracked by nothing.
+     */
+    private _initRunning = false;
+
+    /**
+     * The modules whose `init()` was called, in the order it was — what `destroy()` walks back.
+     * Not the resolved order: a loop stopped by `shouldContinue` never reached the rest.
+     */
+    private _started: string[] = [];
+
+    /**
      * Modules whose `init()` failed under `onModuleError: () => "continue"`, and the modules
      * skipped because they depend on one — neither is running. Cleared by `destroy()`.
      */
@@ -137,19 +150,30 @@ export class ModuleRegistry implements IModuleRegistry {
         const order = this._topoSort(); // throws on cycle or missing dep
         this._initOrder = order;
         this._initialized = true;
+        this._initRunning = true;
 
-        for (const id of order) {
-            // A module it depends on failed, and the caller chose to go on: it never runs.
-            if (this._skipped.has(id)) continue;
-            const mod = this._modules.get(id)!;
-            // UI-only slots (no init) are tolerated if present in the order — skip them.
-            if (typeof mod.init === "function") {
-                try {
-                    await Promise.resolve(mod.init(adapter, config));
-                } catch (error) {
-                    this._isolateFailure(id, error, options);
+        try {
+            for (const id of order) {
+                // The caller ended this run (an application unmounted while it was starting):
+                // the modules not reached yet never start.
+                if (options.shouldContinue && !options.shouldContinue()) return;
+                // A module it depends on failed, and the caller chose to go on: it never runs.
+                if (this._skipped.has(id)) continue;
+                const mod = this._modules.get(id)!;
+                // UI-only slots (no init) are tolerated if present in the order — skip them.
+                if (typeof mod.init === "function") {
+                    // Recorded BEFORE the call: a module whose init() throws half-way is torn
+                    // down like the others, its init() may have run in part.
+                    this._started.push(id);
+                    try {
+                        await Promise.resolve(mod.init(adapter, config));
+                    } catch (error) {
+                        this._isolateFailure(id, error, options);
+                    }
                 }
             }
+        } finally {
+            this._initRunning = false;
         }
     }
 
@@ -280,11 +304,21 @@ export class ModuleRegistry implements IModuleRegistry {
     // ── destroy ───────────────────────────────────────────────────────────────
 
     destroy(): void {
-        const reverseOrder = [...this._initOrder].reverse();
+        if (this._initRunning) {
+            // Tearing down now would destroy modules the loop has not reached, which it would then
+            // start behind this call's back. The caller stops the loop first (`shouldContinue`),
+            // waits for `init()` to settle, and destroys then.
+            Log.error(
+                "[ModuleRegistry] destroy() refused: init() is still running. Stop it with " +
+                    "`shouldContinue`, wait for it to settle, then destroy."
+            );
+            return;
+        }
+        // Only the modules whose `init()` was called: a skipped module (a module it depends on
+        // failed) never ran, nor did one the loop never reached. The module that failed IS torn
+        // down — its `init()` may have run in part.
+        const reverseOrder = [...this._started].reverse();
         for (const id of reverseOrder) {
-            // Skipped because a module it depends on failed: it never ran, so there is nothing to
-            // tear down. The module that failed IS torn down — its `init()` may have run in part.
-            if (this._skipped.has(id)) continue;
             const mod = this._modules.get(id);
             if (!mod) continue;
             // UI-only slots (no destroy) are tolerated if present in the order — skip them.
@@ -298,11 +332,12 @@ export class ModuleRegistry implements IModuleRegistry {
             }
         }
 
-        // Re-arm the registry (S6 Lot 1). Without these two lines `init()` returned on its
+        // Re-arm the registry (S6 Lot 1). Without resetting `_initialized` `init()` returned on its
         // idempotent guard forever after, so create → destroy → recreate was a SILENT no-op.
-        // Clearing `_initOrder` also makes destroy() idempotent — a second call has nothing
+        // Clearing `_started` also makes destroy() idempotent — a second call has nothing
         // left to walk instead of destroying every module twice.
         this._initOrder = [];
+        this._started = [];
         this._initialized = false;
         this._failed.clear();
         this._skipped.clear();

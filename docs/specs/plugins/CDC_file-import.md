@@ -132,13 +132,12 @@ lecture au réseau.
 [`cog`](CDC_cog.md), tout passe par les arguments d'appel — ici, l'objet fichier et les options de
 couche.
 
-⚠️ **Le schéma de profil ouvre pourtant un emplacement, et personne ne l'habite.**
-`profiles/schemas/profile.schema.json` déclare `modules.fileImport` (casse chameau) en objet libre,
-avec la description « keys validated by the plugin, not the core ». Or **rien dans `src/` ne le
-lit** : la validation annoncée n'existe pas. Une clé qu'un intégrateur écrirait là serait acceptée
-par le schéma et ignorée par le plugin, sans un mot. La mesure des deux côtés :
-`grep -n fileImport profiles/schemas/profile.schema.json` (une ligne) contre
-`grep -rn 'modules\.' packages/plugins/file-import/src/` (aucune).
+⚠️ **Le schéma de profil ne nomme aucun bloc pour ce plugin.** Il en nommait un jusqu'au
+28/09/2026, `modules.fileImport` (casse chameau), décrit « keys validated by the plugin » alors que
+rien dans `src/` ne le lisait. `PC-15` (`scripts/verify-plugin-contract.cjs`) refuse désormais qu'un
+bloc sans lecteur soit nommé sous `modules`. Une clé écrite sous `modules.file-import` resterait
+acceptée par le schéma — un bloc non nommé y est un objet libre — et ignorée par le plugin, sans un
+mot. La mesure : `grep -rn 'modules\.' packages/plugins/file-import/src/` (aucune).
 
 Ce plugin va plus loin que l'absence de configuration : sa **variabilité passe par le code**, via le
 registre de convertisseurs. C'est la zone d'extension libre du contrat (§3), et c'est une forme de

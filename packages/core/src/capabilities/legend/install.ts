@@ -20,8 +20,6 @@
  * ⚠ `LegendModule` here is the `ICoreModule` class from `./module.ts` — NOT the same-named
  * internal API object inside `./legend.ts` (re-exported by `./public-api.ts`). The two have
  * always been distinct; since R.10 they are at least neighbours rather than a cross-tree pair.
- * ⚠ The Lite bundle writes these globals on its own (`globals.{ui,api}-lite.ts`) — it
- * does not go through a preset manifest. Do not remove those anchors.
  */
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
@@ -40,6 +38,10 @@ import { LegendModule } from "./module.js";
 import { LegendControl } from "./legend-control.js";
 import { LegendGenerator } from "./legend-generator.js";
 import { Legend } from "../../api/geoleaf.legend.js";
+// The kernel's legend slot, filled here: the kernel keeps the legend in step with a layer's style
+// and visibility through it, and no longer imports this capability (`kernel/shared/legend-slot.ts`).
+import { LegendContract } from "./legend-seam.js";
+import { provideLegend } from "../../kernel/shared/index.js";
 
 /** Self-sufficient installer for the Legend capability (cartographic legend panel). */
 export const LEGEND_INSTALLER: CapabilityInstaller = {
@@ -53,6 +55,10 @@ export const LEGEND_INSTALLER: CapabilityInstaller = {
         // imports LegendRenderer statically) — removed.
         // …and from globals.api.ts (assignApiFacades, B11).
         gl.Legend = Legend;
+        // Pass 1, before any module runs: the theme applier asks for the legend during the
+        // registry's `init()`, and `LegendContract.isAvailable()` answers `false` until the
+        // legend itself is initialised.
+        provideLegend(LegendContract);
     },
 
     createModule() {

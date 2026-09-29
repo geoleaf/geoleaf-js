@@ -82,9 +82,6 @@ vi.mock("../../src/utils/loaders/style-loader.js", () => ({
         })),
     },
 }));
-vi.mock("../../src/capabilities/legend/legend-seam.js", () => ({
-    LegendContract: { isAvailable: vi.fn(() => false) },
-}));
 
 /** Reads the label switch off the entry the way `labels.ts` and the toggle do. */
 function labelEnabled(): boolean | undefined {

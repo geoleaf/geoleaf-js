@@ -66,6 +66,18 @@ describe("sw-register (R4)", () => {
             global.navigator.serviceWorker = sw;
         });
 
+        it("🛑 un boot de plus ne pose pas un écouteur updatefound de plus sur la même registration", async () => {
+            // Measured by the `71-mount-remount` E2E: the browser hands back the SAME
+            // registration to every `register()`, and every boot — every `GeoLeaf.mount()` —
+            // added one more `updatefound` listener to it, never removed. Red before the fix (2).
+            await SWRegister.register();
+            await SWRegister.register();
+            const updatefound = registration.addEventListener.mock.calls.filter(
+                ([type]) => type === "updatefound"
+            );
+            expect(updatefound).toHaveLength(1);
+        });
+
         it("enregistre le SW et mémorise la registration", async () => {
             const result = await SWRegister.register();
             expect(mockRegister).toHaveBeenCalledWith("sw-core.js", { scope: "/" });

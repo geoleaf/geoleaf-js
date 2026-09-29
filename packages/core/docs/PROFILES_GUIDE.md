@@ -737,7 +737,6 @@ mkdir -p layers/my-layer/styles
 
 ```json
 {
-    "$schema": "../../../../schema/style.schema.json",
     "id": "default",
     "name": "Default Style",
 
@@ -891,31 +890,17 @@ Look for:
 
 ### Step 9: Validate Configuration
 
-**A. Validate JSON with schemas:**
+**A. Validate the files against the schemas the package ships:**
 
-```bash
-# Install AJV CLI
-npm install -g ajv-cli
+`@geoleaf/core` ships the JSON Schemas at `@geoleaf/core/schemas/<name>.schema.json` (in an
+installed package: `node_modules/@geoleaf/core/dist/schemas/`). No schema describes a whole profile:
+each file validates alone, against the schema its place designates. The table of which schema
+judges which file, and the ajv recipe, are in [schema/README.md](schema/README.md).
 
-# Validate the profile files
-ajv validate -s profiles/schemas/geoleaf-profile.schema.json -d profiles/my-profile/profile.json
-ajv validate -s profiles/schemas/basemaps.schema.json -d profiles/my-profile/basemaps.json
-ajv validate -s profiles/schemas/ui.schema.json -d profiles/my-profile/ui.json
-ajv validate -s profiles/schemas/taxonomy.schema.json -d profiles/my-profile/taxonomy.json
-ajv validate -s profiles/schemas/themes.schema.json -d profiles/my-profile/themes.json
-ajv validate -s profiles/schemas/layer-config.schema.json -d "profiles/my-profile/layers/**/*_config.json"
-ajv validate -s profiles/schemas/style.schema.json -d "profiles/my-profile/layers/**/styles/*.json"
-```
+**B. Validate in the editor:**
 
-**B. Test in VS Code:**
-
-Add a `$schema` reference to each file:
-
-```jsonc
-{
-    "$schema": "../../schemas/taxonomy.schema.json",
-}
-```
+Map the shipped schemas to your profile files (VS Code `json.schemas`) — also in
+[schema/README.md](schema/README.md).
 
 ---
 

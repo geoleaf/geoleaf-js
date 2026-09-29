@@ -220,13 +220,17 @@ pas, elle **se tait**.
 **`profiles/schemas/` est la source de vérité opérationnelle** (10 schémas ; `ls` les rend).
 La référence lisible en est **dérivée** : `docs/reference/PROFILE_SCHEMA_REFERENCE.md`.
 
-⚠️ **`packages/core/docs/schema/` ne contient qu'un `README.md`** — vérifié le 11/08/2026,
-comme le 27/07/2026 avant lui. La consigne « copier chaque schéma ici » y figurait depuis des
-mois **sans avoir jamais été suivie**, ce qui est le signe qu'elle ne correspond à aucun besoin
-réel : les schémas ne partent plus dans le tarball depuis que `docs/` a quitté `files[]`, et le
-lecteur public a la référence dérivée. **La règle de recopie est retirée.** Si un besoin de
-schéma embarqué réapparaît, il se traitera par une copie **générée et gatée**, pas par une
-consigne manuelle.
+**Les schémas repartent dans le tarball depuis la 3.13.0 — par une copie générée et gatée,
+comme ce paragraphe le prévoyait.** `scripts/emit-profile-schemas.cjs`, dernier maillon du
+`build` du core, copie `profiles/schemas/` dans `dist/schemas/` **octet pour octet** et génère
+les types de profil (`@geoleaf/core/schemas`). Aucune copie ne vit dans le dépôt : la source
+reste unique. Gardé par `packages/core/__tests__/bundle-profile-contract.test.ts`, qui lit ce que
+`npm pack` emporterait et exige l'égalité avec les schémas du jour.
+
+⚠️ **`packages/core/docs/schema/` ne contient toujours qu'un `README.md`, et c'est voulu** : la
+consigne « copier chaque schéma ici » n'a jamais été suivie, et elle est retirée. Cette page
+documente les schémas livrés (quel schéma juge quel fichier, la recette de validation) ; elle
+n'en porte aucune copie.
 
 ---
 

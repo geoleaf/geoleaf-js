@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf/core",
-    "version": "3.12.0",
+    "version": "3.13.0",
     "description": "GeoLeaf — field mapping client built on MapLibre GL JS: an application defined by JSON profiles, edits recorded offline and replayed to any server that honours its contracts, a measured weight budget. Agnostic of any backend and of any business domain. TypeScript, MIT.",
     "homepage": "https://geoleaf.dev",
     "repository": {
@@ -21,7 +21,7 @@
     "unpkg": "dist/geoleaf.esm.js",
     "jsdelivr": "dist/geoleaf.esm.js",
     "types": "dist/types/bundle-esm-entry.d.ts",
-    "_exportsNote": "Les 8 sous-chemins `./contracts/*.contract.js` ne portent QUE la condition `types` — c'est voulu, pas un oubli. Ces fichiers ne déclarent que des `export type` / `interface`, entièrement effacés à la compilation : il n'existe aucun module JavaScript à charger, donc aucune condition `import` ou `default` à déclarer. `import type { … } from \"@geoleaf/core/contracts/preset.contract.js\"` résout et compile ; un `import` de VALEUR depuis ces chemins échouera à l'exécution, et c'est le comportement correct. ⚠️ Ne pas leur ajouter une condition `import` « par symétrie » avec les autres sous-chemins : elle pointerait un fichier qui n'est pas émis. Le motif détaillé vit dans l'en-tête de chaque `src/contracts/*.contract.ts`, que le consommateur ne reçoit pas — d'où cette clé, qui voyage avec le tarball.",
+    "_exportsNote": "Les 8 sous-chemins `./contracts/*.contract.js` ne portent QUE la condition `types` — c'est voulu, pas un oubli. Ces fichiers ne déclarent que des `export type` / `interface`, entièrement effacés à la compilation : il n'existe aucun module JavaScript à charger, donc aucune condition `import` ou `default` à déclarer. `import type { … } from \"@geoleaf/core/contracts/preset.contract.js\"` résout et compile ; un `import` de VALEUR depuis ces chemins échouera à l'exécution, et c'est le comportement correct. ⚠️ Ne pas leur ajouter une condition `import` « par symétrie » avec les autres sous-chemins : elle pointerait un fichier qui n'est pas émis. Le motif détaillé vit dans l'en-tête de chaque `src/contracts/*.contract.ts`, que le consommateur ne reçoit pas — d'où cette clé, qui voyage avec le tarball. Même forme, même motif pour `./schemas` : il ne porte que `types`, les types des fichiers de profil GÉNÉRÉS depuis les schémas JSON (`import type { GeoLeafProfile } from \"@geoleaf/core/schemas\"`) ; les schémas eux-mêmes sont servis par `./schemas/<nom>.schema.json`, des données JSON, sans condition `types`.",
     "exports": {
         ".": {
             "types": "./dist/types/bundle-esm-entry.d.ts",
@@ -177,6 +177,10 @@
         "./contracts/sync.contract.js": {
             "types": "./dist/types/contracts/sync.contract.d.ts"
         },
+        "./schemas": {
+            "types": "./dist/schemas/index.d.ts"
+        },
+        "./schemas/*.schema.json": "./dist/schemas/*.schema.json",
         "./style.css": "./dist/geoleaf-main.min.css",
         "./package.json": "./package.json"
     },
@@ -197,7 +201,7 @@
         "**/*.css"
     ],
     "scripts": {
-        "build": "rimraf dist && rollup -c && rollup -c rollup.consumer.mjs && tsc -p tsconfig.declarations.json && node ../../scripts/emit-ambient-types.cjs",
+        "build": "rimraf dist && rollup -c && rollup -c rollup.consumer.mjs && tsc -p tsconfig.declarations.json && node ../../scripts/emit-ambient-types.cjs && node ../../scripts/emit-profile-schemas.cjs",
         "build:watch": "rollup -c -w",
         "typecheck:consumer": "tsc -p examples/consumer/tsconfig.json",
         "clean": "rimraf dist",

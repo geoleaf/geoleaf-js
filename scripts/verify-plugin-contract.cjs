@@ -21,6 +21,9 @@
  *   PC-12 Rollup output geoleaf-<name>.plugin.js, ESM  (§7)
  *   PC-13 CSS via CSSOM — no <style>/postcss inject:true (INV-CSS)
  *   PC-14 profileKey under modules.<pluginId>          (INV-CONFIG §5)
+ *   PC-15 profile.schema.json names exactly the        (INV-CONFIG §5)
+ *         modules.<pluginId> blocks a plugin reads — plus every other name under
+ *         `modules` must be an in-core capability (runs regardless of --plugin)
  *
  *   PC-04-WIDE — pure ESM across the WHOLE
  *         repo, not just plugins/src/: registry.all() × full package dir (tests and
@@ -37,6 +40,10 @@
  *   default        WARN — full report, always exit 0
  *   --fail         exit 1 if any non-grandfathered violation remains (S14)
  *   --plugin=<n>   restrict the scan to one plugin (per-sprint usage)
+ *   --fresh-scaffold  with --plugin only: PC-15 does not require the schema to NAME this
+ *                  plugin's block. For `verify-plugin-scaffold.cjs`, whose package was
+ *                  generated seconds ago and cannot be named in a shared file it does not
+ *                  own; refused without --plugin, so it cannot lift PC-15 for the fleet
  *   --quiet        print the summary only
  *
  * Known limits: PC-03 extracts the register() argument with a naive balanced
@@ -107,6 +114,13 @@ const FAIL_MODE = args.includes("--fail");
 const QUIET = args.includes("--quiet");
 const pluginFlag = args.find((a) => a.startsWith("--plugin="));
 const ONLY_PLUGIN = pluginFlag ? pluginFlag.split("=")[1] : null;
+const FRESH_SCAFFOLD = args.includes("--fresh-scaffold");
+if (FRESH_SCAFFOLD && !ONLY_PLUGIN) {
+    console.error(
+        "--fresh-scaffold requires --plugin=<name>: it never applies to the whole fleet."
+    );
+    process.exit(1);
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -363,6 +377,104 @@ function checkProfileKeyBranch(plugin, ctx, findings) {
     }
 }
 
+// ─── PC-15 — the shipped profile schema names the blocks plugins read ─────────
+// `profile.schema.json` ships with `@geoleaf/core` and its `modules.<id>` entries become
+// named members of the generated profile types: an integrator's editor proposes them. A
+// named block is therefore a statement — "this plugin takes its configuration here".
+//
+// 🛑 Measured when this check was written: six of the eleven named plugin blocks had NO
+// reader anywhere — not in the plugin, not in the core, not in a slot gate, not in a
+// profile. Those plugins take their options per call or per layer, by recorded design.
+// Two of the six were not even plugin ids (`fileImport`, `realtimeLayer`). In the other
+// direction, four plugins read a block the schema did not name. Nothing compared the two
+// sides: PC-14 reads `profileKey` only, and the README gate reads config interfaces.
+//
+// Both directions fail loud by construction: a schema that loses its `modules.properties`
+// throws, and a scan that stops finding readers turns every named block red.
+const profileSchemas = require("./lib/profile-schemas.cjs");
+const PROFILE_SCHEMA_PATH = path.join(profileSchemas.SCHEMAS_DIR, "profile.schema.json");
+
+const corePackage = registry.byName("@geoleaf/core");
+if (!corePackage) throw new Error("PC-15: @geoleaf/core not found in the package registry.");
+const CORE_CAPABILITIES_DIR = path.join(ROOT, corePackage.dir, "src", "capabilities");
+
+function loadNamedModuleBlocks() {
+    const schema = JSON.parse(fs.readFileSync(PROFILE_SCHEMA_PATH, "utf8"));
+    const props = schema?.properties?.modules?.properties;
+    if (!props || typeof props !== "object") {
+        throw new Error(
+            `PC-15: ${rel(PROFILE_SCHEMA_PATH)} no longer declares properties.modules.properties — ` +
+                `the check would compare the plugins against nothing.`
+        );
+    }
+    return new Set(Object.keys(props));
+}
+
+const NAMED_MODULE_BLOCKS = loadNamedModuleBlocks();
+
+/** Plugins found reading their own block, for the summary line. */
+const moduleBlockReaders = new Set();
+
+function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** First non-comment source line citing `modules.<plugin>` as a whole segment, or null. */
+function findOwnModuleBlockReader(plugin, ctx) {
+    const re = new RegExp(`\\bmodules\\.${escapeRegExp(plugin.name)}(?![\\w-])`);
+    const files = [];
+    collectSources(ctx.srcPath, /\.(ts|js)$/, files, ["__tests__", "__mocks__"]);
+    for (const file of files) {
+        const lines = fs.readFileSync(file, "utf8").split("\n");
+        for (let i = 0; i < lines.length; i++) {
+            if (isCommentOnly(lines[i])) continue;
+            if (re.test(lines[i])) return `${rel(file)}:${i + 1}`;
+        }
+    }
+    return null;
+}
+
+function checkModuleBlockNamed(plugin, ctx, findings) {
+    const reader = findOwnModuleBlockReader(plugin, ctx);
+    const named = NAMED_MODULE_BLOCKS.has(plugin.name);
+    if (reader) moduleBlockReaders.add(plugin.name);
+    if (reader && !named && !FRESH_SCAFFOLD) {
+        findings.push({
+            check: "PC-15",
+            level: "violation",
+            message: `reads \`modules.${plugin.name}\` (${reader}) but ${rel(PROFILE_SCHEMA_PATH)} does not name it — add it under \`modules.properties\`, open (additionalProperties: true), so the shipped types list it.`,
+        });
+    }
+    if (!reader && named) {
+        findings.push({
+            check: "PC-15",
+            level: "violation",
+            message: `${rel(PROFILE_SCHEMA_PATH)} names \`modules.${plugin.name}\` but nothing in src/ reads it — remove the entry: a named block nobody reads invites a configuration that does nothing.`,
+        });
+    }
+}
+
+/** Names under `modules` that are neither a plugin id nor an in-core capability. */
+function scanUnknownModuleNames() {
+    const pluginNames = new Set(PLUGINS.map((p) => p.name));
+    const capabilityIds = new Set(
+        fs
+            .readdirSync(CORE_CAPABILITIES_DIR, { withFileTypes: true })
+            .filter((e) => e.isDirectory())
+            .map((e) => e.name)
+    );
+    if (capabilityIds.size === 0) {
+        throw new Error(`PC-15: no in-core capability found under ${rel(CORE_CAPABILITIES_DIR)}.`);
+    }
+    return [...NAMED_MODULE_BLOCKS]
+        .filter((name) => !pluginNames.has(name) && !capabilityIds.has(name))
+        .map((name) => ({
+            check: "PC-15",
+            level: "violation",
+            message: `${rel(PROFILE_SCHEMA_PATH)} names \`modules.${name}\`, which is neither a plugin id nor an in-core capability — a block under that name is read by nothing.`,
+        }));
+}
+
 function checkPackageJson(plugin, ctx, findings) {
     // PC-05
     if (!fs.existsSync(ctx.pkgPath)) {
@@ -565,6 +677,7 @@ function scanPlugin(plugin) {
     checkSources(plugin, ctx, findings);
     checkCssInjection(plugin, ctx, findings);
     checkProfileKeyBranch(plugin, ctx, findings);
+    checkModuleBlockNamed(plugin, ctx, findings);
     const pkg = checkPackageJson(plugin, ctx, findings);
     checkRollup(plugin, ctx, pkg, findings);
     checkTests(plugin, ctx, findings);
@@ -641,7 +754,27 @@ console.log(
     `PC-04-WIDE: ${wideFindings.length} violation(s) — mode ${FAIL_MODE ? "FAIL" : "WARN"}`
 );
 
-if (FAIL_MODE && (totalViolations > 0 || wideFindings.length > 0)) {
+// PC-15's unknown-name half runs regardless of --plugin — it reads the schema, not one plugin.
+const unknownModuleNames = scanUnknownModuleNames();
+if (!QUIET) {
+    const status = unknownModuleNames.length === 0 ? "✅" : "⚠️ ";
+    console.log(
+        `\n${status} PC-15 — every name under \`modules\` in ${rel(PROFILE_SCHEMA_PATH)} is a plugin or an in-core capability`
+    );
+    for (const f of unknownModuleNames) {
+        console.log(`   ⚠️  [${f.check}] ${f.message}`);
+    }
+}
+console.log(
+    `PC-15: ${moduleBlockReaders.size} scanned plugin(s) read their modules block, ` +
+        `${NAMED_MODULE_BLOCKS.size} name(s) under modules in the schema, ` +
+        `${unknownModuleNames.length} unknown name(s) — mode ${FAIL_MODE ? "FAIL" : "WARN"}`
+);
+
+if (
+    FAIL_MODE &&
+    (totalViolations > 0 || wideFindings.length > 0 || unknownModuleNames.length > 0)
+) {
     console.error("\nERROR: non-grandfathered violations remain (Plugin Contract v1).");
     process.exit(1);
 }

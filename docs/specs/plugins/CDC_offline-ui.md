@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 862f02e18
-date: 27 septembre 2026
+verifie_contre: c62162db6
+date: 28 septembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -13,6 +13,14 @@ date: 27 septembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/offline-ui` ·
 **Code :** `packages/plugins/offline-ui/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 dix jours plus tôt que le frontmatter.
+
+> ⚠️ **Ce que l'estampille du 28/09/2026 couvre.** `c62162db6` ne touche du paquet que trois
+> pages de `docs/` — `packages/plugins/offline-ui/docs/OVERVIEW.md`,
+> `packages/plugins/offline-ui/docs/API_REFERENCE.md` et
+> `packages/plugins/offline-ui/docs/EXAMPLES.md` —, dont les sections sur la
+> file d'écriture décrivaient le moteur du core : elles renvoient désormais à
+> `packages/core/docs/OFFLINE_WRITE_CYCLE.md`. `docs/` n'est pas dans `files[]` : aucun bump.
+> Aucune section de cette fiche ne recopiait ces pages ; relu et inchangé : le reste.
 
 > ⚠️ **Ce que l'estampille du 27/09/2026 ajoute.** Le poids des dictionnaires (§Internationalisation) :
 > six embarqués, deux lus par page, et le motif qui empêche de les découper ici. Et la clé de

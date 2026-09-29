@@ -821,9 +821,14 @@ export interface GeoLeafEventMap {
      * ⚠️ Dispatched CANCELABLE: a host that renders its own failure interface calls
      * `preventDefault()`, and the default screen is not drawn in `#gl-loader`. The payload is
      * JSON-safe, which is what places the key in this map. Subscribe BEFORE `GeoLeaf.boot()`.
+     *
+     * `reason: "engine"` (since 3.13.0): no MapLibre GL JS engine was found when the map was
+     * built — neither `globalThis.maplibregl` nor the `maplibregl` boot option. A `switch` over
+     * this union that was exhaustive before needs the new case.
      */
     "geoleaf:boot:failed": {
-        reason: "config" | "profile" | "webgl" | "map" | "module" | "timeout" | "internal";
+        reason:
+            "config" | "profile" | "engine" | "webgl" | "map" | "module" | "timeout" | "internal";
         phase: "config" | "profile" | "before-boot" | "registry" | "map";
         /** English, meant for logs and support — not a user-facing string. */
         message: string;
@@ -1124,14 +1129,17 @@ export interface GeoLeafRawEventMap {
      */
     "geoleaf:popup:action": GeoLeafPopupActionDetail;
     /**
-     * The host ended the boot — it is not a failure. Two causes:
+     * The host ended the boot — it is not a failure. Three causes:
      * - the `beforeBoot` hook threw (typically an authentication gate): `reason` is whatever
      *   it threw;
      * - `GeoLeaf.Core.destroy()` removed the boot's map while the boot was still running (a
-     *   component unmounted right after mounting): `reason` is `"destroyed"`.
+     *   component unmounted right after mounting): `reason` is `"destroyed"`;
+     * - the application was unmounted while it was still starting — `unmount()` on the handle
+     *   `GeoLeaf.mount()` returned, or a later `mount()` taking over: `reason` is
+     *   `"unmounted"` (since 3.13.0).
      *
-     * Emitted by `app/boot-core.ts`, which then hides the loading veil and draws no failure
-     * screen: that interface belongs to the host.
+     * Emitted by `app/boot-core.ts` and `app/mount.ts`, which then hide the loading veil and draw
+     * no failure screen: that interface belongs to the host.
      *
      * Lives HERE because `reason` may be whatever the hook threw — usually an `Error`, which
      * the sanitising bus would flatten to `{}`.

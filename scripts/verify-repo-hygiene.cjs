@@ -288,6 +288,9 @@ const SCRIPTS_ALLOWLIST = new Set([
     "purgecss-config.cjs", // scripts/lib/ — shared purgecss config (audit + CI gate)
     "side-effect-modules.cjs", // scripts/lib/ — derived side-effect truth (S6), shared by 2 gates
     "packages.cjs", // scripts/lib/ — derived package registry, shared by the gates that enumerate packages
+    // scripts/lib/ — where the profile schemas live and which profile file each one judges; one
+    // table for the validator, the emitter that ships them, and the proof on the tarball.
+    "profile-schemas.cjs",
     // scripts/lib/ — "is this package@version ALREADY on the registry?",
     // in one place for its two callers (`publish-plugins.cjs`,
     // `publish-one.cjs`). ⚠️ Copying it would let two definitions of
@@ -489,6 +492,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-tsdoc-conformity.cjs", // TSDOC-01/02/03 — @param ↔ signature, gate `check:tsdoc`
     "emit-ambient-types.cjs", // publishes the global namespace with the package (post-build core)
     "emit-css-type-stubs.cjs", // `<name>.css.d.ts` stubs for the published `.d.ts` CSS imports (post-build core AND root)
+    "emit-profile-schemas.cjs", // ships the profile JSON Schemas + their generated types in dist/schemas/ (post-build core)
     "source-inventory.cjs",
     // 30/07/2026 — SHARED engine extracting the TSDoc `@example`s. Written
     // for `typecheck-docs-examples.cjs`, extracted when

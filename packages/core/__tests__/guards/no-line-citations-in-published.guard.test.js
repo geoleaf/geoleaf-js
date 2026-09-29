@@ -8,7 +8,11 @@
  *
  *  - the `configSchema` `description`s, which `getCapabilitySchema(id)`
  *    publishes **at runtime** (a configuration studio displays them as-is);
- *  - the `src/api/geoleaf.*.ts` facades, published **by TypeDoc** in the npm package.
+ *  - the `src/api/geoleaf.*.ts` facades, published **by TypeDoc** in the npm package;
+ *  - the profile JSON Schemas (`profiles/schemas/`), shipped in the tarball under
+ *    `@geoleaf/core/schemas/` since 3.13.0. Their `description`s reach an integrator's editor
+ *    twice — through a file's `$schema`, and as the JSDoc of the types generated from them.
+ *    Three citations were there the day they started shipping (2026-09-28).
  *
  * Measured at the work's opening: **25 `file:line` citations** lived there,
  * across four capabilities, and **all 25 pointed at a line that no longer
@@ -37,7 +41,7 @@
  * everywhere and swept the ~400 internal occurrences down to the pattern
  * samples this very file carries. Extending the enforcement repo-wide is a
  * separate, conditioned decision — until it is taken, this guard's corpus
- * stays the two surfaces above.
+ * stays the surfaces above.
  *
  * ## A guard never seen red guards nothing
  *
@@ -48,6 +52,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +88,14 @@ function facadeFiles() {
         .map((f) => path.join(API, f));
 }
 
+/** The profile JSON Schemas — shipped as they are, `description`s included. */
+function schemaFiles() {
+    const { SCHEMAS_DIR, SCHEMA_SUFFIX, listSchemaNames } = createRequire(import.meta.url)(
+        "../../../../scripts/lib/profile-schemas.cjs"
+    );
+    return listSchemaNames().map((name) => path.join(SCHEMAS_DIR, `${name}${SCHEMA_SUFFIX}`));
+}
+
 function offenders(files) {
     const out = [];
     for (const p of files) {
@@ -104,6 +117,7 @@ function offenders(files) {
 
 const DECLARATIONS = declarationFiles();
 const FACADES = facadeFiles();
+const SCHEMAS = schemaFiles();
 
 describe("test-garde — aucune citation `fichier:ligne` dans les surfaces publiées", () => {
     // ── Anti-garde-vide ─────────────────────────────────────────────────────────
@@ -115,6 +129,10 @@ describe("test-garde — aucune citation `fichier:ligne` dans les surfaces publi
         expect(FACADES.length, `aucun geoleaf.*.ts sous ${API}`).toBeGreaterThan(0);
     });
 
+    it("lit au moins un schéma de profil livré", () => {
+        expect(SCHEMAS.length, "aucun *.schema.json sous profiles/schemas/").toBeGreaterThan(0);
+    });
+
     it("les `configSchema` publiés ne citent aucune ligne", () => {
         const bad = offenders(DECLARATIONS);
         expect(bad, bad.join("\n")).toEqual([]);
@@ -122,6 +140,11 @@ describe("test-garde — aucune citation `fichier:ligne` dans les surfaces publi
 
     it("les façades publiées ne citent aucune ligne", () => {
         const bad = offenders(FACADES);
+        expect(bad, bad.join("\n")).toEqual([]);
+    });
+
+    it("les schémas de profil livrés ne citent aucune ligne", () => {
+        const bad = offenders(SCHEMAS);
         expect(bad, bad.join("\n")).toEqual([]);
     });
 });

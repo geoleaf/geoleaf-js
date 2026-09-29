@@ -29,13 +29,15 @@ test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
  * batches of 3 (geojson/loader/profile.ts, `_loadLayersByBatch`), so the
  * registry becomes non-empty as soon as the first layer resolves — i.e. the
  * smallest, `villes_principales` (23 KB, vs 838 KB and 277 KB for the batch's
- * other two). Yet that is precisely a POINT layer bound to the taxonomy
- * (`modules.taxonomy.layers.villes_principales`), so its `circle-color` is
+ * other two). That layer was then a POINT layer bound to the taxonomy
+ * (`modules.taxonomy.layers.villes_principales`), so its `circle-color` was
  * REPLACED by the taxonomy's `match` expression
  * (adapters/maplibre/maplibre-taxonomy-paint.ts → marker-paint.ts). Read
- * alone, the map thus exposes ONLY expressions: the first assertion
+ * alone, the map thus exposed ONLY expressions: the first assertion
  * (`length > 0`) passed, the second (at least one static colour) fell — the
- * neighbouring layers' flat style was not there yet.
+ * neighbouring layers' flat style was not there yet. The binding is gone
+ * since 28/09/2026 (the layer's data carries no category column); the wait
+ * stays, because a registry that holds ONE layer is still not phase 1.
  *
  * `geoleaf:layers:initial-loaded` (profile.ts) is emitted once, at the
  * end of phase 1. The listener is set by `addInitScript`, hence before any

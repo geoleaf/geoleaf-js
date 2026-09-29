@@ -109,9 +109,9 @@ export const LegendLifecycle = {
         _started = true;
         // Deferred to app:ready (map + theme layers ready) — at once if the app is already.
         whenAppReady(_onAppReady);
-        // 🛑 `Core.destroy()` — the integrator's unmount path — runs the lifecycle seam and
-        // nothing else; `LegendModule.destroy()` is reached only by `ModuleRegistry.destroy()`,
-        // which no production path calls. Without this line a destroy landing in the legend's
+        // 🛑 `Core.destroy()` runs the lifecycle seam and nothing else; `LegendModule.destroy()` is
+        // reached only by `ModuleRegistry.destroy()`, which `Core.destroy()` does not call — only
+        // the unmount of `GeoLeaf.mount()` does. Without this line a destroy landing in the legend's
         // debounced rebuild (150 ms after app:ready) let the timer mount the control on the
         // destroyed map: "map is not ready", uncaught. Registered once (the seam is a Set).
         registerLifecycleTeardown(_teardownOnDestroy);
@@ -119,11 +119,17 @@ export const LegendLifecycle = {
 
     /** Detaches the listener and tears down the legend (module destroy / test). */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:app:ready", _onAppReady);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:app:ready", _onAppReady);
+            }
+            Legend._reset();
+        } finally {
+            _started = false;
         }
-        Legend._reset();
-        _started = false;
     },
 };
 

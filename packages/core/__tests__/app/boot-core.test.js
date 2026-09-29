@@ -249,9 +249,11 @@ describe("bootWithPreset — effective config", () => {
 
         expect(ctx.GeoLeaf.Config.loadActiveProfileResources).toHaveBeenCalledTimes(1);
         // The third argument is the module failure policy, passed since a module that throws
-        // stopped taking every later module down — `boot-module-failure.test.ts` pins it.
+        // stopped taking every later module down — `boot-module-failure.test.ts` pins it —, and
+        // the stop a caller ending the boot answers (`module-registry-reentry.test.ts`).
         expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), merged, {
             onModuleError: expect.any(Function),
+            shouldContinue: expect.any(Function),
         });
     });
 
@@ -263,6 +265,7 @@ describe("bootWithPreset — effective config", () => {
 
         expect(ctx.registry.init).toHaveBeenCalledWith(expect.anything(), base, {
             onModuleError: expect.any(Function),
+            shouldContinue: expect.any(Function),
         });
     });
 

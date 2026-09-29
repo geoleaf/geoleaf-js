@@ -908,33 +908,19 @@ declare global {
          * core and no integrator has to write them — they are the channel, not the
          * rendezvous.
          */
-        boot?: (options?: {
-            /**
-             * Configuration handed over IN MEMORY. When present it is applied as-is and
-             * no request is emitted to fetch one. Takes precedence over `configUrl`.
-             *
-             * ⚠️ An empty object `{}` is a VALID inline configuration, exactly as for
-             * `GeoLeaf.loadConfig` — the two bootstrap paths never diverge on the same
-             * value.
-             */
-            config?: Record<string, unknown>;
-            /**
-             * Explicit URL to load the configuration from. Used when `config` is absent.
-             * With neither, the path stays INFERRED from the host page — unchanged.
-             */
-            configUrl?: string;
-            /** Called after config load, before the map. Throwing aborts the boot. */
-            beforeBoot?: (context: {
-                config: Readonly<Record<string, unknown>>;
-            }) => Promise<void> | void;
-            /** Receives the startup metrics after `geoleaf:app:ready`. */
-            onPerformanceMetrics?: (metrics: {
-                timeToMapReadyMs: number | null;
-                timeToAppReadyMs: number | null;
-                startupTotalMs: number | null;
-                capturedAt: string;
-            }) => void;
-        }) => void;
+        boot?: (options?: import("./app/app-types.js").BootOptions) => void;
+
+        /**
+         * Mounts the application in a map container and returns the handle that unmounts it —
+         * the lifecycle a host that mounts and unmounts views can run again. Boots as
+         * {@link GeoLeafGlobal.boot} does, with the same options; `unmount()` takes the whole
+         * application down, and the next `mount()` gives it back whole. One application per
+         * page: a `mount()` while one is alive unmounts it first.
+         */
+        mount?: (
+            el: HTMLElement | string,
+            options?: import("./app/app-types.js").BootOptions
+        ) => import("./app/mount.js").GeoLeafMount;
 
         /** Sets a named performance mark. */
         mark?: (name: string) => void;
@@ -1082,7 +1068,64 @@ declare global {
          * empty declaration. A member that is a public API gets **named**.
          */
         Storage?: {
-            DB?: Record<string, unknown>;
+            /**
+             * The IndexedDB engine. Only the member the write cycle teaches is named; the rest
+             * stays in the tail.
+             */
+            DB?: {
+                /** The edits still owed or set aside, oldest first — `state` says which. */
+                listPendingEdits?(): Promise<
+                    Array<{
+                        entryId: string;
+                        kind: string;
+                        layerId: string;
+                        localId: string;
+                        state: string;
+                        createdAt: number;
+                        feature: unknown;
+                    }>
+                >;
+                [key: string]: unknown;
+            };
+            /*
+             * The offline write cycle. These members lived in the `[key: string]: unknown`
+             * tail below, which made them `unknown` — NOT CALLABLE — for an integrator's
+             * compiler while every documentation gate stayed green. Each is typed by the
+             * facade's own declaration, so the two cannot drift apart.
+             * `examples/consumer/storage-write-cycle.ts` fails to compile if one falls back.
+             */
+            /** Resolves when the offline engine is ready; never while `modules.offline` is off. */
+            whenReady?: (typeof import("./kernel/storage/facade.js").Storage)["whenReady"];
+            /**
+             * Does the layer grant this operation? Synchronous, read from the active profile;
+             * an unknown layer yields `false`.
+             */
+            mayEdit?: (typeof import("./kernel/storage/facade.js").Storage)["mayEdit"];
+            /** Will a write to this layer be held on the device? `false` without the engine. */
+            canQueueWrites?: (typeof import("./kernel/storage/facade.js").Storage)["canQueueWrites"];
+            /**
+             * Records a capture on the device and queues it for the server — possibly merged
+             * into, or cancelling, an entry already owed for that entity. Never throws:
+             * `refused` carries the motive.
+             */
+            applyEdit?: (typeof import("./kernel/storage/facade.js").Storage)["applyEdit"];
+            /** Runs a drain pass — or joins the one in progress — and returns its tally. Never throws. */
+            pushOutbox?: (typeof import("./kernel/storage/facade.js").Storage)["pushOutbox"];
+            /**
+             * Puts one set-aside entry back in the queue, if its motive is requeueable and,
+             * where that is checkable, its cause is observed as lifted.
+             */
+            requeueQuarantined?: (typeof import("./kernel/storage/facade.js").Storage)["requeueQuarantined"];
+            /** Same rule, for every set-aside entry — or for those of one motive only. */
+            requeueAll?: (typeof import("./kernel/storage/facade.js").Storage)["requeueAll"];
+            /** Destroys one set-aside entry, confirmed by the `localId` the caller listed. */
+            discardQuarantined?: (typeof import("./kernel/storage/facade.js").Storage)["discardQuarantined"];
+            /** The set-aside motives a requeue can lift. */
+            requeueableReasons?: (typeof import("./kernel/storage/facade.js").Storage)["requeueableReasons"];
+            /** The server versions a `lastWriteWins` conflict overwrote, one per entity. */
+            listConflicts?: (typeof import("./kernel/storage/facade.js").Storage)["listConflicts"];
+            /** Drops the archived conflicts of one layer, or of all. */
+            clearConflicts?: (typeof import("./kernel/storage/facade.js").Storage)["clearConflicts"];
             /**
              * Bounded pull of a declared layer into the `features` store.
              * Never confers editability (a standing invariant). Does not throw:

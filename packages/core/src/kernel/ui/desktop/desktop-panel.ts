@@ -20,6 +20,7 @@ import { getLabel } from "../../../utils/i18n/i18n.js";
 import { dispatchGeoLeafEvent } from "../../events/event-bus.js";
 import {
     buildThemeToggleBtn as _buildThemeToggleBtn,
+    releaseThemeToggleButtons,
     appendTabsSeparator as _appendTabsSeparator,
     appendThemeToggleToTabs as _appendThemeToggleToTabs,
 } from "./desktop-panel-theme.js";
@@ -685,6 +686,8 @@ export function destroyDesktopPanel(): void {
     // The node lives OUTSIDE the panel removed here, and the gate never evicts.
     _mobileThemeToggle?.remove();
     _mobileThemeToggle = null;
+    // Their theme-sync listeners live on the global, outside everything removed above.
+    releaseThemeToggleButtons();
 }
 
 // Self-register the teardown so `Core.destroy()` actually tears the panel down. Mirrors

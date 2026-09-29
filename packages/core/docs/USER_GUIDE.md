@@ -1012,15 +1012,15 @@ const polygon = GeoLeaf.Utils.wktToGeoJSON("POLYGON((0 0, 4 0, 4 4, 0 4, 0 0))")
 
 ### 8.3 Offline Mode
 
-> Requires the `@geoleaf-plugins/offline-ui` plugin.
-
-The offline cache is provided by the Storage plugin (`@geoleaf-plugins/offline-ui`).
-See the plugin documentation for integration details.
+The offline engine is in `@geoleaf/core`. It loads when both `modules.pwa.enabled` and
+`modules.offline.enabled` are `true`, and holds the downloaded data and the queue of edits made
+offline — see the [offline write cycle](OFFLINE_WRITE_CYCLE.md). The download window and the cache
+button come from the `@geoleaf-plugins/offline-ui` plugin.
 
 ```javascript
-// Verify the storage plugin is loaded
-const isLoaded = GeoLeaf.plugins.isLoaded("storage");
-console.log("Storage plugin loaded:", isLoaded);
+// Verify the offline-ui plugin is loaded
+const isLoaded = GeoLeaf.plugins.isLoaded("offline-ui");
+console.log("offline-ui loaded:", isLoaded);
 ```
 
 ### 8.3 Custom Themes (CSS)

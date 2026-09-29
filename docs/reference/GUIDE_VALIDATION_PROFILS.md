@@ -1,7 +1,15 @@
 # Guide — Validation des profils GeoLeaf
 
-> Version : 2.0.0 · Mise à jour : 2026-07-27  
+> Version : 2.2.0 · Mise à jour : 2026-09-28  
 > Audience : intégrateurs et développeurs de profils
+>
+> **28/09/2026 — un niveau « données ».** Les trois niveaux ci-dessous jugent la FORME d'un profil,
+> jamais sa donnée : un champ qu'il nomme et que la donnée ne porte pas passait sans un mot. Il est
+> désormais dit au chargement de chaque couche, et refusé en gate sur les profils du dépôt (§9).
+>
+> **28/09/2026 — les schémas partent avec le paquet.** Un intégrateur valide désormais son profil
+> hors de ce dépôt, contre les schémas que `@geoleaf/core` livre (§6.2) ; ce guide n'enseignait que
+> la commande du monorepo.
 >
 > ⚠️ **Relu contre le code le 27/07/2026 — refonte majeure.** Plusieurs exemples enseignaient des
 > erreurs qui ne se produisent plus : `clusteringConfig`, `performance` et `poiAddConfig` ont été
@@ -15,18 +23,22 @@
 
 ## 1. Vue d'ensemble
 
-GeoLeaf valide les profils à deux niveaux complémentaires :
+GeoLeaf valide les profils à deux niveaux complémentaires, et un intégrateur rejoue le second chez
+lui, avec les schémas que le paquet livre. Un quatrième niveau confronte le profil à sa donnée :
 
-| Niveau          | Quand                          | Outil                         | Champs contrôlés                                                                |
-| --------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------------------- |
-| **Boot léger**  | Au chargement de l'application | `kernel/config/profile.ts:22` | Structure, types critiques : `id`, `version`, `map`, `map.zoom/minZoom/maxZoom` |
-| **AJV complet** | **Gate bloquante**             | `npm run validate:profiles`   | Tous les champs du schéma `profiles/schemas/profile.schema.json`                |
+| Niveau          | Quand                                          | Outil                                                                   | Champs contrôlés                                                                |
+| --------------- | ---------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| **Boot léger**  | Au chargement de l'application                 | `kernel/config/profile.ts:22`                                           | Structure, types critiques : `id`, `version`, `map`, `map.zoom/minZoom/maxZoom` |
+| **AJV complet** | **Gate bloquante**                             | `npm run validate:profiles`                                             | Tous les champs du schéma `profiles/schemas/profile.schema.json`                |
+| **Intégrateur** | Dans son propre dépôt, sa CI                   | ajv + `@geoleaf/core/schemas`                                           | Les mêmes schémas, livrés par le paquet, octet pour octet (§6.2)                |
+| **Données**     | Au chargement de chaque couche ; gate du dépôt | `Log.warn` du cœur ; garde `profile-field-reconciliation.guard.test.ts` | Chaque champ que le profil nomme existe dans la donnée de la couche (§9)        |
 
 Le validateur boot est embarqué dans `@geoleaf/core` (`_validateProfileStructure`,
 `packages/core/src/kernel/config/profile.ts:22`). AJV reste **hors bundle** — outillage seulement.
 
-⚠️ **AJV n'est plus « opt-in ».** `validate-profiles.cjs` est une gate **bloquante**, câblée à deux
-endroits : `scripts/ci-local.cjs:384` et `.husky/pre-commit:22` (il sort 1 à la moindre violation).
+⚠️ **AJV n'est plus « opt-in ».** `validate-profiles.cjs` est une gate **bloquante**, câblée dans
+`ci:local` et dans le hook `pre-commit` (il sort 1 à la moindre violation) — les deux se retrouvent
+par `grep -n "validate:profiles" scripts/ci-local.cjs .husky/pre-commit`.
 Aucun commit ne passe sur un profil invalide. Ne pas recopier ici le nombre de profils validés —
 `npm run validate:profiles` l'imprime.
 
@@ -387,6 +399,8 @@ produirait plus une erreur de type mais un `must NOT have additional properties`
 
 ## 6. Lancer la validation AJV
 
+### 6.1 Dans ce dépôt
+
 ```bash
 # Depuis la racine du monorepo
 npm run validate:profiles
@@ -407,6 +421,28 @@ GeoLeaf — validation des profils (profile.json + compagnons)
 ```
 
 Exit code : `0` si valide, `1` si au moins une erreur — intégrable en CI (`npm run validate:profiles || exit 1`).
+
+### 6.2 Hors du dépôt — avec le paquet npm
+
+`@geoleaf/core` livre les dix schémas à `@geoleaf/core/schemas/<nom>.schema.json` (dans un paquet
+installé : `node_modules/@geoleaf/core/dist/schemas/`), copiés octet pour octet de
+`profiles/schemas/` au build, et des types TypeScript générés depuis eux à `@geoleaf/core/schemas`.
+Aucun schéma ne décrit un profil entier : chaque fichier se valide seul, contre le schéma que sa
+place désigne. La table fichier → schéma et la recette ajv vivent dans la page publique
+[`packages/core/docs/schema/README.md`](../../packages/core/docs/schema/README.md) — c'est cette
+recette que le test du paquet (`bundle-profile-contract.test.ts`) joue contre ce que le tarball
+emporte.
+
+⚠️ **Les options comptent** : `new Ajv({ allErrors: true, allowUnionTypes: true })`. Sans
+`allowUnionTypes`, ajv émet quatre avertissements — deux schémas déclarent des unions de types.
+**`strict: true` fonctionne aussi**, pourvu qu'`allowUnionTypes` reste : `validate-profiles.cjs`
+compile les dix schémas ainsi, et sort en 1 sur un schéma qui cesserait de le tenir. C'est pourquoi
+toute branche conditionnelle d'un schéma nomme, dans ses `properties`, les clés que son `required`
+exige — sans quoi ajv refuse de compiler (`strictRequired`).
+
+⚠️ **Les types sont un majorant des schémas**, pas un second validateur : tout fichier qu'un schéma
+accepte se type, l'inverse n'est pas promis (règles conditionnelles, de présence, motifs et bornes ne
+s'expriment pas). Le verdict reste aux schémas.
 
 ---
 
@@ -462,3 +498,85 @@ Un intégrateur qui suivait ce tableau écrivait un profil **rejeté**.
 2. Si le champ est critique au boot, ajouter la vérification dans `packages/core/src/kernel/config/profile.ts` (`_validateProfileStructure`, l. 22)
 3. Relancer `npm run validate:profiles` — vérifier 0 régression sur les profils existants
 4. Documenter dans `docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md` et vérifier `node scripts/check-config-coverage.cjs` (il échoue si une clé de schéma n'a pas de ligne d'inventaire)
+
+---
+
+## 9. Le niveau « données » — les champs déclarés face à la donnée
+
+Un profil nomme les propriétés de sa donnée en texte libre : la colonne de catégorie d'une
+taxonomie, le champ d'une règle de style, celui d'une ligne d'attributs. Un nom que la donnée ne
+porte pas se lit `undefined`, et son lecteur retombe sur un défaut **sans un mot** : icône de la
+catégorie au lieu de celle de la sous-catégorie, ligne de popup absente, règle de style jamais
+appliquée, couche vidée par le filtre. Les schémas n'y peuvent rien — ils jugent la forme, jamais
+la donnée.
+
+### 9.1 Au chargement : une ligne par couche
+
+Le cœur confronte, pour chaque couche qu'il charge, les champs que ses lecteurs déclarent à un
+échantillon de ses entités, et nomme chaque champ qu'aucune ne porte — **une fois** par couche,
+clé et champ, en `Log.warn` :
+
+```
+[GeoLeaf.GeoJSON] Layer "candelabres": 1 declared field(s) carried by none of the 30 loaded
+features — modules.taxonomy.taxonomies.poi-cat.subCategoryField "subcategoryId" (did you mean
+"subCategoryId"?). …
+```
+
+Le message donne la clé de configuration où le champ est déclaré, le nom tel que le profil
+l'écrit, et — quand une clé de la donnée ne diffère que par la casse — le nom que la donnée porte,
+dans la notation de la déclaration. Un avertissement est **toujours enregistré**, quel que soit le
+niveau de journal : il se relit par programme.
+
+```js
+GeoLeaf.Log.getEntries().filter((e) => e.level === "warn" && e.message.includes("declared field"));
+```
+
+Ce diagnostic **ne bloque rien** et ne change rien au rendu.
+
+| Règle                       | Ce qu'elle dit                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Une **clé**, pas une valeur | Une propriété présente à `null` est portée — une donnée clairsemée n'est pas une faute de nom                       |
+| L'échantillon               | Jusqu'à 1 000 entités, **réparties** sur la collection (une sur ⌈n / 1 000⌉), toutes en deçà                        |
+| Couche vide                 | Rien n'est jugé — une collection vide ne prouve rien                                                                |
+| Fréquence                   | Une fois par couche, clé et champ, pour la vie de la page ; un démontage de l'application réarme le diagnostic      |
+| Changement de style         | Le style appliqué est jugé à son tour — ses règles peuvent tester des champs que le style par défaut ne testait pas |
+
+### 9.2 Chaque clé est jugée avec la règle de SON lecteur
+
+C'est le piège : la notation n'est pas la même d'une clé à l'autre, et un champ que le diagnostic
+dirait « présent » avec une règle plus lâche que celle du lecteur ne s'afficherait jamais.
+
+| Clé                                                                                          | Notation, telle que le lecteur la lit                                                                                         |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `modules.taxonomy` — `categoryField`, `subCategoryField` (et leur surcharge `layers.<id>.…`) | nom **nu**, sous `properties` ; `"properties.categoryId"` ne trouve rien                                                      |
+| style — `styleRules[].when.field` (et ses branches `all`)                                    | nu ou préfixé : **un** `properties.` en tête est retiré ; `attributes.x` ne trouve rien                                       |
+| étiquette — `label.field` du style, sinon `labels.field` de la couche                        | nom **nu**, strictement : `"properties.name"` cherche une clé littéralement nommée ainsi, et n'affiche rien                   |
+| `attributes.fields[].field` — les lignes **affichées** seulement                             | `properties.x`, `attributes.x` ou nom nu                                                                                      |
+| `searchable.fields`                                                                          | chemin pointé, depuis l'entité puis depuis `properties`                                                                       |
+| `modules.filter.fields[]` — `field`, et `subField` d'un descripteur `taxonomy`               | chemin pointé, depuis l'entité puis depuis `properties` — seulement pour un descripteur qui **liste** la couche dans `layers` |
+
+**Ce qui n'est pas jugé**, et pourquoi :
+
+- un descripteur de filtre sans `layers`, ou de sorte `text` : il vaut pour plusieurs couches, et un
+  champ qui n'en habite que certaines est normal ;
+- une ligne d'attributs de **saisie** seule (un bloc `edit`, aucun `display`) : elle se remplit à la
+  création, son absence de la donnée chargée est normale ;
+- les clés d'un greffon (colonnes de la table, identifiant du temps réel, étiquette d'itinéraire) :
+  le cœur ne valide pas la configuration d'un greffon ;
+- les entités que le chargeur ne convertit pas : tuiles vectorielles, couche d'un greffon
+  (FlatGeobuf), et tout ce qui arrive après le premier chargement (rafraîchissement OGC, flux temps
+  réel, `GeoLeaf.Layers.setData`).
+
+### 9.3 Dans ce dépôt : une gate
+
+La garde `packages/core/__tests__/guards/profile-field-reconciliation.guard.test.ts` rejoue le même
+jugement, avec les mêmes fonctions, sur les profils de `profiles/` — et elle juge **tous** les
+styles d'une couche, là où le chargement ne voit que ceux qu'on applique. Elle tourne hors du cache
+turbo, dans `ci:local` (étape des gardes) :
+
+```bash
+npx turbo run test:guards --filter=@geoleaf/core
+```
+
+Chaque couche qu'elle ne peut pas lire comme le chargeur (greffon, tuiles, OGC, `dataUrl` distante,
+source convertie par `data.mapping`, collection vide) est **nommée**, jamais passée en silence.

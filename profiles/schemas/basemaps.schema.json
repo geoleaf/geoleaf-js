@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/basemaps",
     "title": "GeoLeaf Basemaps",
-    "description": "basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). Alternate source types (wmts, wms, imageSource, hillshade) present in real profiles were added. The `type` enum was hardened in S6 to the 7 runtime-mapped values; the runtime-support audit confirmed all types (incl. image/hillshade/wmts/wms) are rendered. See anomaly registry ANO-017.",
+    "description": "basemaps.json — basemap tile source definitions for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). The `type` enum holds the 7 values the runtime maps, and every one of them is rendered — image, hillshade, wmts and wms included.",
     "type": "object",
     "required": ["basemaps"],
     "additionalProperties": false,
@@ -42,7 +42,7 @@
                 "type": {
                     "type": "string",
                     "enum": ["tile", "raster", "maplibre", "image", "hillshade", "wmts", "wms"],
-                    "description": "Source type. Enum hardened in S6 to the 7 runtime-mapped values (registry.ts `_resolveBasemapType` + dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path. See anomaly registry ANO-017."
+                    "description": "Source type — the 7 values the runtime maps (`_resolveBasemapType` and its dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path."
                 },
                 "url": {
                     "type": "string",

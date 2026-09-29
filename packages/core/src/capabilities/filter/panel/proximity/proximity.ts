@@ -116,8 +116,11 @@ FilterPanelProximity.destroy = function () {
     const Log = getLog();
 
     if (ProximityState.eventCleanups && ProximityState.eventCleanups.length > 0) {
+        // `events.on()` returns the listener's id, not a remover: an id is released through
+        // `events.off()` — only functions were called here, and every listener stayed.
         ProximityState.eventCleanups.forEach((cleanup) => {
             if (typeof cleanup === "function") cleanup();
+            else if (typeof cleanup === "number") events.off(cleanup);
         });
         ProximityState.eventCleanups = [];
         Log.info("[ProximityFilter] Event listeners cleaned up");

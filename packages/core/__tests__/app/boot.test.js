@@ -82,7 +82,7 @@ describe("app/boot (R5)", () => {
                 }),
                 // The module failure policy, passed since a module that throws stopped taking
                 // every later module down — `boot-module-failure.test.ts` pins what it decides.
-                { onModuleError: expect.any(Function) }
+                { onModuleError: expect.any(Function), shouldContinue: expect.any(Function) }
             );
         });
         it("uses loadActiveProfileResources if Config is present (registry.init avec profileCfg)", async () => {
@@ -112,7 +112,7 @@ describe("app/boot (R5)", () => {
                         ],
                     }),
                 }),
-                { onModuleError: expect.any(Function) }
+                { onModuleError: expect.any(Function), shouldContinue: expect.any(Function) }
             );
         });
     });

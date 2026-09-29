@@ -59,6 +59,9 @@ g.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}
 const { Legend } = await import("../../../src/capabilities/legend/legend.js");
 const { LegendContract } = await import("../../../src/capabilities/legend/legend-seam.js");
 const { Log } = await import("../../../src/utils/log/index.js");
+const { LEGEND_INSTALLER } = await import("../../../src/capabilities/legend/install.js");
+const { availableLegend, provideLegend } =
+    await import("../../../src/kernel/shared/legend-slot.js");
 
 /** The mocked `Log.warn`, typed so its call list is readable. */
 const warn = Log.warn as unknown as ReturnType<typeof vi.fn>;
@@ -107,6 +110,22 @@ describe("legend seam — readiness guard against the real module", () => {
             LegendContract.loadLayerLegend("aires_protegees_nationales_sib", "defaut", {});
         }
         expect(aAverti()).toBe(false);
+    });
+
+    it("reaches the kernel through its slot, filled by the installer — and only once initialised", () => {
+        // Core 3.13.0: the kernel no longer imports this capability (ESLint
+        // `KERNEL_CAPABILITY_BOUNDARY`). It asks its own slot, which the installer fills at
+        // `registerGlobals` — Pass 1, before any module runs. The same readiness guard answers.
+        provideLegend(null);
+        expect(availableLegend()).toBeNull();
+
+        LEGEND_INSTALLER.registerGlobals({});
+        expect(availableLegend(), "filled, but the legend is not initialised yet").toBeNull();
+
+        Legend.init(carteFactice);
+        expect(availableLegend()).toBe(LegendContract);
+        Legend._reset();
+        expect(availableLegend()).toBeNull();
     });
 
     it("STILL warns when the facade is called directly before init — LG-19 is unchanged", () => {

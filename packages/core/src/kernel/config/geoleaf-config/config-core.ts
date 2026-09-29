@@ -244,4 +244,20 @@ const _configCore: ConfigCoreShape & ThisType<ConfigFacade> = {
  */
 const Config = _configCore as unknown as ConfigFacade;
 
+/**
+ * Empties the configuration singleton, as the page found it before any boot.
+ *
+ * Called when an application is unmounted (`app/mount.ts`). `_applyConfig()` MERGES into what is
+ * there — which is what lets a host's `Config.set` and a profile's sections meet —, so without
+ * this an application mounted again inherited every key the previous one loaded, including
+ * those its own configuration no longer declares. Not on the façade: the boot owns it.
+ */
+export function resetConfigStore(): void {
+    _configCore._config = {};
+    _configCore._isLoaded = false;
+    _configCore._subModulesInitialized = false;
+    _configCore._source = null;
+    _configCore._options = { autoEvent: true };
+}
+
 export { Config };

@@ -82,15 +82,21 @@ export const RouteLifecycle = {
 
     /** Detaches listeners and clears derived endpoint layers (destroy / test). */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:layer:added", onLayerAdded);
-            document.removeEventListener("geoleaf:map:ready", sweep);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:layer:added", onLayerAdded);
+                document.removeEventListener("geoleaf:map:ready", sweep);
+            }
+            const adapter = getAdapter();
+            const registry = adapter?.getLayerRegistry?.();
+            if (adapter && registry) {
+                for (const layerId of registry.getAllLayerIds()) clearEndpoints(adapter, layerId);
+            }
+        } finally {
+            _started = false;
         }
-        const adapter = getAdapter();
-        const registry = adapter?.getLayerRegistry?.();
-        if (adapter && registry) {
-            for (const layerId of registry.getAllLayerIds()) clearEndpoints(adapter, layerId);
-        }
-        _started = false;
     },
 };

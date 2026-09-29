@@ -729,8 +729,8 @@ const StorageDB = {
      *
      * @returns One entry per pending edit, oldest first; `[]` without the module.
      * @example
-     * const pending = await GeoLeaf.Storage.DB.listPendingEdits();
-     * console.info(`${pending.length} saisie(s) jamais poussée(s)`);
+     * const pending = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.()) ?? [];
+     * console.info(`${pending.length} edit(s) not yet accepted by the server`);
      */
     async listPendingEdits(): Promise<
         Array<{

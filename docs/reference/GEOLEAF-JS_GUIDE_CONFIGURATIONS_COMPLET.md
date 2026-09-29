@@ -1,8 +1,8 @@
 # GeoLeaf — Guide complet de toutes les configurations
 
 **Produit :** GeoLeaf Platform V3
-**Version :** 2.7.0
-**Date :** 27 juillet 2026 — sorti du dossier de tri, relu contre le code
+**Version :** 2.9.0
+**Date :** 28 septembre 2026 — §3.0 et §4 : un champ déclaré et absent de la donnée est dit au chargement, et chaque clé a SA notation ; §4 et §7.1 relus (la taxonomie est opt-out, et l'icône suit les colonnes qu'elle déclare) · plus tôt le même jour : les schémas et types de profil livrés par le paquet (§3.0), `features.json` (§3.3, 13d) et `performance` (§3.5) relus contre le schéma
 
 > **Rôle de ce document :** Référence complète et narrative pour les intégrateurs. Chaque paramètre est accompagné de descriptions longues, d'exemples et de notes contextuelles.
 
@@ -114,6 +114,26 @@
 >
 > Les anciens emplacements racine (`profiles/{id}/taxonomy.json`…) ne sont plus utilisés par les profils livrés ; le loader résout les chemins déclarés dans `Files`. En déploiement, `profile-bundle.json` (généré au build) fusionne toutes ces sections en un seul fetch — pour éditer un profil déployé à chaud, supprimer `profile-bundle.json` ou activer `debug: true` (le bundle est alors ignoré).
 
+### 3.0 Valider et typer un profil — les schémas livrés
+
+`@geoleaf/core` livre les dix schémas JSON qui jugent les fichiers d'un profil, à
+`@geoleaf/core/schemas/<nom>.schema.json` (octet pour octet ceux de `profiles/schemas/`), et des types
+TypeScript générés depuis eux à `@geoleaf/core/schemas` (`GeoLeafProfile`, `GeoLeafLayerConfig`,
+`GeoLeafLayerStyle`…). Aucun schéma ne décrit un profil entier : chaque fichier se valide seul,
+contre le schéma que sa place désigne. La table fichier → schéma et la recette ajv :
+[`packages/core/docs/schema/README.md`](../../packages/core/docs/schema/README.md) ; les niveaux de
+validation : [`GUIDE_VALIDATION_PROFILS.md`](GUIDE_VALIDATION_PROFILS.md) §6.2.
+
+⚠️ Les types sont un **majorant** des schémas : tout fichier qu'un schéma accepte se type, l'inverse
+n'est pas promis. Le verdict reste aux schémas.
+
+⚠️ **Les schémas jugent la forme, jamais la donnée.** Un profil nomme les propriétés de sa donnée en
+texte libre — `categoryField`, `styleRules[].when.field`, `attributes.fields[].field`, `label.field`…
+— et un nom que la donnée ne porte pas passe tous les schémas. Le cœur le dit au chargement de la
+couche, en un `Log.warn` qui nomme la clé, le champ et, quand seule la casse diffère, le nom que la
+donnée porte. Chaque clé se lit avec **sa** notation — nom nu, `properties.x`, chemin pointé — et
+la table est dans [`GUIDE_VALIDATION_PROFILS.md`](GUIDE_VALIDATION_PROFILS.md) §9.
+
 ### 3.1 Métadonnées
 
 | #   | Paramètre     | Type   | Obligatoire | Description                  | Description longue                                                                                                                                                                                                                                                                                                   |
@@ -149,7 +169,7 @@
 | 13  | `Files.layersFile`       | string | `"config/core/layers.json"`                     | Registre des couches       | Chemin relatif vers le fichier JSON qui recense toutes les couches GeoJSON disponibles dans ce profil. Ce fichier contient un tableau de références : chaque entrée pointe vers un fichier de configuration de couche individuel. C'est le point d'entrée pour le système de couches.                                                                                                    |
 | 13b | `Files.basemapsFile`     | string | `"config/core/basemaps.json"`                   | Fonds de carte             | Chemin relatif vers le fichier JSON listant les fonds de carte proposés. Son contenu est fusionné à la racine du profil consolidé (clé `basemaps`).                                                                                                                                                                                                                                      |
 | 13c | `Files.uiFile`           | string | `"config/core/ui.json"`                         | Configuration UI           | Chemin relatif vers le fichier JSON de configuration de l'interface (`ui`, `layerManagerConfig`, `scaleConfig`). Son contenu est fusionné à la racine du profil consolidé.                                                                                                                                                                                                               |
-| 13d | `Files.featuresFile`     | string | `"config/core/features.json"`                   | Features core              | Chemin relatif vers le fichier JSON des features core transverses : `clusteringConfig`, `performance`, `poiConfig`, `mapOptions`. Son contenu est fusionné à la racine du profil consolidé — ces clés restent des clés racine, hors `modules.*`. _(`geocodingConfig` a été extrait vers le plugin `@geoleaf-plugins/geocoding` — voir `modules.geocoding`, §23bis.)_                     |
+| 13d | `Files.featuresFile`     | string | `"config/core/features.json"`                   | Features core              | Chemin relatif vers le fichier JSON des features core : `mapOptions` seul — `features.schema.json` est fermé. Son contenu est fusionné à la racine du profil consolidé. _(`clusteringConfig`, `performance` et `poiConfig` n'existent plus : le schéma les refuse. `geocodingConfig` a été extrait vers le plugin `@geoleaf-plugins/geocoding` — voir `modules.geocoding`, §23bis.)_     |
 | 13e | `Files.modules`          | object | `{"offline": "config/plugins/offline.json", …}` | Configs plugins            | Dictionnaire id de module → chemin du fichier de configuration du plugin (Plugin Contract v1). Chaque fichier contient le bloc `modules.<id>` correspondant ; le core ne valide pas son contenu (INV-CONFIG). Les fichiers sont chargés en parallèle des sections core ; un bloc `modules.<id>` déclaré inline dans `profile.json` prime sur le fichier (deepMerge, tableaux remplacés). |
 
 ### 3.4 Section `ui` (interface utilisateur)
@@ -169,13 +189,13 @@
 | 25  | `ui.showTable`                   | boolean | —        | Tableau de données          | Affiche un tableau tabulaire en bas de la carte listant les entités géographiques (POI, features GeoJSON) de la couche active. L'utilisateur peut trier les colonnes, effectuer une recherche dans le tableau, et cliquer sur une ligne pour zoomer sur l'élément correspondant sur la carte. Le tableau se synchronise avec les filtres appliqués.                                                                                                                                                                                                                                                                                             |
 | 26  | `ui.interactiveShapes`           | boolean | —        | Formes GeoJSON cliquables   | Rend les polygones et lignes GeoJSON cliquables par l'utilisateur. Quand activé, un clic sur un polygone (ex. un département, une zone protégée) déclenche l'affichage du popup ou du panneau latéral avec les informations de cette feature. Quand désactivé, les formes sont purement visuelles et ne réagissent pas aux clics.                                                                                                                                                                                                                                                                                                               |
 
-### 3.5 Section `performance`
+### 3.5 Section `performance` — n'existe plus
 
-| #   | Paramètre                            | Type    | Défaut | Description                     | Description longue                                                                                                                                                                                                                                                                                                                                          |
-| --- | ------------------------------------ | ------- | ------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 27  | `performance.maxConcurrentLayers`    | number  | —      | Couches chargées en parallèle   | Nombre maximum de couches GeoJSON téléchargées et rendues simultanément lors du chargement d'un thème. Si un thème active 15 couches et que ce paramètre est à 3, les couches seront chargées par groupes de 3 successivement. Permet d'éviter un pic de charge réseau et un blocage du rendu si de nombreuses couches lourdes sont activées simultanément. |
-| 28  | `performance.layerLoadDelay`         | number  | —      | Délai entre chargements (ms)    | Ajoute un délai en millisecondes entre le chargement de chaque couche. Permet de lisser la charge CPU/réseau et d'éviter un effet de "gel" de l'interface si de nombreuses couches sont chargées en même temps. Une valeur de 100 à 300 ms suffit généralement. À 0, toutes les couches sont lancées aussi vite que possible.                               |
-| 29  | `performance.fitBoundsOnThemeChange` | boolean | —      | Recadrer au changement de thème | Quand activé, la carte effectue automatiquement un `fitBounds()` sur l'emprise des couches visibles chaque fois que l'utilisateur change de thème. Cela garantit que l'utilisateur voit toujours la totalité des données du nouveau thème. Quand désactivé, la carte conserve sa position et son zoom actuels lors du changement de thème.                  |
+⚠️ **Cette section décrivait trois clés (`performance.maxConcurrentLayers`, `performance.layerLoadDelay`,
+`performance.fitBoundsOnThemeChange`) qu'aucun code ne lit et qu'aucun schéma n'accepte** — relu le
+28/09/2026 : `profile.schema.json` et `features.schema.json` sont fermés, et `npm run validate:profiles`
+refuse un profil qui les déclare. Vérifiable :
+`grep -rn "maxConcurrentLayers\|layerLoadDelay\|fitBoundsOnThemeChange" packages/core/src` ne rend rien.
 
 ---
 
@@ -184,7 +204,13 @@
 > **⚠️ MAJ Lot 2 (11/07/2026) :** la taxonomie ne vit plus dans `config/core/taxonomy.json` (fichier **retiré**, ainsi que `Files.taxonomyFile`). Les icônes et catégories sont désormais dans **`config/plugins/taxonomy.json`** sous le bloc **`modules.taxonomy`** (déclaré via `Files.modules.taxonomy`), source unique lue par la capacité `GeoLeaf.Taxonomy`. Correspondance avec les tables §4.1-4.3 (structure historique) : `icons.*` → **`modules.taxonomy.icons.*`** (mêmes clés `spriteUrl` / `symbolPrefix` / `defaultIcon`, + optionnelle `showOnMap?` booléen défaut « on ») ; `categories.*` → **`modules.taxonomy.taxonomies.<ref>.categories.*`** (l'icône est sous **`svgId`** et non `icon`). La section `defaults` (§4.2) est supprimée — utiliser `icons.defaultIcon`.
 
 **Fichier :** `profiles/{id}/config/plugins/taxonomy.json` (bloc `modules.taxonomy`, déclaré via `Files.modules.taxonomy`)  
-**Obligatoire :** Non (capacité opt-in — `modules.taxonomy.enabled: true`)
+**Obligatoire :** Non — capacité **opt-out** : active tant que `modules.taxonomy.enabled` ne vaut pas `false` (§4.6)
+
+**Les colonnes lues sur la donnée** : `taxonomies.<ref>.categoryField` (obligatoire — sans lui la
+liaison est abandonnée, il n'y a aucun repli sur `categoryId`) et `subCategoryField`, surchargeables
+par couche (`layers.<id>.categoryField` / `subCategoryField`). Ce sont des noms **nus**, lus sous
+`properties`, **sensibles à la casse** : `subcategoryId` ne lit pas `subCategoryId`. Un nom que la
+donnée de la couche ne porte pas est dit au chargement (§3.0).
 
 ### 4.1 Section `icons`
 
@@ -433,7 +459,7 @@ permet de surcharger n'importe quel champ ») :
 | 60  | `geometry`           | string  | —      | Type de géométrie                | Indique la nature géométrique des features dans le GeoJSON : `"point"` (marqueurs, POI), `"polygon"` (zones, régions, bâtiments), `"polyline"` (routes, cours d'eau, itinéraires), `"fill-extrusion"` (polygones 3D extrudés, bâtiments volumiques — v2.2.0+). Détermine comment GeoLeaf rend la couche sur la carte et quels paramètres de style sont applicables.                                                                                                                                                                                                                                   |
 | 61  | `zIndex`             | number  | —      | Ordre d'empilement               | Contrôle l'ordre de superposition des couches sur la carte (0 = en dessous, 99 = au-dessus). Les couches avec un zIndex élevé sont dessinées par-dessus celles avec un zIndex bas. Par exemple, mettre les points à 90+ et les polygones à 10-50 garantit que les marqueurs ne sont jamais masqués par une zone.                                                                                                                                                                                                                                                                                      |
 | 62  | `interactiveShape`   | boolean | —      | Formes cliquables                | Active les interactions utilisateur (clic, survol) sur les features de cette couche. Quand activé, un clic sur un polygone ou une ligne ouvre le popup ou le panneau latéral avec les informations de cette feature. Quand désactivé, les features sont purement décoratives.                                                                                                                                                                                                                                                                                                                         |
-| 63  | `showIconsOnMap`     | boolean | —      | Icônes sur la carte              | Pour les couches de type `"point"`, affiche des icônes (issues du sprite SVG de la taxonomie) à la place des marqueurs par défaut. L'icône est résolue automatiquement selon le `categoryId` et `subcategoryId` de chaque feature. Permet une carte visuellement riche avec des icônes métier distinctives.                                                                                                                                                                                                                                                                                           |
+| 63  | `showIconsOnMap`     | boolean | —      | Icônes sur la carte              | Pour les couches de type `"point"`, affiche des icônes (issues du sprite SVG de la taxonomie) à la place des marqueurs par défaut. L'icône est résolue selon les colonnes que la taxonomie déclare pour la couche (`categoryField`, `subCategoryField` — §4). Permet une carte visuellement riche avec des icônes métier distinctives.                                                                                                                                                                                                                                                                |
 | 63b | `showInLayerManager` | boolean | `true` | Ligne au gestionnaire de couches | `false` retire la couche du gestionnaire de couches, et de lui seul : elle se charge, suit la visibilité de son thème, garde sa légende et reste pilotable par `GeoLeaf.GeoJSON.showLayer` / `hideLayer`. Sert aux couches qu'on ne propose pas comme une case à cocher, par exemple un support d'accroche ou une couche de calcul. Une section du gestionnaire qui ne contiendrait que de telles couches n'est pas créée, sauf si `layerManagerConfig.sections` la déclare : son titre s'affiche alors sans ligne (§14). Vaut aussi pour une couche posée par `GeoLeaf.Layers.create`. Depuis 3.9.0. |
 
 ### 7.2 Section `data`

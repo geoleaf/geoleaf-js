@@ -16,7 +16,8 @@
  *   - the 6 kernel module registrations ;
  *   - the `GeoLeaf._registry` / `GeoLeaf.registry` anchors ;
  *   - `_app.startApp`, bound to {@link bootWithPreset} with THIS entry's manifest ;
- *   - the public `GeoLeaf.boot()` facade.
+ *   - the public `GeoLeaf.boot()` and `GeoLeaf.mount()` facades, both driven by one
+ *     application lifecycle (`app/mount.ts`).
  *
  * Why it is a function and no longer top-level code: every bundle entry needs the same
  * module-eval, but each with **its own** manifest. Duplicating it per entry is precisely
@@ -37,8 +38,9 @@ import { ThemeEngineModule } from "./boot-modules/theme-engine.module.js";
 import { bootWithPreset } from "./boot-core.js";
 import { failBoot } from "./boot-failure.js";
 import { captureGlobalErrors } from "../utils/log/log-record.js";
+import { createMountController, type GeoLeafMount } from "./mount.js";
 import type { PresetManifest } from "../contracts/preset.contract.js";
-import type { AppNamespace, BootOptions } from "./app-types.js";
+import type { AppNamespace, BootOptions, BootRun } from "./app-types.js";
 import { asFn, member, perfWindow } from "./app-types.js";
 
 /** What {@link installBoot} hands back — the collaborators an entry may want to re-expose. */
@@ -134,15 +136,32 @@ export function installBoot(preset: PresetManifest): BootInstallation {
     GeoLeaf.registry = _registry;
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Prevents startApp from running more than once (double-boot guard). */
+    /** Refuses a boot while an application is mounted; cleared when it is unmounted. */
     _app._appStarted = false;
 
     // startApp — the boot sequence, bound to THIS entry's preset. The sequence itself lives
     // in `boot-core.ts#bootWithPreset()`; binding it here keeps `GeoLeaf._app.startApp` as
-    // the single entry the tests and the `GeoLeaf.boot()` facade call.
-    _app.startApp = function (options?: BootOptions) {
-        return bootWithPreset(preset, { GeoLeaf, app: _app, registry: _registry }, options);
+    // the single entry the tests and the two facades call.
+    _app.startApp = function (options?: BootOptions, run?: BootRun) {
+        return bootWithPreset(preset, { GeoLeaf, app: _app, registry: _registry }, options, run);
     };
+
+    // One application lifecycle for both facades: `mount()` takes over an application `boot()`
+    // started, and `boot()` waits for an unmount in progress.
+    const _lifecycle = createMountController({
+        GeoLeaf,
+        app: _app,
+        registry: _registry,
+        // A throw outside every step's own handling is still a boot that did not complete — and
+        // still owed a signal and a screen.
+        onBootError: (e: unknown) => {
+            console.error("[GeoLeaf] Boot sequence failed:", e);
+            failBoot({
+                reason: "internal",
+                message: e instanceof Error ? e.message : String(e),
+            });
+        },
+    });
 
     /**
      * Starts the GeoLeaf application.
@@ -153,6 +172,11 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      *
      * From this call on, uncaught errors and unhandled promise rejections are recorded in the
      * log's record (`GeoLeaf.Log.getEntries()`), which the boot failure diagnostic carries.
+     *
+     * One application per page: a call while an application is mounted is refused, with a
+     * warning. Since 3.13.0 the application can be unmounted — `GeoLeaf.mount()` returns the
+     * handle that does it, and takes over an application `boot()` started —, and a `boot()` after
+     * the unmount starts it again; one called while an unmount is in progress waits for it.
      *
      * @param options - Optional boot options.
      * @param options.beforeBoot - Async hook called after config load, before map creation.
@@ -171,6 +195,9 @@ export function installBoot(preset: PresetManifest): BootInstallation {
      * @param options.watchdogMs - Milliseconds without a reveal before the boot is reported as
      *   stalled (`geoleaf:boot:failed`, `reason: "timeout"`, provisional). Default 45 000; `0`
      *   disables it. Paused while `beforeBoot` runs.
+     * @param options.maplibregl - The MapLibre GL JS engine (`import * as maplibregl from
+     *   "maplibre-gl"`), installed on `globalThis.maplibregl` at the start of the boot. Without
+     *   it the global is read as before; with neither, the boot fails with `reason: "engine"`.
      * @example
      * GeoLeaf.boot();
      * // Configuration handed over in memory — no request is issued for it. An embedding
@@ -209,24 +236,15 @@ export function installBoot(preset: PresetManifest): BootInstallation {
         asFn(member(GeoLeaf.plugins, "reportPlugins"))?.call(GeoLeaf.plugins);
 
         // `startApp` is async, but `GeoLeaf.boot()` is a SYNCHRONOUS public API:
-        // returning its promise would change the published signature, which is out of
-        // scope here. So the rejection is HANDLED rather than propagated — a failed
-        // boot is the loudest error this runtime can produce and must never degrade
-        // into an unhandled rejection.
+        // returning its promise would change the published signature. So the rejection is
+        // HANDLED rather than propagated (`onBootError` above) — a failed boot is the loudest
+        // error this runtime can produce and must never degrade into an unhandled rejection.
         //
-        // ⚠️ The call site is unchanged: `startApp()` still fires at the same instant,
-        // nothing is awaited, and the B1→B11 ordering is untouched. Only a rejection
-        // handler is attached.
+        // ⚠️ The call site is unchanged: `startApp()` still fires at the same instant, nothing
+        // is awaited, and the B1→B11 ordering is untouched — unless an unmount is in progress,
+        // which the lifecycle lets finish first.
         const _startApp = () => {
-            _app.startApp(options).catch((e: unknown) => {
-                console.error("[GeoLeaf] Boot sequence failed:", e);
-                // A throw outside every step's own handling is still a boot that did not
-                // complete — and still owed a signal and a screen.
-                failBoot({
-                    reason: "internal",
-                    message: e instanceof Error ? e.message : String(e),
-                });
-            });
+            _lifecycle.boot(options);
         };
 
         if (document.readyState === "loading") {
@@ -234,6 +252,52 @@ export function installBoot(preset: PresetManifest): BootInstallation {
         } else {
             _startApp();
         }
+    };
+
+    /**
+     * Mounts the GeoLeaf application in `el`, and returns the handle that unmounts it — the
+     * lifecycle a host that mounts and unmounts views can run again and again.
+     *
+     * Boots as `GeoLeaf.boot()` does — configuration, profile, map, every module —, in the
+     * background: the handle is returned at once, so a host can subscribe before the first
+     * event and unmount while the application is still starting. `unmount()` takes the WHOLE
+     * application down — modules, controls, panels, map, and the state they held —, and the next
+     * `mount()` gives it back whole. ⚠️ `Core.destroy()` is not an unmount: it removes the map
+     * alone.
+     *
+     * One application per page. A `mount()` while an application is alive — mounted by
+     * `mount()` or by `boot()` — unmounts it first, and its handle goes inert. `boot()` while an
+     * application is mounted is refused, as it always was; after `unmount()`, it boots again.
+     *
+     * ⚠️ A plugin that subscribes to a boot event once, when its script loads, does not wire itself
+     * again after a remount.
+     *
+     * @param el - The map container: an element, or its id. The page's shell (`.gl-main`,
+     *   `#gl-loader`) is found as `boot()` finds it. Checked at once: neither an element nor a
+     *   non-empty id, the call throws a `GeoLeafError` — a programming error, not a boot failure.
+     * @param options - The options of `GeoLeaf.boot()`: `config` / `configUrl`, `beforeBoot`,
+     *   `onPerformanceMetrics`, `watchdogMs`, and `maplibregl` — the engine, which MapLibre 6 no
+     *   longer puts on `globalThis`.
+     * @returns The handle: `ready`, `unmount()`, `on()`, `getMap()`.
+     * @example
+     * import * as maplibregl from "maplibre-gl";
+     *
+     * const mount = GeoLeaf?.mount;
+     * if (mount) {
+     *     const app = mount("map", { configUrl: "/geoleaf/geoleaf.config.json", maplibregl });
+     *     app.on("geoleaf:layer:toggle", (e) => console.log(e.detail.layerId, e.detail.visible));
+     *     app.ready.then(
+     *         () => console.log("ready", app.getMap()),
+     *         (err) => console.warn(err.reason, err.message)
+     *     );
+     *     // When the view goes away — the next mount() gives the whole application back:
+     *     void app.unmount();
+     * }
+     */
+    GeoLeaf.mount = function (el: HTMLElement | string, options?: BootOptions): GeoLeafMount {
+        captureGlobalErrors();
+        asFn(member(GeoLeaf.plugins, "reportPlugins"))?.call(GeoLeaf.plugins);
+        return _lifecycle.mount(el, options);
     };
 
     return { GeoLeaf, app: _app, registry: _registry };

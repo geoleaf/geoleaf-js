@@ -118,8 +118,11 @@ export function initBasemaps({ GeoLeaf, cfg, map, AppLog }: FeatureInitContext) 
  * UI moved to the `theme-selector` capability (mounted on `geoleaf:app:ready`) and the
  * default theme is applied by `ThemeEngineModule` — neither runs here anymore.
  * @param deps Shared boot dependencies passed by `initApp`.
+ * @returns The teardown `UIModule.destroy()` runs when the application is unmounted: the
+ *   re-sync listener goes, and a pipeline still loading never posts it. It used to stay, one
+ *   more on every mount.
  */
-export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) {
+export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext): () => void {
     // F0 (S8): GeoLeaf.GeoJSON.init() + profile layer loading were moved to
     // GeoJSONModule.init() (registry, phase B5) so the layer registry is HOT before the
     // theme applier below runs (it now takes the TOGGLE branch, never ADD). This function
@@ -193,8 +196,11 @@ export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) 
         }
     }
 
+    let ended = false;
     loadAllConfigsPromise
         .then(function () {
+            // The application was unmounted while the configs loaded: nothing to populate.
+            if (ended) return;
             // Initial populate once the layer configs are loaded (every profile, themed or
             // not), then re-sync on each theme switch. `populateLayerManagerWithAllConfigs`
             // registers by id (idempotent), so a boot apply that also lands on the listener
@@ -205,6 +211,11 @@ export function initGeoJSON({ GeoLeaf, map, AppLog, _app }: GeoJSONInitContext) 
         .catch(function (e: unknown) {
             AppLog.error("Error initializing GeoJSON LayerManager pipeline:", e);
         });
+
+    return function teardownGeoJSONPipeline(): void {
+        ended = true;
+        document.removeEventListener("geoleaf:theme:applied", populateLayerManager);
+    };
 }
 
 /**

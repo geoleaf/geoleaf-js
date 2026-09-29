@@ -19,6 +19,7 @@ type Register = (id: string, meta: Record<string, unknown>) => void;
 interface GlobalShape {
     GeoLeaf?: {
         plugins?: { register?: Register };
+        registry?: { register: (m: unknown) => void; isInitialized: () => boolean };
         RealtimeLayer?: unknown;
     };
 }
@@ -53,6 +54,28 @@ describe("realtime-layer entry.ts", () => {
 
         document.dispatchEvent(new Event("geoleaf:app:ready"));
         expect(bootFromProfile).toHaveBeenCalled();
+    });
+
+    test("🛑 se démonte avec l'application : le destroy() de son module arrête chaque source", async () => {
+        // Measured by the `71-mount-remount` E2E: `bootFromProfile` restarts the sources on every
+        // `geoleaf:app:ready`, and nothing stopped them at unmount — they were still polling after
+        // `GeoLeaf.mount(…).unmount()`, one more `visibilitychange` listener per cycle.
+        const runtime = await import("../realtime-runtime.js");
+        const stopAll = vi.spyOn(runtime, "stopAll");
+        const register = vi.fn();
+        g.GeoLeaf = {
+            plugins: { register: vi.fn() },
+            registry: { register, isInitialized: () => false },
+        } as never;
+        await import("../entry.js");
+
+        const module = register.mock.calls
+            .map(([m]) => m as { id: string; init?: () => void; destroy?: () => void })
+            .find((m) => m.id === "realtime-layer");
+        expect(module, "no lifecycle module registered").toBeDefined();
+        expect(typeof module?.init).toBe("function");
+        module?.destroy?.();
+        expect(stopAll).toHaveBeenCalledTimes(1);
     });
 
     test("sans plugins.register → monte quand même l'API", async () => {

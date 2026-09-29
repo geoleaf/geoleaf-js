@@ -16,33 +16,35 @@ title: "GeoLeaf-JS — API Reference"
 
 1. [ESM named exports (27)](#esm-named-exports)
 2. [Extension contracts (TypeScript)](#extension-contracts-typescript)
-3. [GeoLeafAPI — top-level API](#geoleafapi--top-level-api)
-4. [Core — map lifecycle](#core--map-lifecycle)
-5. [Layers — feature data](#layers--feature-data)
-6. [Taxonomy — the point symbol](#taxonomy--the-point-symbol)
-7. [UI — interface controls](#ui--interface-controls)
-8. [Filter — the filter panel (singular)](#filter--the-filter-panel-singular)
-9. [Filters — removed in v3.1 (plural)](#filters--removed-in-v31-plural)
-10. [Table — data table](#table--data-table)
-11. [Legend — legend panel](#legend--legend-panel)
-12. [LayerManager — GeoJSON layers](#layermanager--geojson-layers)
-13. [Baselayers — base tiles](#baselayers--base-tiles)
-14. [Helpers](#helpers)
-15. [Validators](#validators)
-16. [API sub-modules](#api-sub-modules)
-17. [Log](#log)
-18. [Errors — typed error classes](#errors--typed-error-classes)
-19. [CONSTANTS](#constants)
-20. [Utils](#utils)
-21. [Config](#config)
-22. [Geocoding — address search](#geocoding--address-search)
-23. [Notifications — toast notifications](#notifications--toast-notifications)
-24. [Popup — popup action buttons](#popup--popup-action-buttons)
-25. [PWA — install prompt](#pwa--install-prompt)
-26. [Labels — layer labels](#labels--layer-labels)
-27. [Composing a lighter bundle](#composing-a-lighter-bundle)
-28. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
-29. [TypeScript types](#typescript-types)
+3. [Profile schemas and types](#profile-schemas-and-types)
+4. [GeoLeafAPI — top-level API](#geoleafapi--top-level-api)
+5. [The application lifecycle — `GeoLeaf.mount()` and `GeoLeaf.boot()`](#the-application-lifecycle--geoleafmount-and-geoleafboot)
+6. [Core — map lifecycle](#core--map-lifecycle)
+7. [Layers — feature data](#layers--feature-data)
+8. [Taxonomy — the point symbol](#taxonomy--the-point-symbol)
+9. [UI — interface controls](#ui--interface-controls)
+10. [Filter — the filter panel (singular)](#filter--the-filter-panel-singular)
+11. [Filters — removed in v3.1 (plural)](#filters--removed-in-v31-plural)
+12. [Table — data table](#table--data-table)
+13. [Legend — legend panel](#legend--legend-panel)
+14. [LayerManager — GeoJSON layers](#layermanager--geojson-layers)
+15. [Baselayers — base tiles](#baselayers--base-tiles)
+16. [Helpers](#helpers)
+17. [Validators](#validators)
+18. [API sub-modules](#api-sub-modules)
+19. [Log](#log)
+20. [Errors — typed error classes](#errors--typed-error-classes)
+21. [CONSTANTS](#constants)
+22. [Utils](#utils)
+23. [Config](#config)
+24. [Geocoding — address search](#geocoding--address-search)
+25. [Notifications — toast notifications](#notifications--toast-notifications)
+26. [Popup — popup action buttons](#popup--popup-action-buttons)
+27. [PWA — install prompt](#pwa--install-prompt)
+28. [Labels — layer labels](#labels--layer-labels)
+29. [Composing a lighter bundle](#composing-a-lighter-bundle)
+30. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
+31. [TypeScript types](#typescript-types)
 
 ---
 
@@ -175,6 +177,41 @@ type moved to match the registry, not the other way round.
 
 ---
 
+## Profile schemas and types
+
+_Since v3.13.0._ The JSON Schemas that judge the files of a profile ship with the package — byte for
+byte the schemas the repository validates its own profiles with — and so do TypeScript types
+generated from them at build time.
+
+| Subpath                        | Content                                                                           |
+| ------------------------------ | --------------------------------------------------------------------------------- |
+| `./schemas/<name>.schema.json` | a JSON Schema (draft-07), one per profile file kind — ten, `$id` `geoleaf/<name>` |
+| `./schemas`                    | `type`-only: the ten root types, one per schema                                   |
+
+```ts
+import type { GeoLeafProfile, GeoLeafLayerConfig, GeoLeafLayerStyle } from "@geoleaf/core/schemas";
+```
+
+Each root type is named after its schema's `title` (`GeoLeafProfile`, `GeoLeafRootConfig`,
+`GeoLeafLayerConfig`, `GeoLeafLayerStyle`, `GeoLeafBasemaps`, `GeoLeafCoreFeatures`,
+`GeoLeafLayersIndex`, `GeoLeafDataMapping`, `GeoLeafThemes`, `GeoLeafUIConfig`). A schema's
+`definitions` are reachable by indexed access, not by name:
+`NonNullable<GeoLeafLayerStyle["styleRules"]>[number]`.
+
+> **The types are an upper bound of the schemas.** Every file a schema accepts type-checks; the
+> reverse is not promised — conditional rules, presence rules, patterns and bounds are not
+> expressed. The verdict belongs to the schemas: validate the files with them. One exception, named
+> in the shipped `index.d.ts`: in `config/core/mapping.json`, a `_comment…` key types only as a
+> string. A `modules.<id>` block is opaque — its keys belong to the capability or plugin `<id>`.
+
+> **`./schemas` is `type`-only**, like `./contracts/*`: `import type` works, a **value** import
+> fails. The schemas themselves are JSON data, served by `./schemas/<name>.schema.json`.
+
+Which schema judges which file, and the validation recipe:
+[JSON Schema documentation](schema/README.md).
+
+---
+
 ## GeoLeafAPI — top-level API
 
 The top-level GeoLeaf API. Available as `GeoLeaf` (CDN/global) or `GeoLeafAPI` (ESM).
@@ -206,6 +243,54 @@ The top-level GeoLeaf API. Available as `GeoLeaf` (CDN/global) or `GeoLeafAPI` (
 
 ---
 
+## The application lifecycle — `GeoLeaf.mount()` and `GeoLeaf.boot()`
+
+`GeoLeaf.boot(options)` starts the application of the page: configuration, profile, map, every
+module. `GeoLeaf.mount(el, options)` (since **v3.13.0**) starts the same application in the map
+container `el` — an element or its id — and returns a handle that takes it down again:
+
+| Member               | Signature                        | Description                                                                                                                                                                                                                    |
+| -------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ready`              | `Promise<void>`                  | Resolves on `geoleaf:app:ready`. Rejects with a `GeoLeafMountError` (`name`, `reason`, `phase`) when the boot fails, is aborted, or the application is unmounted before it was ready. A provisional timeout leaves it pending. |
+| `unmount()`          | `() => Promise<void>`            | Takes the WHOLE application down — modules, controls, panels, map, and the state they held. Idempotent. The next `mount()` or `boot()` gives the application back whole.                                                       |
+| `on(event, handler)` | `(event, handler) => () => void` | Subscribes to a GeoLeaf event — the page's bus, the types of `Events.on()`. Removed at `unmount()`. A subscription made before the boot hears its first event.                                                                 |
+| `getMap()`           | `() => IMapAdapter \| null`      | The map of this application, or `null` before it is built and once it is unmounted.                                                                                                                                            |
+
+Both take the same options: `config` / `configUrl`, `beforeBoot`, `onPerformanceMetrics`,
+`watchdogMs`, and **`maplibregl`** — the engine. MapLibre 6 no longer sets `globalThis.maplibregl`;
+the core puts the option there. Without it, the global is read as before; with neither, the boot
+fails with `reason: "engine"`.
+
+**One application per page.** A `mount()` while an application is alive — mounted by `mount()` or
+by `boot()` — unmounts it first, and the previous handle goes inert: a view that mounts before the
+previous one unmounts, or React's StrictMode (mount, unmount, mount in one tick), needs no
+ordering from the host. `boot()` while an application is mounted is refused, as it always was;
+after `unmount()`, it boots again.
+
+⚠️ **`Core.destroy()` is not an unmount.** It removes the map alone: the modules, their controls
+and their state stay, and `Core.init()` then gives a bare map. A plugin that wires itself once,
+when its script loads, does not come back after a remount — `realtime-layer` and `geocoding`
+unmount with the application since their 1.0.6 and 1.1.2.
+
+```ts
+import * as maplibregl from "maplibre-gl";
+
+const mount = GeoLeaf?.mount;
+if (mount) {
+    const app = mount("map", { configUrl: "/geoleaf/geoleaf.config.json", maplibregl });
+    const off = app.on("geoleaf:layer:toggle", (e) => console.log(e.detail.layerId));
+    app.ready.then(
+        () => console.log("ready", app.getMap()),
+        (err) => console.warn(err.name, err.reason, err.message)
+    );
+    // When the view goes away:
+    off();
+    void app.unmount();
+}
+```
+
+---
+
 ## Core — map lifecycle
 
 > **Generated signatures:** `packages/core/docs/api/variables/Core.html` (run `npm run docs:api` in `packages/core`)
@@ -222,7 +307,7 @@ Since **v3.0.0**, `Core` manages a **keyed registry** of map adapters (`Map<mapI
 | `init`       | `(options: object) => IMapAdapter \| null` | Initialise a map. **Requires `options.mapId`** (returns `null` + logs otherwise). Re-init of an existing `mapId` returns the existing instance. |
 | `getMap`     | `(mapId?: string) => IMapAdapter \| null`  | With `mapId`, the targeted instance; **without arg, the first active instance** (backward compatible for single-map apps).                      |
 | `getAdapter` | `(mapId?: string) => IMapAdapter \| null`  | Alias of `getMap`.                                                                                                                              |
-| `destroy`    | `(mapId: string) => boolean`               | Destroy the instance (`map.remove()` + free the slot). `true` if found. Call on consumer unmount.                                               |
+| `destroy`    | `(mapId: string) => boolean`               | Destroy the instance (`map.remove()` + free the slot). `true` if found. The map alone: an application unmounts with `GeoLeaf.mount()`'s handle. |
 | `hasMap`     | `(mapId: string) => boolean`               | Whether an instance is registered under `mapId`.                                                                                                |
 | `listMaps`   | `() => string[]`                           | Ids of all active map instances.                                                                                                                |
 | `isAttached` | `(mapId: string) => boolean`               | Registered **and** its container is still in the document. Stronger than `hasMap` — see below. `false` after `destroy()`, never throws.         |
@@ -1162,24 +1247,26 @@ A script or plugin loaded before `boot()` can already call them. _(This restored
 internal v2.x refactor had silently removed: the surface available at import went back from 64 to
 **88** keys in v3.)_
 
-| Property                                 | Description                                        |
-| ---------------------------------------- | -------------------------------------------------- |
-| `GeoLeaf.Core`                           | Map lifecycle                                      |
-| `GeoLeaf.Layers`                         | Feature data — see [Layers](#layers--feature-data) |
-| `GeoLeaf.UI`                             | UI controls                                        |
-| `GeoLeaf.LayerManager`                   | Layer management                                   |
-| `GeoLeaf.Baselayers`                     | Base tile layers                                   |
-| `GeoLeaf.Helpers` · `GeoLeaf.Validators` | Helpers, input validators                          |
-| `GeoLeaf.Events`                         | DOM event bus (`on()` returns its unsubscribe)     |
-| `GeoLeaf.I18n`                           | `registerDict` / `getLabel` / `t`                  |
-| `GeoLeaf.Utils` · `GeoLeaf.CONSTANTS`    | Utilities, constants                               |
-| `GeoLeaf.Log` · `GeoLeaf.Errors`         | Logging, typed error classes                       |
-| `GeoLeaf.Security`                       | XSS protection                                     |
-| `GeoLeaf.Config`                         | Config access                                      |
-| `GeoLeaf.Introspection`                  | Capability schemas, and their activation verdict   |
-| `GeoLeaf.plugins`                        | Plugin registry                                    |
-| `GeoLeaf.notify()`                       | Notification primitive (buffered)                  |
-| `GeoLeaf._version`                       | Version string                                     |
+| Property                                 | Description                                                                                                                                                      |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GeoLeaf.boot()` · `GeoLeaf.mount()`     | Start the application — `mount()` returns the handle that unmounts it: see [The application lifecycle](#the-application-lifecycle--geoleafmount-and-geoleafboot) |
+| `GeoLeaf.Core`                           | Map lifecycle                                                                                                                                                    |
+| `GeoLeaf.Layers`                         | Feature data — see [Layers](#layers--feature-data)                                                                                                               |
+| `GeoLeaf.UI`                             | UI controls                                                                                                                                                      |
+| `GeoLeaf.LayerManager`                   | Layer management                                                                                                                                                 |
+| `GeoLeaf.Baselayers`                     | Base tile layers                                                                                                                                                 |
+| `GeoLeaf.Helpers` · `GeoLeaf.Validators` | Helpers, input validators                                                                                                                                        |
+| `GeoLeaf.Events`                         | DOM event bus (`on()` returns its unsubscribe)                                                                                                                   |
+| `GeoLeaf.Storage`                        | Offline storage and the write queue — inert until `modules.offline` loads the engine: see [Offline write cycle](OFFLINE_WRITE_CYCLE.md)                          |
+| `GeoLeaf.I18n`                           | `registerDict` / `getLabel` / `t`                                                                                                                                |
+| `GeoLeaf.Utils` · `GeoLeaf.CONSTANTS`    | Utilities, constants                                                                                                                                             |
+| `GeoLeaf.Log` · `GeoLeaf.Errors`         | Logging, typed error classes                                                                                                                                     |
+| `GeoLeaf.Security`                       | XSS protection                                                                                                                                                   |
+| `GeoLeaf.Config`                         | Config access                                                                                                                                                    |
+| `GeoLeaf.Introspection`                  | Capability schemas, and their activation verdict                                                                                                                 |
+| `GeoLeaf.plugins`                        | Plugin registry                                                                                                                                                  |
+| `GeoLeaf.notify()`                       | Notification primitive (buffered)                                                                                                                                |
+| `GeoLeaf._version`                       | Version string                                                                                                                                                   |
 
 **2. Capability facades — mounted at boot, gated by configuration**
 
@@ -1200,8 +1287,8 @@ Most are opt-out (active unless set to `false`); check the individual section.
 
 **3. Plugin namespaces — after their script has loaded**
 
-`GeoLeaf.Storage`, `GeoLeaf.Editor`, `GeoLeaf.Table`, `GeoLeaf.FeatureInfo`, `GeoLeaf.Geocoding`,
-`GeoLeaf.Measure`, `GeoLeaf.Print`… — load the plugin script **after** `geoleaf.esm.js` and
+`GeoLeaf.Editor`, `GeoLeaf.Table`, `GeoLeaf.FeatureInfo`, `GeoLeaf.Geocoding`, `GeoLeaf.Measure`,
+`GeoLeaf.Print`… — load the plugin script **after** `geoleaf.esm.js` and
 **before** `GeoLeaf.boot()`.
 
 > `GeoLeaf._loadModule` / `GeoLeaf._loadAllSecondaryModules` were **removed in v3** — see
@@ -1232,8 +1319,9 @@ was meant to end.
 The generated declarations ship in **`dist/types/bundle-esm-entry.d.ts`** (resolved by
 `package.json#types`). Types that remain internal — `LayerConfig`, `ThemeConfig` and the rest of
 the source's type surface — are **not** part of the public API: do not import them by path, it is
-not a supported entry point. The rule is simple: **if it is not re-exported from `@geoleaf/core`
-or from a `./contracts/*` subpath, it is not public.**
+not a supported entry point. The rule is simple: **if it is not re-exported from `@geoleaf/core`,
+from a `./contracts/*` subpath or from `./schemas`, it is not public.**
 
-_(There is no hand-written `index.d.ts` anywhere — the declarations are generated from the source
-at build time. The generated `dist/types/` is the only contract.)_
+_(There is no hand-written `index.d.ts` anywhere — the declarations are generated at build time:
+`dist/types/` from the source, `dist/schemas/` from the profile JSON Schemas. Those two generated
+trees are the only contract.)_

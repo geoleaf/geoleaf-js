@@ -170,6 +170,37 @@ export class EventListenerManager {
         }
     }
 
+    /**
+     * A watermark: the id the next registered listener will get. Ids only grow, so the
+     * listeners registered from here on are exactly those {@link removeSince} releases.
+     *
+     * @returns The watermark, to hand to `removeSince`.
+     */
+    mark(): number {
+        return this._nextId;
+    }
+
+    /**
+     * Releases every listener registered since `mark` — and only those: what was registered
+     * before stays. This is how a boot releases its own listeners without taking down what a
+     * host registered on the same manager before it.
+     *
+     * @param mark - A watermark taken by {@link mark}.
+     * @returns How many listeners were released.
+     */
+    removeSince(mark: number): number {
+        const released = this.listeners.filter((l) => l.id >= mark);
+        for (const listener of released) {
+            try {
+                _detachListener(listener);
+            } catch (error) {
+                Log.warn(`[EventListenerManager.${this.name}] Error removing listener:`, error);
+            }
+        }
+        this.listeners = this.listeners.filter((l) => l.id < mark);
+        return released.length;
+    }
+
     getCount(): number {
         return this.listeners.length;
     }
@@ -233,6 +264,10 @@ export const events = {
         globalEventManager.removeListenersForTarget(target),
 
     offAll: () => globalEventManager.removeAll(),
+
+    mark: () => globalEventManager.mark(),
+
+    offSince: (mark: number) => globalEventManager.removeSince(mark),
 
     getCount: () => globalEventManager.getCount(),
 

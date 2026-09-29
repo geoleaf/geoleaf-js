@@ -33,6 +33,9 @@ import { FEATURE_INFO_CAPABILITY } from "./feature-info-capability.js";
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { FeatureInfoModule } from "./module.js";
 import { FeatureInfo } from "../../api/geoleaf.featureinfo.js";
+import { provideDeclaredFields } from "../../kernel/shared/index.js";
+import { getFeatureInfoConfig } from "./config.js";
+import { attributeDeclaredFields } from "./declared-fields.js";
 
 /** Self-sufficient installer for the Feature-Info capability (attribute rendering). */
 export const FEATURE_INFO_INSTALLER: CapabilityInstaller = {
@@ -41,6 +44,11 @@ export const FEATURE_INFO_INSTALLER: CapabilityInstaller = {
     registerGlobals(gl: Record<string, unknown>): void {
         // Layer B — moved verbatim from globals.api.ts (assignApiFacades, B11).
         gl.FeatureInfo = FeatureInfo;
+        // The kernel's load-time field diagnostic asks each reader which fields it reads. The
+        // gate is read at EACH call: this pass runs before the profile is merged.
+        provideDeclaredFields(FEATURE_INFO_CAPABILITY.id, ({ def }) =>
+            getFeatureInfoConfig().enabled === false ? [] : attributeDeclaredFields(def)
+        );
     },
 
     createModule() {

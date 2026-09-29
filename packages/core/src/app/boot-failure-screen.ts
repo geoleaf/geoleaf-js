@@ -54,6 +54,7 @@ export interface BootFailureScreenActions {
 const REASON_MESSAGES: Readonly<Record<BootFailureReason, () => string>> = {
     config: () => getLabel("boot.failure.reason.config"),
     profile: () => getLabel("boot.failure.reason.profile"),
+    engine: () => getLabel("boot.failure.reason.engine"),
     webgl: () => getLabel("boot.failure.reason.webgl"),
     map: () => getLabel("boot.failure.reason.map"),
     module: () => getLabel("boot.failure.reason.module"),

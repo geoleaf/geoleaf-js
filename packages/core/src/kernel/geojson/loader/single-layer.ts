@@ -35,6 +35,7 @@ import { buildSingleLayerAdapterOptions } from "./adapter-options.js";
 import { bindFeatureInteractionEvents } from "../feature-interaction.js";
 import { notifyPrimitive } from "../../../utils/notify/notify.primitive.js";
 import { announceTruncation } from "./truncation-notice.js";
+import { reconcileLayerFields } from "../field-reconciliation.js";
 
 const getState = () => GeoJSONShared.state;
 
@@ -580,6 +581,10 @@ async function _doLoadSingleLayerMapLibre(
 
     // Labels
     _maybeInitSingleLayerLabels(layerId, def, preloadedStyleData);
+
+    // Declared fields ↔ data: a name the profile declares and no feature carries is said, once.
+    // Last, so it delays nothing the user sees; it never throws.
+    reconcileLayerFields(layerId, def, preloadedStyleData, features);
 
     Log.debug(
         "[GeoLeaf.GeoJSON] MapLibre layer loaded:",

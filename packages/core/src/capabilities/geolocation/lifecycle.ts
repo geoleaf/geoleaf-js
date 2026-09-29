@@ -33,8 +33,14 @@ export const GeolocationLifecycle = {
 
     /** Removes the control + tears down the GPS watch (module destroy / test seam). */
     _reset(): void {
-        _destroy?.();
-        _destroy = undefined;
-        _started = false;
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            _destroy?.();
+            _destroy = undefined;
+        } finally {
+            _started = false;
+        }
     },
 };

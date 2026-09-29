@@ -57,8 +57,8 @@ export const REFERENCE_STYLE_ALT = readJson(
 );
 /**
  * B7 plugin/module fixtures (sprint S15). modules.<id> blocks have NO schema
- * (profile.schema.json declares them additionalProperties:true → validated by
- * the plugin, skipped by validate-profiles), so these are plain config-shaped
+ * (profile.schema.json keeps them additionalProperties:true, validate-profiles
+ * skips them, and no plugin reports a key it does not know), so these are plain config-shaped
  * fixtures carrying the keys the CORE reads. REFERENCE_MAPPING IS schema-driven
  * (mapping.schema.json) — it is a multi-source config with one named block
  * `reference` whose `mapping` is flat (string→string), so it drives

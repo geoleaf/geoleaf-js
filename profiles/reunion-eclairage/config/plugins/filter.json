@@ -1,5 +1,5 @@
 {
-    "_comment": "S5 F4.3 — modules.filter (capacité in-core). Migration de searchConfig + ui.showFilterPanel. searchConfig = recherche + categories (ni proximité ni tags). Catégories portées à la seule couche 'candelabres' (elle porte categoryId/subCategoryId ; 'armoires' ne les porte pas — Option A).",
+    "_comment": "S5 F4.3 — modules.filter (capacité in-core). Migration de searchConfig + ui.showFilterPanel. searchConfig = recherche + categories (ni proximité ni tags). Catégories portées à la seule couche 'candelabres' (Option A).",
     "enabled": true,
     "title": "Filtrer",
     "fields": [

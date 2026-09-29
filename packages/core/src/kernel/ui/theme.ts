@@ -87,8 +87,12 @@ function applyTheme(theme: string, persist: boolean = true) {
     document.body.classList.remove("gl-theme-light", "gl-theme-dark");
     document.body.classList.add(normalized === THEME_DARK ? "gl-theme-dark" : "gl-theme-light");
 
-    // Apply the theme to the map container too (needed in fullscreen)
-    const mapContainer = document.getElementById("geoleaf-map");
+    // Apply the theme to the map container too (needed in fullscreen). The engine marks its
+    // container `.maplibregl-map` whatever its id — `GeoLeaf.mount(el)` may hand any element —;
+    // the historical id is the fallback before a map exists.
+    const mapContainer =
+        document.querySelector<HTMLElement>(".maplibregl-map") ??
+        document.getElementById("geoleaf-map");
     if (mapContainer) {
         mapContainer.classList.remove("gl-theme-light", "gl-theme-dark");
         mapContainer.classList.add(normalized === THEME_DARK ? "gl-theme-dark" : "gl-theme-light");

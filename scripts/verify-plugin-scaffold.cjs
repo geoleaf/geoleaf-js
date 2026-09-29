@@ -215,9 +215,16 @@ try {
             );
 
         // SCAF-03 — the generated package satisfies Plugin Contract v1.
+        //
+        // `--fresh-scaffold` lifts ONE requirement: that `profile.schema.json` names the
+        // block the generated `config.ts` reads (PC-15). That schema is shared and ships
+        // with the core; a package created seconds ago cannot be named there, and naming
+        // it is the author's next step — `create-plugin.cjs` prints it. Every other check,
+        // PC-15's other directions included, still applies.
         const contract = run("node", [
             "scripts/verify-plugin-contract.cjs",
             `--plugin=${shape.id}`,
+            "--fresh-scaffold",
             "--fail",
             "--quiet",
         ]);

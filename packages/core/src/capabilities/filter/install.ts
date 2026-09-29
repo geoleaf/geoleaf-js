@@ -35,6 +35,9 @@ import { FILTER_CAPABILITY } from "./filter-capability.js";
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { FilterModule } from "./module.js";
 import { Filter } from "../../api/geoleaf.filter.js";
+import { provideDeclaredFields } from "../../kernel/shared/index.js";
+import { getFilterConfig } from "./config.js";
+import { filterDeclaredFields } from "./declared-fields.js";
 
 /** Self-sufficient installer for the Filter capability (generic filter panel + engine). */
 export const FILTER_INSTALLER: CapabilityInstaller = {
@@ -43,6 +46,12 @@ export const FILTER_INSTALLER: CapabilityInstaller = {
     registerGlobals(gl: Record<string, unknown>): void {
         // Layer B — moved verbatim from globals.api.ts (assignApiFacades, B11).
         gl.Filter = Filter;
+        // The kernel's load-time field diagnostic asks each reader which fields it reads. The
+        // config is read at EACH call, not captured here: this pass runs before the profile is
+        // merged, and a captured config would be the pre-merge one.
+        provideDeclaredFields(FILTER_CAPABILITY.id, ({ layerId }) =>
+            filterDeclaredFields(getFilterConfig(), layerId)
+        );
     },
 
     createModule() {

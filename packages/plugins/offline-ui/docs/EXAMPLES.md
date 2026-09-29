@@ -14,8 +14,7 @@
 - [Check cache status](#check-cache-status)
 - [Clear a cached profile](#clear-a-cached-profile)
 - [Read storage statistics](#read-storage-statistics)
-- [Queue an edit for later sync](#queue-an-edit-for-later-sync)
-- [Flush the outbox when online](#flush-the-outbox-when-online)
+- [Edits made offline](#edits-made-offline)
 - [Store an image locally (offline)](#store-an-image-locally-offline)
 - [Export the edits still owed to the server](#export-the-edits-still-owed-to-the-server)
 
@@ -139,40 +138,11 @@ console.log(`Currently online: ${stats.online}`);
 
 ---
 
-## Queue an edit for later sync
+## Edits made offline
 
-Offline or online, an edit goes through the single core write point. It writes the entity
-and its outbox entry in ONE transaction, so a capture is never queued without its data.
-
-```javascript
-const { entryId, refused } = await GeoLeaf.Storage.applyEdit({
-    layerId: "biodiversity-layer",
-    kind: "create",
-    localId: "local-oak-1",
-    feature: {
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [2.3522, 48.8566] },
-        properties: { name: "Oak tree", species: "Quercus robur" },
-    },
-});
-
-if (refused) console.warn("Edit refused:", refused);
-else console.log("Queued for sync, id:", entryId);
-```
-
----
-
-## Flush the outbox when online
-
-The core owns the drain: it replays each entry against the layer's declared write endpoint,
-reconciles the server identity it gets back, and detects conflicts from `baseVersion`.
-
-```javascript
-window.addEventListener("online", async () => {
-    const report = await GeoLeaf.Storage.pushOutbox();
-    console.log(`${report.pushed}/${report.attempted} pushed, ${report.conflicts} conflict(s)`);
-});
-```
+Recording an edit, draining the queue and releasing the entries set aside are the core's, with
+its own examples: see the [offline write cycle](../../../core/docs/OFFLINE_WRITE_CYCLE.md). The core already drains the queue when
+the network comes back.
 
 ---
 

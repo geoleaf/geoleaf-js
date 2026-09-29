@@ -639,7 +639,7 @@ The former `ui.showThemeSelector` flag has moved to **`modules.theme-selector.en
 | `permalink.mode`        | `"hash"` \| `"query"` \| `"compact"` | `"hash"` | URL encoding strategy                                                                                                                                                                                                                                                                         |
 | `permalink.fields`      | string[]                             | all      | **Optional** facets to serialise into the URL — `layers`, `shownLayers`, `filter`, `categories`, `tags`, `rating`, `theme` (e.g. `["layers","theme"]`). The view (`lat`/`lng`/`zoom`) is **always** serialised and cannot be listed. The list applies to both encodings, verbose and compact. |
 
-> **Note: offline cache** — `showCacheButton: true` assumes the `@geoleaf-plugins/offline-ui` plugin (MIT, IndexedDB) is installed. The core `@geoleaf/core` only ships a connectivity detector (`offline-detector`). Without the plugin the button does not appear, even when the option is enabled.
+> **Note: offline cache** — `showCacheButton: true` assumes the `@geoleaf-plugins/offline-ui` plugin is installed: it provides the button and the download window. The offline engine itself — downloaded data, and the queue of edits made offline — is in `@geoleaf/core`, loaded by `modules.offline.enabled` with `modules.pwa.enabled` (see the [offline write cycle](OFFLINE_WRITE_CYCLE.md)). Without the plugin the button does not appear, even when the option is enabled.
 
 ### searchConfig (object, optional)
 

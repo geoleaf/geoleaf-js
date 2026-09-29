@@ -31,6 +31,8 @@ const lang_it: LangDict = {
     "boot.failure.reason.profile": "Il profilo dati è assente o non valido.",
     "boot.failure.reason.webgl":
         "Questo browser non può visualizzare la mappa: WebGL2 non è disponibile (accelerazione grafica disattivata o non supportata).",
+    "boot.failure.reason.engine":
+        "Il motore della mappa (MapLibre GL JS) non è stato trovato: questa pagina non è configurata per visualizzare una mappa.",
     "boot.failure.reason.map": "Impossibile creare la mappa.",
     "boot.failure.reason.module": "Un componente dell’applicazione non è riuscito ad avviarsi.",
     "boot.failure.reason.timeout":

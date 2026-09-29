@@ -29,6 +29,7 @@ import type {
 import { buildHatchPatternId, type HatchConfig } from "./maplibre-hatch-patterns.js";
 import { DEFAULT_FEATURE_COLOR } from "../../utils/constants/constants.js";
 import { isUnsafeKey } from "../../utils/general/object-path-guard.js";
+import { styleRuleFieldKey } from "../../utils/general/style-rule-field.js";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -456,9 +457,9 @@ export function conditionToExpression(condition: GeoJSONStyleRuleCondition): unk
     const { field, operator, value } = condition;
     if (!field || !operator) return null;
 
-    // Strip "properties." prefix — MapLibre ["get"] operates implicitly on feature.properties
-    const cleanField = field.startsWith("properties.") ? field.substring(11) : field;
-    const getter: unknown[] = ["get", cleanField];
+    // Strip "properties." prefix — MapLibre ["get"] operates implicitly on feature.properties.
+    // The rule is shared with the load-time field diagnostic, so the two judge the same key.
+    const getter: unknown[] = ["get", styleRuleFieldKey(field)];
 
     return (
         _comparisonExpression(operator, getter, value) ??

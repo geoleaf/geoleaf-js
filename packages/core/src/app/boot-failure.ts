@@ -36,8 +36,9 @@
  * The diagnostic the screen copies or downloads carries the log's recent entries
  * (`utils/log/log-record.ts`), and every string in it is redacted (`utils/log/redact.ts`).
  *
- * ⚠️ Module-level state: one boot per page, and `GeoLeaf.boot()` refuses a second call. Every
- * `beginBoot()` starts from a clean slate.
+ * ⚠️ Module-level state: one boot at a time per page — `GeoLeaf.boot()` refuses a second call
+ * while an application is mounted. Every `beginBoot()` starts from a clean slate, and an
+ * unmounted application leaves none behind (`resetBootFailure()`).
  */
 
 import type { GeoLeafEventMap } from "../contracts/event-bus.contract.js";
@@ -352,6 +353,18 @@ export function holdReveal(reveal: () => void): boolean {
     if (_s.state === "stalled") clearBootFailureScreen();
     _s.state = "ready";
     return false;
+}
+
+/**
+ * Forgets the boot that went away: its watchdog, its failures and its held reveal, and the screen
+ * it drew in the veil. Called when an application is unmounted (`app/mount.ts`); the next boot
+ * starts from this clean slate anyway (`beginBoot`), but an unmounted application must not leave
+ * a failure screen — or a watchdog about to draw one — behind it.
+ */
+export function resetBootFailure(): void {
+    _clearTimer();
+    _s = _freshState();
+    clearBootFailureScreen();
 }
 
 /** The `beforeBoot` hook refused the boot: nothing more is watched, held or signalled. */

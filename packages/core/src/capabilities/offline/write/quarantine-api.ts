@@ -268,7 +268,9 @@ function _causeIsLifted(entry: QuarantinedEntry): boolean {
  * @returns The requeueable motives, in the order this module declares them.
  * @example
  * const exits = GeoLeaf?.Storage?.requeueableReasons?.() ?? [];
- * if (exits.includes(entry.quarantine)) showRetryButton(entry);
+ * if (exits.includes("retryBudgetExhausted")) {
+ *     await GeoLeaf?.Storage?.requeueAll?.("retryBudgetExhausted");
+ * }
  */
 export function requeueableReasons(): readonly QuarantineReason[] {
     return Object.freeze([...REQUEUEABLE]);
@@ -401,10 +403,11 @@ export async function requeueAll(
  *
  * @example
  * ```ts
- * const [entry] = (await GeoLeaf?.Storage?.listPendingEdits?.()) ?? [];
+ * const listed = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.()) ?? [];
+ * const entry = listed.find((p) => p.state === "quarantined");
  * // The guards are not decorative: the facade may not be mounted and the queue may
  * // be empty. This example is COMPILED — the `typecheck-docs-examples` gate said so.
- * if (entry) await discardQuarantined(entry.id, entry.localId); // it saw what it discards
+ * if (entry) await discardQuarantined(entry.entryId, entry.localId); // it saw what it discards
  * ```
  */
 export async function discardQuarantined(

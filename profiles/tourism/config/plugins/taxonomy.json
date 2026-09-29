@@ -18,9 +18,7 @@
         "hebergements": { "use": "poi-cat" },
         "cultures": { "use": "poi-cat" },
         "sites_rosario": { "use": "poi-cat" },
-        "villes_principales": { "use": "poi-cat" },
-        "sites_de_conservation_wdpa": { "use": "poi-cat" },
-        "aires_protegees_nationales_sib": { "use": "poi-cat" }
+        "aires_protegees_nationales_sib": { "use": "poi-cat", "subCategoryField": "subCategoryId" }
     },
     "taxonomies": {
         "poi-cat": {

@@ -21,7 +21,7 @@ vi.mock("../../src/kernel/themes/theme-loader.js", () => ({
 
 const mockApplyTheme = vi.fn(() => Promise.resolve());
 vi.mock("../../src/kernel/themes/theme-applier/core.js", () => ({
-    ThemeApplierCore: { applyTheme: (theme) => mockApplyTheme(theme) },
+    ThemeApplierCore: { applyTheme: (theme) => mockApplyTheme(theme), _cleanup: () => {} },
 }));
 
 // Dynamic import — defer loading the module (and the mocked accessor) until mockGeoLeaf

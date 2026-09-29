@@ -1,0 +1,35 @@
+{
+    "schemaVersion": 2,
+    "lot": "schemas-livres",
+    "scope": ["scripts/emit-profile-schemas.cjs", "scripts/lib/profile-schemas.cjs"],
+    "verdicts": {
+        "scripts/emit-profile-schemas.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "PROFILE-SCHEMAS — copie les schémas de profil dans dist/schemas/ du core, octet pour octet, et génère leurs types (majorant du schéma) ; post-build du core",
+            "confidence": "haute",
+            "rationale": "Câblage mesuré : dernier maillon du script `build` de `@geoleaf/core`, donc de `turbo run build` en local, sur `ci.yml` et dans `publish.yml`. Il ferme un défaut mesuré — aucun tarball ne portait les schémas, aucun type ne décrivait un fichier de profil — et `bundle-profile-contract.test.ts` compare sa sortie `render()` à ce que `npm pack` emporte. Placé à la racine de `scripts/` comme ses deux voisins post-build (`emit-ambient-types.cjs`, `emit-css-type-stubs.cjs`)."
+        },
+        "scripts/lib/profile-schemas.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Où vivent les schémas de profil et quel fichier d'un profil chacun juge — une seule table pour le validateur, l'émetteur et la preuve sur le tarball",
+            "confidence": "haute",
+            "rationale": "Câblage mesuré : requis par `scripts/validate-profiles.cjs`, `scripts/emit-profile-schemas.cjs`, `bundle-profile-contract.test.ts` et `no-line-citations-in-published.guard.test.js`. Extrait de `validate-profiles.cjs`, qui compile les schémas au chargement du module : aucun autre lecteur ne pouvait emprunter sa table sans effet de bord, et une seconde copie aurait dérivé au premier fichier déplacé."
+        }
+    }
+}

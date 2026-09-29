@@ -63,8 +63,8 @@
         "titleField": "properties.name",
         "fields": [
             {
-                "field": "properties.NAME",
-                "label": "NAME",
+                "field": "properties.name",
+                "label": "Nom",
                 "primitive": "string",
                 "widget": "text",
                 "display": {

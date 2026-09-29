@@ -17,7 +17,7 @@
 
 _GeoLeaf Basemaps_
 
-basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). Alternate source types (wmts, wms, imageSource, hillshade) present in real profiles were added. The `type` enum was hardened in S6 to the 7 runtime-mapped values; the runtime-support audit confirmed all types (incl. image/hillshade/wmts/wms) are rendered. See anomaly registry ANO-017.
+basemaps.json — basemap tile source definitions for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). The `type` enum holds the 7 values the runtime maps, and every one of them is rendered — image, hillshade, wmts and wms included.
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -66,7 +66,7 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardene
 | `basemaps.{id}.terrain.pitch` | number | — | `45` | — | Initial camera pitch in degrees applied when 3D terrain is activated. |
 | `basemaps.{id}.tiles` | array | — | — | — | Explicit tile URL array for MapLibre raster sources. Overrides url + subdomains expansion. |
 | `basemaps.{id}.tileSize` | number | — | `256` | — | — |
-| `basemaps.{id}.type` | string | — | — | "tile" \| "raster" \| "maplibre" \| "image" \| "hillshade" \| "wmts" \| "wms" | Source type. Enum hardened in S6 to the 7 runtime-mapped values (registry.ts `_resolveBasemapType` + dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path. See anomaly registry ANO-017. |
+| `basemaps.{id}.type` | string | — | — | "tile" \| "raster" \| "maplibre" \| "image" \| "hillshade" \| "wmts" \| "wms" | Source type — the 7 values the runtime maps (`_resolveBasemapType` and its dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path. |
 | `basemaps.{id}.url` | string | — | — | — | Tile URL template with {s}, {z}, {x}, {y} placeholders. |
 | `basemaps.{id}.wms` | object | — | — | — | WMS source configuration. |
 | `basemaps.{id}.wms.crs` | string | — | — | — | Coordinate reference system requested from the WMS server (e.g. `EPSG:3857`). |
@@ -87,7 +87,7 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Hardene
 
 _GeoLeaf Core Features_
 
-config/core/features.json — core feature configuration (map options). The POI subsystem was dissolved in S9 (a POI is now a generic point layer styled by taxonomy/cluster/feature-info); the top-level poiConfig key was removed. Cluster configuration was extracted to the in-core cluster capability (modules.cluster, config/plugins/cluster.json, family B7) in the S3 cluster-capability extraction; the dead top-level clusteringConfig key was purged (never read at runtime — ANO-027/ANO-031 regression-locks retired with the key). Address geocoding moved out of the core to the @geoleaf-plugins/geocoding plugin namespace (modules.geocoding, config/plugins/geocoding.json).
+config/core/features.json — core feature configuration (map options). A POI is a generic point layer styled by taxonomy/cluster/feature-info: there is no top-level `poiConfig` key. Cluster configuration belongs to the in-core cluster capability (modules.cluster, config/plugins/cluster.json); the top-level `clusteringConfig` key, never read at runtime, is gone. Address geocoding belongs to the @geoleaf-plugins/geocoding plugin (modules.geocoding, config/plugins/geocoding.json).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -99,7 +99,7 @@ config/core/features.json — core feature configuration (map options). The POI 
 
 _GeoLeaf Root Config_
 
-geoleaf.config.json — root configuration file loaded at application startup. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA). modules.<id> blocks stay open (plugin-owned, INV-CONFIG).
+geoleaf.config.json — root configuration file loaded at application startup. Strict schema (PRF-SCHEMA, Profile Contract v1). modules.<id> blocks stay open (plugin-owned, INV-CONFIG).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -123,7 +123,7 @@ geoleaf.config.json — root configuration file loaded at application startup. H
 
 _GeoLeaf Layer Config_
 
-Per-layer configuration file (layers/*/[name]_config.json). Defines data source, styles, popup, table, clustering. Hardened in Sprint S1 (PRF-SCHEMA). Polymorphic / plugin-extended blocks (data, popup.fields, sidepanelConfig.detailLayout, realtimeLayer, write) stay permissive — see PROFILE_CONTRACT_SPEC §7. ⚠️ `formSchema` was in that list until task 7.2 and is GONE, key and all: it was a second field list, parallel to `attributes.fields[]` and reconciled with it by nothing. Capture is now a projection of the single list (`attributes.fields[].edit`), which is strict rather than permissive. Aliases geometryType↔geometry and tooltipMode↔tooltip.mode are tolerated and flagged in the anomaly registry.
+Per-layer configuration file (layers/*/[name]_config.json). Defines data source, styles, popup, table, clustering. Strict schema (PRF-SCHEMA, Profile Contract v1). Polymorphic / plugin-extended blocks (data, popup.fields, sidepanelConfig.detailLayout, realtimeLayer, write) stay permissive — see PROFILE_CONTRACT_SPEC §7. ⚠️ There is no `formSchema` key: capture is a projection of the single field list (`attributes.fields[].edit`), which is strict rather than permissive. Aliases geometryType↔geometry and tooltipMode↔tooltip.mode are tolerated.
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -139,7 +139,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].display.presentation.emphasis` | string | — | — | "title" \| "category" \| "subcategory" | The ONLY three values the render code branches on, out of the 29 the legacy `FieldStyle` union declared. The other 26 produced neither a branch nor a CSS class — measured, and the reason they are not carried over. |
 | `attributes.fields[].display.presentation.hero` | boolean | — | — | — | Lifts an image out of the field flow, as a header image. `image` widget, side panel only. |
 | `attributes.fields[].display.surfaces` | array | oui | — | — | The three surfaces are addressable one by one. A single 'displayed yes/no' boolean is refused: it could not express 'in the side panel, not in the tooltip'. |
-| `attributes.fields[].edit` | object | — | — | — | Capture projection. Declaring it on ANY field triggers the A14 rule at layer level. `widget` and `options` are OVERRIDES: absent, the capture reuses the field-level pair — true for 10 of the 11 fields migrated at task 7.2, which is why they are optional rather than required. |
+| `attributes.fields[].edit` | object | — | — | — | Capture projection. Declaring it on ANY field obliges the layer to declare `edition.update: true` and `write` (a rule at the root of this schema). `widget` and `options` are OVERRIDES: absent, the capture reuses the field-level pair, which is why they are optional rather than required. |
 | `attributes.fields[].edit.options` | `attributeOptions` | — | — | — | Options of the CAPTURE widget. `dependencies` above makes `widget` mandatory alongside it — an options bag with no capture widget would be typed by the reading widget, that is, by something other than what it configures. |
 | `attributes.fields[].edit.options.actionId` | string | — | — | — | `action` only — identifier carried in the emitted event. Opaque to the core: never interpreted, only forwarded. |
 | `attributes.fields[].edit.options.addLabel` | string | — | — | — | — |
@@ -240,9 +240,9 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `clustering.disableClusteringAtZoom` | number | — | — | — | — |
 | `clustering.enabled` | boolean | — | — | — | — |
 | `clustering.maxClusterRadius` | number | — | — | — | — |
-| `data` | object | — | — | — | Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive; full inventory in B5/B7. |
+| `data` | object | — | — | — | Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive. |
 | `data.autoRefresh` | boolean \| number | — | — | — | — |
-| `data.dataUrl` | string | — | — | — | Remote GeoJSON URL fetched by the core loader (WFS, opendata APIs). Read by geojson/loader/profile.ts:81 and theme-applier/deferred.ts:270. |
+| `data.dataUrl` | string | — | — | — | Remote GeoJSON URL fetched by the core loader (WFS, opendata APIs). Read by the GeoJSON loader's `_resolveLayerUrl` and by the theme applier's `_resolveDataFilePath`. |
 | `data.directory` | string | — | — | — | Relative directory containing data files (local layers). |
 | `data.file` | string | — | — | — | GeoJSON filename. |
 | `data.format` | string | — | — | — | — |
@@ -263,7 +263,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `data.ogcApi.maxFeatures` | number | — | — | — | Max features accumulated across pages (anti-DoS). Default 10000. |
 | `data.ogcApi.url` | string | oui | — | — | Base endpoint URL of the OGC API Features service (may include the collection items path). |
 | `data.realtime` | object | — | — | — | Realtime data block (realtime-layer/websocket plugins) — kept permissive (plugin-owned). |
-| `data.url` | string | — | — | — | Source URL of a PLUGIN-BACKED layer (e.g. flatgeobuf), resolved by the plugin rather than the core loader. ⚠️ NOT an alias of `dataUrl`, despite having been described as one until 02/08/2026: theme-applier/deferred.ts:265 reads it ONLY when `plugin` is set, and falls through to `dataUrl` otherwise. The two keys select two different loaders — merging them would break the plugin path. Convergence tracked in the backlog, not done in passing. |
+| `data.url` | string | — | — | — | Source URL of a PLUGIN-BACKED layer (e.g. flatgeobuf), resolved by the plugin rather than the core loader. ⚠️ NOT an alias of `dataUrl`: the theme applier's `_resolveDataFilePath` reads it ONLY when `plugin` is set, and falls through to `dataUrl` otherwise. The two keys select two different loaders — merging them would break the plugin path. |
 | `data.vectorTiles` | object | — | — | — | Optional vector tile source (MVT). |
 | `data.vectorTiles.enabled` | boolean | — | — | — | — |
 | `data.vectorTiles.interactive` | boolean | — | — | — | — |
@@ -275,13 +275,13 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `data.vectorTiles.tilesDirectory` | string | — | — | — | — |
 | `data.vectorTiles.tilesUrl` | string | — | — | — | Remote tile URL — MVT template ({z}/{x}/{y}) or .pmtiles file. |
 | `editableGeometryTypes` | array | — | — | — | Allowed geometry types for edition, in CANONICAL GeoJSON casing. ⚠️ This is NOT the same vocabulary as `geometry`/`geometryType`, which are domain lowercase — the two are deliberately kept apart (contracts/attributes.contract.ts: GeometryCanonicalType vs GeometryDomainName). The editor maps a drawing mode back to this casing (editor mode-names.ts geometryTypeForMode), so a lowercase value here matches nothing and drops the layer out of the edition picker with no error. The enum is what makes that failure loud. |
-| `edition` | object | — | — | — | What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so "full edition" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. ✅ Since 07/08/2026 the permission is enforced on EVERY write path, online included: the editor's persistence factory wraps all four of its outputs with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route, so `online`, `offline`, `auto` and the `collection` dialect are all covered. It was previously enforced on the offline path only, and a connected user could delete from a layer declaring `delete: false`. ⚠️ Still true: the editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused. |
+| `edition` | object | — | — | — | What this layer permits, PER OPERATION. Replaces the pair `enableEdition`/`enableEditionFull`: the second name did not mean what it said — it was read once usefully, as `canDelete()`, so "full edition" was in fact the right to DELETE. ⚠️ ABSENT MEANS REFUSED, and so does an empty object: declaring the block grants nothing. Each key is independent — `update` does not imply `delete`, `create` does not imply `update`. Deriving one from another is the exact mechanism by which the old pair acquired a name that lied. The permission is enforced on EVERY write path, online included: the editor's persistence factory wraps every adapter it returns with a gate that consults `GeoLeaf.Storage.mayEdit()` before choosing a route — `online`, `offline` and `auto` modes alike, whatever the write dialect. ⚠️ The editor toolbar gates its delete TOOL on its own `enabledTools`, never on the layer — the button may be offered where the write is refused. |
 | `edition.accuracyField` | string | — | — | — | Property the capture's GPS accuracy (metres) is written into, when the position came from the device rather than a map tap. ⚠️ DECLARATIVE ON PURPOSE, and inert until set: `buildCollectionBody` only copies the keys `write.properties` whitelists, so a property no profile declared is dropped on the wire — an undeclared magic key would look like it worked and reach nothing. Naming the field here is what makes the intent, the whitelist and the server column line up. ⚠️ Nothing is written for a point placed by tapping the map: attributing a GPS precision to a finger-placed position would be a false measurement, which is worse than a missing one. The value must also appear in `write.properties` for it to reach the server. |
 | `edition.create` | boolean | — | — | — | Right to create a feature. Absent or false = refused. |
 | `edition.delete` | boolean | — | — | — | Right to delete a feature — what `enableEditionFull` actually gated. |
 | `edition.update` | boolean | — | — | — | Right to modify an existing feature. Absent or false = refused. |
 | `geometry` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" | Geometry type of this layer's features. |
-| `geometryType` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" | Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate (ANO-007). Enum mirrors `geometry` (gate-safe: profile values ⊆ enum). |
+| `geometryType` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" | Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate. Enum mirrors `geometry` (gate-safe: profile values ⊆ enum). |
 | `id` | string | oui | — | — | Unique layer identifier. Must match the key in layers.json. |
 | `interactiveShape` | boolean | — | — | — | Whether features are clickable/hoverable. |
 | `label` | string | — | — | — | Display label shown in the layer manager. |
@@ -309,19 +309,19 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `legends` | object | — | — | — | Legend file references for this layer (unused by current profiles). |
 | `legends.default` | string | — | — | — | Filename of the default legend. |
 | `legends.directory` | string | — | `"legends"` | — | Relative directory containing legend JSON files. |
-| `offline` | object | — | — | — | Per-layer offline READ declaration (task 4.3). `enabled: true` makes the layer loader read its entities from the IndexedDB `features` store instead of refetching. ⚠️ Declares a READ, never write access: contract invariant S6 — pull never grants editability, which is decided by the layer's online edition flags alone. A layer whose store is empty falls back to the network, so declaring is safe before the first pull. |
+| `offline` | object | — | — | — | Per-layer offline READ declaration. `enabled: true` makes the layer loader read its entities from the IndexedDB `features` store instead of refetching. ⚠️ Declares a READ, never write access: pull never grants editability, which is decided by the layer's online edition flags alone. A layer whose store is empty falls back to the network, so declaring is safe before the first pull. |
 | `offline.enabled` | boolean | oui | — | — | Gate. When false or absent the layer always loads from the network. |
-| `offline.maxAgeMs` | integer | — | — | — | Staleness threshold in milliseconds (task 4.8). A layer whose last successful pull is older than this is reported `pulledStale` by GeoLeaf.Storage.getSyncReport(). ⚠️ Deliberately WITHOUT a default: absent means a pulled layer is reported `pulled` forever. Inventing a default would make the report raise staleness warnings no integrator asked for and none could silence — a status that cannot be computed is not guessed. |
-| `offline.maxFeatures` | integer | — | — | — | Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures), and REQUIRED as soon as `enabled` is true. Without it the OGC loader falls back to its own default of 10 000 and a larger layer is truncated in silence. ⚠️ This description claimed until R9 that the loader "stops only after accumulating a whole page and never truncates" — true until 19/08/2026, when the exact cut moved into the loader, which now cuts at the bound and reports it through the collection's `truncated` member. The pull no longer cuts anything itself; it reads that member. |
-| `offline.source` | object | — | — | — | Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch of task 4.3, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature. |
+| `offline.maxAgeMs` | integer | — | — | — | Staleness threshold in milliseconds. A layer whose last successful pull is older than this is reported `pulledStale` by GeoLeaf.Storage.getSyncReport(). ⚠️ Deliberately WITHOUT a default: absent means a pulled layer is reported `pulled` forever. Inventing a default would make the report raise staleness warnings no integrator asked for and none could silence — a status that cannot be computed is not guessed. |
+| `offline.maxFeatures` | integer | — | — | — | Hard cap on entities pulled for this layer (LayerSyncConfig.maxFeatures), and REQUIRED as soon as `enabled` is true. Without it the OGC loader falls back to its own default of 10 000 and a larger layer is truncated in silence. The loader cuts at the bound and reports it through the collection's `truncated` member; the pull reads that member and cuts nothing itself. |
+| `offline.source` | object | — | — | — | Where `GeoLeaf.Storage.pullLayer()` fetches this layer's entities — an OGC API Features collection. 🛑 Deliberately NOT `data.ogcApi`, and the reason is measured: `data.*` is the DISPLAY source, and the loader's `data.ogcApi` early exit returns before the local-read branch, silently bypassing the very store this pull fills. `loader/profile.ts` also drops a layer whose only source is `ogcApi`. After a pull, the display source IS the local store — the two are different by nature. |
 | `offline.source.collectionId` | string | — | — | — | Collection to pull. Defaults to the layer id when absent. |
 | `offline.source.delta` | object | — | — | — | Declares that the source serves CHANGES and DELETIONS, so a pull after a complete one asks only for what changed. Absent, every pull is complete (the fallback): it rewrites only the entities whose `versionProperty` changed, and removes from the device the synchronised ones it no longer returns. Present, once a complete pull of the same source and extent has recorded the greatest marker it was served, the next pull sends OGC API Features `datetime=<marker>/..` and removes the tombstones it receives — it removes nothing else, since a delta answers only what changed. What the server must guarantee is written in `packages/core/docs/SERVER_CONTRACT.md`. |
 | `offline.source.delta.deletedProperty` | string | oui | — | — | Property whose presence marks a served entity as DELETED — a tombstone. Set (anything but absent, `null` or `false`), the entity is never written, and its synchronised copy leaves the device; a copy holding local work is kept for the write queue. |
 | `offline.source.delta.freshness` | string | oui | — | "datetime" | How the source filters by freshness. `datetime`: the OGC API Features Part 1 parameter, as an open interval `<marker>/..`, closed at its start. The server's temporal property for this collection must be the `versionProperty` marker. |
 | `offline.source.url` | string | oui | — | — | Landing URL of the OGC API Features service (e.g. https://host/ogc). The collection path is appended from `collectionId`. |
-| `offline.source.versionProperty` | string | — | — | — | Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which task 4.6 compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen. |
+| `offline.source.versionProperty` | string | — | — | — | Feature property carrying the per-entity freshness marker recorded as VersionMarker (kind `timestamp`), which the sync compares. Defaults to `updated_at`. Declarable because it varies by backend — the sync contract names `updated_at` and `write_date` among the forms it has seen. |
 | `plugin` | string | — | — | — | Optional plugin tag associated with this layer. |
-| `realtimeLayer` | object | — | — | — | Per-layer realtime plugin block (realtime-layer/websocket) — plugin-owned, kept permissive. Architectural question (per-layer block vs modules.<id>) tracked in B7. |
+| `realtimeLayer` | object | — | — | — | Read by nothing: @geoleaf-plugins/realtime-layer takes its per-layer configuration from `data.realtime`. Kept only so that a layer which already sets this key is not refused. |
 | `searchable` | object | — | — | — | Makes the layer findable by `GeoLeaf.Layers.search` — and by the geocoding search box when its `provider` lists `layers` — on the feature's id and on `fields`. Searches what the map holds, so it works off-network for a layer read from the device store; a layer never loaded, or a vector-tile layer, is not found. Accents, case and word order are ignored. Absent: the layer is never searched. |
 | `searchable.fields` | array | oui | — | — | Property names searched besides the id, bare (`ref`) or dotted (`properties.ref`). The first non-empty one is what a result displays. |
 | `showIconsOnMap` | boolean | — | — | — | Show custom icons on the map (requires taxonomy icon config). |
@@ -344,8 +344,8 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `table.defaultSort.order` | string | — | — | "asc" \| "desc" | — |
 | `table.enabled` | boolean | — | — | — | — |
 | `table.searchFields` | array | — | — | — | — |
-| `type` | string | — | — | — | Optional layer type tag (semantics under inventory — see anomaly registry). |
-| `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. ⚠️ Was `additionalProperties: true` and set by 0 layers on 48 until 02/08/2026 — a block with no shape that nobody filled. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
+| `type` | string | — | — | — | Optional layer type tag. |
+| `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
 | `write.auth` | string | — | — | "bearer" \| "none" | How the endpoint is authenticated — declarative only: no code reads it. Writes are authenticated by the connector plugin, which adds its bearer token to the requests it intercepts. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify. |
 | `write.dialect` | string | — | `"collection"` | "rest" \| "collection" | `collection` (the default, and the only one the offline queue sends): rows addressed by query filters — `POST {endpoint}`, `PATCH` and `DELETE {endpoint}?id=eq.<id>` with the freshness marker as a filter — carrying a flat body of the whitelisted properties, the geometry under `geometryProperty` and the client identity `local_id`; authentication is the connector's. `rest`: spoken by the editor plugin's ONLINE adapter only — `POST|PUT|DELETE {api.baseUrl}/features[/<id>]?layerId=<layer>` with a `{ feature, layerId }` body, addressed by the plugin's own `api.baseUrl` — and a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo. The full wire contract is `packages/core/docs/SERVER_CONTRACT.md`. |
 | `write.enabled` | boolean | oui | — | — | Gate. A layer whose write target is disabled has no outbox. |
@@ -358,7 +358,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 
 _GeoLeaf Layers Index_
 
-layers.json — index of all layers loaded for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). layerTemplates[].template/.instances stay permissive (partial layer-config, merged at runtime — see PROFILE_CONTRACT_SPEC §7).
+layers.json — index of all layers loaded for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). layerTemplates[].template/.instances stay permissive (partial layer-config, merged at runtime — see PROFILE_CONTRACT_SPEC §7).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -395,7 +395,7 @@ layers.json — index of all layers loaded for a GeoLeaf profile. Hardened in Sp
 
 _GeoLeaf Data Mapping_
 
-mapping.json — POI data normalization contract consumed by ConfigNormalizer.normalizePoiWithMapping. ALWAYS multi-source: an object of named per-source blocks { <sourceId>: { mapping, ... } }. A single source is simply one block — there is NO special-case top-level form. Each `mapping` is a FLAT object { normalizedField : "rawSourceField" } — keys are normalized GeoLeaf fields with dotted paths allowed (e.g. "id", "title", "location.lat", "attributes.kind"), values are raw source field names (strings). Per-source contract finalized in Archi S2 — ANO-083.
+mapping.json — POI data normalization contract consumed by ConfigNormalizer.normalizePoiWithMapping. ALWAYS multi-source: an object of named per-source blocks { <sourceId>: { mapping, ... } }. A single source is simply one block — there is NO special-case top-level form. Each `mapping` is a FLAT object { normalizedField : "rawSourceField" } — keys are normalized GeoLeaf fields with dotted paths allowed (e.g. "id", "title", "location.lat", "attributes.kind"), values are raw source field names (strings).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -405,7 +405,7 @@ mapping.json — POI data normalization contract consumed by ConfigNormalizer.no
 
 _GeoLeaf Profile_
 
-profile.json — core profile metadata and configuration. UI, basemaps, search and table config live in separate files referenced via the Files section. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA): additionalProperties:false on fixed-shape objects, _comment* tolerated. modules.<id> blocks stay open (plugin-owned, INV-CONFIG).
+profile.json — core profile metadata and configuration. UI, basemaps, search and table config live in separate files referenced via the Files section. Strict schema (PRF-SCHEMA, Profile Contract v1): additionalProperties:false on fixed-shape objects, _comment* tolerated. modules.<id> blocks stay open (plugin-owned, INV-CONFIG).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -439,26 +439,24 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `map.padding.top` | number | — | — | — | — |
 | `map.positionFixed` | boolean | — | — | — | — |
 | `map.zoom` | number | — | — | — | — |
-| `modules` | object | — | — | — | Per-plugin configuration blocks, keyed by module id (Plugin Contract v1, INV-CONFIG). The keys inside each block are owned and validated by the plugin, not by the core — each block stays additionalProperties:true on purpose. |
-| `modules.cog` | object | — | — | — | Owned by @geoleaf-plugins/cog — keys validated by the plugin, not the core. |
-| `modules.connector` | object | — | — | — | Owned by @geoleaf-plugins/connector — keys validated by the plugin, not the core. |
-| `modules.editor` | object | — | — | — | Owned by @geoleaf-plugins/editor — keys validated by the plugin, not the core. |
-| `modules.fileImport` | object | — | — | — | Owned by @geoleaf-plugins/file-import — keys validated by the plugin, not the core. |
-| `modules.flatgeobuf` | object | — | — | — | Owned by @geoleaf-plugins/flatgeobuf — keys validated by the plugin, not the core. |
-| `modules.geocoding` | object | — | — | — | Owned by @geoleaf-plugins/geocoding — keys validated by the plugin, not the core. |
-| `modules.measure` | object | — | — | — | Owned by @geoleaf-plugins/measure — keys validated by the plugin, not the core. |
-| `modules.offline` | object | — | — | — | In-core offline capability (S14 Phase B) — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema). |
-| `modules.print` | object | — | — | — | Owned by @geoleaf-plugins/print — keys validated by the plugin, not the core. |
-| `modules.realtimeLayer` | object | — | — | — | Owned by @geoleaf-plugins/realtime-layer — keys validated by the plugin, not the core. |
-| `modules.routing` | object | — | — | — | Owned by @geoleaf-plugins/routing — keys validated by the plugin, not the core. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name. |
-| `modules.websocket` | object | — | — | — | Owned by @geoleaf-plugins/websocket — keys validated by the plugin, not the core. |
+| `modules` | object | — | — | — | Configuration blocks keyed by module id — in-core capabilities such as `offline`, and plugins (Plugin Contract v1, INV-CONFIG). Every block stays additionalProperties:true: the schema does not describe its keys. A block is named below only if something reads it. For a plugin block, neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.editor` | object | — | — | — | Read by @geoleaf-plugins/editor, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.geocoding` | object | — | — | — | Read by @geoleaf-plugins/geocoding, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.measure` | object | — | — | — | Read by @geoleaf-plugins/measure, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.navigation` | object | — | — | — | Read by @geoleaf-plugins/navigation, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.offline` | object | — | — | — | In-core offline capability — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema). |
+| `modules.offline-ui` | object | — | — | — | One key is read here, by the core's toolbar guard rather than by the plugin: `showButton` (boolean, default false) shows the cache button of @geoleaf-plugins/offline-ui, with `ui.showCacheButton` as legacy fallback. Nothing else in this block is read, and nothing reports a key it does not know. |
+| `modules.position-share` | object | — | — | — | Read by @geoleaf-plugins/position-share, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.print` | object | — | — | — | Read by @geoleaf-plugins/print, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.routing` | object | — | — | — | Read by @geoleaf-plugins/routing, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name. |
+| `modules.table` | object | — | — | — | Read by @geoleaf-plugins/table, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `version` | string | — | — | — | Profile version (SemVer). |
 
 ## `style.schema.json`
 
 _GeoLeaf Layer Style_
 
-Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.json. Hardened in Sprint S1 (PRF-SCHEMA). `id` is no longer required (filename acts as id for ~20% of style files). The MapLibre pass-through key is `paint` (kept open); `style.extends` enables style inheritance. Known anomalies tolerated-but-flagged: `condition` alias of `when`, and root-level `paint`/`type` (misplaced) — see anomaly registry. (`labelScale` is NOT a duplicate of `scaleConfig`: same unit, but it gates the labels, not the layer.)
+Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.json. Strict schema (PRF-SCHEMA, Profile Contract v1). `id` is no longer required (filename acts as id for ~20% of style files). The MapLibre pass-through key is `paint` (kept open); `style.extends` enables style inheritance. Tolerated: `condition` as an alias of `when`, and root-level `paint`/`type` (misplaced). (`labelScale` is NOT a duplicate of `scaleConfig`: same unit, but it gates the labels, not the layer.)
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
@@ -486,7 +484,7 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `label.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
 | `label.opacity` | number | — | `1` | — | — |
 | `label.visibleByDefault` | boolean | — | `false` | — | Labels visible on layer load without user action. |
-| `labelScale` | object | — | — | — | Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate. Cleanup of no-op {null,null} + reconciliation in S8. |
+| `labelScale` | object | — | — | — | Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate. |
 | `labelScale.maxScale` | number \| null | — | — | — | — |
 | `labelScale.minScale` | number \| null | — | — | — | — |
 | `legend` | object | — | — | — | Legend entry for this style. |
@@ -581,13 +579,13 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 
 _GeoLeaf Themes_
 
-themes.json — layer visibility presets (themes) for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). Note: the canonical default-theme key is the root-level `defaultTheme`; the legacy/typo `config.defautTheme` is tolerated but flagged in the anomaly registry.
+themes.json — layer visibility presets (themes) for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). Note: the canonical default-theme key is the root-level `defaultTheme`; the legacy/typo `config.defautTheme` is tolerated.
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
 | `$schema` | string | — | — | — | — |
 | `config` | object | — | — | — | Global theme configuration. |
-| `config.defautTheme` | string | — | — | — | LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme. See anomaly registry. |
+| `config.defautTheme` | string | — | — | — | LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme. |
 | `config.primaryThemes` | object | — | — | — | — |
 | `config.primaryThemes.enabled` | boolean | — | — | — | Show primary themes UI. |
 | `config.primaryThemes.position` | string | — | — | "top-map" \| "top-layermanager" | Position of primary themes control. |
@@ -612,7 +610,7 @@ themes.json — layer visibility presets (themes) for a GeoLeaf profile. Hardene
 
 _GeoLeaf UI Config_
 
-ui.json — UI controls, search/filter panel, layer manager and scale configuration. The data table panel config moved to modules.table (plugin-table, extraction roadmap table S4). The theme selector flag moved to modules.theme-selector (in-core capability, extraction roadmap theme-selector S8/F3). The legend config (showLegend + legendConfig) moved to modules.legend (in-core capability, extraction roadmap legend S10/F2). The share button flag (showShareButton) moved to modules.permalink.share (sub-feature of the in-core permalink capability, extraction roadmap share S12 → permalink S13/F7). Hardened in Sprint S1 (PRF-SCHEMA). The real search section key is `searchConfig` (the previous `search` was a never-matched ghost — corrected here). Filter items stay permissive (polymorphic by type).
+ui.json — UI controls, search/filter panel, layer manager and scale configuration. The data table panel config lives in modules.table (plugin-table). The theme selector flag lives in modules.theme-selector (in-core capability). The legend config (showLegend + legendConfig) lives in modules.legend (in-core capability). The share button flag (showShareButton) lives in modules.permalink.share (sub-feature of the in-core permalink capability). Strict schema (PRF-SCHEMA, Profile Contract v1). The real search section key is `searchConfig` (the previous `search` was a never-matched ghost — corrected here). Filter items stay permissive (polymorphic by type).
 
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |

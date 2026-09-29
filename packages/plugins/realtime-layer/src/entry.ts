@@ -11,7 +11,7 @@
  */
 
 import { buildPublicApi } from "./public-api.js";
-import { bootFromProfile } from "./realtime-runtime.js";
+import { bootFromProfile, stopAll } from "./realtime-runtime.js";
 import type { GeoLeafHost } from "@geoleaf/host-runtime";
 
 // Re-export extension points for plugin consumers (e.g. @geoleaf-plugins/realtime-positions)
@@ -40,6 +40,22 @@ if (_g.GeoLeaf?.plugins?.register) {
         optional: ["websocket"], // required only for source: "websocket" layers
         label: "GeoLeaf Realtime Layer",
         healthCheck: () => !!_g.GeoLeaf?.RealtimeLayer,
+    });
+}
+
+// ─── Unmount: stop every source with the application ──────────────────────────
+//
+// `GeoLeaf.mount()`'s unmount tears the core's module registry down: this module is how the
+// plugin hears it. Without it the sources kept polling after `unmount()` — for layers that no
+// longer existed — and the auto-boot below started a second set at the next mount. `init()` has
+// nothing to do: the sources start on `geoleaf:app:ready`, below. Registered only before the
+// first boot, as the registry asks; a plugin loaded later is not stopped by an unmount.
+if (_g.GeoLeaf?.registry?.isInitialized?.() !== true) {
+    _g.GeoLeaf?.registry?.register?.({
+        id: "realtime-layer",
+        dependencies: [],
+        init: () => undefined,
+        destroy: () => stopAll(),
     });
 }
 

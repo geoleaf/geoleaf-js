@@ -23,6 +23,9 @@
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { TAXONOMY_CAPABILITY } from "./taxonomy-capability.js";
 import { Taxonomy } from "../../api/geoleaf.taxonomy.js";
+import { provideDeclaredFields } from "../../kernel/shared/index.js";
+import { getTaxonomyConfig } from "./config.js";
+import { taxonomyDeclaredFields } from "./declared-fields.js";
 
 /** Self-sufficient installer for the Taxonomy capability (the point symbol). */
 export const TAXONOMY_INSTALLER: CapabilityInstaller = {
@@ -31,5 +34,11 @@ export const TAXONOMY_INSTALLER: CapabilityInstaller = {
     registerGlobals(gl: Record<string, unknown>): void {
         // Layer B — moved verbatim from globals.api.ts (assignApiFacades, B11).
         gl.Taxonomy = Taxonomy;
+        // The kernel's load-time field diagnostic asks each reader which fields it reads. The
+        // config is read at EACH call, not captured here: this pass runs before the profile is
+        // merged, and a captured config would be the pre-merge one.
+        provideDeclaredFields(TAXONOMY_CAPABILITY.id, ({ layerId }) =>
+            taxonomyDeclaredFields(getTaxonomyConfig(), layerId)
+        );
     },
 };

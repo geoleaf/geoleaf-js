@@ -21,6 +21,9 @@ const _SVG_SUN =
     "M12 3v1m0 16v1M4.22 4.22l.7.7m12.16 12.16.7.7M3 12h1m16 0h1M4.92 19.07l.7-.7M18.36 5.64l.7-.7M12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7z";
 const _SVG_MOON = "M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z";
 
+/** The removers of the global listeners the theme buttons posted — see {@link releaseThemeToggleButtons}. */
+const _themeSyncOffs: Array<() => void> = [];
+
 /**
  * Builds the theme-toggle button for one layout.
  *
@@ -62,9 +65,23 @@ export function buildThemeToggleBtn(variant: "desktop" | "mobile"): HTMLButtonEl
 
     if (typeof globalThis !== "undefined" && globalThis.addEventListener) {
         globalThis.addEventListener("geoleaf:ui-theme-changed", _syncBtn as EventListener);
+        _themeSyncOffs.push(() =>
+            globalThis.removeEventListener("geoleaf:ui-theme-changed", _syncBtn as EventListener)
+        );
     }
 
     return btn;
+}
+
+/**
+ * Removes the `geoleaf:ui-theme-changed` listeners every theme button posted on `globalThis`.
+ *
+ * Called by `destroyDesktopPanel()`. The listener lives on the global, not on the button: the
+ * button went with its panel, and the listener stayed — one more on every mount, each keeping
+ * its detached button alive. Measured by the `71-mount-remount` E2E.
+ */
+export function releaseThemeToggleButtons(): void {
+    for (const off of _themeSyncOffs.splice(0)) off();
 }
 
 /**

@@ -270,6 +270,37 @@ function storeCrossModuleState(
     app._permalinkCfg = permalinkCfg;
 }
 
+/** The container `GeoLeaf.mount(el)` named for the boot in progress — see `app/mount.ts`. */
+export interface MountTarget {
+    /** The key the map is registered under in `GeoLeaf.Core`. */
+    mapId: string;
+    /** The container element, when `mount()` was handed one rather than an id. */
+    element: HTMLElement | null;
+}
+
+/**
+ * Reads the mount target of the boot in progress, if a `mount()` started it.
+ *
+ * @param app - The `GeoLeaf._app` namespace.
+ * @returns The target, or `null` for a boot started by `boot()`.
+ */
+function readMountTarget(app: AppNamespace): MountTarget | null {
+    const target = app._mountTarget as MountTarget | null | undefined;
+    return target && typeof target.mapId === "string" ? target : null;
+}
+
+/**
+ * The `geoleaf:boot:failed` reason of a map the adapter could not build.
+ *
+ * @param cause - What the adapter's `init()` threw, kept on `initError`.
+ * @returns `"engine"` for a missing MapLibre, `"webgl"` for a missing WebGL2 context, `"map"`
+ *   otherwise.
+ */
+function _mapFailureReason(cause: unknown): "engine" | "webgl" | "map" {
+    if (MaplibreAdapter.isEngineMissingError(cause)) return "engine";
+    return MaplibreAdapter.isGpuInitializationError(cause) ? "webgl" : "map";
+}
+
 /** Runtime lifecycle of the `core-map` boot module. */
 export const CoreMapLifecycle = {
     /**
@@ -311,27 +342,32 @@ export const CoreMapLifecycle = {
         const boundsMargin =
             typeof cfgMap.boundsMargin === "number" ? cfgMap.boundsMargin : DEFAULT_BOUNDS_MARGIN;
         const mapOptions = buildMapOptions(cfgMap, extent.profileBounds, boundsMargin);
+        // `GeoLeaf.mount(el)` names the container itself (`_app._mountTarget`, set for its boot
+        // alone): it wins over the profile's `map.target`, which stays the rule for `boot()`.
+        const mountTarget = readMountTarget(app);
         const map = createMap(
             GeoLeaf,
             adapter,
             {
                 map: {
-                    target: cfgMap.target || cfgMap.id || "geoleaf-map",
+                    target: mountTarget?.mapId ?? (cfgMap.target || cfgMap.id || "geoleaf-map"),
                     center: extent.mapCenter,
                     zoom: extent.profileMaxZoom,
                     mapOptions,
                 },
                 ui: { theme: (cfg.ui && cfg.ui.theme) || "light" },
+                ...(mountTarget?.element && { _container: mountTarget.element }),
             },
             AppLog,
             mark
         );
         if (!map) {
             // The facade reduces a failed construction to `null`; the adapter kept the cause.
-            // WebGL2 is named apart because it is the one failure the user can act on.
+            // WebGL2 is named apart because it is the one failure the user can act on; a missing
+            // engine, because it is the one the integrator must fix — the page never loaded it.
             const cause = adapter instanceof MaplibreAdapter ? adapter.initError : null;
             failBoot({
-                reason: MaplibreAdapter.isGpuInitializationError(cause) ? "webgl" : "map",
+                reason: _mapFailureReason(cause),
                 phase: "map",
                 message:
                     cause instanceof Error
@@ -350,8 +386,23 @@ export const CoreMapLifecycle = {
         storeCrossModuleState(app, map, extent, permalinkCfg);
     },
 
-    /** Tear down the listeners this module registered. */
+    /**
+     * Tears down what the boot left on the shared listener manager, and the cross-module state
+     * this module published. Runs when the application is unmounted.
+     *
+     * Only the listeners registered since the boot started (`_app._eventsMark`, taken by
+     * `bootWithPreset`): what a host registered through `GeoLeaf.Utils.events` before the boot
+     * stays. It used to be `offAll()` — harmless while nothing called it, since no production
+     * path did. Without a mark, everything goes, as before.
+     */
     _reset(): void {
-        events.offAll();
+        const app = (ensureGeoLeaf()._app ?? {}) as AppNamespace;
+        const mark = app._eventsMark;
+        if (typeof mark === "number") events.offSince(mark);
+        else events.offAll();
+        app._currentMap = null;
+        app._profileBounds = null;
+        app._profilePadding = null;
+        app._permalinkCfg = null;
     },
 };

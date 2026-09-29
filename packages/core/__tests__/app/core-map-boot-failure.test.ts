@@ -109,6 +109,21 @@ describe("CoreMapLifecycle — a map that cannot be built", () => {
         expect(failed[0]).toMatchObject({ reason: "webgl" });
     });
 
+    it("🛑 no engine on the global → geoleaf:boot:failed (engine), which names the remedy", () => {
+        // Seen red before the fix: `new maplibregl.Map` threw a ReferenceError, reported as the
+        // generic `reason: "map"` — the same answer as a missing container.
+        delete globals["maplibregl"];
+        const failed = listenFailed();
+
+        CoreMapLifecycle.init(new MaplibreAdapter(), WITH_EXTENT);
+
+        expect(failed[0]).toMatchObject({
+            reason: "engine",
+            phase: "map",
+            message: expect.stringContaining("maplibregl"),
+        });
+    });
+
     it("any other construction error stays reason map, and keeps its message", () => {
         throwingMaplibre(new Error('Container "geoleaf-map" not found.'));
         const failed = listenFailed();

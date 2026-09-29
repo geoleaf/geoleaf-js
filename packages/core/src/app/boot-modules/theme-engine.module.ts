@@ -94,9 +94,16 @@ export class ThemeEngineModule implements ILifecycleModule {
         }
     }
 
+    /**
+     * Resets the theme applier for the next application: its pending timer, the theme it applied
+     * and its first-load flag. Without the flag, the map of an application mounted again was
+     * never fitted to its theme's layers — the fit runs on the first apply only. The layers
+     * themselves go with the GeoJSON state, torn down by the GeoJSON module and the lifecycle
+     * seam.
+     */
     destroy(): void {
-        // Recreate: the applier singleton's layer state is cleared by the GeoJSON reset
-        // paths on module teardown; no dedicated teardown here. `destroy` must be a
-        // function — the registry validates init + destroy as a pair.
+        ThemeApplierCore._cleanup();
+        ThemeApplierCore._currentThemeId = null;
+        ThemeApplierCore._isFirstLoad = true;
     }
 }

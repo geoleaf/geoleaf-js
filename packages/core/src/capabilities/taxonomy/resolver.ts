@@ -82,6 +82,22 @@ function readField(feature: TaxonomyFeatureLike, field: string): unknown {
 }
 
 /**
+ * Whether a feature carries a field where {@link readField} looks for it — the top-level object,
+ * then `attributes`, then `properties`. A KEY, not a value: a property present with `null` is
+ * carried, where `readField` would skip it. The load-time field diagnostic judges the taxonomy's
+ * declared fields with it, so it stays beside the reader it mirrors.
+ *
+ * @param feature - A feature, in the shape its reader receives it.
+ * @param field - The field name — bare, as `categoryField` / `subCategoryField` write it.
+ * @returns `true` when one of the three shapes holds the key.
+ */
+export function hasField(feature: TaxonomyFeatureLike, field: string): boolean {
+    const own = (bag: unknown): boolean =>
+        bag !== null && typeof bag === "object" && Object.prototype.hasOwnProperty.call(bag, field);
+    return own(feature) || own(feature.attributes) || own(feature.properties);
+}
+
+/**
  * Case-insensitive lookup of a value in a category table. Tries the exact key,
  * then upper/lower variants, then a full case-folded scan — matching the legacy
  * core taxonomy resolution so migrated profiles behave identically.

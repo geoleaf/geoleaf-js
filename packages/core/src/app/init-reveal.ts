@@ -54,6 +54,27 @@ function _profileHasDefaultTheme(GeoLeaf: GeoLeafGlobal): boolean {
 }
 
 /**
+ * What {@link hideBootVeil} left pending — the `transitionend` listener and its 800 ms fallback —
+ * so that {@link showBootVeil} can cancel it: a hide still pending from the previous boot would
+ * otherwise take the veil down again under the next one.
+ */
+let _veilHide: {
+    loader: HTMLElement;
+    onEnd: () => void;
+    timer: ReturnType<typeof setTimeout>;
+} | null = null;
+
+/** `true` once the core has hidden the veil — the only veil {@link showBootVeil} puts back. */
+let _veilHiddenByCore = false;
+
+function _cancelVeilHide(): void {
+    if (!_veilHide) return;
+    _veilHide.loader.removeEventListener("transitionend", _veilHide.onEnd);
+    clearTimeout(_veilHide.timer);
+    _veilHide = null;
+}
+
+/**
  * Fades the app shell's `#gl-loader` veil out, then takes it out of the flow.
  *
  * Called by the reveal below, and by the boot when a `beforeBoot` hook aborts it — the host
@@ -63,21 +84,33 @@ function _profileHasDefaultTheme(GeoLeaf: GeoLeafGlobal): boolean {
 export function hideBootVeil(): void {
     const loader = document.getElementById("gl-loader");
     if (!loader) return;
+    _cancelVeilHide();
+    _veilHiddenByCore = true;
     loader.classList.add("gl-loader--fade");
-    // Remove from DOM after the CSS transition (400ms)
-    // { once: true } ensures hide() is not called multiple times
-    loader.addEventListener(
-        "transitionend",
-        function () {
-            loader.style.display = "none";
-        },
-        { once: true }
-    );
-    // Fallback if transitionend does not fire — 800ms > transition duration
-    // (value > transition duration to let transitionend execute first)
-    setTimeout(function () {
+    const onEnd = function (): void {
         loader.style.display = "none";
-    }, 800);
+        _cancelVeilHide();
+    };
+    // Remove from the flow after the CSS transition (400 ms) — or after 800 ms, should
+    // `transitionend` not fire (a value above the transition lets the event run first).
+    loader.addEventListener("transitionend", onEnd, { once: true });
+    _veilHide = { loader, onEnd, timer: setTimeout(onEnd, 800) };
+}
+
+/**
+ * Puts back the veil {@link hideBootVeil} took down — called at the start of every boot, so an
+ * application mounted again shows its veil while it starts, as the first one did, and a failure
+ * screen is drawn into a visible veil. Does nothing when the core never hid it: a veil a host
+ * manages itself is none of the boot's business.
+ */
+export function showBootVeil(): void {
+    _cancelVeilHide();
+    if (!_veilHiddenByCore) return;
+    _veilHiddenByCore = false;
+    const loader = document.getElementById("gl-loader");
+    if (!loader) return;
+    loader.classList.remove("gl-loader--fade");
+    loader.style.display = "";
 }
 
 /**
@@ -90,6 +123,10 @@ export function hideBootVeil(): void {
  * screen, and declared profile resources that failed hold the reveal on a screen whose
  * « Continue » replays it.
  * @param deps Shared boot dependencies passed by `initApp`.
+ * @returns The teardown `UIModule.destroy()` runs when the application is unmounted: the
+ *   listener, the safety timer, the fit timer and an armed themeless reveal go, and nothing
+ *   reveals any more. Without it, the reveal of a boot unmounted before it revealed fired on the
+ *   next boot's `geoleaf:theme:applied` — an `app:ready` for an application that was gone.
  */
 export function setupReveal({
     GeoLeaf,
@@ -98,7 +135,7 @@ export function setupReveal({
     profileBounds,
     profilePadding,
     permalinkCfg,
-}: RevealDeps): void {
+}: RevealDeps): () => void {
     // ========================================================
     // Reveal the application when layers are ready
     // The #gl-loader spinner stays opaque while the map
@@ -107,8 +144,11 @@ export function setupReveal({
     // visible layers loaded) before revealing.
     // ========================================================
     let _appRevealed = false;
+    /** Set by the teardown: the application is gone, and this reveal never runs again. */
+    let _ended = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     function revealApp(reason: string) {
-        if (_appRevealed) return;
+        if (_appRevealed || _ended) return;
         if (holdReveal(() => revealApp(reason))) return;
         _appRevealed = true;
         // Before the dispatches: a capability initialised from here on mounts at once.
@@ -137,13 +177,15 @@ export function setupReveal({
             if (profileBounds && !_hasPermalink && typeof map.fitBounds === "function") {
                 const boundsToFit = profileBounds;
                 const fitOptions = buildFitBoundsOptions(profilePadding);
-                setTimeout(function () {
-                    try {
-                        map.fitBounds(boundsToFit, fitOptions);
-                    } catch (e) {
-                        AppLog.warn("[GeoLeaf] fitBounds correction at reveal:", e);
-                    }
-                }, 120);
+                timers.push(
+                    setTimeout(function () {
+                        try {
+                            map.fitBounds(boundsToFit, fitOptions);
+                        } catch (e) {
+                            AppLog.warn("[GeoLeaf] fitBounds correction at reveal:", e);
+                        }
+                    }, 120)
+                );
             }
         }
 
@@ -191,13 +233,10 @@ export function setupReveal({
     }
 
     // Wait for all theme layers to be loaded
-    document.addEventListener(
-        "geoleaf:theme:applied",
-        function () {
-            revealApp("theme applied, layers loaded");
-        },
-        { once: true }
-    );
+    const onThemeApplied = function (): void {
+        revealApp("theme applied, layers loaded");
+    };
+    document.addEventListener("geoleaf:theme:applied", onThemeApplied, { once: true });
     // F0 (S8): a profile WITHOUT a default theme may never fire `geoleaf:theme:applied`.
     // Its layers are loaded independently by `GeoJSONModule.init()` (registry phase,
     // already completed before this runs), so it does not wait for the 5 s safety net.
@@ -212,13 +251,24 @@ export function setupReveal({
     // When `themes` exists without `defaultTheme`, the theme loader falls back to `themes[0]`:
     // `theme-engine` applies it inside the registry, the listener above reveals first, and the
     // release is a no-op (`revealApp` is idempotent).
-    _pendingThemelessReveal = _profileHasDefaultTheme(GeoLeaf)
+    const themelessReveal = _profileHasDefaultTheme(GeoLeaf)
         ? null
         : () => revealApp("layers loaded (no default theme)");
+    _pendingThemelessReveal = themelessReveal;
     // Safety: reveal after 5s max (slow network, error…) — perf 5.10: reduced from 15s to 5s
-    setTimeout(function () {
-        revealApp("safety timeout 5s");
-    }, 5000);
+    timers.push(
+        setTimeout(function () {
+            revealApp("safety timeout 5s");
+        }, 5000)
+    );
+
+    return function teardownReveal(): void {
+        _ended = true;
+        document.removeEventListener("geoleaf:theme:applied", onThemeApplied);
+        for (const timer of timers) clearTimeout(timer);
+        timers.length = 0;
+        if (_pendingThemelessReveal === themelessReveal) _pendingThemelessReveal = null;
+    };
 }
 
 /**

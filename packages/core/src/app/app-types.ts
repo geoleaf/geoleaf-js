@@ -44,7 +44,13 @@ import type { IGeoLeafConfig } from "../contracts/config.contract.js";
  * option explicitly is what makes a typo a compile error rather than a silent no-op.
  */
 export interface BootOptions {
-    /** A configuration object handed over in memory. Wins over `configUrl`. */
+    /**
+     * A configuration object handed over in memory: applied as-is, and no request is emitted to
+     * fetch one. Wins over `configUrl`.
+     *
+     * ⚠️ An empty object `{}` is a VALID inline configuration, exactly as for
+     * `GeoLeaf.loadConfig` — the two bootstrap paths never diverge on the same value.
+     */
     config?: Record<string, unknown>;
     /** An explicit URL to fetch the configuration from. Used when `config` is absent. */
     configUrl?: string;
@@ -67,6 +73,29 @@ export interface BootOptions {
      * removes. Default 45 000; `0` disables it. Paused while `beforeBoot` runs.
      */
     watchdogMs?: number;
+    /**
+     * The MapLibre GL JS engine — the module namespace an `import * as maplibregl from
+     * "maplibre-gl"` returns. MapLibre 6 no longer sets `globalThis.maplibregl`: this option
+     * is how the engine reaches the core, which installs it on the global at the start of the
+     * boot, where every reader looks for it. A different engine already there is replaced, with a
+     * warning. Without the option, the global is read as before; with neither, the boot fails
+     * with `reason: "engine"` when it builds the map.
+     */
+    maplibregl?: typeof import("maplibre-gl");
+}
+
+/**
+ * A boot its caller may end before it completes — `GeoLeaf.mount()`'s handle, unmounted while its
+ * application was starting, or a later `mount()` taking over (`app/mount.ts`).
+ *
+ * Ending is the caller's act: it has already signalled it (`geoleaf:boot:aborted`, reason
+ * `"unmounted"`) and settled what it owes its own caller. The boot only has to stop — at its next
+ * checkpoint, after each step that awaits, and between two modules — and to signal nothing more:
+ * no failure, no reveal, no second abort.
+ */
+export interface BootRun {
+    /** `true` once the caller has ended this boot. */
+    isCancelled(): boolean;
 }
 
 /**
@@ -82,9 +111,15 @@ export interface AppNamespace {
     getProfilesBasePath: () => string;
     /** Verifies that the plugins referenced by the config are loaded. */
     checkPlugins: (cfg: GeoLeafConfig) => void;
-    /** Boot entry point — loads config then runs `ModuleRegistry.init()` (wired in boot-install.ts). */
-    startApp: (options?: BootOptions) => Promise<void>;
-    /** Double-boot guard flag (wired in boot.ts). */
+    /**
+     * Boot entry point — loads config then runs `ModuleRegistry.init()` (wired in
+     * boot-install.ts). `run` lets the caller end the boot before it completes.
+     */
+    startApp: (options?: BootOptions, run?: BootRun) => Promise<void>;
+    /**
+     * `true` while an application is mounted — set by the boot, cleared by the teardown of
+     * `app/mount.ts`. A boot refuses to start while it is set.
+     */
     _appStarted: boolean;
     /** Lazily-assigned boot members and the long tail. */
     [key: string]: unknown;

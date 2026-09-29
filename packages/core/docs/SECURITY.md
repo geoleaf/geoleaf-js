@@ -6,7 +6,7 @@ title: "GeoLeaf Core — Security Guide"
 
 **Applies to:** `@geoleaf/core` v3.x
 
-> Guide for consumers of `@geoleaf/core`. It covers the required CSP directives, the security architecture and the responsible disclosure process.
+> Guide for consumers of `@geoleaf/core`. It covers the required CSP directives, the security architecture, the responsible disclosure process, authentication, and what a lost device keeps.
 
 ---
 
@@ -273,3 +273,64 @@ emitted — the mode you choose changes the diagnostics you get, not the validit
 **③ Field names are part of the contract.** The connector sends `login`, not `username`. Servers
 whose login route reads `username` need an explicit mapping — most authentication layers expose a
 setting for exactly this, and getting it wrong yields a `401` with no other symptom.
+
+---
+
+## 8. A lost or stolen device
+
+GeoLeaf keeps on the device what it needs to work without a network, and does not encrypt it: a
+key the application can derive would protect nothing ([Direction](./DIRECTION.md), "What is
+guaranteed"). Whoever unlocks the device, or reads its storage, reads what this section lists.
+What protects a lost device lies outside the library — the device's own encryption and lock, a
+remote wipe by your fleet management, and your server refusing the session.
+
+### 8.1 What stays on the device
+
+| Where                                                    | What                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| IndexedDB `geoleaf-db`, store `features`                 | The entities pulled for offline use, and those edited on the device — each a GeoJSON feature, attribute values included                                                                                                                                                                                                                                                              |
+| `geoleaf-db`, store `outbox`                             | The edits the server has not accepted yet. An entry names its entity; the values are in `features`                                                                                                                                                                                                                                                                                   |
+| `geoleaf-db`, store `local_images`                       | Photos taken offline, or whose upload failed, as binary files — until the server acknowledges them. A photo on a field that declares no upload endpoint is never uploaded, and stays                                                                                                                                                                                                 |
+| `geoleaf-db`, store `conflicts`                          | The server's version of each entity a last-write-wins push overwrote                                                                                                                                                                                                                                                                                                                 |
+| `geoleaf-db`, stores `layers`, `metadata`, `preferences` | What was prepared for offline use — layer data, tiles, styles, sprites, glyphs — its manifest, and the engine's state: what each pull learned, the last synchronisation time, option lists                                                                                                                                                                                           |
+| IndexedDB `geoleaf-connector`, store `auth-tokens`       | In `auth.endpoint` mode only: the session token, its expiry and the API's address (§7.2). Never the password — but a JWT is readable by whoever holds it: what your server puts in its claims is on the device too                                                                                                                                                                   |
+| Cache Storage, caches named `geoleaf-…`                  | The application's files, the profile's resources, the tiles viewed, and other responses kept as an offline fallback. The service worker keeps no response to a request that carries an `Authorization` header or is sent with `credentials: "include"`, nor one the server marks `private` or `no-store` — a server that authenticates by cookie should mark its responses `private` |
+| `localStorage`                                           | Display choices — theme, language, palette, last profile, dismissed install banners. With `@geoleaf-plugins/measure`: the measures and annotations drawn, a GPS measure being the device's own track (`GeoLeaf.Measure.clearAll()` erases them). With `@geoleaf-plugins/position-share`: the random identifier sent with every position (`GeoLeaf.PositionShare.clearClientId()`)    |
+
+GeoLeaf sets no cookie.
+
+**No GeoLeaf call removes it all:**
+
+- `GeoLeaf.Connector.logout()` erases the token, from memory and from `auth-tokens`, and emits
+  `geoleaf:connector:signed-out`. It calls no route and erases nothing else: edits, photos and
+  prepared data stay. In `getToken` mode it erases nothing — the host application holds the
+  token, and keeps it where it chooses.
+- `GeoLeaf.Storage.clearAll()` empties what was prepared for offline use and the engine's state.
+  It leaves entities, edits, photos and conflicts alone, by design.
+- An edit leaves the device when the server accepts it, or when a quarantined edit is discarded,
+  one at a time (`GeoLeaf.Storage.discardQuarantined()`). Nothing evicts it to make room.
+- Unmounting the application (`unmount()`) leaves stored data in place.
+
+### 8.2 When a device is lost
+
+**A lost device cannot sign out: its session ends on your server.**
+
+- In `auth.endpoint` mode, revoke the session there: reject the token on your data routes, and
+  refuse its renewal — the renewal presents the stored token, expired or not, and your server
+  decides (§3.2 of the [server contract](./SERVER_CONTRACT.md)). The next request the device makes
+  gets a `401`, the renewal that follows is refused, and the device erases the token and emits
+  `geoleaf:connector:auth-error`. For as long as it stays offline, it keeps the token — and the
+  data.
+- A token copied off the device works wherever it is presented, until it expires or your server
+  rejects it. `expiresIn` bounds the first; revocation is the second.
+- In `getToken` mode, the session belongs to the host's identity provider, and so does revoking
+  it.
+- **Edits not yet sent exist only on the device**, and are lost with it. They are not bound to
+  the user who made them: if the device comes back, the next session that signs in sends them.
+
+### 8.3 What GeoLeaf does not provide
+
+- **Encryption at rest** — the decision is in [Direction](./DIRECTION.md).
+- **A remote wipe.** Erasing a lost device belongs to your fleet management.
+- **A call that erases everything at once** (§8.1).
+- **Support for a device shared between users** ([Direction](./DIRECTION.md)).

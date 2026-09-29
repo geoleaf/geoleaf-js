@@ -4,8 +4,8 @@ title: labels — les étiquettes de texte par couche
 capability_id: labels
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 86ff0985c
-date: 26 septembre 2026
+verifie_contre: 6d71b248b
+date: 29 septembre 2026
 ---
 
 # labels — les étiquettes de texte par couche
@@ -96,6 +96,7 @@ du zoom ou de l'échelle.
 | LB-23 | Déclaration introspectable                                    | —                                                                                                                                                                              | `getAllCapabilities()` la liste, `getCapabilitySchema("labels")` rend son schéma                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | `labels-capability.ts`                                                                                  |
 | LB-24 | Reconstruction quand le style est remplacé                    | `style.load` du moteur — tout basculement de fond qui remplace le style (vers ou depuis un fond vectoriel), et l'activation silencieuse d'un fond vectoriel par défaut au boot | Chaque couche étiquetée est reconstruite par `refreshLabels`, dans la police que sert le style ENTRANT ; des étiquettes éteintes le restent. Sans elle, la couche d'étiquettes — posée hors du registre de l'adaptateur — était effacée par le diff et jamais reconstruite, `tooltips` lisant encore « affichées ». Abonnement armé avec `zoomend` (LB-10), relâché au démontage (LB-22)                                                                                                                                                                                                   | `labels.ts` → `_ensureStyleListener`                                                                    |
 | LB-25 | Étiquettes d'une couche en tuiles vectorielles                | Couche MVT dont le style ou la définition déclare des étiquettes                                                                                                               | La couche `symbol` nomme la _source-layer_ que dessinent les sous-couches de la couche, lue au registre de l'adaptateur. Sans elle, MapLibre refuse la couche sur une source `vector` et le signale par un événement `error`, jamais par une exception : jusqu'au 26/09/2026, le bouton restait allumé et rien n'était dessiné                                                                                                                                                                                                                                                             | `label-renderer.ts` → `createSymbolLayerForMapLibre`                                                    |
+| LB-26 | Champ d'étiquette confronté à la donnée                       | Étiquette activée (`label` du style, à défaut `labels` de la définition), au chargement et à chaque changement de style                                                        | Son `field`, jugé comme le rendu le lit : `["get", field]` sous `properties`, nom **nu** strictement — `"properties.name"` cherche une clé littéralement nommée ainsi. Le kernel nomme en `Log.warn` un champ qu'aucune entité échantillonnée ne porte                                                                                                                                                                                                                                                                                                                                     | `declared-fields.ts` → `labelDeclaredFields`                                                            |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/labels/`.
 
@@ -320,12 +321,13 @@ d'insertion est observable par introspection.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 
-| Import                                       | Statut vis-à-vis de R.8                                        |
-| -------------------------------------------- | -------------------------------------------------------------- |
-| `kernel/config/config-primitives.js`         | **Exception** nommée par la règle                              |
-| `kernel/geojson/index.js` (`GeoJSONCore`)    | **Baril** — accès par le point de médiation, pas en profondeur |
-| `kernel/ui/index.js` (`_UIComponents`)       | **Baril**                                                      |
-| `kernel/layer-manager/item-controls-seam.js` | **Seam** — type seul                                           |
+| Import                                             | Statut vis-à-vis de R.8                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `kernel/config/config-primitives.js`               | **Exception** nommée par la règle                                              |
+| `kernel/geojson/index.js` (`GeoJSONCore`)          | **Baril** — accès par le point de médiation, pas en profondeur                 |
+| `kernel/ui/index.js` (`_UIComponents`)             | **Baril**                                                                      |
+| `kernel/layer-manager/item-controls-seam.js`       | **Seam** — type seul                                                           |
+| `kernel/shared/index.js` — `provideDeclaredFields` | **Baril** — l'emplacement des champs déclarés, rempli par `install.ts` (LB-26) |
 
 Le reste passe par `utils/` : `utils/log`, `utils/i18n`, `utils/general/dom-helpers`,
 `utils/general/scale-utils`. L'accès à la carte se fait par la façade `api/geoleaf.core.js`

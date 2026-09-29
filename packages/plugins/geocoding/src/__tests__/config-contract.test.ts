@@ -105,7 +105,8 @@ describe("config B2 — modules.geocoding.enabled (GeocodingRegistry.isEnabled)"
         globalThis.GeoLeaf = prevGeoLeaf;
     });
     const withModuleConfig = (cfg) => {
-        globalThis.GeoLeaf = {
+        // A partial namespace: only `Config.get` is read here.
+        (globalThis as { GeoLeaf?: unknown }).GeoLeaf = {
             Config: { get: (k, d) => (k === "modules.geocoding" ? cfg : d) },
         };
     };

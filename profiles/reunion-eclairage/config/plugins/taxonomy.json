@@ -1,5 +1,5 @@
 {
-    "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Point SIZE stays with the layer style (candelabres keeps radius 7). Amber palette, preserving the layer's existing yellow identity (fillColor #facc15). Glyphs are DARK here: a white stroke on light amber would be unreadable. NB the filter of this profile reads `subField: subCategoryId` (camelCase) while the taxonomy declares `subcategoryId` — pre-existing, out of scope.",
+    "_comment": "Taxonomy v3 — the capability owns the POINT SYMBOL: icon, iconColor and the marker disc (fill/stroke/strokeWidth). Point SIZE stays with the layer style (candelabres keeps radius 7). Amber palette, preserving the layer's existing yellow identity (fillColor #facc15). Glyphs are DARK here: a white stroke on light amber would be unreadable. The field names follow the data (`categoryId`, `subCategoryId`) — the same names the filter reads.",
     "enabled": true,
     "icons": {
         "spriteUrl": "../profiles/reunion-eclairage/icons/sprite_reunion.svg",
@@ -20,7 +20,7 @@
     "taxonomies": {
         "poi-cat": {
             "categoryField": "categoryId",
-            "subCategoryField": "subcategoryId",
+            "subCategoryField": "subCategoryId",
             "categories": {
                 "eclairage": {
                     "svgId": "eclairage-generic",

@@ -22,7 +22,8 @@ GeoLeaf does not try to compete with it.
    taxonomy, modules. Changing the application means changing the profile, not the code.
 2. **The offline write cycle.** An edit is recorded locally under a client identity, queued, and
    replayed to the server when the network returns, idempotently. An update made on stale data is
-   detected through a freshness marker the server provides.
+   detected through a freshness marker the server provides. What an application declares for it,
+   and how it watches it: the [offline write cycle](OFFLINE_WRITE_CYCLE.md).
 3. **Prepared offline.** What a field day needs — data and tiles — is declared in the profile and
    downloaded ahead of time, instead of being limited to what was browsed.
 4. **The weight budget.** What a page loads at boot is measured and capped, and treated as a
@@ -41,14 +42,14 @@ GeoLeaf does not try to compete with it.
 
 ## What is guaranteed
 
-| Topic          | Guarantee                                                                                                                                                                        |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scale          | Displaying and editing a layer of **30,000 features** is measured and gated. Larger volumes are a margin, not a promise.                                                         |
-| Device         | A **personal** device, preferably with the application installed (PWA). A device shared between users is **not supported**: local edits are not bound to the user who made them. |
-| Data at rest   | Local data is not encrypted by the application — a key the application can derive would protect nothing. Rely on the device's own encryption, managed by your fleet policy.      |
-| Authentication | Both modes of `@geoleaf-plugins/connector`: a login endpoint the library calls, or a token the host application supplies.                                                        |
-| Conflicts      | An update made on stale data is detected; the last write wins today.                                                                                                             |
-| Browsers       | Those that run MapLibre GL JS 6: WebGL2 and ES modules.                                                                                                                          |
+| Topic          | Guarantee                                                                                                                                                                                                                                                                |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Scale          | Displaying and editing a layer of **30,000 features** is measured and gated. Larger volumes are a margin, not a promise.                                                                                                                                                 |
+| Device         | A **personal** device, preferably with the application installed (PWA). A device shared between users is **not supported**: local edits are not bound to the user who made them.                                                                                         |
+| Data at rest   | Local data is not encrypted by the application — a key the application can derive would protect nothing. Rely on the device's own encryption, managed by your fleet policy. What a lost device keeps, and how its session ends: §8 of the [security guide](SECURITY.md). |
+| Authentication | Both modes of `@geoleaf-plugins/connector`: a login endpoint the library calls, or a token the host application supplies.                                                                                                                                                |
+| Conflicts      | An update made on stale data is detected; the last write wins today.                                                                                                                                                                                                     |
+| Browsers       | Those that run MapLibre GL JS 6: WebGL2 and ES modules.                                                                                                                                                                                                                  |
 
 ## Plugins
 
@@ -63,7 +64,10 @@ write profiles. The public API is what the versioning policy protects.
 ## Known limits
 
 - **One GeoLeaf application per page.** Configuration, state and events are shared by the whole
-  page.
+  page. The application can be unmounted and mounted again (`GeoLeaf.mount()`, since 3.13.0), not
+  duplicated: a `mount()` while an application is alive unmounts it first.
+- **A plugin that wires itself once, when its script loads, does not come back after a remount.**
+  `realtime-layer` and `geocoding` unmount with the application; the other plugins do not yet.
 
 ## Versions
 

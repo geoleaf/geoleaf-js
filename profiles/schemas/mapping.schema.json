@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/mapping",
     "title": "GeoLeaf Data Mapping",
-    "description": "mapping.json — POI data normalization contract consumed by ConfigNormalizer.normalizePoiWithMapping. ALWAYS multi-source: an object of named per-source blocks { <sourceId>: { mapping, ... } }. A single source is simply one block — there is NO special-case top-level form. Each `mapping` is a FLAT object { normalizedField : \"rawSourceField\" } — keys are normalized GeoLeaf fields with dotted paths allowed (e.g. \"id\", \"title\", \"location.lat\", \"attributes.kind\"), values are raw source field names (strings). Per-source contract finalized in Archi S2 — ANO-083.",
+    "description": "mapping.json — POI data normalization contract consumed by ConfigNormalizer.normalizePoiWithMapping. ALWAYS multi-source: an object of named per-source blocks { <sourceId>: { mapping, ... } }. A single source is simply one block — there is NO special-case top-level form. Each `mapping` is a FLAT object { normalizedField : \"rawSourceField\" } — keys are normalized GeoLeaf fields with dotted paths allowed (e.g. \"id\", \"title\", \"location.lat\", \"attributes.kind\"), values are raw source field names (strings).",
     "type": "object",
     "additionalProperties": false,
     "minProperties": 1,
@@ -22,7 +22,7 @@
         },
         "sourceBlock": {
             "type": "object",
-            "description": "A single named source mapping. `mapping` is required; source/description are optional metadata. (Inert keys coordinateFields/filter/categoryMapping/subcategoryMapping removed in archi B.3 — never consumed by normalizePoiWithMapping.)",
+            "description": "A single named source mapping. `mapping` is required; source/description are optional metadata. (There are no coordinateFields/filter/categoryMapping/subcategoryMapping keys: normalizePoiWithMapping never consumed them.)",
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "required": ["mapping"],

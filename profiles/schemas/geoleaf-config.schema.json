@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/geoleaf-config",
     "title": "GeoLeaf Root Config",
-    "description": "geoleaf.config.json — root configuration file loaded at application startup. Hardened in Sprint S1 (Profile Contract v1, PRF-SCHEMA). modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
+    "description": "geoleaf.config.json — root configuration file loaded at application startup. Strict schema (PRF-SCHEMA, Profile Contract v1). modules.<id> blocks stay open (plugin-owned, INV-CONFIG).",
     "type": "object",
     "additionalProperties": false,
     "patternProperties": { "^_comment": {} },
@@ -28,7 +28,7 @@
                     "description": "INJECTÉE PAR LE BUILD, jamais écrite à la main : inventaire des profils réellement embarqués dans la variante, récolté au moment de la copie et lu par le sélecteur de profil. ⚠️ Elle n'a de sens que dans un artefact déployé — la source ne sait pas ce qu'une variante embarquera. Déclarée ici parce que le bloc est `additionalProperties: false` et que la configuration déployée doit valider.",
                     "items": {
                         "type": "object",
-                        "$comment": "La forme est celle que le build ÉCRIT et que la capacité de sélection LIT — pas une forme plausible. Elle est volontairement fermée : si la récolte gagne un champ, le schéma rougit, ce qui est le couplage recherché. Une forme ouverte aurait laissé la clé injectée dériver du type qui la décrit, ce qui est le défaut d'origine à une variable près.",
+                        "$comment": "This is the shape the deploy build WRITES and the profile-switcher capability READS — not a plausible one. It is closed on purpose: if the build starts writing a new field, validation fails, which is the coupling wanted. An open shape would let the injected key drift away from the type that describes it.",
                         "additionalProperties": false,
                         "required": ["id", "displayLabel"],
                         "properties": {
@@ -56,7 +56,7 @@
                     "type": ["string", "number"],
                     "default": 0,
                     "description": "Empreinte de CONTENU du profil, ajoutée en `?t=` à chaque requête de ressource de profil — `profile.json`, `mapping.json`, les fichiers de section, les configs de couche et le bundle. ⚠️ Opaque, et JAMAIS une date : la valeur n'est ni lue ni comparée ni ordonnée, seul importe qu'elle change quand le contenu change — une empreinte, un compteur de révision, un identifiant de déploiement. Une horloge défait le mécanisme, puisqu'elle change à chaque chargement et fait re-télécharger ce qui n'a pas bougé. Fournie par l'APPLICATION INTÉGRANTE, seule à savoir quand son profil a changé ; l'écrire dans `profile.json` est trop tard, le jeton est résolu avant que ce fichier soit requêté. Absente, le jeton vaut `0` — URL fixe, comportement historique conservé, mais un serveur envoyant un `max-age` long épingle alors le profil et toutes ses annexes pour la durée de cet en-tête.",
-                    "$comment": "Déclarée ici parce que le bloc est `additionalProperties: false`. Le défaut `0` est le comportement d'avant l'introduction de la clé : la rétro-compatibilité est portée par le défaut, pas par une branche. ⚠️ Dans un DÉPLOYÉ elle est ÉCRITE PAR LE BUILD — `build-deploy.cjs` y pose l'empreinte de contenu de l'arbre `profiles/` (`lib/profile-fingerprint.cjs`) — donc absente de la source et présente dans l'artefact, comme `availableProfiles`. 🛑 Le fichier qui la porte doit être servi `no-cache` : on ne peut pas invalider par un jeton le fichier qui porte ce jeton (gate SC-05, recettes serveur émises avec le livrable)."
+                    "$comment": "Declared here because the block is `additionalProperties: false`. The default `0` is the behaviour from before the key existed: backward compatibility is carried by the default, not by a branch. ⚠️ In a DEPLOYED variant the key is WRITTEN BY THE BUILD — `scripts/build-deploy.cjs` sets it to the content fingerprint of the `profiles/` tree (`scripts/lib/profile-fingerprint.cjs`) — so it is absent from the source and present in the artefact, like `availableProfiles`. 🛑 The file carrying it must be served `no-cache`: a token cannot invalidate the file that carries it. The server recipes shipped with each deliverable say so."
                 },
                 "profileBundle": {
                     "type": "object",

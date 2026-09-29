@@ -4,8 +4,8 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 932f22a78
-date: 27 septembre 2026
+verifie_contre: 6111290d1
+date: 28 septembre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules
@@ -47,12 +47,12 @@ rafraîchies.
   coordonnée**.
 - **Il n'a aucune configuration globale.** Tout se déclare **par couche**, sous `data.realtime` —
   domaine de la donnée, donc du core. **Aucun code ne lit de clé `realtimeLayer`** : le plugin n'a
-  aucun accesseur de configuration. ⚠️ La forme absolue « nulle part » serait fausse — les schémas
-  de profil DÉCLARENT la clé à deux endroits, permissive et sans lecteur : `modules.realtimeLayer`
-  dans `profiles/schemas/profile.schema.json` (« Owned by @geoleaf-plugins/realtime-layer — keys
-  validated by the plugin, not the core ») et un bloc par couche dans
-  `profiles/schemas/layer-config.schema.json`, dont la description renvoie la question
-  d'architecture. **Aucun profil ne les renseigne**, et c'est ce qui se mesure.
+  aucun accesseur de configuration. ⚠️ La forme absolue « nulle part » serait fausse — un schéma
+  de profil DÉCLARE encore la clé, permissive et sans lecteur : un bloc `realtimeLayer` par couche
+  dans `profiles/schemas/layer-config.schema.json`, dont la description dit qu'il n'est lu par rien
+  et n'est gardé que pour ne refuser aucune couche qui le porte. Le bloc `modules.realtimeLayer` de
+  `profile.schema.json`, lui, est retiré depuis le 28/09/2026 (`PC-15` refuse un bloc sans lecteur).
+  **Aucun profil ne renseigne la clé**, et c'est ce qui se mesure.
 - **Il ne parle jamais au moteur cartographique.** Toutes les écritures passent par
   `GeoLeaf.GeoJSON.*` ; aucun accès aux internes du core.
 - **Il ne gère pas la reconnexion des flux d'événements serveur** — c'est le navigateur qui le fait,
@@ -86,16 +86,24 @@ et **ne démarre pas**, les autres couches continuant normalement.
 
 ### Les étapes d'`entry.ts`
 
-`entry.ts` est court — quatre gestes, pas les six du plugin d'interface complet :
+`entry.ts` est court — cinq gestes, pas les six du plugin d'interface complet :
 
-| Étape                 | Ce qu'elle fait ici                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------------------- |
-| Ré-exports de types   | `IDecoder`, `DecodedUpdate`, `IRealtimeSource`, `StaleActionHandler` — les **points d'extension** |
-| Montage du namespace  | `GeoLeaf.RealtimeLayer = buildPublicApi()`                                                        |
-| Auto-enregistrement   | Le manifeste ci-dessus, avec un `healthCheck` qui vérifie la présence du namespace                |
-| Démarrage automatique | Écoute `geoleaf:app:ready` → balaye le profil et démarre les couches déclarées                    |
+| Étape                 | Ce qu'elle fait ici                                                                                   |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| Ré-exports de types   | `IDecoder`, `DecodedUpdate`, `IRealtimeSource`, `StaleActionHandler` — les **points d'extension**     |
+| Montage du namespace  | `GeoLeaf.RealtimeLayer = buildPublicApi()`                                                            |
+| Auto-enregistrement   | Le manifeste ci-dessus, avec un `healthCheck` qui vérifie la présence du namespace                    |
+| Démontage (1.0.6)     | `registry.register({ id, init, destroy })` avant le premier boot : le `destroy()` appelle `stopAll()` |
+| Démarrage automatique | Écoute `geoleaf:app:ready` → balaye le profil et démarre les couches déclarées                        |
 
 **Ni i18n, ni CSS, ni créneau de barre d'outils, ni action** : ce plugin n'a aucune interface.
+
+⚠️ **Le démontage passe par le registre de modules du core** (1.0.6). `GeoLeaf.mount()` démonte
+l'application en détruisant ce registre : le module que le plugin y inscrit arrête alors toutes les
+sources. Avant, rien ne les arrêtait — elles sondaient encore après `unmount()`, et le démarrage
+automatique en lançait un second jeu au montage suivant (mesuré par l'E2E `71-mount-remount`, un
+écouteur `visibilitychange` de plus par cycle). Le module ne s'inscrit qu'avant le premier boot, comme
+le registre le demande : chargé plus tard, le plugin n'est pas arrêté par un démontage.
 
 ⚠️ **L'ordre de chargement des scripts est porteur** : le core, puis `websocket` s'il y a des
 couches qui en dépendent, puis ce plugin, puis les extensions qui enregistrent leurs décodeurs, puis

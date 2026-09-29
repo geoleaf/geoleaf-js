@@ -252,6 +252,8 @@ class APIInitializationManager {
             mapOptions: (mapOpts.mapOptions as Record<string, unknown>) ?? {},
             // Carry the internal boot-injected adapter (if any) through to Core.init/_createInstance.
             _adapter: options._adapter,
+            // And the container `GeoLeaf.mount(el)` was handed, when it was an element.
+            ...(options._container !== undefined && { _container: options._container }),
         };
     }
 

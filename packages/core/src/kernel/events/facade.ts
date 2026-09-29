@@ -132,9 +132,10 @@ import { Log } from "../../utils/log/index.js";
  * is finally typed — until now the canonical plugin extension path had to fall back to a raw
  * `document.addEventListener`, outside the very API the core provides for it.
  */
-type GeoLeafListenableEventMap = GeoLeafEventMap & GeoLeafRawEventMap;
+export type GeoLeafListenableEventMap = GeoLeafEventMap & GeoLeafRawEventMap;
 
-type GeoLeafEventHandler<K extends keyof GeoLeafListenableEventMap> = (
+/** A listener of one GeoLeaf event: the `CustomEvent`, its `detail` typed by the event name. */
+export type GeoLeafEventHandler<K extends keyof GeoLeafListenableEventMap> = (
     event: CustomEvent<GeoLeafListenableEventMap[K]>
 ) => void;
 

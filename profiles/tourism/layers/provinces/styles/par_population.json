@@ -37,12 +37,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 0
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 400000
                     }
@@ -63,12 +63,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 400000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 700000
                     }
@@ -89,12 +89,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 700000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 1000000
                     }
@@ -115,12 +115,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 1000000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 1400000
                     }
@@ -141,12 +141,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 1400000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 2000000
                     }
@@ -167,12 +167,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 2000000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<",
                         "value": 4000000
                     }
@@ -193,12 +193,12 @@
             "when": {
                 "all": [
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": ">=",
                         "value": 4000000
                     },
                     {
-                        "field": "properties.argentina_population_population_2022",
+                        "field": "properties.argentina_population_2022",
                         "operator": "<=",
                         "value": 20000000
                     }

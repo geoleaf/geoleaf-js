@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/themes",
     "title": "GeoLeaf Themes",
-    "description": "themes.json — layer visibility presets (themes) for a GeoLeaf profile. Hardened in Sprint S1 (PRF-SCHEMA). Note: the canonical default-theme key is the root-level `defaultTheme`; the legacy/typo `config.defautTheme` is tolerated but flagged in the anomaly registry.",
+    "description": "themes.json — layer visibility presets (themes) for a GeoLeaf profile. Strict schema (PRF-SCHEMA, Profile Contract v1). Note: the canonical default-theme key is the root-level `defaultTheme`; the legacy/typo `config.defautTheme` is tolerated.",
     "type": "object",
     "additionalProperties": false,
     "patternProperties": { "^_comment": {} },
@@ -20,7 +20,7 @@
             "properties": {
                 "defautTheme": {
                     "type": "string",
-                    "description": "LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme. See anomaly registry."
+                    "description": "LEGACY/TYPO of defaultTheme (present in one profile), read when the root-level defaultTheme names no theme of the list. Use the root-level defaultTheme."
                 },
                 "primaryThemes": {
                     "type": "object",

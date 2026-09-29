@@ -56,6 +56,17 @@
  * precisely what prevented seeing. It is `entry.ts` ALONE, outside the monorepo,
  * that judges.
  *
+ * ## Why only the entries under `dist/types/` (2026-09-28)
+ *
+ * The ambient describes the namespace `src/` declares, and every entry compiled from `src/`
+ * lands in `dist/types/` — all of them pull it, for the reason above. `./schemas` is the one
+ * entry that does not: its declarations are GENERATED from the profile JSON Schemas
+ * (`emit-profile-schemas.cjs`), they describe FILES, not the runtime, and they must stay
+ * self-contained — a script that only validates profiles must not pull the global `GeoLeaf`
+ * namespace, and `maplibre-gl`'s types with it, into its program. The rule is a target's
+ * DIRECTORY, not a list: the next entry compiled from `src/` is covered without anyone having
+ * to think of it, and `bundle-profile-contract.test.ts` refuses a reference in `dist/schemas/`.
+ *
  * ## What this script REFUSES to do
  *
  * It does not "silently skip" when the source or a target is missing: it exits 1
@@ -77,7 +88,8 @@ const registry = require("./lib/packages.cjs");
 
 const CORE = registry.requireByDirName("core");
 const SRC = path.join(CORE.absDir, "src", "global.d.ts");
-const OUT_DIR = path.join(CORE.absDir, "dist", "types");
+const TYPES_ROOT = "dist/types";
+const OUT_DIR = path.join(CORE.absDir, TYPES_ROOT);
 const OUT = path.join(OUT_DIR, "global.d.ts");
 
 function fail(msg) {
@@ -86,7 +98,8 @@ function fail(msg) {
 }
 
 /**
- * The entry `.d.ts` the `exports` map exposes, DERIVED from it and never listed here.
+ * The entry `.d.ts` the `exports` map exposes under `dist/types/`, DERIVED from it and never
+ * listed here — `dist/schemas/` excepted by rule, see the header.
  *
  * A hand-written list would diverge at the first added subpath — and diverge in
  * silence, since nothing downstream compiles these entries separately. Globs
@@ -105,6 +118,8 @@ function entryDeclarationFiles() {
     for (const conditions of Object.values(exportsMap)) {
         const types = typeof conditions === "object" && conditions ? conditions.types : null;
         if (typeof types !== "string") continue;
+        // Only what `tsc` compiles from `src/` — see "Why only the entries under dist/types/".
+        if (!types.startsWith(`./${TYPES_ROOT}/`)) continue;
 
         // `./dist/types/x.d.ts` → absolute; a `*` is expanded on disk.
         const rel = types.replace(/^\.\//, "");

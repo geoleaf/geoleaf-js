@@ -30,17 +30,15 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
         _LabelButtonManager: labelsMocks.LabelButtonManager,
     }),
 }));
-vi.mock("../../src/capabilities/legend/legend-seam.js", () => ({
-    LegendContract: {
-        isAvailable: vi.fn(() => false),
-        loadLayerLegend: vi.fn(),
-    },
-}));
 
 import { StyleSelector } from "../../src/kernel/layer-manager/style-selector.js";
 import { GeoJSONCore } from "../../src/kernel/geojson/core.js";
 import { StyleLoader } from "../../src/utils/loaders/style-loader.js";
-import { LegendContract } from "../../src/capabilities/legend/legend-seam.js";
+import { provideLegend } from "../../src/kernel/shared/legend-slot.js";
+
+// The kernel reaches the legend through its slot (the capability fills it at boot).
+const LegendContract = { isAvailable: vi.fn(() => false), loadLayerLegend: vi.fn() };
+provideLegend(LegendContract);
 
 describe("style-selector — branch coverage", () => {
     beforeEach(() => {

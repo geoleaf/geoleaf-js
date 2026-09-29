@@ -29,7 +29,13 @@ export const BrandingLifecycle = {
 
     /** Tears down the overlay (module destroy / test seam). */
     _reset(): void {
-        Branding.destroy();
-        _started = false;
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            Branding.destroy();
+        } finally {
+            _started = false;
+        }
     },
 };

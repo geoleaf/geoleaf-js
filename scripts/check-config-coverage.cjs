@@ -289,9 +289,9 @@ const FAMILIES = {
     B7: {
         label: "B7 — plugins modules.<id> + mapping.json légacy (config/plugins/<id>.json + config/core/mapping.json)",
         sectionHeading: "## B7 —",
-        // Plugin configs (modules.<id>.*) have NO schema in profiles/schemas/: each plugin owns
-        // its schema and profile.schema.json declares `modules.<id>` as additionalProperties:true
-        // (keys delegated to the plugin). So every plugin key is CODE-SOURCED and listed by hand
+        // Plugin configs (modules.<id>.*) have NO schema anywhere: no plugin ships one, and
+        // profile.schema.json keeps each `modules.<id>` open (additionalProperties:true) — a
+        // plugin's keys are whatever its code reads. So every plugin key is CODE-SOURCED and listed by hand
         // in explicitLeaves (grep coreConfigGet/Config.get + each plugin's *_CONFIG_DEFAULTS, S9).
         // mapping.json DOES have a schema (mapping.schema.json) → its 13 leaves are schema-driven
         // like B1–B6 (flattenLeaves: source/description/coordinateFields.*/filter.*/mapping/

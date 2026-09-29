@@ -65,11 +65,17 @@ export const LabelsLifecycle = {
      * re-init left clickable 🏷️ toggles wired to a destroyed singleton.
      */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:layer-item:controls", onLayerItemControls);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:layer-item:controls", onLayerItemControls);
+            }
+            if (LabelButtonManager) LabelButtonManager.removeButtons();
+            if (Labels) Labels.destroy();
+        } finally {
+            _started = false;
         }
-        if (LabelButtonManager) LabelButtonManager.removeButtons();
-        if (Labels) Labels.destroy();
-        _started = false;
     },
 };

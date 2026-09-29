@@ -117,9 +117,9 @@ vi.mock("../../src/utils/loaders/style-loader.js", () => ({
         })),
     },
 }));
-vi.mock("../../src/capabilities/legend/legend-seam.js", () => ({
-    LegendContract: { isAvailable: vi.fn(() => false), loadLayerLegend: vi.fn() },
-}));
+
+const reconcileStyleFields = vi.hoisted(() => vi.fn());
+vi.mock("../../src/kernel/geojson/field-reconciliation.js", () => ({ reconcileStyleFields }));
 
 import { StyleSelector } from "../../src/kernel/layer-manager/style-selector.js";
 import { GeoJSONCore } from "../../src/kernel/geojson/core.js";
@@ -151,5 +151,17 @@ describe("style-selector — the document is restored BEFORE Labels reads it", (
         expect(paint.fillColor).toBe("#facc15");
         expect(paint.label).toBeUndefined();
         expect(paint.labelScale).toBeUndefined();
+    });
+});
+
+describe("style-selector — the switched style is confronted with the layer's data", () => {
+    it("hands the field diagnostic the style DOCUMENT it applied — rules and label included", async () => {
+        reconcileStyleFields.mockClear();
+        await StyleSelector.applyStyle("villes_principales", "population");
+        expect(reconcileStyleFields).toHaveBeenCalledTimes(1);
+        expect(reconcileStyleFields).toHaveBeenCalledWith(
+            "villes_principales",
+            expect.objectContaining({ id: "population", label: expect.any(Object) })
+        );
     });
 });

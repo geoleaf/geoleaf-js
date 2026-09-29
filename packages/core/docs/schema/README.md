@@ -4,81 +4,115 @@ title: "GeoLeaf — JSON Schema Documentation"
 
 # GeoLeaf — JSON Schema Documentation
 
-**Source of truth**: `profiles/schemas/`
+**Shipped with the package** since v3.13.0: the schemas at `@geoleaf/core/schemas/<name>.schema.json`,
+their TypeScript types at `@geoleaf/core/schemas`. **Source of truth** in the repository:
+[`profiles/schemas/`](https://github.com/geoleaf/geoleaf-js/tree/main/profiles/schemas) — the package
+carries the same bytes.
 
 ---
 
 ## Overview
 
-The schema files themselves are stored in `profiles/schemas/`, not in this directory. This page is the documentation entry point for every GeoLeaf JSON Schema (draft-07).
+A GeoLeaf profile is a **directory**, and no schema describes it whole: each of its files validates
+alone, against the schema its place designates — the table below. The schemas are JSON Schema
+draft-07; each `$id` is `geoleaf/<name>`, and none references another.
 
-The schemas validate the JSON configuration files of the active profile. They enable autocompletion and inline validation in VSCode through the `$schema` property.
+In an installed package they sit in `node_modules/@geoleaf/core/dist/schemas/`.
 
 ---
 
 ## Available schemas
 
-| Schema                       | Validated JSON file         | Description                                                                 |
-| ---------------------------- | --------------------------- | --------------------------------------------------------------------------- |
-| `geoleaf-config.schema.json` | `geoleaf.config.json`       | Root configuration (debug, branding, data, pwa, security, logging, modules) |
-| `profile.schema.json`        | `profile.json`              | Profile manifest (id, label, version, map, Files, modules)                  |
-| `basemaps.schema.json`       | `basemaps.json`             | Raster and vector tile sources                                              |
-| `ui.schema.json`             | `ui.json`                   | UI controls, permalink, scale bar, filters                                  |
-| `features.schema.json`       | `config/core/features.json` | Core features (clustering, geocoding, performance, POI, mapOptions)         |
-| `layers.schema.json`         | `layers.json`               | Layer references of the profile                                             |
-| `layer-config.schema.json`   | `layers/*/[id]_config.json` | Per-layer configuration (data, styles, popup, sidepanelConfig, clustering)  |
-| `style.schema.json`          | `layers/*/styles/*.json`    | Rendering styles (flat format, styleRules, expressionPaint)                 |
-| `themes.schema.json`         | `themes.json`               | Layer visibility presets                                                    |
-| `mapping.schema.json`        | `mapping.json`              | Normalization of external POI data                                          |
+| Schema                       | Root type (`@geoleaf/core/schemas`) | File it judges, relative to a profile directory | Content                                                                    |
+| ---------------------------- | ----------------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `profile.schema.json`        | `GeoLeafProfile`                    | `profile.json`                                  | Profile manifest (id, label, version, map, Files, modules)                 |
+| `geoleaf-config.schema.json` | `GeoLeafRootConfig`                 | `../geoleaf.config.json`, beside the profiles   | Root configuration (debug, data, logging, modules)                         |
+| `basemaps.schema.json`       | `GeoLeafBasemaps`                   | `config/core/basemaps.json`                     | Raster and vector tile sources                                             |
+| `features.schema.json`       | `GeoLeafCoreFeatures`               | `config/core/features.json`                     | Map options (`mapOptions`)                                                 |
+| `layers.schema.json`         | `GeoLeafLayersIndex`                | `config/core/layers.json`                       | The profile's layer references and layer templates                         |
+| `ui.schema.json`             | `GeoLeafUIConfig`                   | `config/core/ui.json`                           | UI controls, layer manager                                                 |
+| `themes.schema.json`         | `GeoLeafThemes`                     | `config/core/themes.json`                       | Layer visibility presets                                                   |
+| `mapping.schema.json`        | `GeoLeafDataMapping`                | `config/core/mapping.json`                      | Normalization of external POI data                                         |
+| `layer-config.schema.json`   | `GeoLeafLayerConfig`                | `layers/<id>/<id>_config.json`                  | Per-layer configuration (data, styles, popup, sidepanelConfig, clustering) |
+| `style.schema.json`          | `GeoLeafLayerStyle`                 | `layers/<id>/styles/*.json`                     | Rendering styles (flat format, styleRules, expressionPaint)                |
 
-> **Two schemas were listed here after their files were deleted, and this table said nothing
-> about it.** `geoleaf-profile.schema.json` (orphan block vocabulary) and `taxonomy.schema.json`
-> (the taxonomy moved to a plugin module) no longer exist on disk. They are removed from the
-> table rather than annotated: this page tells an integrator what to point `$schema` at, and a
-> row for a file that cannot be fetched is worse than no row.
->
-> **Every schema listed above is applied by the validator** — that has been true of nine of them
-> for a long time, and of `geoleaf-config.schema.json` only since 2026-08-19. Until then this
-> page listed it without reservation while the contract spec recorded, in writing, that it was
-> never loaded: the document an integrator reads and the document that tells the truth disagreed,
-> and only the second one said so.
+`config/plugins/*.json` has no schema: a module's configuration belongs to its capability or plugin,
+and the schemas keep every `modules.<id>` block open.
+
+Every schema above judges real files — the repository's validator applies them to its own
+profiles, and the package's own test applies the **shipped** copies to the same profiles.
 
 ---
 
 ## Usage
 
-### Inline validation (VSCode)
+### Validate a profile
 
-Add `$schema` at the top of the JSON file:
+The recipe the package's test runs against what the tarball carries:
+
+```ts
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { Ajv } from "ajv";
+
+const require = createRequire(import.meta.url);
+const ajv = new Ajv({ allErrors: true, allowUnionTypes: true });
+const schemaOf = (name: string) =>
+    JSON.parse(readFileSync(require.resolve(`@geoleaf/core/schemas/${name}.schema.json`), "utf8"));
+
+const validateProfile = ajv.compile(schemaOf("profile"));
+const profile = JSON.parse(readFileSync("profiles/my-profile/profile.json", "utf8"));
+if (!validateProfile(profile)) console.error(validateProfile.errors);
+```
+
+Keep these options. Without `allowUnionTypes`, ajv logs four warnings — two schemas declare union
+types. `strict: true` works too, as long as `allowUnionTypes` stays: every schema compiles under it,
+and the repository refuses a schema that does not. Validate each file of the profile with the schema
+the table above names.
+
+`ajv` is your dependency, not GeoLeaf's: the package ships the schemas, never a validator.
+
+### Type a profile built in code
+
+```ts
+import type { GeoLeafProfile } from "@geoleaf/core/schemas";
+
+const profile: GeoLeafProfile = { id: "my-profile", label: "My profile", map: { zoom: 6 } };
+```
+
+The types are an **upper bound** of the schemas: every file a schema accepts type-checks, the reverse
+is not promised — conditional rules, presence rules, patterns and bounds are not expressed, so the
+verdict stays with the schemas. One exception: in `config/core/mapping.json`, a `_comment…` key types
+only as a string. `./schemas` is `type`-only — a value import from it fails.
+
+The schemas judge the **shape** of a profile, never its data: a field name the data does not carry —
+a taxonomy's `subCategoryField`, a style rule's `when.field`, an attribute row's `field` — passes
+every schema. The core says it when the layer loads, in one `Log.warn` per layer naming the key and
+the field, and it reads each key the way its reader does: a style rule's `field` loses one leading
+`properties.`, a label's `field` loses nothing.
+
+### Validation in the editor
+
+Map the shipped schemas to your profile files — for instance in the workspace settings of VS Code,
+where a relative `url` is resolved from the workspace folder:
 
 ```json
 {
-    "$schema": "../../schemas/style.schema.json",
-    "id": "mon-style",
-    "style": {
-        "fillColor": "#4681cb",
-        "fillOpacity": 0.6,
-        "color": "#2a5599",
-        "weight": 1
-    }
+    "json.schemas": [
+        {
+            "fileMatch": ["profiles/*/profile.json"],
+            "url": "./node_modules/@geoleaf/core/dist/schemas/profile.schema.json"
+        },
+        {
+            "fileMatch": ["profiles/*/layers/*/styles/*.json"],
+            "url": "./node_modules/@geoleaf/core/dist/schemas/style.schema.json"
+        }
+    ]
 }
 ```
 
-### Command-line validation (ajv-cli)
-
-```bash
-npm install -g ajv-cli
-
-# Validate every style of the tourism profile
-ajv validate -s profiles/schemas/style.schema.json \
-  -d "profiles/tourism/layers/**/styles/*.json" \
-  --all-errors
-
-# Validate the layer configurations
-ajv validate -s profiles/schemas/layer-config.schema.json \
-  -d "profiles/tourism/layers/**/*_config.json" \
-  --all-errors
-```
+Every schema also accepts a `$schema` key at the root of the file it judges, for editors that read
+it: a path relative to the JSON file, ending in `@geoleaf/core/dist/schemas/<name>.schema.json`.
 
 ---
 

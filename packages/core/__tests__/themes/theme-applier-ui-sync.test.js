@@ -25,19 +25,21 @@ const mockGetVisibilityState = vi.fn(() => ({ current: true }));
 vi.mock("../../src/kernel/shared/layer-visibility-state.js", () => ({
     LayerVisibilityManager: { getVisibilityState: (...args) => mockGetVisibilityState(...args) },
 }));
-vi.mock("../../src/capabilities/legend/legend-seam.js", () => ({
-    LegendContract: {
-        isAvailable: vi.fn(() => false),
-        loadLayerLegend: mockLoadLayerLegend,
-        setLayerVisibility: mockSetLayerVisibility,
-    },
-}));
 const mockGetMap = vi.fn(() => null);
 vi.mock("../../src/api/geoleaf.core.js", () => ({
     Core: { getMap: (...args) => mockGetMap(...args) },
 }));
 import { ThemeApplierUISync as TA } from "../../src/kernel/themes/theme-applier/ui-sync.js";
-import { LegendContract as legend } from "../../src/capabilities/legend/legend-seam.js";
+import { provideLegend } from "../../src/kernel/shared/legend-slot.js";
+
+// The kernel reaches the legend through its slot, which the legend capability fills at boot —
+// it no longer imports the capability. The test fills it with a stand-in.
+const legend = {
+    isAvailable: vi.fn(() => false),
+    loadLayerLegend: mockLoadLayerLegend,
+    setLayerVisibility: mockSetLayerVisibility,
+};
+provideLegend(legend);
 
 describe("theme-applier/ui-sync (Phase 5.33)", () => {
     beforeEach(() => {

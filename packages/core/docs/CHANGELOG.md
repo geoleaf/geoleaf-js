@@ -11,6 +11,86 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.13.0] - 2026-09-29
+
+### Added
+
+- **`GeoLeaf.mount(el, options)`** — the application a host mounts, unmounts and mounts again.
+  It boots as `GeoLeaf.boot()` does, with the same options, and returns at once a handle:
+  `ready` (a promise settled by the boot: resolved on `geoleaf:app:ready`, rejected with a
+  `GeoLeafMountError` — `reason`, `phase` — on a failure, an abort or an unmount before it was
+  ready), `unmount()`, `on(event, handler)` (the page's event bus, every subscription removed at
+  unmount) and `getMap()`. `unmount()` takes the WHOLE application down — modules, controls,
+  panels, map, and the state they held — and the next `mount()` gives it back whole. `el` is the
+  map container, an element or its id. Still one application per page: a `mount()` while one is
+  alive — mounted by `mount()` or by `boot()` — unmounts it first, and its handle goes inert.
+  `Core.destroy()` is unchanged: it removes the map alone, and is not an unmount.
+- **`boot({ maplibregl })`** (and `mount(el, { maplibregl })`): the MapLibre GL JS engine handed
+  over as an option. MapLibre 6 no longer sets `globalThis.maplibregl`; the core puts it there,
+  where every reader looks for it.
+- **`reason: "engine"`** on `geoleaf:boot:failed`: no MapLibre GL JS engine was found when the map
+  was built. It failed as `"map"` before — the answer also given for a missing container. The
+  union is wider: a `switch` that covered every reason needs the new case.
+- `geoleaf:boot:aborted` carries `reason: "unmounted"` when an application is unmounted while it
+  is still starting.
+- `ModuleInitOptions.shouldContinue`: asked before each module's `init()`, `false` stops the
+  initialisation there. `ModuleRegistry.destroy()` now tears down only the modules that started,
+  and is refused while `init()` is running.
+- **The profile schemas and their types ship with the package.** The ten JSON Schemas that judge
+  the files of a profile, at `@geoleaf/core/schemas/<name>.schema.json` — byte for byte the ones
+  the repository validates its own profiles with — and TypeScript types generated from them at
+  `@geoleaf/core/schemas` (`type`-only): `GeoLeafProfile`, `GeoLeafRootConfig`,
+  `GeoLeafLayerConfig`, `GeoLeafLayerStyle`, `GeoLeafBasemaps`, `GeoLeafCoreFeatures`,
+  `GeoLeafLayersIndex`, `GeoLeafDataMapping`, `GeoLeafThemes`, `GeoLeafUIConfig`. A profile can now
+  be validated with what npm gives. The types are an upper bound of the schemas — every file a
+  schema accepts type-checks; conditional and presence rules are not expressed, the verdict stays
+  with the schemas. They compile under ajv's `strict: true`, with `allowUnionTypes`. Their
+  `description`s and `$comment`s lost their pointers to the project's internal notes. Under
+  `modules`, the profile schema names exactly the plugin blocks a plugin reads, and leaves each
+  one open: neither the core nor a plugin reports a key it does not know, so a misspelled key is
+  silently ignored.
+- **A field a profile names and its data does not carry is said when the layer loads.** A profile
+  names the properties of its data in free text, and a name the data lacks read `undefined`: the
+  taxonomy fell back to the category's icon, an attribute row vanished, a style rule never
+  matched — without a word. Each field a layer's readers declare — `categoryField` /
+  `subCategoryField` of its taxonomy, a style rule's `when.field`, a displayed
+  `attributes.fields[].field`, the label's `field`, `searchable.fields`, the `field` / `subField`
+  of a filter descriptor that lists the layer — is now looked for in up to 1 000 of its features,
+  evenly spread, under the rule of the code that reads it. One carried by none is named in one
+  `Log.warn` per layer, with its configuration key and, when only the case differs, the name the
+  data carries. A property present with `null` counts as carried; an empty layer is not judged;
+  each field is said once per page, and again after an unmount. A switched style is judged too.
+  Nothing throws and nothing renders differently. Not judged: vector tiles, a layer loaded by a
+  plugin, and the writes after the first load.
+
+### Changed
+
+- **`boot()` after an unmount starts the application again.** `boot()` while an application is
+  mounted is still refused, as before.
+- `@geoleaf-plugins/realtime-layer` 1.0.6 and `@geoleaf-plugins/geocoding` 1.1.2 unmount with the
+  application: the real-time sources stop, the search bar goes. Both register their teardown
+  before the first boot; loaded after it, they are not unmounted. A plugin that wires itself
+  once, when its script loads, does not come back after a remount.
+
+### Fixed
+
+- **What an application left behind it once torn down** — found by making the teardown reachable,
+  each measured: the next map got no basemap; the permalink kept syncing the destroyed map;
+  the theme was not fitted again; `onPerformanceMetrics` fired on the first boot only; the
+  proximity filter released none of its document listeners; the desktop panel's theme buttons
+  left a listener on `window` each; the reveal of a boot unmounted before it revealed could fire on
+  the next boot; the configuration of the next boot was merged into the previous one; a capability
+  whose teardown threw never started again.
+- **The offline write cycle's members of `GeoLeaf.Storage` are typed.** `applyEdit`, `mayEdit`,
+  `canQueueWrites`, `pushOutbox`, `requeueQuarantined`, `requeueAll`, `discardQuarantined`,
+  `requeueableReasons`, `listConflicts`, `clearConflicts`, `whenReady` and
+  `Storage.DB.listPendingEdits` were typed `unknown` by the published namespace, so a TypeScript
+  project could not call them without a cast. They now carry the facade's own signatures.
+- The documented example of `discardQuarantined()` did nothing: it listed through
+  `Storage.listPendingEdits`, which does not exist (the method is on `Storage.DB`), and read `id`
+  where the entry carries `entryId`. Fixed, with the example of `requeueableReasons()`, which read
+  a motive no public listing returns.
+
 ## [3.12.0] - 2026-09-27
 
 ### Added

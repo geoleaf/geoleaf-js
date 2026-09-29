@@ -21,7 +21,7 @@
  * rule forbidding it existed and had been seen biting. **The rule was good, its corpus
  * stopped short.** Here, the corpus was good and the BLOCK TYPE is what stopped short.
  *
- * ## The three rules
+ * ## The four rules
  *
  *   CDE-01  No NEW invalid key in a JSON config example. A key absent from the
  *           baseline is an error: it cannot be born as debt.
@@ -30,6 +30,13 @@
  *   CDE-03  Neither the corpus nor the container table can be empty. A green gate that
  *           scanned nothing, or resolved no schema, is the worst outcome — same class
  *           as NNA-03, EOD-03 and JTD-03.
+ *   CDE-04  A block DECLARED complete validates ENTIRELY. A ```json fence preceded by
+ *           `<!-- geoleaf:docs:schema <name> -->` is compiled against
+ *           `profiles/schemas/<name>.schema.json` — the bytes the package ships — with the
+ *           options of `validate-profiles.cjs`: `required`, `enum`, `if`/`then`, every
+ *           rule. No baseline: the marker is opt-in, so there is no debt to freeze. A
+ *           marker naming no schema, followed by no fence, or over a block that does not
+ *           parse is an error too — a declared proof that silently skips proves nothing.
  *
  * ## Two design decisions, each motivated by a MEASURED defect
  *
@@ -53,11 +60,19 @@
  *
  * ## What this gate does NOT guard
  *
- * It verifies the keys' **existence**, not their types nor the `required`. Doc
- * examples are FRAGMENTS: validating a fragment against the full schema would redden
- * every partial illustration on `required`, i.e. almost all of them. The hunted class
- * is "this key does not / no longer exist", and it is the one that breaks on
- * copy-paste.
+ * Outside CDE-04, it verifies the keys' **existence**, not their types nor the
+ * `required`. Doc examples are FRAGMENTS: validating a fragment against the full schema
+ * would redden every partial illustration on `required`, i.e. almost all of them. The
+ * hunted class is "this key does not / no longer exist", and it is the one that breaks on
+ * copy-paste. A block that is NOT a fragment says so with the CDE-04 marker, and only
+ * then is it held to the whole schema.
+ *
+ * ⚠️ **Why CDE-04 exists — the rules above were blind to a whole page.** The keys under
+ * `offline` and `write` are not judged at all (both names are open somewhere, see
+ * `closedContainers()`), and a layer's conditional rules — `maxFeatures` required once
+ * `offline.enabled` is true, an `edit` field requiring `edition.update: true` and `write`
+ * — are no key's existence. A page teaching the offline write cycle is made of exactly
+ * those, and would have gone green with any of them wrong.
  *
  * ⚠️ **Residual limit, bounded and accepted: matching goes by NAME, so a JSON block
  * that is not a profile but uses a profile container's name is judged as if it were
@@ -65,8 +80,8 @@
  * initialization examples, not profiles. Removing the ambiguous names (above)
  * eliminated the massive class — 150 → 118 entries, including the 24 `data.*` that
  * were all false — and the rest is absorbed by the baseline. Closing this last case
- * would require identifying each block's document TYPE, which no corpus marker gives
- * today. Accepted preference: a false positive is noisy and gets fixed; a false
+ * would require identifying each block's document TYPE, which no corpus marker gave
+ * until CDE-04 — and CDE-04 gives it only to the blocks that opt in. Accepted preference: a false positive is noisy and gets fixed; a false
  * negative is silent, and it is exactly the class this gate exists to close.
  *
  * ⚠️ **What the 2026-08-09 fix COST, measured before being written.** Registering the
@@ -104,7 +119,11 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// `.default`: the class itself, which is what the type declarations describe.
+const Ajv = require("ajv").default;
+
 const { productDocsFiles } = require("./lib/tsdoc-examples.cjs");
+const { SCHEMA_SUFFIX, listSchemaNames } = require("./lib/profile-schemas.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const SCHEMA_DIR = path.join(ROOT, "profiles", "schemas");
@@ -347,7 +366,106 @@ function scan() {
     };
 }
 
+/**
+ * The marker by which a doc block declares itself COMPLETE — see CDE-04 in the header. An HTML
+ * comment, so the rendered page shows nothing, in the `geoleaf:docs:` family the other doc
+ * gates already read (`geoleaf:docs:fragment`).
+ */
+const DECLARED_MARKER = /<!--\s*geoleaf:docs:schema\b([^>]*?)-->/g;
+
+/** The fence a marker must be followed by — blank lines only in between. */
+const DECLARED_FENCE = /^\s*```json[ \t]*\n([\s\S]*?)```/;
+
+/**
+ * CDE-04 — every block declared complete, validated against the whole schema it names.
+ *
+ * 🛑 **The ajv options are `validate-profiles.cjs`'s, `strict: true` included.** The block
+ * claims to be a profile file an integrator can copy; judging it more leniently than the
+ * repository judges its own profiles would let the page teach what `validate:profiles`
+ * refuses.
+ *
+ * @returns {{ checked: number, errors: string[] }} blocks validated, and each failure named
+ *   `file:line — reason`
+ */
+function declaredBlocks() {
+    const known = new Set(listSchemaNames(SCHEMA_DIR));
+    // ⚠️ Without `ajv-formats`, which `validate-profiles.cjs` loads when present: it is not
+    // installed, and no contract schema uses `format`. Under `strict: true`, a schema that
+    // started to would fail to compile here — loudly, not by being judged more leniently.
+    const ajv = new Ajv({ allErrors: true, allowUnionTypes: true, strict: true });
+    /** @type {Map<string, import("ajv").ValidateFunction>} */
+    const compiled = new Map();
+    const validatorOf = (/** @type {string} */ name) => {
+        let validate = compiled.get(name);
+        if (!validate) {
+            const file = path.join(SCHEMA_DIR, `${name}${SCHEMA_SUFFIX}`);
+            validate = ajv.compile(JSON.parse(fs.readFileSync(file, "utf8")));
+            compiled.set(name, validate);
+        }
+        return validate;
+    };
+
+    const errors = [];
+    let checked = 0;
+    for (const file of productDocsFiles()) {
+        if (!file.endsWith(".md")) continue;
+        const rel = path.relative(ROOT, file).split(path.sep).join("/");
+        const src = fs.readFileSync(file, "utf8");
+        for (const m of src.matchAll(DECLARED_MARKER)) {
+            const where = `${rel}:${src.slice(0, m.index).split("\n").length}`;
+            const name = m[1].trim();
+            if (!known.has(name)) {
+                errors.push(`${where} — schéma « ${name} » inconnu de profiles/schemas/`);
+                continue;
+            }
+            const fence = DECLARED_FENCE.exec(src.slice(m.index + m[0].length));
+            if (!fence) {
+                errors.push(`${where} — marqueur sans bloc \`\`\`json qui le suive`);
+                continue;
+            }
+            let block;
+            try {
+                block = JSON.parse(fence[1]);
+            } catch (err) {
+                errors.push(`${where} — bloc non parsable : ${/** @type {Error} */ (err).message}`);
+                continue;
+            }
+            checked++;
+            const validate = validatorOf(name);
+            if (!validate(block)) {
+                for (const e of validate.errors ?? []) {
+                    errors.push(`${where} — ${e.instancePath || "(racine)"} ${e.message}`);
+                }
+            }
+        }
+    }
+    return { checked, errors };
+}
+
+/**
+ * Prints CDE-04's failures, if any.
+ *
+ * @param {{ checked: number, errors: string[] }} declared
+ * @returns {boolean} `true` when CDE-04 failed
+ */
+function reportDeclared(declared) {
+    if (declared.errors.length === 0) return false;
+    console.error(
+        `❌ [DOC-CONFIG-EXAMPLES/CDE-04] ${declared.errors.length} écart(s) dans les blocs ` +
+            "déclarés complets :"
+    );
+    for (const e of declared.errors) console.error(`     ✗ ${e}`);
+    console.error(
+        "\n  Un bloc marqué `<!-- geoleaf:docs:schema <nom> -->` se déclare fichier de profil\n" +
+            "  copiable tel quel : il doit valider ENTIER contre le schéma nommé, comme\n" +
+            "  `npm run validate:profiles` jugerait le fichier recopié. Corriger le bloc — ou\n" +
+            "  retirer le marqueur si ce n'est qu'un fragment."
+    );
+    return true;
+}
+
 const { violations, files, blocks, containers, rootsJudged } = scan();
+const declared = declaredBlocks();
 const bar = "─".repeat(72);
 
 // ── CDE-03 — a gate that scanned nothing, or resolved nothing, proved nothing ────────────
@@ -385,7 +503,8 @@ if (UPDATE) {
         ) + "\n"
     );
     console.log(`✅ [DOC-CONFIG-EXAMPLES] baseline régénérée — ${violations.length} entrée(s).`);
-    process.exit(0);
+    // CDE-04 has no baseline: regenerating CDE-01's does not silence it.
+    process.exit(reportDeclared(declared) ? 1 : 0);
 }
 
 if (!fs.existsSync(BASELINE)) {
@@ -403,10 +522,15 @@ const stale = [...baseline].filter((v) => !seen.has(v)).sort(); // CDE-02
 
 console.log(bar);
 
-if (fresh.length === 0 && stale.length === 0) {
+const declaredFailed = reportDeclared(declared);
+if (fresh.length === 0 && stale.length === 0 && !declaredFailed) {
     console.log(
         `✅ [DOC-CONFIG-EXAMPLES] ${violations.length} clé(s) invalide(s) gelée(s) — baseline à ` +
             `jour (${files} docs produit, ${blocks} blocs JSON, ${containers} conteneurs fermés).`
+    );
+    console.log(
+        `   CDE-04 — ${declared.checked} bloc(s) déclaré(s) complet(s), validé(s) entier(s) ` +
+            "contre le schéma qu'ils nomment."
     );
     console.log(bar);
     process.exit(0);

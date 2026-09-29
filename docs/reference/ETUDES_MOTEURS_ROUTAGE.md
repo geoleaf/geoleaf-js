@@ -1,6 +1,6 @@
 # GeoLeaf-Js — Ce qui a été examiné et écarté pour le routage et le guidage
 
-> **Version :** 1.0.0 | **Dernière mise à jour :** 24 août 2026
+> **Version :** 1.0.1 | **Dernière mise à jour :** 28 septembre 2026
 
 **Six arbitrages, avec leur mesure et leur condition de réouverture.** Ce document existe pour une
 raison précise : un silence n'est pas un arbitrage. Sans trace écrite, la recherche se refait — et
@@ -118,6 +118,14 @@ Deux projets examinés le 7 août 2026, et **le motif qui les écarte n'est ni l
 
 C'est vérifiable en deux commandes — lister les paquets d'un dépôt, puis lire le champ `private` de
 chacun — et **ça tranche avant toute discussion technique**.
+
+> **Mise à jour du 28/09/2026 — le constat de paquets ci-dessus date du 7 août 2026 ; il est
+> périmé.** Depuis la 2.7.0 (24/08/2026), `@geolibre/core` et `@geolibre/map` sont publiés sur
+> npm, sous MIT. Mais `core` dépend de Zustand, `map` de React 19, de Cesium et de mapbox-gl
+> (licence propriétaire), et le paquet qui porte la topologie, `@geolibre/processing`, reste
+> privé. **La conclusion tient : aucune surface consommable pour GeoLeaf.** La vérification
+> demande désormais une troisième commande, qui lit ce que tire ce qui est publié :
+> `npm view @geolibre/map dependencies`.
 
 ⚠️ **Ce qu'il en reste vaut d'être lu comme art antérieur** : GeoLibre corrobore de façon
 indépendante le choix du moteur de premier rang, avec le même point d'entrée par défaut et le même

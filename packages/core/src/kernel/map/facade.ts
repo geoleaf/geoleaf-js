@@ -42,6 +42,10 @@ interface NormalizedInitOptions {
     // → GeoLeaf.init() options → here), reused by _createInstance() instead of creating a
     // second one. Absent for direct GeoLeaf.init() calls (a fresh adapter is then created).
     _adapter?: IMapAdapter;
+    // The container element `GeoLeaf.mount(el)` was handed (boot → CoreMapModule →
+    // GeoLeaf.init() options → here). When it is an element, the map is built in it and
+    // `mapId` only keys the registry. Absent for every other call.
+    _container?: unknown;
 }
 
 // ES2022 target + Node ≥ 18: globalThis is always defined.
@@ -146,7 +150,10 @@ export function wasDestroyed(adapter: IMapAdapter): boolean {
 
 /** Creates and registers a new adapter for `id`. Theme binds to the first map only. */
 function _createInstance(id: string, options: NormalizedInitOptions): IMapAdapter {
-    const container = resolveMapContainer(id);
+    const container =
+        typeof HTMLElement !== "undefined" && options._container instanceof HTMLElement
+            ? options._container
+            : resolveMapContainer(id);
     // Reuse the adapter injected by the boot sequence via options._adapter, if any;
     // otherwise create a fresh one (direct GeoLeaf.init() calls).
     const adapter = options._adapter ?? new MaplibreAdapter();
@@ -246,10 +253,15 @@ function getMap(mapId?: string): IMapAdapter | null {
 
 /**
  * Destroys a map instance and frees its registry slot.
- * Consumers MUST call this when unmounting their component (e.g. React unmount).
  *
- * When the **last** map is destroyed, the shared business state (POI, GeoJSON,
- * LayerManager, Profile) is torn down via the lifecycle seam so a subsequent
+ * The MAP alone: call it for a map created by `Core.init()`. An application started by
+ * `GeoLeaf.boot()` or `GeoLeaf.mount()` is unmounted with the handle `mount()` returns — its
+ * modules, controls and state go with it, and the next `mount()` gives it back whole. Destroying
+ * that application's map here leaves its modules in place, and a later `Core.init()` gives a bare
+ * map.
+ *
+ * When the **last** map is destroyed, the shared state — GeoJSON, layer manager, profile, the
+ * desktop panel and the mobile toolbar — is torn down via the lifecycle seam so a subsequent
  * `Core.init()` starts clean — this is what supports the create → destroy →
  * recreate cycle without leaked markers/layers/profile or a dead adapter
  * reference. Destroying one of several coexisting maps frees only that slot.
@@ -275,8 +287,8 @@ function destroy(mapId: string): boolean {
     _instances.delete(mapId);
     _destroyedAdapters.add(adapter);
 
-    // Once the last map is gone, tear down the shared business state (POI,
-    // GeoJSON, LayerManager, Profile) so a subsequent Core.init() starts clean —
+    // Once the last map is gone, tear down the shared state (GeoJSON, layer
+    // manager, profile, panels) so a subsequent Core.init() starts clean —
     // no leaked markers/layers/profile, no dead adapter reference. The stores
     // self-register their reset() via the lifecycle seam (IoC, no coupling).
     if (_instances.size === 0) {

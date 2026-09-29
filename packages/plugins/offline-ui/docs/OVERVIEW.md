@@ -101,18 +101,10 @@ Resources are organised by _profile_ (a GeoLeaf configuration profile). Each pro
 
 ### Write queue (`outbox`)
 
-All offline edits go through a single core write point, `GeoLeaf.Storage.applyEdit()`, which
-writes the entity into `features` and its queue entry into `outbox` in **one** transaction —
-so a capture is never queued without its data. The entry references the client-minted
-`localId` and carries no payload of its own.
-
-`GeoLeaf.Storage.pushOutbox()` drains it in insertion order. An entry that fails is retried
-until `MAX_REPLAY_ATTEMPTS`, then set aside as **quarantined** — kept and visible, never
-destroyed.
-
-⚠️ This replaced a `sync_queue` store of `SyncQueueEntry` records, removed at task 4.11: it
-carried two incompatible operation vocabularies and no client identity, which made idempotent
-replay impossible.
+The queue of edits made offline belongs to the core's offline engine, not to this plugin: what a
+layer declares for it, how `GeoLeaf.Storage.applyEdit()` records an edit and the queue drains, and
+what becomes of the entries set aside are the core's
+[offline write cycle](../../../core/docs/OFFLINE_WRITE_CYCLE.md). This plugin shows the queue's state in its cache window.
 
 ### Image lifecycle
 

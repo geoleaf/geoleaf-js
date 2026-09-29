@@ -11,7 +11,7 @@
 - [Storage (main facade)](#storage-main-facade)
 - [DB — IndexedDB adapter](#db--indexeddb-adapter)
     - [DB.Layers](#dblayers)
-    - [DB — la file d'écriture et les entités](#db--la-file-décriture-outbox-et-les-entités-features)
+    - [DB — the write queue](#db--the-write-queue-outbox)
     - [DB.Images](#dbimages)
     - [DB.Backups (retirée)](#dbbackups--retirée)
 - [CacheManager](#cachemanager)
@@ -173,30 +173,10 @@ interface LayerMetadata {
 
 ---
 
-### DB — la file d'écriture (`outbox`) et les entités (`features`)
+### DB — the write queue (`outbox`)
 
-🛑 **Cette section décrivait `DB.Sync` et le magasin `sync_queue`, retirés depuis.** Elle a survécu à une première passe de nettoyage qui ne retirait que les signatures :
-son `SyncQueueEntry` était **la dernière déclaration du doublon C4** dans tout le dépôt.
-
-Le cycle v4 n'expose plus de file de POI, mais deux magasins génériques :
-
-```typescript
-// Les éditions encore dues au serveur — les QUATRE états, pas le seul `pending` :
-// `failed` n'est pas terminal, et `quarantined` reste visible.
-listPendingEdits(): Promise<PendingEdit[]>
-
-// Décomptes par couche, y compris la quarantaine.
-getSyncCounts(layerIds: readonly string[]): Promise<Record<string, {
-    featureCount: number;
-    pendingCount: number;
-    quarantinedCount: number;
-}> | null>
-```
-
-L'écriture passe par la façade, jamais par le magasin : `GeoLeaf.Storage.applyEdit()` écrit
-l'entité et son entrée d'outbox dans **une** transaction, et `GeoLeaf.Storage.pushOutbox()`
-draine. Une entrée qui échoue `MAX_REPLAY_ATTEMPTS` fois passe en **quarantaine** — écartée du
-rejeu, jamais détruite.
+The queue of edits made offline belongs to the core — declaring it, draining it, listing and
+releasing the entries set aside: see its [offline write cycle](../../../core/docs/OFFLINE_WRITE_CYCLE.md).
 
 ### DB.Images
 

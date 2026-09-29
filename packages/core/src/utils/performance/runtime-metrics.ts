@@ -101,6 +101,9 @@ function logToConsole(metrics: RuntimeMetrics): void {
 }
 
 function onAppReady(): void {
+    // Every `geoleaf:app:ready` closes a boot of its own — an application mounted again is a
+    // new boot, and its metrics are not the first one's.
+    cachedMetrics = null;
     const metrics = collectMetrics();
     const gl = _g.GeoLeaf || GeoLeaf;
 
@@ -123,8 +126,10 @@ function onAppReady(): void {
     }
 }
 
+// Not `{ once: true }`: an application unmounted and mounted again (`GeoLeaf.mount`) boots again,
+// and `onPerformanceMetrics` is owed to every boot. A single boot dispatches the event once.
 if (typeof document !== "undefined") {
-    document.addEventListener("geoleaf:app:ready", onAppReady, { once: true });
+    document.addEventListener("geoleaf:app:ready", onAppReady);
 }
 
 /**

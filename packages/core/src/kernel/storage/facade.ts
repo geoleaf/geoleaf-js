@@ -812,8 +812,9 @@ const Storage = {
      * @param confirmedLocalId - This entry's `localId`, as the caller read it.
      * @returns `{ok}` and, on refusal, its motive.
      * @example
-     * const [e] = (await GeoLeaf?.Storage?.listPendingEdits?.()) ?? [];
-     * if (e) await GeoLeaf?.Storage?.discardQuarantined?.(e.id, e.localId);
+     * const listed = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.()) ?? [];
+     * const e = listed.find((p) => p.state === "quarantined");
+     * if (e) await GeoLeaf?.Storage?.discardQuarantined?.(e.entryId, e.localId);
      */
     async discardQuarantined(
         id: string,
@@ -844,7 +845,9 @@ const Storage = {
      * @returns The requeueable motives — empty when the offline engine is not wired.
      * @example
      * const exits = GeoLeaf?.Storage?.requeueableReasons?.() ?? [];
-     * if (exits.includes(entry.quarantine)) showRetryButton(entry);
+     * if (exits.includes("retryBudgetExhausted")) {
+     *     await GeoLeaf?.Storage?.requeueAll?.("retryBudgetExhausted");
+     * }
      */
     requeueableReasons(): readonly string[] {
         const edit = this._modules.edit;

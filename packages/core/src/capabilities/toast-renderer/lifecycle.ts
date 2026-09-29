@@ -227,23 +227,29 @@ export const ToastRendererLifecycle = {
      * no console fallback either, since the primitive believes it has a renderer.
      */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:theme:applying", onThemeApplying);
-            document.removeEventListener("geoleaf:profile:loaded", onProfileLoaded);
-            document.removeEventListener("geoleaf:theme:applied", onThemeApplied);
-            document.removeEventListener("geoleaf:map:ready", onMapReady);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:theme:applying", onThemeApplying);
+                document.removeEventListener("geoleaf:profile:loaded", onProfileLoaded);
+                document.removeEventListener("geoleaf:theme:applied", onThemeApplied);
+                document.removeEventListener("geoleaf:map:ready", onMapReady);
+            }
+            _loadingToast = null;
+            _pendingProfileToastDetail = null;
+            if (_registeredRenderer) {
+                notifyPrimitive.unregisterRenderer(_registeredRenderer);
+                _registeredRenderer = null;
+            }
+            if (_UINotifications && typeof _UINotifications.destroy === "function") {
+                _UINotifications.destroy();
+            }
+            _ownedContainer?.remove();
+            _ownedContainer = null;
+        } finally {
+            _started = false;
         }
-        _loadingToast = null;
-        _pendingProfileToastDetail = null;
-        if (_registeredRenderer) {
-            notifyPrimitive.unregisterRenderer(_registeredRenderer);
-            _registeredRenderer = null;
-        }
-        if (_UINotifications && typeof _UINotifications.destroy === "function") {
-            _UINotifications.destroy();
-        }
-        _ownedContainer?.remove();
-        _ownedContainer = null;
-        _started = false;
     },
 };

@@ -13,9 +13,6 @@ vi.mock("../../src/capabilities/labels/labels.js", () => ({ Labels: null }));
 vi.mock("../../src/capabilities/labels/label-button-manager.js", () => ({
     LabelButtonManager: null,
 }));
-vi.mock("../../src/capabilities/legend/legend-seam.js", () => ({
-    LegendContract: { isAvailable: vi.fn(() => false) },
-}));
 
 import { StyleSelector } from "../../src/kernel/layer-manager/style-selector.js";
 import { GeoJSONCore } from "../../src/kernel/geojson/core.js";

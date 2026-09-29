@@ -4,7 +4,7 @@ title: branding — la ligne de marque posée en surimpression sur la carte
 capability_id: branding
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 658165b84
+verifie_contre: 1a7608c60
 date: 25 septembre 2026
 ---
 

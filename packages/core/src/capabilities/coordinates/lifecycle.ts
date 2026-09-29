@@ -48,11 +48,17 @@ export const CoordinatesLifecycle = {
 
     /** Detaches the listener and tears down the control (module destroy / test). */
     _reset(): void {
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:app:ready", _onAppReady);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:app:ready", _onAppReady);
+            }
+            CoordinatesDisplay.destroy();
+        } finally {
+            _started = false;
+            _map = null;
         }
-        CoordinatesDisplay.destroy();
-        _started = false;
-        _map = null;
     },
 };

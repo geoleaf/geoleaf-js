@@ -4,7 +4,7 @@ title: permalink — l'état de la carte dans l'URL, et le partage de la vue
 capability_id: permalink
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 77b24edeb
+verifie_contre: 1a7608c60
 date: 1er septembre 2026
 ---
 

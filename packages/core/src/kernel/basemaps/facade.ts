@@ -16,6 +16,7 @@ import {
     getBaseLayers,
     getActiveKey,
     getActiveLayer,
+    resetBasemapRegistry,
 } from "./registry.js";
 import { createBaseLayerControlsUI, bindUIOnce, refreshUI, destroyUI } from "./ui.js";
 import type { BasemapDefinition, BaselayersInitOptions } from "./basemaps-types.js";
@@ -89,6 +90,18 @@ function init(options?: BaselayersInitOptions): {
         activeKey: getActiveKey(),
         layers: getBaseLayers(),
     };
+}
+
+/**
+ * Tears the basemaps down with the application that showed them: the switcher's listeners, its
+ * `#gl-left-panel` — which lives in the map container, where the engine's own teardown leaves
+ * it —, and what the registry knew of the map that goes away (`resetBasemapRegistry`). Not on
+ * the façade: it runs when the application is unmounted, from `UIModule.destroy()`.
+ */
+export function resetBasemaps(): void {
+    destroyUI();
+    if (typeof document !== "undefined") document.getElementById("gl-left-panel")?.remove();
+    resetBasemapRegistry();
 }
 
 /**

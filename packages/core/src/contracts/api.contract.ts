@@ -93,6 +93,12 @@ export interface INormalizedInitOptions {
      * direct `GeoLeaf.init()` calls.
      */
     _adapter?: unknown;
+    /**
+     * Internal — the container element `GeoLeaf.mount(el)` was handed, so the map is built in
+     * it rather than in the element whose id is `mapId`. Typed `unknown` for the same reason
+     * as `_adapter`; narrowed at the consumption point. Absent for every other call.
+     */
+    _container?: unknown;
 }
 
 /** Output of `APIInitializationManager._normalizeConfigOptions`. */

@@ -4,14 +4,23 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 010bcc3a8
-date: 27 septembre 2026
+verifie_contre: 3977a152b
+date: 28 septembre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
 **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 28/09/2026 couvre.** `3977a152b` ne touche de cette capacité que
+> trois `@example` : celui de `discardQuarantined` (`write/quarantine-api.ts`), qui listait par un
+> `Storage.listPendingEdits` inexistant et lisait `id` au lieu d'`entryId` ; celui de
+> `requeueableReasons`, qui lisait un motif qu'aucune liste publique ne rend ; celui de
+> `listPendingEdits` (`db/indexeddb.ts`), qu'a fait mordre le typage des membres du cycle
+> d'écriture dans `global.d.ts`. Aucun comportement ne bouge. Relus et inchangés : les sections
+> de `requeueableReasons()` et de `discardQuarantined()`, qui ne recopient aucun exemple. La
+> projection publique du cycle d'écriture est désormais `packages/core/docs/OFFLINE_WRITE_CYCLE.md`.
 
 > ⚠️ **Ce que l'estampille du 26/09/2026 ajoute.** La **session d'écriture au pré-vol** —
 > §`preflight()` (le champ `session`, le paragraphe qui disait « la session n'y est pas », réécrit),

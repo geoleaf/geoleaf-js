@@ -35,7 +35,7 @@ import { ThemeApplierCore as _TA } from "./core.js";
 import type { ThemeApplierModule, ThemeBounds } from "./core.js";
 import { GeoJSONShared } from "../../shared/geojson-state.js";
 import { LayerVisibilityManager } from "../../shared/layer-visibility-state.js";
-import { LegendContract } from "../../../capabilities/legend/legend-seam.js";
+import { availableLegend } from "../../shared/legend-slot.js";
 import type { LegendLayerConfig } from "../../../contracts/legend.contract.js";
 import { Core } from "../../../api/geoleaf.core.js";
 
@@ -89,7 +89,8 @@ TA._updateStyleSelector = function (layerId: string, styleId: string | undefined
  * @private
  */
 TA._loadLegendForStyle = function (layerId: string, styleId: string | undefined) {
-    if (!LegendContract.isAvailable()) {
+    const legend = availableLegend();
+    if (!legend) {
         return;
     }
 
@@ -103,7 +104,7 @@ TA._loadLegendForStyle = function (layerId: string, styleId: string | undefined)
     }
 
     // Use the new API that generates the legend from the style
-    LegendContract.loadLayerLegend(layerId, styleId, layerConfig);
+    legend.loadLayerLegend(layerId, styleId, layerConfig);
 };
 
 /**
@@ -203,7 +204,8 @@ TA._fitBoundsOnAllLayers = function () {
  * @private
  */
 TA._syncLegendVisibility = function () {
-    if (!LegendContract.isAvailable()) {
+    const legend = availableLegend();
+    if (!legend) {
         return;
     }
 
@@ -221,7 +223,7 @@ TA._syncLegendVisibility = function () {
         const layerData = entry as UISyncLayerData;
         const visState = VisibilityManager.getVisibilityState(layerId);
         const isVisible = visState ? visState.current : layerData.visible;
-        LegendContract.setLayerVisibility(layerId, isVisible);
+        legend.setLayerVisibility(layerId, isVisible);
     });
 };
 

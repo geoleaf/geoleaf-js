@@ -38,6 +38,7 @@ import type { ActiveProfile, ThemeApplierModule, ThemeLayerConfig } from "./core
 import { GeoJSONShared } from "../../shared/geojson-state.js";
 import { LayerVisibilityManager } from "../../shared/layer-visibility-state.js";
 import { LayerManagerStyle } from "../../geojson/layers/style.js";
+import { reconcileStyleFields } from "../../geojson/field-reconciliation.js";
 import { StyleLoader } from "../../../utils/loaders/style-loader.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { LayerManager } from "../../../api/geoleaf.layer-manager.js";
@@ -241,6 +242,8 @@ function _onStyleLoaded(
     if (StyleSelector) StyleSelector.setCurrentStyle(layerId, styleId!);
     TA._updateStyleSelector(layerId, styleId);
     TA._loadLegendForStyle(layerId, styleId);
+    // The theme's style may test fields the load-time diagnostic never saw.
+    reconcileStyleFields(layerId, styleConfig);
 }
 
 function _applyLayerVisible(

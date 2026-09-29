@@ -76,9 +76,18 @@ const _ICON =
 // the registration would be stored, never drawn, and would log a warning whose intended reader
 // has already done what it recommends elsewhere. `!== true` so a host without `isInitialized`
 // still gets its slot.
+//
+// The slot carries a lifecycle too: `GeoLeaf.mount()`'s unmount tears the registry down, and its
+// `destroy()` is what takes the search bar off the page — it stayed there after an unmount. The
+// control mounts again on the next `geoleaf:map:ready`, which `GeocodingRegistry.init()` hears
+// for good; `init()` has nothing to do. Loaded after the first boot, the plugin registers no slot,
+// and its control is not unmounted either.
 if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
     getGeoLeaf()?.registry?.register?.({
         id: "geocoding",
+        dependencies: [],
+        init: () => undefined,
+        destroy: () => GeocodingRegistry.destroy(),
         ui: {
             mobileIcon: {
                 icon: _ICON,

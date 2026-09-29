@@ -45,7 +45,7 @@ Without this flag set to `true`, the button does not appear, even when the plugi
 
 ### The `modules.offline` block — `config/plugins/offline.json`
 
-Configures the offline cache. The file is referenced by `Files.modules.offline` in `profile.json`, and its content becomes `modules.offline`. The offline engine is in the core, opt-in, and requires `modules.pwa.enabled`; this plugin provides its interface.
+Configures the offline cache. The file is referenced by `Files.modules.offline` in `profile.json`, and its content becomes `modules.offline`. The offline engine is in the core, opt-in, and requires `modules.pwa.enabled`; this plugin provides its interface. The engine also holds the queue of edits made offline: what a layer declares for it, and how the queue drains, is the [offline write cycle](OFFLINE_WRITE_CYCLE.md).
 
 ```json
 {
@@ -65,12 +65,14 @@ Configures the offline cache. The file is referenced by `Files.modules.offline` 
 }
 ```
 
-| Key                        | Type    | Default | Description                                                                        |
-| -------------------------- | ------- | ------- | ---------------------------------------------------------------------------------- |
-| `enabled`                  | boolean | `false` | Loads the offline engine (requires `modules.pwa.enabled`)                          |
-| `cache.enableProfileCache` | boolean | `true`  | Enables the profile download — configuration files and layer data                  |
-| `cache.enableTileCache`    | boolean | `true`  | Downloads the tiles of offline basemaps. A veto: `false` wins over any selection   |
-| `dataOrigins`              | array   | `[]`    | Declared origins — `prefetch: true` lets the preparation download from that origin |
+| Key                        | Type    | Default | Description                                                                                                                                                      |
+| -------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`                  | boolean | `false` | Loads the offline engine (requires `modules.pwa.enabled`)                                                                                                        |
+| `cache.enableProfileCache` | boolean | `true`  | Enables the profile download — configuration files and layer data                                                                                                |
+| `cache.enableTileCache`    | boolean | `true`  | Downloads the tiles of offline basemaps. A veto: `false` wins over any selection                                                                                 |
+| `dataOrigins`              | array   | `[]`    | Declared origins — `prefetch: true` lets the preparation download from that origin                                                                               |
+| `banner.enabled`           | boolean | `true`  | Mounts the sync bar at the top of the application. `false` mounts nothing; the queue is unaffected                                                               |
+| `drain.pollIntervalMs`     | number  | `60000` | Period of the queue's retry tick, in ms. `0` turns it off: an entry waiting after a failure then waits for the network to come back or the tab to be shown again |
 
 > ⚠️ **A tile from another origin is only downloaded when that origin is declared `cacheable: true`
 > and `prefetch: true`.** Downloading ahead of use is not viewing, and several free providers forbid

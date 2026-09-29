@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/features",
     "title": "GeoLeaf Core Features",
-    "description": "config/core/features.json — core feature configuration (map options). The POI subsystem was dissolved in S9 (a POI is now a generic point layer styled by taxonomy/cluster/feature-info); the top-level poiConfig key was removed. Cluster configuration was extracted to the in-core cluster capability (modules.cluster, config/plugins/cluster.json, family B7) in the S3 cluster-capability extraction; the dead top-level clusteringConfig key was purged (never read at runtime — ANO-027/ANO-031 regression-locks retired with the key). Address geocoding moved out of the core to the @geoleaf-plugins/geocoding plugin namespace (modules.geocoding, config/plugins/geocoding.json).",
+    "description": "config/core/features.json — core feature configuration (map options). A POI is a generic point layer styled by taxonomy/cluster/feature-info: there is no top-level `poiConfig` key. Cluster configuration belongs to the in-core cluster capability (modules.cluster, config/plugins/cluster.json); the top-level `clusteringConfig` key, never read at runtime, is gone. Address geocoding belongs to the @geoleaf-plugins/geocoding plugin (modules.geocoding, config/plugins/geocoding.json).",
     "type": "object",
     "additionalProperties": false,
     "patternProperties": { "^_comment": {} },

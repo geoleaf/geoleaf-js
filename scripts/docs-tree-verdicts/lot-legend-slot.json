@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "legend-slot",
+    "scope": ["packages/core/src/kernel/shared/legend-slot.ts"],
+    "verdicts": {
+        "packages/core/src/kernel/shared/legend-slot.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "L'emplacement « légende » que possède le kernel : le sélecteur de style et l'applicateur de thèmes y demandent la légende, que l'installeur de la capacité y dépose — le kernel n'importe plus la capacité",
+            "confidence": "haute",
+            "rationale": "Inversion de dépendance (core 3.13.0) : deux imports statiques kernel → capacité épinglaient la légende dans la fermeture eager de tout bundle. Vit dans `kernel/shared/` parce que la capacité le remplit et que R.8 lui interdit l'import profond : seul `provideLegend` passe le baril. Gardé par la règle ESLint KERNEL_CAPABILITY_BOUNDARY, vue rouge sur les deux arêtes, et par `legend-seam-init-order.guard.test.ts`, vu rougir sans le dépôt de l'installeur"
+        }
+    }
+}

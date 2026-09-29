@@ -26,7 +26,7 @@ title: "Documentation — @geoleaf/core"
 ## Advanced reference
 
 - **[PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)** — profile JSON schema (120+ parameters)
-- **[schema/README.md](schema/README.md)** — JSON schemas (geoleaf.profile.schema.json, style.schema.json, and others)
+- **[schema/README.md](schema/README.md)** — the profile JSON Schemas shipped with the package (`@geoleaf/core/schemas`), which file each one judges, and how to validate a profile
 
 ## Development
 

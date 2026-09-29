@@ -19,7 +19,8 @@
  * `doc-capability-config.guard.test.js` already holds those. What a plugin carries is a
  * TypeScript interface describing its profile configuration, either declared in
  * `src/config.ts` or imported there from `./types`. That interface IS the contract: it is
- * what `getPluginConfig()` returns and what the profile is validated against.
+ * what `getPluginConfig()` returns. Nothing validates a profile against it — no plugin
+ * reports a key it does not know — so the README is where an integrator learns the keys.
  *
  * ⚠️ A plugin with NO `src/config.ts` has no profile configuration at all — its options are
  * per-call API arguments (`CogLayerOptions`, `FgbLoadOptions`), documented under their own

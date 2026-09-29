@@ -74,13 +74,19 @@ export const LanguageSwitcherLifecycle = {
 
     /** Detaches listeners and removes the buttons (module destroy / test seam). */
     _reset(): void {
-        if (typeof document !== "undefined" && _seamHandler) {
-            document.removeEventListener("geoleaf:desktop-panel:tabs-ready", _seamHandler);
+        // `_started` resets whatever the teardown throws: left `true`, the next `init()` —
+        // an application mounted again — would return at once, and this capability would
+        // never come back.
+        try {
+            if (typeof document !== "undefined" && _seamHandler) {
+                document.removeEventListener("geoleaf:desktop-panel:tabs-ready", _seamHandler);
+            }
+            _seamHandler = null;
+            _toolbarObserver?.disconnect();
+            _toolbarObserver = null;
+            removeLanguageButtonsFromDocument();
+        } finally {
+            _started = false;
         }
-        _seamHandler = null;
-        _toolbarObserver?.disconnect();
-        _toolbarObserver = null;
-        removeLanguageButtonsFromDocument();
-        _started = false;
     },
 };

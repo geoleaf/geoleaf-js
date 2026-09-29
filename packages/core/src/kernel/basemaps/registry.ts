@@ -508,6 +508,28 @@ export function getBaseLayers() {
     return { ..._baseLayers };
 }
 
+/**
+ * Forgets everything the registry learnt about the map an application tears down: the map, the
+ * active basemap, the registered definitions, and any activation still deferred on that map.
+ *
+ * Called when an application is unmounted (`UIModule.destroy()`). Without it the next map got
+ * NO basemap: the active key survived, and {@link setBaseLayer} returns early on the key that is
+ * already active — it was active on the map that went away. The definitions are registered again
+ * by the next `Baselayers.init`, defaults included.
+ */
+export function resetBasemapRegistry(): void {
+    // A ticket and a generation taken now supersede an activation deferred on the old map, and a
+    // WMTS request still in flight for it — each re-checks its own against these counters.
+    _nextActivationRequest();
+    _nextStyleGeneration();
+    _wmtsAbort?.abort();
+    _setWmtsAbort(null);
+    _setActiveKey(null);
+    _setActiveType(null);
+    _setMap(null);
+    for (const key of Object.keys(_baseLayers)) delete _baseLayers[key];
+}
+
 /** @internal Resets transient activation state. Used only in test environments. */
 export function _resetStateForTesting(): void {
     _setActiveKey(null);

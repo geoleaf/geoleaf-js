@@ -50,6 +50,8 @@ const lang_fr: LangDict = {
     "boot.failure.reason.profile": "Le profil de donn\u00e9es est introuvable ou invalide.",
     "boot.failure.reason.webgl":
         "Ce navigateur ne peut pas afficher la carte\u202f: WebGL2 est indisponible (acc\u00e9l\u00e9ration graphique d\u00e9sactiv\u00e9e ou non prise en charge).",
+    "boot.failure.reason.engine":
+        "Le moteur de carte (MapLibre GL JS) est introuvable\u202f: cette page n\u2019est pas configur\u00e9e pour afficher une carte.",
     "boot.failure.reason.map": "La carte n\u2019a pas pu \u00eatre cr\u00e9\u00e9e.",
     "boot.failure.reason.module":
         "Un composant de l\u2019application n\u2019a pas pu d\u00e9marrer.",

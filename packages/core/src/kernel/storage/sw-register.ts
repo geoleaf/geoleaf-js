@@ -107,6 +107,9 @@ function _wireEvictionBridge(): void {
  * import { SWRegister } from "./kernel/storage/index.js";
  * await SWRegister.register({ scope: "./" });
  */
+/** The registrations whose `updatefound` is already listened to — see `register()`. */
+const _updateWatched = new WeakSet<ServiceWorkerRegistration>();
+
 const SWRegister = {
     /** @type {ServiceWorkerRegistration|null} */
     _registration: null as ServiceWorkerRegistration | null,
@@ -146,7 +149,12 @@ const SWRegister = {
             // with no worker — and once, whatever the number of calls.
             _wireEvictionBridge();
 
-            // Listen for updates
+            // Listen for updates — once per registration. The browser hands back the SAME
+            // registration to every `register()`, and each boot calls it: an application mounted
+            // again (`GeoLeaf.mount`) added one more `updatefound` listener every time, never
+            // removed. Measured by the `71-mount-remount` E2E.
+            if (_updateWatched.has(registration)) return registration;
+            _updateWatched.add(registration);
             registration.addEventListener("updatefound", () => {
                 const newWorker = registration.installing;
                 if (newWorker) {

@@ -35,7 +35,7 @@
 
 import { GeoJSONShared } from "./shared.js";
 import { readFeaturePropId } from "./geojson-filter.js";
-import { getNestedValue } from "../../utils/general/object-utils.js";
+import { getNestedValue, hasNestedPath } from "../../utils/general/object-utils.js";
 import {
     matchesNormalized,
     normalizeText,
@@ -70,13 +70,24 @@ interface LayerIndex {
     rows: IndexRow[];
 }
 
-/** The declared fields of a searchable layer, or `null` when the layer is not searchable. */
-function searchableFields(entry: GeoJSONLayerEntry): string[] | null {
-    const decl = (entry.config as { searchable?: { fields?: unknown } } | undefined)?.searchable;
+/**
+ * The fields a layer definition declares searchable — the non-empty strings of its
+ * `searchable.fields` —, or `null` when it declares none.
+ *
+ * @param config - A layer definition.
+ * @returns The declared fields, in order, or `null`.
+ */
+export function declaredSearchFields(config: unknown): string[] | null {
+    const decl = (config as { searchable?: { fields?: unknown } } | null | undefined)?.searchable;
     const fields = Array.isArray(decl?.fields)
         ? decl.fields.filter((f): f is string => typeof f === "string" && f.length > 0)
         : [];
     return fields.length > 0 ? fields : null;
+}
+
+/** The declared fields of a searchable layer, or `null` when the layer is not searchable. */
+function searchableFields(entry: GeoJSONLayerEntry): string[] | null {
+    return declaredSearchFields(entry.config);
 }
 
 /** Reads a field at the feature root first, then under `properties` — the filter's order. */
@@ -84,6 +95,21 @@ function readField(feature: GeoJSONFeature, path: string): unknown {
     const direct = getNestedValue(feature, path);
     if (direct !== null) return direct;
     return getNestedValue(feature.properties as object | null | undefined, path);
+}
+
+/**
+ * Whether a feature carries a searchable field where {@link readField} looks for it — the root,
+ * then `properties`. A KEY, not a value: a property present with `null` is carried. The
+ * load-time field diagnostic judges `searchable.fields` with it, beside the reader it mirrors.
+ *
+ * @param feature - A feature, as the layer store holds it.
+ * @param path - The field, as `searchable.fields` writes it — a dotted path.
+ * @returns `true` when the path exists at the root or under `properties`.
+ */
+export function hasSearchField(feature: object, path: string): boolean {
+    if (hasNestedPath(feature, path)) return true;
+    const props = (feature as { properties?: unknown }).properties;
+    return props !== null && typeof props === "object" && hasNestedPath(props, path);
 }
 
 /** The feature's id as text — `properties.id` (what the source is keyed on), then `id`. */

@@ -33,6 +33,8 @@ const lang_de: LangDict = {
     "boot.failure.reason.profile": "Das Datenprofil fehlt oder ist ungültig.",
     "boot.failure.reason.webgl":
         "Dieser Browser kann die Karte nicht anzeigen: WebGL2 ist nicht verfügbar (Hardwarebeschleunigung deaktiviert oder nicht unterstützt).",
+    "boot.failure.reason.engine":
+        "Die Karten-Engine (MapLibre GL JS) wurde nicht gefunden: Diese Seite ist nicht für die Anzeige einer Karte eingerichtet.",
     "boot.failure.reason.map": "Die Karte konnte nicht erstellt werden.",
     "boot.failure.reason.module": "Eine Komponente der Anwendung konnte nicht starten.",
     "boot.failure.reason.timeout":

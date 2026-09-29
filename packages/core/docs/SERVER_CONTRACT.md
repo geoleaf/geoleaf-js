@@ -11,7 +11,8 @@ title: "Server contract — what GeoLeaf requires from a data server"
 answer, for the three exchanges it has with a data server: **pulling** a layer for offline use,
 **writing** the edits made offline, and **renewing** a session. It names no product: any server
 that honours these rules works, and each section says how a server that does not will fail.
-How to configure the client side is in the
+What the application declares and watches — the layer's blocks, the queue, the entries set aside
+— is the [offline write cycle](OFFLINE_WRITE_CYCLE.md); every client-side key is in the
 [configuration guide](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md)
 and the
 [connector guide](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/connector/docs/CONNECTOR_GUIDE.md);
@@ -193,13 +194,13 @@ online adapter only; a queued edit on a layer declaring it is set aside as `dial
 | 2xx with `[]`, unfiltered update                         | the row no longer exists: set aside as `deletedOnServer`                                                                                                                                                 |
 | 2xx with `[]`, unfiltered delete                         | success — the row is already gone                                                                                                                                                                        |
 | 2xx without a readable array — `204`, an empty body      | success — but the entity's stored marker is cleared, so its next edit goes out unfiltered, and a create answered so gets no server identity                                                              |
-| 409 on a create                                          | "already have it": GeoLeaf reads `GET {endpoint}?local_id=eq.<localId>&select=id`. A row: success, identity recorded. `[]`: refused (`rejectedByServer`). Unreadable: retried                            |
+| 409 on a create                                          | "already have it": GeoLeaf reads `GET {endpoint}?local_id=eq.<localId>&select=id`. A row: success, identity recorded. `[]`: a refusal, retried like a 403 (below). Unreadable: retried                   |
 | 409 on an update or a delete                             | success                                                                                                                                                                                                  |
 | 404 on an update or a delete                             | set aside as `deletedOnServer`                                                                                                                                                                           |
 | 401                                                      | set aside as `authRequired`, and the queue stops until the session comes back (§3)                                                                                                                       |
 | 501                                                      | set aside as `notImplementedByServer`                                                                                                                                                                    |
-| 408, 429, 500, 502, 503, 504, a network error, a timeout | retried — three attempts, 30 s apart and then ×4, capped at 8 minutes, before being set aside                                                                                                            |
-| 403, and any other 4xx                                   | set aside as `rejectedByServer`                                                                                                                                                                          |
+| 408, 429, 500, 502, 503, 504, a network error, a timeout | retried — three attempts in all, the second 30 s after the first failure, the third 2 minutes after the second — then set aside as `retryBudgetExhausted`                                                |
+| 403, and any other 4xx                                   | retried the same way, then set aside as `rejectedByServer`                                                                                                                                               |
 
 An edit set aside is kept, never dropped: the device shows it, and an operator re-queues it — for
 a motive whose cause can be lifted — or discards it after seeing it.

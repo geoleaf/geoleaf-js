@@ -18,6 +18,8 @@ import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import type { IMapAdapter, GeoLeafBounds } from "../../contracts/map-adapter.contract.ts";
 import type { IGeoLeafConfig } from "../../contracts/config.contract.ts";
 import { LayerManager } from "../../kernel/layer-manager/layer-manager-api.js";
+import { resetBasemaps } from "../../kernel/basemaps/facade.js";
+import { Log } from "../../utils/log/index.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { initBasemaps, initGeoJSON, initUIPanels } from "../init-features.js";
 import { setupDeferredUIPanels } from "../init-deferred-ui.js";
@@ -41,6 +43,13 @@ import {
 export class UIModule implements ILifecycleModule {
     readonly id = "ui" as const;
     readonly dependencies = ["config", "core-map", "shared", "geojson"] as const;
+
+    /**
+     * What `init()` wired for this boot and `destroy()` unwires: the reveal, the deferred panels
+     * and the layer-manager pipeline each hand back their teardown. The module instance outlives
+     * the application — it is registered once per bundle —, so these go with each boot.
+     */
+    private _teardowns: Array<() => void> = [];
 
     async init(_adapter: IMapAdapter, config: IGeoLeafConfig): Promise<void> {
         // (Phase A posts the UI facades at import — `globals.ui.ts`. What follows builds the
@@ -134,7 +143,7 @@ export class UIModule implements ILifecycleModule {
         // #20 — GeoJSON layers + ThemeSelector.
         // Kept in UIModule — same ordering constraint as #18.
         _pm("geoleaf:init:geojson:start");
-        initGeoJSON({ GeoLeaf, cfg, map, AppLog, _app });
+        this._keep(initGeoJSON({ GeoLeaf, cfg, map, AppLog, _app }));
         _pm("geoleaf:init:geojson:end");
 
         // #21 — Branding overlay: relocated to the in-core `branding` capability
@@ -142,26 +151,56 @@ export class UIModule implements ILifecycleModule {
         //        mounts the overlay via the registry with the boot-created map adapter.
 
         // #22 — Non-critical panels deferred to post-reveal.
-        setupDeferredUIPanels({ GeoLeaf, cfg, map, AppLog, _pm });
+        this._keep(setupDeferredUIPanels({ GeoLeaf, cfg, map, AppLog, _pm }));
 
         // #23 — Loader reveal + permalink apply. Wires the reveal, it does not reveal:
         // `geoleaf:app:ready` fires after every module's init() — from theme-engine's
         // `geoleaf:theme:applied`, or from the boot once `registry.init()` has returned (a
         // profile without a default theme). Revealing here fired it before the capabilities
         // the registry runs after `ui` had subscribed.
-        setupReveal({
-            GeoLeaf,
-            map,
-            AppLog,
-            profileBounds,
-            profilePadding,
-            permalinkCfg: _permalinkCfg,
-        });
+        this._keep(
+            setupReveal({
+                GeoLeaf,
+                map,
+                AppLog,
+                profileBounds,
+                profilePadding,
+                permalinkCfg: _permalinkCfg,
+            })
+        );
 
         AppLog.info("Application initialized, loading layers in the background.");
     }
 
+    /**
+     * Unwires what `init()` wired, when the application is unmounted (`ModuleRegistry.destroy()`,
+     * which only `GeoLeaf.mount()`'s teardown calls). Runs while the map is still alive: the
+     * permalink detaches its `moveend` from it, and the basemap registry forgets it — without
+     * that, the next map got no basemap at all. The panels and the toolbar are torn down after,
+     * with the map, by the lifecycle seam `Core.destroy()` runs.
+     */
     destroy(): void {
+        const teardowns = this._teardowns;
+        this._teardowns = [];
+        for (const teardown of teardowns) {
+            try {
+                teardown();
+            } catch (e) {
+                Log.warn("[UIModule] teardown failed:", e);
+            }
+        }
+        const permalink = ensureGeoLeaf().Permalink;
+        try {
+            asFn(member(permalink, "stopSync"))?.call(permalink);
+        } catch (e) {
+            Log.warn("[UIModule] Permalink.stopSync failed:", e);
+        }
+        resetBasemaps();
         LayerManager._reset();
+    }
+
+    /** Keeps a teardown `init()` got back — a stand-in that returns none is tolerated. */
+    private _keep(teardown: unknown): void {
+        if (typeof teardown === "function") this._teardowns.push(teardown as () => void);
     }
 }

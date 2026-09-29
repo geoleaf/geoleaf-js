@@ -449,6 +449,18 @@ export interface ModuleInitOptions {
      * @returns `"continue"` or `"abort"`.
      */
     readonly onModuleError?: (failure: ModuleInitFailure) => "continue" | "abort";
+
+    /**
+     * Asked before each module's `init()`: `false` stops the initialisation there, and the
+     * modules not reached yet never start. `init()` then resolves without an error.
+     *
+     * This is how a caller ends a run it no longer wants — an application unmounted while it
+     * was starting. `destroy()` is refused while `init()` runs; the caller stops it with this,
+     * waits for `init()` to settle, then destroys: only the modules that started are torn down.
+     *
+     * @returns `true` to go on, `false` to stop before the next module.
+     */
+    readonly shouldContinue?: () => boolean;
 }
 
 /**
@@ -561,13 +573,17 @@ export interface IModuleRegistry {
     getUISlots(): IModuleUISlot[];
 
     /**
-     * Destroys all registered modules in reverse initialisation order.
+     * Destroys the modules that started, in reverse initialisation order, and re-arms the
+     * registry: a later `init()` runs every module again.
      *
      * Each module's `destroy()` is called exactly once. Errors in individual
      * `destroy()` calls are logged but do not interrupt the teardown sequence —
-     * all modules are destroyed regardless of individual failures. A module skipped
-     * because a module it depends on failed (see {@link ModuleInitOptions}) is not
-     * destroyed: it never ran.
+     * all modules are destroyed regardless of individual failures. A module that never ran is
+     * not destroyed: one skipped because a module it depends on failed (see
+     * {@link ModuleInitOptions}), or one an initialisation stopped by `shouldContinue` never
+     * reached.
+     *
+     * Refused — logged, nothing torn down — while `init()` is still running.
      */
     destroy(): void;
 

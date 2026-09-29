@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "geoleaf/style",
     "title": "GeoLeaf Layer Style",
-    "description": "Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.json. Hardened in Sprint S1 (PRF-SCHEMA). `id` is no longer required (filename acts as id for ~20% of style files). The MapLibre pass-through key is `paint` (kept open); `style.extends` enables style inheritance. Known anomalies tolerated-but-flagged: `condition` alias of `when`, and root-level `paint`/`type` (misplaced) — see anomaly registry. (`labelScale` is NOT a duplicate of `scaleConfig`: same unit, but it gates the labels, not the layer.)",
+    "description": "Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.json. Strict schema (PRF-SCHEMA, Profile Contract v1). `id` is no longer required (filename acts as id for ~20% of style files). The MapLibre pass-through key is `paint` (kept open); `style.extends` enables style inheritance. Tolerated: `condition` as an alias of `when`, and root-level `paint`/`type` (misplaced). (`labelScale` is NOT a duplicate of `scaleConfig`: same unit, but it gates the labels, not the layer.)",
     "type": "object",
     "additionalProperties": false,
     "patternProperties": { "^_comment": {} },
@@ -149,7 +149,7 @@
         },
         "labelScale": {
             "type": "object",
-            "description": "Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate. Cleanup of no-op {null,null} + reconciliation in S8.",
+            "description": "Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate.",
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "properties": {
@@ -180,7 +180,7 @@
     "definitions": {
         "flatStyle": {
             "type": "object",
-            "description": "Flat GeoLeaf style (v2 format). Hardened in S1 (additionalProperties:false) — the `paint` and `expressionPaint` blocks stay open for native MapLibre properties.",
+            "description": "Flat GeoLeaf style (v2 format). Closed (additionalProperties:false) — the `paint` and `expressionPaint` blocks stay open for native MapLibre properties.",
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "properties": {
