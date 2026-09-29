@@ -31,12 +31,29 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.12.0 <Badge type="tip" text="2026-09-27" />
+## Release v3.13.0 <Badge type="tip" text="2026-09-29" />
 
-What reads a layer follows its edits, and every package carries the licenses of the code it
-bundles.
+An application a host mounts and unmounts whole, and a profile that can be validated — and checked
+against its data — with what the package ships.
 
 **Highlights:**
+
+- **New** — `GeoLeaf.mount(el, options)` returns a handle (`ready`, `unmount()`, `on()`,
+  `getMap()`); `unmount()` takes the whole application down and the next `mount()` gives it back
+  whole. `boot({ maplibregl })` hands the MapLibre 6 engine over, and `geoleaf:boot:failed` says
+  `reason: "engine"` when none is found. `@geoleaf-plugins/realtime-layer` 1.0.6 and
+  `@geoleaf-plugins/geocoding` 1.1.2 unmount with the application.
+- **New** — the profile JSON Schemas ship with the package (`@geoleaf/core/schemas/<name>.schema.json`),
+  with TypeScript types generated from them (`@geoleaf/core/schemas`).
+- **New** — a field a profile names and its data does not carry is said when the layer loads: one
+  `Log.warn` per layer, naming the configuration key, the field and, when only the case differs,
+  the name the data carries.
+- **Fixed** — the offline write cycle's members of `GeoLeaf.Storage` are typed, and what an
+  application left behind once torn down (basemap, permalink, listeners, merged configuration) is
+  gone.
+
+Release v3.12.0 (2026-09-27) — what reads a layer follows its edits, and every package carries the
+licenses of the code it bundles:
 
 - **New** — `geoleaf:layer:updated` (`{ layerId }`): a layer's store changed through
   `GeoLeaf.Layers`, once per call. The open table (`@geoleaf-plugins/table` 1.1.1) and the active
