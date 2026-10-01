@@ -31,12 +31,34 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.13.0 <Badge type="tip" text="2026-09-29" />
+## Release v3.13.1 <Badge type="tip" text="2026-10-01" />
 
-An application a host mounts and unmounts whole, and a profile that can be validated — and checked
-against its data — with what the package ships.
+A patch release: no new public member. The write cycle, the sign-in and the application's
+teardown each lose a way to go wrong without a word.
 
 **Highlights:**
+
+- **Fixed** — an edit that fails is attempted four times, so the announced 8-minute delay is
+  waited; a creation the server acknowledges without its row is looked up by its client identity
+  instead of being marked synchronised with no server identity.
+- **Fixed** — `@geoleaf-plugins/connector` 1.3.4: one login window at a time, a sign-in bounded
+  body included and validated as a renewal is, a refused renewal asked once, and the server's own
+  `401` handed back with its headers.
+- **Fixed** — `Core.destroy()` called from a `geoleaf:app:ready` listener leaves no uncaught
+  error; on a profile that declares no `themes`, a shared link keeps its layers and its filter,
+  and no `themes.json` is requested.
+- **Fixed** — `@geoleaf-plugins/print` 1.3.3 credits the basemap on the printed page;
+  `@geoleaf-plugins/table` 1.1.2 names a feature in a KML or GPX export as the table does; a form
+  that is saving can no longer be closed under its write (`@geoleaf/field-renderer` 1.4.1,
+  `@geoleaf-plugins/editor` 1.5.5).
+- **Fixed** — `@geoleaf-plugins/realtime-layer` 1.0.7 no longer installs a command-line
+  toolchain; `@geoleaf-plugins/offline-ui` 1.6.3 and `@geoleaf-plugins/measure` 1.0.8 say what
+  they used to pass in silence.
+- **Fixed** — documentation that contradicted the code: the "project with a profile" recipe goes
+  through `GeoLeaf.boot()`, and the write-path descriptions say what the code does.
+
+Release v3.13.0 (2026-09-29) — an application a host mounts and unmounts whole, and a profile that
+can be validated, and checked against its data, with what the package ships:
 
 - **New** — `GeoLeaf.mount(el, options)` returns a handle (`ready`, `unmount()`, `on()`,
   `getMap()`); `unmount()` takes the whole application down and the next `mount()` gives it back
