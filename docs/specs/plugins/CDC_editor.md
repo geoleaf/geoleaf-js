@@ -4,8 +4,8 @@ title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, pe
 plugin_id: editor
 package: "@geoleaf-plugins/editor"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 5ca3453ab
-date: 27 septembre 2026
+verifie_contre: 366796a4f
+date: 1er octobre 2026
 ---
 
 # editor — le plugin d'édition UNIQUE
@@ -13,7 +13,18 @@ date: 27 septembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/editor` ·
 **Code :** `packages/plugins/editor/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
-> ⚠️ **Ce que cette estampille couvre, et il faut le lire avant de s'y fier.** Les commits qui l'ont
+> ⚠️ **Ce que l'estampille du 01/10/2026 couvre** — editor 1.5.5, quatre commits. `366796a4f` ne
+> touche du paquet que sa notice tierce : le chunk de dessin n'embarque plus qu'UNE copie de
+> Terra Draw (1.32.3), par le verrou — aucun source, la plage déclarée ne bouge pas. `c9c05e4b1` ne
+> touche aucun source : le README dit ce que fait `persistence.mode: "auto"` et que
+> `persistence.dialect` et `write.dialect` gouvernent deux chemins. `ae0a9c13a` ne
+> touche du paquet que sa version : il embarque `@geoleaf/field-renderer` 1.4.1, dont le formulaire
+> occupé ne se ferme plus sous son écriture (fiche de la bibliothèque). `b44566501` : les
+> raccourcis d'annulation sont ignorés tant qu'un dialogue modal est ouvert — relu, §5 de
+> l'annulation et ED-08. Le reste de la fiche n'a **pas** été re-mesuré : le paragraphe qui suit
+> dit ce que couvraient les estampilles précédentes.
+
+> ⚠️ **Ce que l'estampille précédente couvrait, et il faut le lire avant de s'y fier.** Les commits qui l'ont
 > rendue nécessaire (`5efe3f3d2`, puis `9d5e2b8f2`, qui ne fait que réécrire l'appel du
 > formulaire) touchent le **brouillon** et son abandon (`discardDraft`,
 > §API publique), **ED-08** (le retrait par id, sur les deux piles), **ED-11** (la confirmation
@@ -354,6 +365,13 @@ retirent PAR ID, sur les deux piles : l'ancien `discardLastOperation` dépilait 
 l'aveugle, et prenait la mauvaise entrée dès qu'une autre s'était empilée au-dessus — un Ctrl+Z
 pendant que le formulaire était ouvert suffisait, et l'annulation levait ensuite sur une forme
 que le moteur n'avait plus.
+
+⚠️ **Ce Ctrl+Z-là n'atteint plus la pile (1.5.5).** Le raccourci, posé sur le document, n'ignorait
+que les champs de saisie : le focus sur un bouton du formulaire — ou retombé sur `body` après un
+clic sur le voile — suffisait à défaire la création dont le formulaire était ouvert, et un
+enregistrement persistait ensuite une entité dont la forme n'était plus à l'écran. Il est ignoré
+tant qu'un dialogue modal (`[aria-modal="true"]`) est dans le document : la question se pose au
+DOCUMENT, pas à la cible de l'événement (`history/shortcuts.ts`).
 
 ---
 

@@ -23,6 +23,7 @@ vi.mock("../table-state.js", () => ({
     },
     fireEvent: vi.fn(),
     getSelectedFeatures: vi.fn(() => []),
+    getSelectedEntries: vi.fn(() => ({ ids: [], features: [] })),
 }));
 
 vi.mock("../export.js", () => ({
@@ -46,7 +47,7 @@ import {
     zoomToSelection,
     exportSelection,
 } from "../table-selection.js";
-import { tableState, fireEvent, getSelectedFeatures } from "../table-state.js";
+import { tableState, fireEvent, getSelectedEntries, getSelectedFeatures } from "../table-state.js";
 import { downloadFeatures } from "../export.js";
 import { TableRenderer } from "../renderer.js";
 
@@ -311,9 +312,9 @@ describe("table/table-selection.ts — branch coverage", () => {
             expect(downloadFeatures).not.toHaveBeenCalled();
         });
 
-        it("returns early when getSelectedFeatures returns empty", () => {
+        it("returns early when the selection resolves to no feature", () => {
             tableState._selectedIds.add("a");
-            getSelectedFeatures.mockReturnValue([]);
+            getSelectedEntries.mockReturnValue({ ids: [], features: [] });
             exportSelection();
             expect(downloadFeatures).not.toHaveBeenCalled();
         });
@@ -321,14 +322,16 @@ describe("table/table-selection.ts — branch coverage", () => {
         it("calls downloadFeatures for selected features", () => {
             tableState._selectedIds.add("a");
             tableState._currentLayerId = "layer1";
-            getSelectedFeatures.mockReturnValue([{ id: "a" }]);
+            getSelectedEntries.mockReturnValue({ ids: ["a"], features: [{ id: "a" }] });
             exportSelection();
             expect(downloadFeatures).toHaveBeenCalledWith(
                 expect.any(Array),
                 "geojson",
                 "layer1",
                 "selection",
-                expect.any(Object)
+                expect.any(Object),
+                // The identifiers travel with the features: KML and GPX name each one by them.
+                ["a"]
             );
             expect(fireEvent).toHaveBeenCalledWith(
                 "geoleaf:table:exportSelection",
@@ -339,20 +342,21 @@ describe("table/table-selection.ts — branch coverage", () => {
         it("uses empty string when currentLayerId is null", () => {
             tableState._selectedIds.add("a");
             tableState._currentLayerId = null;
-            getSelectedFeatures.mockReturnValue([{ id: "a" }]);
+            getSelectedEntries.mockReturnValue({ ids: ["a"], features: [{ id: "a" }] });
             exportSelection();
             expect(downloadFeatures).toHaveBeenCalledWith(
                 expect.any(Array),
                 "geojson",
                 "",
                 "selection",
-                expect.any(Object)
+                expect.any(Object),
+                ["a"]
             );
         });
 
         it("catches downloadFeatures errors without throwing", () => {
             tableState._selectedIds.add("a");
-            getSelectedFeatures.mockReturnValue([{ id: "a" }]);
+            getSelectedEntries.mockReturnValue({ ids: ["a"], features: [{ id: "a" }] });
             downloadFeatures.mockReturnValue(Promise.reject(new Error("fail")));
             // Should not throw synchronously
             expect(() => exportSelection()).not.toThrow();

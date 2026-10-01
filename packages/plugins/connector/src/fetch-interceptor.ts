@@ -76,25 +76,24 @@ async function _resolveToken(): Promise<string | null> {
     return TokenStore.getTokenAsync(_config.baseUrl);
 }
 
-/** The answer a request gets when its session could not be renewed. */
-function _unauthorized(): Response {
-    return new Response(null, { status: 401, statusText: "Unauthorized" });
-}
-
 /**
  * Handles a 401 response: attempts one token refresh, retries the request.
  * Never loops — a renewal is attempted once per request, and its verdict decides the session.
  *
+ * Whenever the request is not replayed, the caller gets the SERVER's 401 back — its headers
+ * (a `WWW-Authenticate` challenge) and its body are the server's to say, and a synthetic
+ * response used to replace them in every branch but one.
+ *
  * @param input - The request, as the caller passed it.
  * @param init - Its init, the rejected `Authorization` included.
- * @param response - The 401 itself — returned untouched when there is no session at all.
+ * @param response - The 401 itself — what every branch that does not replay returns.
  */
 async function _handleUnauthorized(
     input: RequestInfo | URL,
     init: RequestInit,
     response: Response
 ): Promise<Response> {
-    if (!_config) return _unauthorized();
+    if (!_config) return response;
 
     if (_config.getToken) {
         // App-managed token — simply re-call; it is the app's responsibility to rotate it
@@ -110,7 +109,7 @@ async function _handleUnauthorized(
             _config.baseUrl,
             "Authentication failed — 401 after token refresh attempt."
         );
-        return _unauthorized();
+        return response;
     }
 
     // 🛑 REFRESH FIRST, AND ERASE ONLY ON A REFUSAL — the order was the first fix, the verdict
@@ -145,7 +144,7 @@ async function _handleUnauthorized(
                 outcome.presented,
                 "Authentication failed — 401, and the renewal was refused."
             );
-            return _unauthorized();
+            return response;
         case "absent":
             // No session is stored: nothing to renew, and nothing died — `auth-error` would
             // reopen the login window on every protected request after a sign-out.
@@ -153,9 +152,9 @@ async function _handleUnauthorized(
         case "unavailable":
             // Kept — and retried at the moments the halted drain no longer listens to.
             armRenewalRetry(_config.baseUrl);
-            return _unauthorized();
+            return response;
         case "superseded":
-            return _unauthorized();
+            return response;
     }
 }
 

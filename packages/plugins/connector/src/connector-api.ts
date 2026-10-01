@@ -335,6 +335,8 @@ async function _settleSession(config: ConnectorConfig, session: SessionState): P
  *
  * Resolves once authenticated, rejects if the user closes the window.
  * Requires a prior `configure()` carrying an `auth` configuration.
+ * When the window is already on screen, the call joins it: no second window is opened, and
+ * the promise settles with that window.
  */
 export async function openLoginModal(): Promise<void> {
     if (!_currentConfig?.auth) {

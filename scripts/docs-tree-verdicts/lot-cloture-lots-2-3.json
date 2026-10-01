@@ -5,7 +5,9 @@
         "packages/core/src/capabilities/offline/db/identity-twins.ts",
         "packages/core/src/utils/general/style-ready.ts",
         "packages/plugins/editor/src/selection/selection-keys.ts",
-        "scripts/gen-third-party-licenses.cjs"
+        "scripts/gen-third-party-licenses.cjs",
+        "packages/core/src/capabilities/offline/db/local-images-v3.ts",
+        "packages/core/src/capabilities/offline/db/upgrade-guards.ts"
     ],
     "verdicts": {
         "packages/core/src/capabilities/offline/db/identity-twins.ts": {
@@ -63,6 +65,34 @@
             "description": "Génère le `THIRD_PARTY_LICENSES.txt` de chaque paquet publié qui embarque du code tiers, d'après les sourcemaps de son bundle, et le garde (`--check`, TPL)",
             "confidence": "haute",
             "rationale": "Mesuré le 27/09/2026 : neuf paquets embarquaient du code tiers, la minification en retirait tout commentaire de licence, et les tarballs ne portaient que la LICENSE de GeoLeaf. Dérivé du bundle, pas de `dependencies` : ce que l'arbre a gardé, transitifs compris. Branché dans `ci:local` et `release:check`, avant PUB ; vu rouge sur le cas réel (neuf `files[]` qui ne livraient pas le fichier) et par mutation (fichier tronqué)"
+        },
+        "packages/core/src/capabilities/offline/db/local-images-v3.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La migration v3 de `local_images` : réécrit `uploaded` de booléen en 0/1 dans la transaction de montée, sans jamais la faire avorter",
+            "confidence": "haute",
+            "rationale": "Sortie d'`indexeddb.ts`, qui passe déjà les mille lignes, pour être éprouvée sur transaction factice comme la réparation v7 : inline dans `_upgradeDatabase`, ses trois chemins d'avortement n'étaient atteignables par aucun test. 1 importeur (indexeddb.ts)"
+        },
+        "packages/core/src/capabilities/offline/db/upgrade-guards.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Les deux gardes d'une étape de montée : annuler l'événement d'erreur d'une requête, et retenir une exception d'un gestionnaire de succès",
+            "confidence": "haute",
+            "rationale": "2 importeurs (identity-twins.ts, local-images-v3.ts). Les gardes étaient privées de la réparation v7 ; la migration v3 faisait la même promesse sans elles. Un module à part plutôt qu'un import croisé entre deux étapes qui ne se connaissent pas — et la prochaine étape de montée les trouve là"
         }
     }
 }

@@ -432,7 +432,7 @@
             "properties": {
                 "enabled": {
                     "type": "boolean",
-                    "description": "Gate. A layer whose write target is disabled has no outbox."
+                    "description": "Gate — only `true` lets the drain send. A layer whose write target is absent, disabled or without an `endpoint` still KEEPS the edits made on it, locally; the drain then sets each one aside as `layerNoLongerWritable`, until the target is enabled and the edits are requeued."
                 },
                 "endpoint": {
                     "type": "string",
@@ -459,7 +459,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "Whitelist of property keys sent in a `collection` body."
+                    "description": "Whitelist of property keys sent in a `collection` body. Absent: EVERY property of the feature is sent. Nothing checks that the list names the fields the form edits (`edit`) or `edition.accuracyField`: a field left out is edited on the device and never reaches the server."
                 }
             }
         },
@@ -517,7 +517,7 @@
                 "^_comment": {}
             },
             "required": ["enabled"],
-            "$comment": "`maxFeatures` is required AS SOON AS `enabled` is true, and the reason is not rigour: without the key, the OGC API loader falls back to its default cap of 10 000 (`DEFAULT_MAX_FEATURES`, `packages/core/src/kernel/geojson/loader/ogc-api-loader.ts`), and a larger layer is served truncated, SILENTLY — the map looks complete. Requiring the declaration makes the integrator choose the cap when enabling offline, rather than suffer it. Anchored on `enabled` and not on `source`, deliberately: a layer that reads the local store is truncated just like the one that fills it. The repository's own offline layers all declare the key, so its negative cases live in `packages/core/__tests__/config/offline-maxfeatures-opposability.test.ts`.",
+            "$comment": "`maxFeatures` is required AS SOON AS `enabled` is true, and the reason is not rigour: without the key, the OGC API loader falls back to its default cap of 10 000 (`DEFAULT_MAX_FEATURES`, `packages/core/src/kernel/geojson/loader/ogc-api-loader.ts`), and a larger layer is served truncated, SILENTLY — the map looks complete. Requiring the declaration makes the integrator choose the cap when enabling offline, rather than suffer it. The requirement is anchored on `enabled`, not on `source`. ⚠️ The cap itself bounds the PULL only: the local read returns whatever the store holds, so on a layer that declares no `offline.source`, `maxFeatures` and `maxAgeMs` have no effect. The repository's own offline layers all declare the key, so its negative cases live in `packages/core/__tests__/config/offline-maxfeatures-opposability.test.ts`.",
             "if": { "properties": { "enabled": { "const": true } }, "required": ["enabled"] },
             "then": { "properties": { "maxFeatures": true }, "required": ["maxFeatures"] },
             "properties": {

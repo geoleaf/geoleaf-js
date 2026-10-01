@@ -331,3 +331,82 @@ describe("la réparation ne fait jamais avorter la montée", () => {
         expect(() => requests.getAll[1]!.onsuccess?.({} as Event)).not.toThrow();
     });
 });
+
+/**
+ * The v3 migration of `local_images` made the same promise in a comment — "never fail the
+ * upgrade over the migration" — and did not keep it: its read logged without cancelling, its
+ * writes had no error handler, and its success handler was not guarded.
+ */
+describe("la migration v3 des images ne fait jamais avorter la montée non plus", () => {
+    type FakeRequest = {
+        result?: unknown;
+        error?: unknown;
+        onsuccess?: ((e: Event) => void) | null;
+        onerror?: ((e: Event) => void) | null;
+    };
+    const errorEvent = () => ({ preventDefault: vi.fn() }) as unknown as Event;
+
+    let updates: FakeRequest[];
+    let failUpdate: boolean;
+    let cursorRequest: FakeRequest;
+    const cursorOver = (value: Record<string, unknown>) => ({
+        value,
+        update: () => {
+            if (failUpdate) throw new DOMException("clone", "DataCloneError");
+            const r: FakeRequest = {};
+            updates.push(r);
+            return r;
+        },
+        continue: vi.fn(),
+    });
+    const tx = {
+        objectStore: () => ({
+            openCursor: () => {
+                cursorRequest = {};
+                return cursorRequest;
+            },
+        }),
+    } as unknown as IDBTransaction;
+
+    let reflagLocalImages: (tx: IDBTransaction) => void;
+    beforeEach(async () => {
+        updates = [];
+        failUpdate = false;
+        ({ reflagLocalImages } =
+            await import("../../../src/capabilities/offline/db/local-images-v3.js"));
+    });
+
+    test("garde : un booléen est réécrit en 0/1, et le curseur avance", () => {
+        reflagLocalImages(tx);
+        const record: Record<string, unknown> = { id: 1, uploaded: true };
+        const cursor = cursorOver(record);
+        cursorRequest.result = cursor;
+        cursorRequest.onsuccess?.({} as Event);
+        expect(record.uploaded).toBe(1);
+        expect(updates).toHaveLength(1);
+        expect(cursor.continue).toHaveBeenCalled();
+    });
+
+    test("🛑 une lecture du curseur en échec est annulée, pas propagée", () => {
+        reflagLocalImages(tx);
+        const e = errorEvent();
+        cursorRequest.onerror?.(e);
+        expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    test("🛑 une réécriture en échec est annulée, pas propagée", () => {
+        reflagLocalImages(tx);
+        cursorRequest.result = cursorOver({ id: 1, uploaded: false });
+        cursorRequest.onsuccess?.({} as Event);
+        const e = errorEvent();
+        updates[0]!.onerror?.(e);
+        expect(e.preventDefault).toHaveBeenCalled();
+    });
+
+    test("🛑 une exception à la réécriture ne sort pas de son gestionnaire", () => {
+        failUpdate = true;
+        reflagLocalImages(tx);
+        cursorRequest.result = cursorOver({ id: 1, uploaded: true });
+        expect(() => cursorRequest.onsuccess?.({} as Event)).not.toThrow();
+    });
+});

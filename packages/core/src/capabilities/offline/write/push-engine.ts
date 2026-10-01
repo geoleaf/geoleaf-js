@@ -77,19 +77,25 @@ export const LAST_SYNC_PREFERENCE = "offline.lastSyncAt";
  * for a while, in the very file that produces them. And the exit from that quarantine
  * now exists: `write/quarantine-api.ts`.
  *
- * ⚠️ It counts TOTAL attempts, not retries: `3` = one initial send + two replays. Same
+ * ⚠️ It counts TOTAL attempts, not retries: `4` = one initial send + three replays. Same
  * convention as the download's `RetryHandler`, so a reader does not have to wonder
  * which of the two applies.
+ *
+ * 🛑 **IT WAS `3` UNTIL 01/10/2026, AND THAT MADE THE THIRD DELAY BELOW UNREACHABLE.** The
+ * third failure was the quarantine, so only the 30 s and the 2 min ever applied: a server
+ * away for three minutes set the whole queue aside until someone pressed "retry all". With
+ * four attempts the three delays are all waited, and an entry is set aside after about ten
+ * minutes of failures instead of two and a half.
  */
-const MAX_REPLAY_ATTEMPTS = 3;
+const MAX_REPLAY_ATTEMPTS = 4;
 
 /**
  * Delay before an entry that just failed may be replayed — the base, then ×4 per attempt.
  *
- * 🛑 **THE BUDGET COUNTED GESTURES, NOT TIME, AND THAT IS WHAT MADE IT WRONG.** Three
- * TOTAL attempts is a defensible number for a network coming back; it is an absurd one
- * for three drains fired inside the same minute. And the drain fires on network return
- * **and** on the operator's "Retry" button, with `attempts` persisted: three clicks
+ * 🛑 **THE BUDGET COUNTED GESTURES, NOT TIME, AND THAT IS WHAT MADE IT WRONG.** A handful
+ * of TOTAL attempts is a defensible number for a network coming back; it is an absurd one
+ * for as many drains fired inside the same minute. And the drain fires on network return
+ * **and** on the operator's "Retry" button, with `attempts` persisted: a few clicks
  * during a maintenance window set aside a field capture whose only remaining exit — at
  * the time the width of `rejectedByServer` was measured — was destruction.
  *
@@ -101,7 +107,8 @@ const MAX_REPLAY_ATTEMPTS = 3;
  * ⚠️ **The three numbers are a product decision, not a measurement**: 30 s covers a
  * passing radio hole, 2 min a cell handover, 8 min a maintenance window — and the cap
  * keeps a whole tour from ending on one entry that waits an hour. They are named here so
- * the next reader changes a value, not a mechanism.
+ * the next reader changes a value, not a mechanism. Three delays take FOUR attempts to be
+ * waited: see {@link MAX_REPLAY_ATTEMPTS}.
  */
 const RETRY_BACKOFF_BASE_MS = 30_000;
 const RETRY_BACKOFF_FACTOR = 4;
@@ -190,7 +197,7 @@ type PushFailure =
      * The server does not know the verb — HTTP 501.
      *
      * 🛑 **IMMEDIATE quarantine, and yet REPLAYABLE.** Both halves derive from the
-     * meaning: replaying an unimplemented verb three times only waits three times
+     * meaning: replaying an unimplemented verb through the whole budget only waits
      * (same argument as `deletedOnServer`), but the server upgrade IS the lifting of
      * the cause, and it is not observable here — so it is entrusted to the operator,
      * like `retryBudgetExhausted`.
@@ -345,16 +352,16 @@ async function markFailure(
 ): Promise<boolean> {
     const attempts = (entry.attempts ?? 0) + 1;
     // ⚠️ An IMMEDIATE quarantine does not consume the budget, it short-circuits it:
-    // replaying a layer that lost its `write` block three times only waits three times.
+    // replaying a layer that lost its `write` block through the whole budget only waits.
     //
-    // 🛑 AT THE CAP, THE MOTIVE FOLLOWS THE LAST FAILURE. A server that refuses three
-    // times REFUSED; a network mute three times said nothing. Writing
+    // 🛑 AT THE CAP, THE MOTIVE FOLLOWS THE LAST FAILURE. A server that refuses to the
+    // end of the budget REFUSED; a network mute all along said nothing. Writing
     // `retryBudgetExhausted` in both cases would have produced one true motive and one
     // false one under the same name — and left `rejectedByServer` declared without a
     // producer, which the contract itself calls "indistinguishable from a typo".
     //
     // ⚠️ **THIS REASONING WAS RIGHT, AND ITS PREMISE WAS FALSE.** "A server that
-    // refuses three times REFUSED" assumes `rejectedByServer` names a refusal — but it
+    // refuses to the end REFUSED" assumes `rejectedByServer` names a refusal — but it
     // named, until 09/08/2026, EVERY non-409/non-404 failure, 5xx outages included.
     // The line below did not change: it is `pushOne` that now produces
     // `rejectedByServer` only for a real refusal, and a `serverUnavailable` therefore
@@ -608,6 +615,77 @@ async function settleAlreadyPresent(
 }
 
 /**
+ * Settles a creation the server acknowledged WITHOUT returning its row — a 2xx with `[]`.
+ *
+ * 🛑 **A SUCCESS WITH NO IDENTITY ORPHANS THE ENTITY.** That answer used to leave the queue
+ * as a plain success: the record went `synced` with `serverId: null`, every later edit of it
+ * filtered on an identity it did not have, and the pull's sweep did not see it. The server
+ * did not send back the representation it was asked for; whether it WROTE the row cannot be
+ * read from that answer.
+ *
+ * So it is asked, through the client identity, exactly as after a 409: a row found is a
+ * success WITH its identity; no row means the server wrote nothing — a refusal; a re-read
+ * that cannot conclude decides nothing, and the entry stays replayable.
+ *
+ * @param entry - The creation the server acknowledged.
+ * @param record - The entity it names.
+ * @param target - The layer's write target.
+ * @param httpStatus - The status of that acknowledgement; it travels with a refusal.
+ * @returns Created with its identity, refused, or undecided — never a bare success.
+ */
+async function settleCreatedWithoutRow(
+    entry: OutboxEntry,
+    record: FeatureRecord,
+    target: WriteTarget,
+    httpStatus: number
+): Promise<PushOutcome> {
+    const found = await reconcileByClientId(record, target);
+    if (found.serverId) return { ok: true, serverId: found.serverId };
+    if (found.missing) {
+        Log.warn(
+            `[Offline.Push] ${entry.id} — création acquittée (${httpStatus}) sans sa ligne, et le serveur n'en tient aucune : rien n'a été écrit.`
+        );
+        return { ok: false, failure: "rejectedByServer", httpStatus };
+    }
+    return { ok: false, failure: "serverUnavailable" };
+}
+
+/**
+ * Reads what the server returned for a write it accepted.
+ *
+ * ⚠️ **Only a JSON ARRAY proves the server answered in representation.** An EMPTY one, on a
+ * creation that has no identity yet, is the case {@link settleCreatedWithoutRow} settles. A
+ * body that cannot be read — a 204, an empty body — proves nothing and keeps its reading: a
+ * success with no identity, the limit the server contract writes down.
+ *
+ * @param entry - The entry the server accepted.
+ * @param record - The entity it names.
+ * @param target - The layer's write target.
+ * @param payload - The parsed body, `null` when there was none to parse.
+ * @param httpStatus - The status of the answer.
+ * @returns The outcome, with the server identity and the marker when the row carries them.
+ */
+async function settleAccepted(
+    entry: OutboxEntry,
+    record: FeatureRecord,
+    target: WriteTarget,
+    payload: Record<string, unknown> | Array<Record<string, unknown>> | null,
+    httpStatus: number
+): Promise<PushOutcome> {
+    const acknowledgedEmpty = Array.isArray(payload) && payload.length === 0;
+    if (acknowledgedEmpty && entry.kind === "create" && record.serverId == null) {
+        return settleCreatedWithoutRow(entry, record, target, httpStatus);
+    }
+    const row = Array.isArray(payload) ? payload[0] : payload;
+    const serverId = row?.id;
+    return {
+        ok: true,
+        version: markerOf(row, target.versionProperty),
+        ...(serverId != null ? { serverId: String(serverId) } : {}),
+    };
+}
+
+/**
  * Settles a detected conflict — `lastWriteWins`, DECLARED rather than suffered.
  *
  * The outcome is the same as before the detection existed: what the device holds wins. What
@@ -753,13 +831,7 @@ async function pushOne(
         return { ok: true, version: null };
     }
 
-    const row = Array.isArray(payload) ? payload[0] : payload;
-    const serverId = row?.id;
-    return {
-        ok: true,
-        version: markerOf(row, target.versionProperty),
-        ...(serverId != null ? { serverId: String(serverId) } : {}),
-    };
+    return settleAccepted(entry, record, target, payload, response.status);
 }
 
 /**
@@ -892,7 +964,7 @@ async function prepareSend(
  * The failures that quarantine AT ONCE, instead of spending the replay budget.
  *
  * ⚠️ **Three members, three times the same argument**: replaying changes nothing they
- * describe, so waiting three drains only wastes three drains. An entity the server
+ * describe, so spending the budget on them only wastes it. An entity the server
  * deleted will not come back; a verb it does not implement will not appear; a dead
  * session will not revive on its own. What differs is downstream — two of them are
  * replayable once the cause lifts, `deletedOnServer` never is.
@@ -1206,11 +1278,11 @@ async function _drainOnce(): Promise<PushReport> {
             // ⚠️ `deletedOnServer` is the exception: it does not spend the budget.
             // Replaying an entity the server deleted can neither recreate nor modify
             // it — that is a product decision, not a transport incident, and it must
-            // reach the operator now rather than in three drains.
+            // reach the operator now rather than once the budget is spent.
             //
             // ✅ `notImplementedByServer` JOINS THE EXCEPTION at the same narrowing, on
             // the same argument: replaying a verb the server declares unknown only
-            // waits three times. The difference is downstream — this one is REPLAYABLE
+            // waits out the budget. The difference is downstream — this one is REPLAYABLE
             // once the server is upgraded, where `deletedOnServer` never is.
             await markFailure(
                 outbox,

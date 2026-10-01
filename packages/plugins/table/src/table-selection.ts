@@ -10,7 +10,7 @@
  */
 
 import { Log } from "@geoleaf/host-runtime";
-import { tableState, fireEvent, getSelectedFeatures } from "./table-state.js";
+import { tableState, fireEvent, getSelectedEntries, getSelectedFeatures } from "./table-state.js";
 import { downloadFeatures, type ExportFormat, type ExportOptions } from "./export.js";
 import { getAllLayerFeatures } from "./table-layer.js";
 import { TableRenderer as _TableRenderer } from "./renderer.js";
@@ -134,7 +134,8 @@ export function exportSelection(format: ExportFormat = "geojson", options?: Expo
         Log.warn("[Table] No entity selected for export");
         return;
     }
-    const selectedFeatures = getSelectedFeatures();
+    // The identifiers travel with the features: KML and GPX name each one by them.
+    const { ids, features: selectedFeatures } = getSelectedEntries();
     if (selectedFeatures.length === 0) {
         Log.warn("[Table] No feature found for export");
         return;
@@ -145,7 +146,8 @@ export function exportSelection(format: ExportFormat = "geojson", options?: Expo
         format,
         layerId,
         "selection",
-        _resolveOptions(options)
+        _resolveOptions(options),
+        ids
     ).catch((e) => {
         Log.error("[Table] Error during export:", e);
     });

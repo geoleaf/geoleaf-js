@@ -268,8 +268,12 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         // ⚠️ That is the behaviour the backoff exists for — "three attempts is defensible for a
         // network coming back and absurd for three drains fired inside one minute" — so the
         // test is what had to follow, not the engine. Clearing `nextAttemptAt` between drains
-        // is what ELAPSED TIME does; sleeping the real delays would cost eight minutes and
+        // is what ELAPSED TIME does; sleeping the real delays would cost ten minutes and
         // measure the clock.
+        //
+        // ⚠️ FOUR drains: the budget is four TOTAL attempts, so that the three delays of the
+        // ladder (30 s, 2 min, 8 min) are all waited. With three, the third failure was the
+        // quarantine and the 8-minute rung was never reached.
         //
         // ⚠️ Only `nextAttemptAt` is cleared. Touching `attempts` would hand the test the very
         // counter it is here to observe.
@@ -277,7 +281,7 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         await page.evaluate(async () => {
             const gl = /** @type {any} */ (globalThis).GeoLeaf;
             const outbox = gl.Storage.DB._ensureModule("Outbox");
-            for (let i = 0; i < 3; i += 1) {
+            for (let i = 0; i < 4; i += 1) {
                 await gl.Storage.pushOutbox();
                 const rows = await outbox.list();
                 for (const r of rows) {
@@ -299,7 +303,7 @@ test.describe("28 — la file hors-ligne rejoue ce qu'elle doit", () => {
         expect(outbox, "le contrat interdit de détruire une entrée").toHaveLength(3);
         for (const row of outbox) {
             expect(row.state).toBe("quarantined");
-            expect(row.attempts).toBe(3);
+            expect(row.attempts).toBe(4);
             expect(row.quarantine).toBe("retryBudgetExhausted");
         }
     });

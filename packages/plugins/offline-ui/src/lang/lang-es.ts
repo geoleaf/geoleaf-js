@@ -23,7 +23,8 @@ const langStorageEs: StorageLangDict = {
         "¿Vaciar la caché local de las entidades ya sincronizadas?",
     "storage.confirm.clearPois.detail":
         "Se eliminarán {cached} entidad(es) en caché; se CONSERVARÁN {pending} captura(s) pendiente(s). Las entidades eliminadas se pueden volver a descargar.",
-    "storage.confirm.deleteCache.message": "¿Eliminar el caché sin conexión de este perfil?",
+    "storage.confirm.deleteCache.message":
+        "¿Eliminar el caché sin conexión de este perfil? Las teselas del mapa base en caché, comunes a todos los perfiles, también se eliminan.",
     "storage.confirm.stopDownload.message": "¿Detener la descarga en curso?",
     // Notifications
     "storage.notif.export.success": "Exportación JSON correcta",

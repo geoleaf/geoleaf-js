@@ -1299,6 +1299,21 @@ Most are opt-out (active unless set to `false`); check the individual section.
 
 ---
 
+## Storage — what erases what
+
+`GeoLeaf.Storage` is inert until `modules.offline` loads the engine. Its write queue is the
+[offline write cycle](OFFLINE_WRITE_CYCLE.md); what a device keeps, and how a session ends, is §8
+of [SECURITY](SECURITY.md). Three of its methods **erase** something, and none erases it all:
+
+| Method                                             | Erases                                                                                                                                                                                             | Leaves alone                                                   | Resolves with                                             |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
+| `Storage.clearAll()`                               | Every profile prepared for offline use — its cached files, and the cached basemap tiles — plus the engine's `preferences` and `metadata` stores. Emits `geoleaf:storage:cleared`                   | Entities, edits waiting to be sent, photos, archived conflicts | Nothing. Rejects if the database transaction fails        |
+| `Storage.clearConflicts(layerId?)`                 | The archived conflicts of one layer, or of every layer when `layerId` is omitted. Nothing else ever purges that store                                                                              | Everything else                                                | `true` once purged, `false` when the engine is not loaded |
+| `Storage.discardQuarantined(id, confirmedLocalId)` | ONE entry set aside, on explicit confirmation: `confirmedLocalId` must be that entry's `localId`, read from `Storage.DB.listPendingEdits()`. Its local record then returns to the server's version | Every other entry                                              | `{ ok }`, with the motive of a refusal                    |
+
+An edit otherwise leaves the device only when the server accepts it. Nothing is evicted to make
+room.
+
 ## TypeScript types
 
 `@geoleaf/core` ships TypeScript declarations. The canonical types entry point is:

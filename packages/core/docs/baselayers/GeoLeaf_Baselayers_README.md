@@ -62,24 +62,25 @@ Initialises the module and activates a basemap.
 ```js
 GeoLeaf.Baselayers.init({
     map: map, // MapLibre GL instance
-    defaultKey: "street-vector",
+    activeKey: "street-vector",
 });
 ```
 
 ### 3.1 Parameters
 
-| Parameter    | Type     | Required | Description                         |
-| ------------ | -------- | -------- | ----------------------------------- |
-| `map`        | `Map`    | Yes      | Existing MapLibre GL instance       |
-| `defaultKey` | `string` | No       | Identifier of the initial baselayer |
+| Parameter   | Type     | Required | Description                         |
+| ----------- | -------- | -------- | ----------------------------------- |
+| `map`       | `Map`    | Yes      | Existing MapLibre GL instance       |
+| `activeKey` | `string` | No       | Identifier of the initial baselayer |
 
 ### 3.2 Behaviour
 
 - Checks that `map` is a valid instance.
 - Loads the basemap registry from `basemaps.json`.
 - Determines the initial baselayer:
-    - the one given through `defaultKey`, or
-    - the basemap marked `defaultBasemap: true`.
+    - the one given through `activeKey`, or
+    - the first registered basemap. At boot, GeoLeaf passes as `activeKey` the basemap the
+      profile marks `defaultBasemap: true`.
 - Mounts the tile layer on the map.
 
 ---

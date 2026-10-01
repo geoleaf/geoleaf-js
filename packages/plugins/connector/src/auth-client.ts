@@ -25,10 +25,10 @@ interface AuthResponse {
 /**
  * How long one exchange with the authentication endpoint may take.
  *
- * ⚠️ For a renewal it bounds the WHOLE exchange, body included. `fetchWithTimeout` stops its
- * clock once the headers arrive, and a body that stalls after them held the renewal — hence
- * every request that joins it — for as long as the connection stayed open. A sign-in is still
- * bounded up to its headers only.
+ * ⚠️ It bounds the WHOLE exchange, body included — a renewal and a sign-in alike.
+ * `fetchWithTimeout` stops its clock once the headers arrive, and a body that stalls after them
+ * held the renewal — hence every request that joins it — or the login window, for as long as
+ * the connection stayed open.
  *
  * The token store also reads it as the pause between two renewal attempts during an outage:
  * one attempt per exchange window, a figure that is the exchange's own and not a second one.
@@ -68,7 +68,13 @@ type RefreshResult =
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-async function _parseAuthResponse(response: Response): Promise<AuthResponse> {
+/**
+ * Reads what a sign-in answered, within what is left of the exchange's budget.
+ *
+ * The body is held to the rules of a renewal ({@link _sessionFrom}): a token that is not a
+ * string, or a lifetime that is not a positive number, would be stored already expired.
+ */
+async function _parseAuthResponse(response: Response, deadline: number): Promise<AuthResponse> {
     if (response.status === 401) {
         throw new AuthError("Invalid credentials");
     }
@@ -81,16 +87,18 @@ async function _parseAuthResponse(response: Response): Promise<AuthResponse> {
     if (!response.ok) {
         throw new AuthError("Authentication failed (" + response.status + ")");
     }
-    let data: AuthResponse;
+    let text: string;
     try {
-        data = (await response.json()) as AuthResponse;
+        text = await _readWithin(response, deadline);
     } catch {
-        throw new AuthError("Invalid server response: could not parse JSON");
+        // Cut or stalled in transit: the same class as a network error.
+        throw new AuthError("Network unavailable");
     }
-    if (!data.token || typeof data.expiresIn !== "number") {
+    const session = _sessionFrom(text);
+    if (!session) {
         throw new AuthError("Invalid server response: missing token or expiresIn");
     }
-    return data;
+    return session;
 }
 
 /**
@@ -115,8 +123,11 @@ async function _readWithin(response: Response, deadline: number): Promise<string
     }
 }
 
-/** The renewal a body carries — `null` when it carries none a client could use. */
-function _renewalFrom(text: string): AuthResponse | null {
+/**
+ * The session a body carries — `null` when it carries none a client could use. One rule for
+ * the two exchanges: what a renewal refuses, a sign-in refuses too.
+ */
+function _sessionFrom(text: string): AuthResponse | null {
     let data: unknown;
     try {
         data = JSON.parse(text);
@@ -145,9 +156,17 @@ export const AuthClient = {
      * Authenticates with login + password against the endpoint.
      * Returns the token and expiresIn so the caller can store via TokenStore.save().
      *
+     * The whole exchange is bounded by {@link EXCHANGE_TIMEOUT_MS}, body included, and the
+     * answer is held to the rules of a renewal: a non-string token, or a lifetime that is not
+     * a positive number, is refused rather than stored.
+     *
+     * @throws AuthError `"Invalid credentials"` on a 401, `"Network unavailable"` when the
+     *   exchange does not conclude in time or in transit, another message otherwise.
+     *
      * Security: password string is overwritten before the function returns.
      */
     async login(endpoint: string, login: string, password: string): Promise<AuthResponse> {
+        const deadline = Date.now() + EXCHANGE_TIMEOUT_MS;
         let pwd = password;
         try {
             let response: Response;
@@ -160,12 +179,12 @@ export const AuthClient = {
                         headers: jsonHeaders(),
                         body: JSON.stringify({ login, password: pwd }),
                     },
-                    15000
+                    EXCHANGE_TIMEOUT_MS
                 );
             } catch {
                 throw new AuthError("Network unavailable");
             }
-            return await _parseAuthResponse(response);
+            return await _parseAuthResponse(response, deadline);
         } finally {
             // Overwrite password in memory after use (OWASP A02).
             // The write has no data-flow purpose — nothing reads `pwd` afterwards,
@@ -228,7 +247,7 @@ export const AuthClient = {
             // Cut or stalled in transit: the same class as a network error.
             return { verdict: "unavailable", reason: "body" };
         }
-        const renewal = _renewalFrom(text);
+        const renewal = _sessionFrom(text);
         if (!renewal) {
             return { verdict: "refused", status: response.status, reason: "unusable body" };
         }

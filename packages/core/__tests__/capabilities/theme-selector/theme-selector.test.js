@@ -24,6 +24,7 @@ const mockLoadThemesConfig = vi.fn(() =>
     })
 );
 const mockApplyTheme = vi.fn(() => Promise.resolve());
+const mockDeclaresNoThemes = vi.fn(() => false);
 
 vi.mock("../../../src/utils/log/index.js", () => ({ Log: logMock }));
 vi.mock("../../../src/kernel/config/config-primitives.js", () => ({
@@ -31,6 +32,9 @@ vi.mock("../../../src/kernel/config/config-primitives.js", () => ({
 }));
 vi.mock("../../../src/kernel/themes/theme-loader.js", () => ({
     ThemeLoader: { loadThemesConfig: (id) => mockLoadThemesConfig(id) },
+}));
+vi.mock("../../../src/kernel/themes/declares-no-themes.js", () => ({
+    declaresNoThemes: () => mockDeclaresNoThemes(),
 }));
 vi.mock("../../../src/kernel/themes/theme-applier/core.js", () => ({
     ThemeApplierCore: { applyTheme: (theme) => mockApplyTheme(theme) },
@@ -87,6 +91,7 @@ describe("theme-selector (Phase 5.29)", () => {
             })
         );
         mockApplyTheme.mockResolvedValue(undefined);
+        mockDeclaresNoThemes.mockReturnValue(false);
     });
 
     describe("ThemeSelector export", () => {
@@ -262,6 +267,25 @@ describe("theme-selector (Phase 5.29)", () => {
                     detail: expect.objectContaining({ error: "load failed" }),
                 })
             );
+            document.removeEventListener("geoleaf:themes:ready", handler);
+        });
+    });
+
+    describe("a modular profile that declares no themes", () => {
+        it("asks the loader for nothing, and still emits geoleaf:themes:ready — without an error", async () => {
+            // The loader would fall back to the legacy `profiles/<id>/themes.json`, which can
+            // only 404 for such a profile: two requests and a console error per page load.
+            mockDeclaresNoThemes.mockReturnValue(true);
+            const handler = vi.fn();
+            document.addEventListener("geoleaf:themes:ready", handler);
+
+            await expect(ThemeSelector.init({ profileId: "x" })).resolves.toBeUndefined();
+
+            expect(mockLoadThemesConfig).not.toHaveBeenCalled();
+            // The permalink waits for this event: it is emitted, and nothing failed.
+            expect(handler).toHaveBeenCalledTimes(1);
+            expect(handler.mock.calls[0][0].detail.error).toBeUndefined();
+            expect(ThemeSelector.getThemes()).toEqual([]);
             document.removeEventListener("geoleaf:themes:ready", handler);
         });
     });

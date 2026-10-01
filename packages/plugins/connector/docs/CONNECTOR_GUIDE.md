@@ -54,14 +54,14 @@ await GeoLeaf.Connector.configure({
     getToken: () => localStorage.getItem("my-token"),
 });
 
-GeoLeaf.init({
-    map: { target: "map" },
-    data: {
-        activeProfile: "mon-profil",
-        profilesBasePath: "./profiles/",
+GeoLeaf.boot({
+    config: {
+        data: {
+            activeProfile: "mon-profil",
+            profilesBasePath: "./profiles/",
+        },
     },
 });
-GeoLeaf.boot();
 ```
 
 En CDN :
@@ -84,8 +84,9 @@ En CDN :
         baseUrl: "https://api.example.com",
         getToken: () => "MY_TOKEN",
     });
-    GeoLeaf.init({ map: { target: "map" }, data: { activeProfile: "mon-profil" } });
-    GeoLeaf.boot();
+    GeoLeaf.boot({
+        config: { data: { activeProfile: "mon-profil", profilesBasePath: "./profiles/" } },
+    });
 </script>
 ```
 
@@ -164,6 +165,31 @@ await GeoLeaf.Connector.configure({
 });
 ```
 
+### `GeoLeaf.Connector.openLoginModal()`
+
+Ouvre la fenêtre de connexion à la demande. Exige un `configure()` préalable portant `auth`. Il
+n'y a qu'une fenêtre de connexion à la fois : appelée alors qu'elle est déjà à l'écran, la méthode
+la rejoint, et sa promesse se règle avec elle.
+
+```js
+GeoLeaf.Connector.openLoginModal();
+```
+
+### `GeoLeaf.Connector.logout()`
+
+Termine la session : le jeton stocké est effacé, en mémoire et dans la base du navigateur, et
+`geoleaf:connector:signed-out` est émis. Une relance de renouvellement en attente est désarmée
+d'abord.
+
+```js
+await GeoLeaf.Connector.logout();
+```
+
+Aucune route du serveur n'est appelée, et rien d'autre n'est effacé : les saisies en attente
+d'envoi, les photos et les données préparées pour le hors-ligne restent sur l'appareil. En mode
+`getToken`, l'appel ne fait rien — l'application hôte détient le jeton et termine sa session
+elle-même. Il ne lève jamais, et ne fait rien avant `configure()`.
+
 ### `createConnector(config)` — export nommé ESM
 
 Pour les cas d'intégration avancés (tests unitaires, usage sans namespace global) :
@@ -212,11 +238,15 @@ GeoLeaf.Sync.registerSessionReader(() => {
 
 ## Événements DOM
 
-| Événement                           | Détail               | Déclenché quand          |
-| ----------------------------------- | -------------------- | ------------------------ |
-| `geoleaf:connector:authenticated`   | `{ baseUrl }`        | Login modal réussi       |
-| `geoleaf:connector:token-refreshed` | `{ baseUrl }`        | Renouvellement réussi    |
-| `geoleaf:connector:auth-error`      | `{ baseUrl, error }` | Session terminée : refus |
+| Événement                                     | Détail                       | Déclenché quand                              |
+| --------------------------------------------- | ---------------------------- | -------------------------------------------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal réussi                           |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Renouvellement réussi                        |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | Session terminée : refus                     |
+| `geoleaf:connector:signed-out`                | `{ baseUrl }`                | `logout()` a terminé la session              |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Clic sur le bouton d'identification          |
+| `geoleaf:connector:signup-requested`          | `{ url }`                    | Clic sur « Créer un compte » — annulable     |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | Clic sur « Mot de passe oublié » — annulable |
 
 ```js
 document.addEventListener("geoleaf:connector:authenticated", (e) => {

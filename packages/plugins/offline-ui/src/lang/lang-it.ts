@@ -22,7 +22,8 @@ const langStorageIt: StorageLangDict = {
     "storage.confirm.clearPois.message": "Svuotare la cache locale delle entità già sincronizzate?",
     "storage.confirm.clearPois.detail":
         "{cached} entità in cache saranno eliminate; {pending} acquisizione/i in attesa saranno CONSERVATE. Le entità eliminate si riscaricano.",
-    "storage.confirm.deleteCache.message": "Eliminare la cache offline di questo profilo?",
+    "storage.confirm.deleteCache.message":
+        "Eliminare la cache offline di questo profilo? Anche i tasselli della mappa di base in cache, comuni a tutti i profili, vengono eliminati.",
     "storage.confirm.stopDownload.message": "Interrompere il download in corso?",
     // Notifications
     "storage.notif.export.success": "Esportazione JSON riuscita",

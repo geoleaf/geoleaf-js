@@ -18,20 +18,33 @@
  * line's own pre-flight documented that failure: a windowed grep counted prose and missed
  * multi-line options. So: ts.createSourceFile per file, every CallExpression whose callee
  * is `fetch`, and a scan of the SECOND argument's subtree for an identifier or property
- * named `signal`. Spreads (`...opts`) also count as covered — the signal may travel inside,
- * and flagging them would punish the composable idiom the fix itself uses.
+ * named `signal`. A spread also counts as covered — the signal may travel inside, and
+ * flagging it would punish the composable idiom the fix itself uses — but ONLY as a direct
+ * property of the options object: `fetch(url, { ...opts, method })`.
+ *
+ * ⚠️ Any spread anywhere in the subtree used to count, `headers: { ...extra }` included — a
+ * place where no signal can travel. Three fetches with no timeout passed for cancellable on
+ * that account: an upload that lost its photo when it stalled (fixed), the config-loader
+ * transit helper, and the print fallback's POST.
  *
  * What this deliberately does NOT prove: that a timeout is attached to the signal. That is
  * a dataflow property; the complement is the call-site review each ratchet descent does.
+ *
+ * ⚠️ What it does not SEE either: a second naked fetch in a function already frozen. The
+ * baseline is a set of `file::function` keys — the per-key counts are computed below and
+ * never compared — so the print fallback's POST sits behind the key its other fetch froze.
  *
  * ## Four frozen sites are REFUSALS, not remainders (arbitrated 17/08/2026, carried here
  * ## 25/08/2026 when the register line closed onto this gate)
  *
  * The governing principle: the cancellation boundary is the LIFECYCLE OWNER, not the fetch.
  * Equipping a site that has no owner produces "a controller no lifecycle governs" — a zero
- * counter and an illusion of coverage. Three of the
- * 17/08 four still show naked at the AST (the config-loader transit helper no longer does —
- * covered since, so its refusal died with its site), each with its measured ground:
+ * counter and an illusion of coverage. All four show naked at the AST, each with its
+ * measured ground. ⚠️ This paragraph said "three of the four" until 01/10/2026, and that the
+ * config-loader helper was "covered since": it was the spread in its `headers` being counted.
+ *   · `config/loader.ts` (`_doFetch`) — a transit helper: it hands the response to its
+ *     caller, who owns the lifecycle. Equipping it would make `signal` a public option of
+ *     the config loader.
  *   · `dropdown.ts` (field-renderer) — no lifecycle owner; equipping it would widen a PUBLISHED
  *     contract, and `replaceWith` on a detached node is already a no-op.
  *   · `style-loader-core.ts` — writes only into a cache keyed profile:layer:style; a correct
@@ -89,18 +102,40 @@ function sourceFiles() {
     return out.sort();
 }
 
-/** True when the node's subtree mentions a `signal` identifier or property name. */
+/**
+ * The object literals sitting in OPTIONS position: the argument itself, or what a
+ * conditional, a parenthesis or a type assertion wraps around one.
+ *
+ * @param {import("typescript").Node} node The options argument, or a sub-expression of it.
+ * @returns {import("typescript").ObjectLiteralExpression[]} Those literals; none for a call or an identifier.
+ */
+function optionObjects(node) {
+    if (ts.isObjectLiteralExpression(node)) return [node];
+    if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node)) {
+        return optionObjects(node.expression);
+    }
+    if (ts.isConditionalExpression(node)) {
+        return [...optionObjects(node.whenTrue), ...optionObjects(node.whenFalse)];
+    }
+    return [];
+}
+
+/**
+ * True when the options argument carries a `signal`, or may carry one through a spread.
+ *
+ * @param {import("typescript").Node} node The second argument of a `fetch` call.
+ * @returns {boolean} Whether the call counts as covered.
+ */
 function mentionsSignal(node) {
+    // `...opts` may carry the signal inside — but only as a DIRECT property of the options
+    // object. A spread nested deeper (`headers: { ...extra }`) carries headers, not a signal.
+    if (optionObjects(node).some((o) => o.properties.some((p) => ts.isSpreadAssignment(p)))) {
+        return true;
+    }
     let found = false;
     (function scan(/** @type {import("typescript").Node} */ n) {
         if (found) return;
         if (ts.isIdentifier(n) && n.text === "signal") {
-            found = true;
-            return;
-        }
-        // `...opts` may carry the signal inside — treat as covered rather than punish the
-        // composable idiom the fix itself uses.
-        if (ts.isSpreadElement(n) || ts.isSpreadAssignment(n)) {
             found = true;
             return;
         }

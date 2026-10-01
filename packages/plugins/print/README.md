@@ -33,7 +33,7 @@ Once the plugin is loaded, a printer icon appears in the left toolbar. The inter
 1. **Set the scale** — zoom the map to the desired scale (read in the scale module).
 2. **Click the printer icon** — activates the extent selection mode.
 3. **Draw the extent** — click-drag to draw the print rectangle; release to confirm; adjust corner handles; press **Enter** or click **OK**.
-4. **Configure in the modal** — the scale is locked (padlock indicator); choose the paper format (A4 / A3); tick Legend, Scale bar, North arrow; fill in title and description.
+4. **Configure in the modal** — the scale is locked (padlock indicator); choose the paper format (A4 / A3); tick Legend, Scale bar, North arrow; fill in title and description. The credit of the basemap on screen is printed in the footer, before the description.
 5. **Export** — click **PDF** or **JPG**; the file is downloaded.
 
 ---

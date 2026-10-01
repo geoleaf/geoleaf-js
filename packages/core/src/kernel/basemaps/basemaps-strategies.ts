@@ -246,8 +246,10 @@ export function _applyViaStyleChange(
             _applyWmtsBasemap(nativeMap, definition, key, previousKey, options);
             return;
         } else {
+            // By TYPE, as the sync path does: a WMS, an image or a hillshade carries no
+            // `tiles` / `url`, so the XYZ constructor gave them an empty raster source.
             try {
-                _applyRasterBasemap(nativeMap, definition);
+                _applySyncBasemapByType(nativeMap, definition);
             } catch (e) {
                 Log.error("[GeoLeaf.Baselayers] Cannot apply raster after style change:", e);
             }

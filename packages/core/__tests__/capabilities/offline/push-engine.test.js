@@ -188,7 +188,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
     });
 
     // ── ①ter THE REPLAY BUDGET ──────────────────────────────────────────────
-    test("🛑 trois échecs mettent l'entrée en QUARANTAINE — et ne la détruisent PAS", async () => {
+    test("🛑 quatre échecs mettent l'entrée en QUARANTAINE — et ne la détruisent PAS", async () => {
         // Without a cap, a failing entry replays indefinitely and
         // `quarantined` is reached by no path: three declared
         // `QuarantineReason`s, zero producers.
@@ -196,21 +196,21 @@ describe("4.5 — push et réconciliation d'identité", () => {
         serve(() => ({ status: 500, body: {} }));
 
         // ⚠️ `rewind()` between the drains, and it is not a convenience: since the
-        // deferral exists, three drains fired back to back make ONE attempt — which is
+        // deferral exists, four drains fired back to back make ONE attempt — which is
         // exactly the property the backoff adds. What this test measures is the CAP,
         // so it lets the delay elapse; the drain-in-a-row case has its own test.
         const reports = [];
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             reports.push(await pushOutbox());
         }
 
-        expect(reports.map((r) => r.failed)).toEqual([1, 1, 1]);
+        expect(reports.map((r) => r.failed)).toEqual([1, 1, 1, 1]);
 
         const rows = await readAll("outbox");
         expect(rows, "le contrat interdit de détruire une entrée").toHaveLength(1);
         expect(rows[0].state).toBe("quarantined");
-        expect(rows[0].attempts).toBe(3);
+        expect(rows[0].attempts).toBe(4);
         // 🛑 THE REASON FOLLOWS THE LAST FAILURE, it does not just say "budget exhausted".
         //
         // ⚠️ **THIS ASSERTION EXPECTED `rejectedByServer`, AND IT LOCKED A
@@ -274,7 +274,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Muette") });
         fetchSpy.mockRejectedValue(new Error("network down"));
 
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             await pushOutbox();
         }
@@ -289,7 +289,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
         // aside would pass the test above while letting the entry loop.
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Écartée") });
         serve(() => ({ status: 500, body: {} }));
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             await pushOutbox();
         }
@@ -336,14 +336,14 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Maintenance") });
         serve(() => ({ status: 503, body: {} }));
 
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             await pushOutbox();
         }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
-        expect(rows[0].attempts).toBe(3);
+        expect(rows[0].attempts).toBe(4);
         // The reason decides the EXIT: `retryBudgetExhausted` is in
         // `REQUEUEABLE`, `rejectedByServer` is not. Writing the second here
         // condemned the capture.
@@ -377,14 +377,14 @@ describe("4.5 — push et réconciliation d'identité", () => {
         await applyEdit({ layerId: "sites", kind: "create", feature: feature("Interdite") });
         serve(() => ({ status: 403, body: {} }));
 
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             await pushOutbox();
         }
 
         const rows = await readAll("outbox");
         expect(rows[0].state).toBe("quarantined");
-        expect(rows[0].attempts).toBe(3);
+        expect(rows[0].attempts).toBe(4);
         expect(rows[0].quarantine).toBe("rejectedByServer");
         // 🛑 THE DIAGNOSIS TRAVELS WITH THE ENTRY. `rejectedByServer` alone
         // cannot tell a missing right (403, which the operator fixes) from a
@@ -405,7 +405,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
             throw new Error("réseau muet");
         });
 
-        for (let i = 0; i < 3; i += 1) {
+        for (let i = 0; i < 4; i += 1) {
             await rewind();
             await pushOutbox();
         }
@@ -777,6 +777,76 @@ describe("4.5 — push et réconciliation d'identité", () => {
         expect(row.quarantine).toBeUndefined();
     });
 
+    // ── A creation acknowledged WITHOUT its row ─────────────────────────────────────────
+    //
+    // 🛑 `201 []` came out a plain success, with no server identity: the entry left the
+    // queue, the record went `synced` with `serverId: null`, and every later edit of that
+    // entity filtered on an identity it did not have. The server did not return the row it
+    // was asked for; whether it WROTE it is not known from that answer — so it is asked,
+    // through the client identity, exactly as after a 409.
+
+    test("🛑 une CRÉATION acquittée `201 []` est relue par l'identité cliente — jamais « synchronisée » sans identité", async () => {
+        const created = await applyEdit({
+            layerId: "sites",
+            kind: "create",
+            feature: feature("acquittée sans sa ligne"),
+        });
+        serve((url, init) => {
+            if (init?.method === "POST") return { status: 201, body: [] };
+            expect(url).toContain(`local_id=eq.${encodeURIComponent(created.localId)}`);
+            return { status: 200, body: [{ id: 88 }] };
+        });
+
+        const report = await pushOutbox();
+
+        expect(report.pushed).toBe(1);
+        expect((await readAll("features"))[0].serverId).toBe("88");
+        expect(await readAll("outbox")).toHaveLength(0);
+    });
+
+    test("🛑 `201 []` dont la relecture ne trouve RIEN : le serveur n'a rien écrit, la saisie reste due", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("jamais écrite") });
+        serve((_url, init) =>
+            init?.method === "POST" ? { status: 201, body: [] } : { status: 200, body: [] }
+        );
+
+        const report = await pushOutbox();
+
+        // Declaring a success here would empty the queue on a row the server never wrote.
+        expect(report.pushed).toBe(0);
+        expect(report.failed).toBe(1);
+        expect((await readAll("outbox"))[0].state).toBe("failed");
+        expect((await readAll("features"))[0].syncState).not.toBe("synced");
+    });
+
+    test("`201 []` dont la relecture ÉCHOUE ne conclut pas — l'entrée reste rejouable", async () => {
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("relecture muette") });
+        serve((_url, init) =>
+            init?.method === "POST" ? { status: 201, body: [] } : { status: 503 }
+        );
+
+        const report = await pushOutbox();
+
+        expect(report.pushed).toBe(0);
+        expect(report.failed).toBe(1);
+        const [row] = await readAll("outbox");
+        expect(row.state).toBe("failed");
+        expect(row.quarantine).toBeUndefined();
+    });
+
+    test("un corps ILLISIBLE (204, corps vide) garde sa lecture documentée : un succès, sans relecture", async () => {
+        // The counter-proof, and the limit the server contract writes down: only a JSON
+        // ARRAY proves the server answered in representation. A body that cannot be read
+        // proves nothing, and is not turned into a re-read here.
+        await applyEdit({ layerId: "sites", kind: "create", feature: feature("corps vide") });
+        serve(() => ({ status: 204 }));
+
+        const report = await pushOutbox();
+
+        expect(report.pushed).toBe(1);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
     test("🛑 le SECOND envoi n'est pas cru sur parole : `200 []` non filtré = l'entité a disparu", async () => {
         // `lastWriteWins` settles a conflict by re-sending WITHOUT the freshness filter.
         // That second send was never checked: an empty array — the very form in which
@@ -851,6 +921,35 @@ describe("4.5 — push et réconciliation d'identité", () => {
 
         expect(first).toBeGreaterThan(0);
         expect(second).toBeGreaterThan(first);
+    });
+
+    test("🛑 le TROISIÈME échec diffère de 8 min — l'entrée n'est mise de côté qu'au quatrième", async () => {
+        // The ladder was announced as 30 s → 2 min → 8 min, and its third rung was never
+        // reached: with three TOTAL attempts the third failure WAS the quarantine. A server
+        // away for three minutes set the whole queue aside until someone pressed "retry all".
+        await applyEdit({
+            layerId: "sites",
+            kind: "create",
+            feature: feature("maintenance longue"),
+        });
+        serve(() => ({ status: 503, body: {} }));
+        for (let i = 0; i < 3; i += 1) {
+            await rewind();
+            await pushOutbox();
+        }
+
+        const [third] = await readAll("outbox");
+        expect(third.state).toBe("failed");
+        expect(third.attempts).toBe(3);
+        const wait = third.nextAttemptAt - Date.now();
+        expect(wait).toBeGreaterThan(470_000);
+        expect(wait).toBeLessThanOrEqual(480_000);
+
+        await rewind();
+        await pushOutbox();
+        const [fourth] = await readAll("outbox");
+        expect(fourth.state).toBe("quarantined");
+        expect(fourth.attempts).toBe(4);
     });
 
     test("🛑 ré-éditer une saisie en échec REMET son budget à zéro — intention neuve, pas rejeu", async () => {

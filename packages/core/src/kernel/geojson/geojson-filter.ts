@@ -108,17 +108,22 @@ const _NONE_ID = "__geoleaf_filter_none__";
  * True when the layer is (or may be) clustered. A clustered source derives its
  * cluster counts from the **full** source, so filtering must re-feed the data
  * (`setData`) rather than a GPU `setFilter` that would leave stale counts.
- * Over-approximates: any clustering signal falls back to the safe re-feed path.
+ *
+ * The DECISION is read before the parameters: a live cluster group, then what the layer
+ * says. `clustering: false` beside a declared radius or zoom is the normalised form of a
+ * layer that switched clustering off (`loader/clustering-normalize.ts` hoists the parameters
+ * and writes the flag) — the parameters are no signal there, and such a layer keeps the GPU
+ * path. Only when the layer says nothing do the parameters over-approximate towards the
+ * safe re-feed path.
  * @internal
  */
 function _isClusteredLayer(layerData: GeoJSONLayerEntry): boolean {
+    if (layerData.clusterGroup != null) return true;
     const cfg = layerData.config as Record<string, unknown> | undefined;
+    if (cfg?.cluster === true || cfg?.clustering === true) return true;
+    if (cfg?.clustering === false) return false;
     return (
-        layerData.clusterGroup != null ||
-        cfg?.cluster === true ||
-        cfg?.clustering === true ||
-        typeof cfg?.clusterRadius === "number" ||
-        typeof cfg?.disableClusteringAtZoom === "number"
+        typeof cfg?.clusterRadius === "number" || typeof cfg?.disableClusteringAtZoom === "number"
     );
 }
 

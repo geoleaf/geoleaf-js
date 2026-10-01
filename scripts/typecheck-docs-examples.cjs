@@ -17,19 +17,18 @@
  *
  * ## Scope — TWO corpora since 2026-07-27
  *
- * 1. The ts/typescript blocks of `packages/core/docs/` `.md` files.
+ * 1. The ts/typescript blocks of the PRODUCT `.md` surfaces — root, package READMEs and
+ *    `docs/`, derived in `lib/tsdoc-examples.cjs` (`productDocsFiles`). Until 2026-07-31
+ *    it stopped at `packages/core/docs/`.
  * 2. **The TSDoc `@example`s of all sources** (every `src/` of the package registry).
  *    The engine existed, it simply was not wired to them.
  *
- * ⚠️ **What corpus 2 does NOT cover, and why it is not a comfort choice.** Measured on
- * 2026-07-27: **101 `@example`s enter, 49 are compiled, 52 are set aside** — the latter
- * go through the ambient `GeoLeaf.*` namespace, which **the published package does not
- * declare**. `src/global.d.ts` is never emitted into `dist/types/` (TypeScript does not
- * re-emit an entry `.d.ts`: `emitDeclarationOnly` skips it), and no `declare global`
- * ships in the tarball. Proven by compiling against the published types:
- * `GeoLeaf.Core.setTheme("dark")` renders **TS2304 Cannot find name 'GeoLeaf'**.
- * Including them would mean scanning while seeing nothing — failure mode (1) below. The
- * counter shows them at every run rather than silencing them.
+ * ⚠️ **The `@example`s that go through the ambient `GeoLeaf.*` namespace ARE compiled.** They
+ * were set aside at first — the published package did not declare the namespace, so
+ * `GeoLeaf.Core.setTheme("dark")` rendered TS2304 "Cannot find name 'GeoLeaf'", and including
+ * them would have meant scanning while seeing nothing. The package has published its ambient
+ * namespace since (`dist/types/global.d.ts`, referenced from the entry): the prelude imports
+ * the package, and the run prints how many examples take that road.
  *
  * Every ts/typescript block that PARSES. Of the 136 in the docs, 27 do not — they are
  * deliberate fragments (`…`), pseudo-code and partial objects, and they are skipped.
@@ -45,7 +44,8 @@
  * ## Which diagnostics count
  *
  * Only the ones that mean "this example cannot work": unknown export, unknown property,
- * wrong argument type, wrong ARITY, unresolvable `@geoleaf/*` subpath. See
+ * GHOST OPTION in an object literal, wrong argument type, wrong ARITY, unresolvable
+ * `@geoleaf/*` subpath. See
  * {@link DEFECT_CODES}.
  *
  * Everything else is a documentation idiom, not a defect, and is ignored on purpose —
@@ -237,6 +237,13 @@ const DEFECT_CODES = new Map([
     ["TS2614", "the module has no such named export"],
     ["TS2739", "required properties are missing"],
     ["TS2741", "a required property is missing"],
+    // An object literal naming a key its type does not declare — a GHOST OPTION. The call
+    // compiles nowhere on the integrator's side, and at runtime the key is read by nothing:
+    // the example works by accident, on the default it meant to override. TS2561 is the
+    // same defect when the compiler can suggest the key that was meant. Seen reddening on
+    // `Baselayers.init({ defaultKey })` — the option is `activeKey` — before being closed.
+    ["TS2353", "the object literal names a property its type does not declare"],
+    ["TS2561", "the object literal names a property its type does not declare"],
     // 2026-07-31 — the four `exactOptionalPropertyTypes` codes. This gate's temporary
     // tsconfig extends `packages/core/tsconfig.json`, so it INHERITS the option since
     // it was enabled there. Without these four entries, a documented example that

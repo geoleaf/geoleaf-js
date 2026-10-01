@@ -62,8 +62,9 @@ export * from "./kernel-exports.js";
 // Route module dissolved (S11) — route is now the in-core `route` capability
 // (endpoint decorator, gate `modules.route`). export { Route } removed (BREAKING):
 // itinerary lines are generic GeoJSON layers; the capability derives the endpoints.
-// Storage is now a Plugin (@geoleaf-plugins/offline-ui)
-// export { Storage } removed — use GeoLeaf.Storage namespace after loading the plugin
+// `Storage` has no named export. `GeoLeaf.Storage` is the core's own facade
+// (`kernel/storage/facade.ts`), mounted by the core and inert until `modules.offline` loads
+// the engine; `@geoleaf-plugins/offline-ui` is its interface, not the engine.
 // Table is now a Plugin (@geoleaf-plugins/table)
 // export { Table } removed — use GeoLeaf.Table namespace after loading the plugin
 // Themes façade removed (RM-P0b) — dead per-layer theming API (no map effect in MapLibre).

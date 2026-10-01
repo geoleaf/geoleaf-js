@@ -269,6 +269,11 @@ curl -s --cacert ~/dev/infra/traefik/certs/rootCA.pem -o /dev/null -w "%{http_co
 
 **③ Le push rend l'identifiant serveur** (4.5) — **201**, et la réponse porte `id` :
 
+⚠️ Ces deux exemples écrivent la géométrie en **EWKT** (`SRID=4326;POINT(…)`), que le banc accepte
+d'un `curl`. **Ce n'est pas ce que GeoLeaf envoie** : le drain envoie un objet de géométrie
+GeoJSON sous `geometryProperty`. Pour lire ce que le client envoie réellement, c'est
+`packages/core/docs/SERVER_CONTRACT.md` §2.1, pas cette commande.
+
 ```bash
 curl -s --cacert ~/dev/infra/traefik/certs/rootCA.pem -X POST "https://$GEOLEAF_DEV_BACKEND_HOST/sites_rosario" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"local_id":"loc-demo-1","title":"Saisie","geom":"SRID=4326;POINT(-60.65 -32.94)"}'
 ```

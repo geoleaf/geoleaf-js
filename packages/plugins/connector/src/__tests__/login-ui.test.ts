@@ -455,6 +455,72 @@ describe("showLoginModal", () => {
         });
     });
 
+    describe("a single window", () => {
+        it("a second call joins the open window instead of stacking another", async () => {
+            const { AuthClient } = await import("../auth-client.js");
+            (AuthClient.login as ReturnType<typeof vi.fn>).mockResolvedValue({
+                token: "tok.en.jwt",
+                expiresIn: 3600,
+            });
+
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+            const second = showLoginModal(BASE_CONFIG);
+
+            // Two windows carried the same ids (`gc-login`, `gc-password`…), each with its
+            // own promise: signing in through one left the other open.
+            expect(document.querySelectorAll(".gc-overlay")).toHaveLength(1);
+            expect(document.querySelectorAll("#gc-login")).toHaveLength(1);
+
+            const modal = getModal()!;
+            modal.querySelector<HTMLInputElement>("#gc-login")!.value = "user@example.com";
+            modal.querySelector<HTMLInputElement>("#gc-password")!.value = "secret";
+            modal
+                .querySelector("form")!
+                .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+            // One sign-in settles both callers.
+            await expect(promise).resolves.toBeUndefined();
+            await expect(second).resolves.toBeUndefined();
+            expect(getOverlay()).toBeNull();
+        });
+
+        it("dismissing the window rejects every caller that joined it", async () => {
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+            const second = showLoginModal(BASE_CONFIG);
+            const settled = Promise.allSettled([promise, second]);
+
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+
+            expect((await settled).map((r) => r.status)).toEqual(["rejected", "rejected"]);
+        });
+
+        it("opens a new window once the previous one has settled", async () => {
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+            await promise.catch(() => {});
+
+            promise = showLoginModal(BASE_CONFIG);
+            expect(document.querySelectorAll(".gc-overlay")).toHaveLength(1);
+        });
+
+        it("does not join a window something else took out of the page", async () => {
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+            // A host that clears the page: the first promise never settles, and joining it
+            // would hand back a window nobody can see.
+            getOverlay()!.remove();
+
+            const second = showLoginModal(BASE_CONFIG);
+            expect(document.querySelectorAll(".gc-overlay")).toHaveLength(1);
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+            await second.catch(() => {});
+            promise = undefined;
+        });
+    });
+
     describe("accessibility", () => {
         it("has proper dialog attributes", async () => {
             promise = showLoginModal(BASE_CONFIG);

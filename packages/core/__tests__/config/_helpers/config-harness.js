@@ -34,10 +34,13 @@ function readJson(rel) {
 }
 
 /**
- * The reference fixture — exhaustive on B1 (root/profile) + B2 (features) +
- * B3 (ui) + B4 (basemaps/themes) + B5 (layers.json + {id}_config.json).
- * Each file mirrors its schema leaf-by-leaf so the fixture and the per-value
- * assertions cannot drift apart.
+ * The reference fixture — written to mirror B1 (root/profile), B2 (features), B3 (ui),
+ * B4 (basemaps/themes) and B5 (layers.json + {id}_config.json) leaf by leaf, so the
+ * per-value assertions have a value to read for each key.
+ *
+ * ⚠️ Nothing GUARDS that mirror: a key added to a schema does not land in its fixture on
+ * its own. B3 already lacks two keys `ui.schema.json` declares (`ui.syncDocumentLang`,
+ * `ui.interactiveShapes`) — "cannot drift apart", as this comment said, was a claim.
  */
 export const REFERENCE_PROFILE = readJson("profiles/_reference/profile.json");
 export const REFERENCE_FEATURES = readJson("profiles/_reference/config/core/features.json");

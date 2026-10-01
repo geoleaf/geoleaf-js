@@ -252,7 +252,8 @@ function _mapDescriptorToField(
  * Map view is applied immediately (synchronous).
  * If a theme needs to be restored, it is applied once `geoleaf:themes:ready` fires,
  * then layer visibility and filter are applied after the resulting `geoleaf:theme:applied`.
- * Without a theme change, layers and filter are deferred to the first `geoleaf:theme:applied`.
+ * Without a theme change, layers and filter are deferred to the first `geoleaf:theme:applied`
+ * — or, on a profile that applies no theme at all, to one macrotask after `geoleaf:app:ready`.
  *
  * @param state - State to restore.
  * @param map - Map adapter instance.
@@ -343,8 +344,28 @@ export function applyState(state: PermalinkState, map: IMapAdapter): void {
             { once: true }
         );
     } else {
-        // No theme change — defer layers/filter to the first theme:applied
-        document.addEventListener("geoleaf:theme:applied", _applyLayersAndFilter, { once: true });
+        // No theme change — defer layers/filter to the first theme:applied.
+        //
+        // ⚠️ WITH A FALLBACK, for the same reason as above: a profile that declares no `themes`
+        // never emits `geoleaf:theme:applied`, and everything deferred here was silently LOST.
+        // `geoleaf:app:ready` always fires. On a profile with themes it is dispatched from a
+        // listener of that very `theme:applied`, so the latch below is already set; one
+        // macrotask of delay lets what mounts ON app:ready — the filter panel — come up first.
+        let applied = false;
+        const applyOnce = function (): void {
+            if (applied) return;
+            applied = true;
+            document.removeEventListener("geoleaf:theme:applied", applyOnce);
+            _applyLayersAndFilter();
+        };
+        document.addEventListener("geoleaf:theme:applied", applyOnce, { once: true });
+        document.addEventListener(
+            "geoleaf:app:ready",
+            function (): void {
+                setTimeout(applyOnce, 0);
+            },
+            { once: true }
+        );
     }
 }
 

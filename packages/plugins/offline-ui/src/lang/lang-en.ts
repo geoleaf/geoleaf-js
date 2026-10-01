@@ -22,7 +22,8 @@ const langStorageEn: StorageLangDict = {
     "storage.confirm.clearPois.message": "Clear the local cache of already-synchronised entities?",
     "storage.confirm.clearPois.detail":
         "{cached} cached entity(ies) will be deleted; {pending} pending capture(s) will be KEPT. Deleted entities can be downloaded again.",
-    "storage.confirm.deleteCache.message": "Delete the offline cache for this profile?",
+    "storage.confirm.deleteCache.message":
+        "Delete the offline cache for this profile? The cached basemap tiles, shared by every profile, are deleted too.",
     "storage.confirm.stopDownload.message": "Stop the ongoing download?",
     // Notifications
     "storage.notif.export.success": "JSON export successful",

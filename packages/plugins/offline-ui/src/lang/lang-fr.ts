@@ -21,7 +21,8 @@ const langStorageFr = {
     "storage.confirm.clearPois.message": "Vider le cache local des entités déjà synchronisées ?",
     "storage.confirm.clearPois.detail":
         "{cached} entité(s) en cache seront supprimées ; {pending} saisie(s) en attente seront CONSERVÉES. Les entités supprimées se re-téléchargent.",
-    "storage.confirm.deleteCache.message": "Supprimer le cache hors ligne de ce profil ?",
+    "storage.confirm.deleteCache.message":
+        "Supprimer le cache hors ligne de ce profil ? Les tuiles de fond de carte en cache, communes à tous les profils, sont supprimées aussi.",
     "storage.confirm.stopDownload.message": "Arrêter le téléchargement en cours ?",
     // Notifications
     "storage.notif.export.success": "Export JSON réussi",

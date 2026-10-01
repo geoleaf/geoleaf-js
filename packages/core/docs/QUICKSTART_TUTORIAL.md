@@ -102,14 +102,14 @@ In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTE
             body {
                 margin: 0;
             }
-            #map {
+            #geoleaf-map {
                 height: 100vh;
                 width: 100%;
             }
         </style>
     </head>
     <body>
-        <div id="map"></div>
+        <div id="geoleaf-map"></div>
 
         <script type="module">
             import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
@@ -120,21 +120,17 @@ In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTE
             src="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf.esm.js"
         ></script>
         <script type="module">
-            // Full init with a profile
-            GeoLeaf.init({
-                map: { target: "map" },
-                data: {
-                    activeProfile: "commerces",
-                    profilesBasePath: "./profiles/",
-                },
-            });
-            GeoLeaf.boot();
+            // Full boot with a profile: the configuration file of step 3 names it
+            GeoLeaf.boot({ configUrl: "./geoleaf.config.json" });
         </script>
     </body>
 </html>
 ```
 
-> **Note:** `GeoLeaf.init()` is the high-level API for a full initialisation with a profile. For a simple map without a profile, use `Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 })`.
+> **Note:** `GeoLeaf.boot()` is the high-level API for a full start with a profile. It creates the
+> map in the element the configuration names (`map.target`, then `map.id`), `geoleaf-map` when it
+> names none. For a simple map without a profile, use
+> `Core.init({ mapId: "map", center: [48.8566, 2.3522], zoom: 12 })`.
 
 ---
 
@@ -163,6 +159,8 @@ Global config at the project root. Sets the active profile and the global option
 ## Step 4 — profile.json
 
 Main profile config: geographic extent, clustering, modules.
+
+<!-- geoleaf:docs:schema profile -->
 
 ```json
 {

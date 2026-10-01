@@ -91,6 +91,30 @@ describe("geojson-filter — _applyFeatureVisibilityForLayer (chemin vivant)", (
                 features: [expect.objectContaining({ properties: { id: "a" } })],
             });
         });
+
+        // The normaliser hoists `clusterRadius` and `disableClusteringAtZoom` to the root of
+        // the config and writes the DECISION beside them: with `clustering: false` the
+        // parameters say nothing. Both halves in one test — the layer switched off, and the
+        // same layer really grouped, which must still be re-fed.
+        it("clustering DÉSACTIVÉ, paramètres déclarés → chemin GPU ; la même couche groupée → setData", () => {
+            const config = { clustering: false, clusterRadius: 80, disableClusteringAtZoom: 12 };
+            const off = { geometryType: "point", features: [feat("a"), feat("b")], config };
+            _applyFeatureVisibilityForLayer(off, (f) => f.properties.id === "a", "off", newStats());
+            expect(updateLayerData).not.toHaveBeenCalled();
+            expect(setLayerFilter).toHaveBeenCalledWith("off", expect.any(Array));
+
+            const grouped = { ...off, clusterGroup: {} };
+            _applyFeatureVisibilityForLayer(
+                grouped,
+                (f) => f.properties.id === "a",
+                "on",
+                newStats()
+            );
+            expect(updateLayerData).toHaveBeenCalledWith(
+                "on",
+                expect.objectContaining({ type: "FeatureCollection" })
+            );
+        });
     });
 
     describe("fallback id — le filtre GPU exige des ids uniques", () => {

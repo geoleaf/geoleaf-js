@@ -30,7 +30,12 @@
 
 import { Log } from "../../utils/log/index.js";
 import { Config } from "../../kernel/config/config-primitives.js";
-import { ThemeApplierCore, ThemeLoader, type ThemeConfig } from "../../kernel/themes/index.js";
+import {
+    ThemeApplierCore,
+    ThemeLoader,
+    declaresNoThemes,
+    type ThemeConfig,
+} from "../../kernel/themes/index.js";
 import { _state, type ThemeEntry, type ThemeSelectorConfig } from "./theme-selector-state.js";
 import { createPrimaryUI, updateUIStatePrimary } from "./theme-selector-primary.js";
 import { createSecondaryUI, updateUIStateSecondary } from "./theme-selector-secondary.js";
@@ -79,6 +84,22 @@ const ThemeSelector = {
         _state.profileId = options.profileId;
         _state.primaryContainer = options.primaryContainer || null;
         _state.secondaryContainer = options.secondaryContainer || null;
+
+        // A modular profile that declares no theme: nothing to load and no bar to build. The
+        // loader would fall back to the legacy `themes.json`, which can only 404 for such a
+        // profile — two requests and a console error on every page load. The end event is
+        // still emitted: the permalink waits for it.
+        if (declaresNoThemes()) {
+            _state.themes = [];
+            _state.primaryThemes = [];
+            _state.secondaryThemes = [];
+            _state.currentTheme = null;
+            if (Log) Log.debug("[ThemeSelector] The profile declares no theme — nothing to load");
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:themes:ready", { detail: { time: Date.now() } })
+            );
+            return Promise.resolve();
+        }
 
         // Load the themes configuration
         return ThemeLoader.loadThemesConfig(options.profileId)

@@ -150,6 +150,28 @@ describe("config B4 — basemaps[].type → layer created (basemaps/registry.ts)
         expect(map.addSource).not.toHaveBeenCalled();
     });
 
+    // ── vector → wms / image / hillshade: the style-change path ───────────────
+    // Leaving a vector basemap replaces the whole style, and the incoming basemap is applied
+    // in the `style.load` handler. It must dispatch on the type as the sync path does: the
+    // XYZ constructor reads `tiles` / `url`, which none of these three forms carries.
+    it.each([
+        ["geoserver-wms", (spec) => expect(spec.tiles[0]).toContain("SERVICE=WMS")],
+        ["overlay", (spec) => expect(spec.type).toBe("image")],
+        ["relief", (spec) => expect(spec.type).toBe("raster-dem")],
+    ])("vector → %s : la source est celle de son type, pas une source XYZ", (key, expectSpec) => {
+        registerBaseLayer("vector", BM.vector);
+        registerBaseLayer(key, BM[key]);
+        setBaseLayer("vector", { silent: true });
+        setBaseLayer(key, { silent: true });
+        // The last `style.load` handler registered is the one of the switch away from vector.
+        const [, onStyleLoad] = map.once.mock.calls.at(-1);
+        onStyleLoad();
+
+        const basemapSources = map.addSource.mock.calls.filter(([id]) => id === SOURCE_ID);
+        expect(basemapSources).toHaveLength(1);
+        expectSpec(basemapSources[0][1]);
+    });
+
     // ── terrain 3D → setTerrain + raster-dem terrain source ───────────────────
     it("terrain.default3D:true → 3D terrain activated (setTerrain + terrain-dem)", () => {
         registerBaseLayer("terrain-3d", BM["terrain-3d"]);

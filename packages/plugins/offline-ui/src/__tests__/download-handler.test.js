@@ -169,6 +169,26 @@ describe("handleDownload", () => {
         expect(elements.downloadBtn.disabled).toBe(false);
     });
 
+    test("🛑 un résultat d'ERREUR ne s'annonce pas réussi", async () => {
+        // `cacheProfile` RESOLVES with `{ error }` when nothing was downloaded: a second click
+        // while a download is still finishing, a disabled cache. Only `cancelled` was read, so
+        // it took the success branch — "0 resources", then "profile downloaded: 0 B".
+        const store = installStorage({
+            cacheProfileResult: { error: "Already caching", profileId: "prof-1" },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(store.cacheProfile).toHaveBeenCalled();
+        expect(notif.success).not.toHaveBeenCalled();
+        expect(elements.progressText.textContent).not.toContain("✅");
+        expect(notif.error).toHaveBeenCalledWith(expect.stringContaining("Already caching"), 5000);
+        expect(elements.downloadBtn.disabled).toBe(false);
+    });
+
     test("moteur indisponible → notifie et sort sans télécharger", async () => {
         const store = installStorage({ available: false });
         setConfig({ "modules.offline.enabled": false });

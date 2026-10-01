@@ -484,13 +484,32 @@ function _wireSubmit(
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 /**
+ * The window on screen, with the promise its callers share — `null` when none is open.
+ *
+ * The overlay is kept beside the promise because a host can take the window out of the page
+ * without settling it: a promise alone would then be joined for ever, by callers handed a
+ * window nobody can see.
+ */
+let _open: { promise: Promise<void>; overlay: HTMLElement } | null = null;
+
+/**
  * Displays the login modal and resolves when the user authenticates successfully.
  * Rejects with `Error("Modal closed by user")` if the user dismisses the modal
  * via close button, Escape key, or overlay click.
+ *
+ * There is one window at a time: a call made while it is on screen JOINS it and receives the
+ * same promise, so one sign-in — or one dismissal — settles every caller. Several paths open
+ * it (a `configure()` on an absent session, `openLoginModal()`, the credential button, the
+ * guided reconnection), and two stacked windows carried the same element ids, each with its
+ * own promise.
  */
 export function showLoginModal(config: ConnectorConfig): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
+    if (_open?.overlay.isConnected) return _open.promise;
+
+    let overlay!: HTMLElement;
+    const promise = new Promise<void>((resolve, reject) => {
         const els = _buildModal();
+        overlay = els.overlay;
         _configureLinks(els, config);
 
         // Focus trap — registered here, torn down by cleanup.
@@ -514,4 +533,14 @@ export function showLoginModal(config: ConnectorConfig): Promise<void> {
         // Focus on first input after mount
         requestAnimationFrame(() => els.loginInput.focus());
     });
+
+    const entry = { promise, overlay };
+    _open = entry;
+    // Both branches are handled here, so this bookkeeping never surfaces a rejection of its
+    // own; the caller still receives `promise` and its outcome.
+    const release = (): void => {
+        if (_open === entry) _open = null;
+    };
+    promise.then(release, release);
+    return promise;
 }

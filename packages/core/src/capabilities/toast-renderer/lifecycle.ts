@@ -9,8 +9,8 @@
  *
  * Absorbs the former `app/init-notifications.ts` (S7): creates the toast container,
  * initializes the `NotificationSystem`, registers it as the renderer of the kernel
- * `notify()` primitive, and wires the boot loading toast + profile/theme toast
- * listeners. `init()` is idempotent (`_started` guard); `_reset()` detaches the
+ * `notify()` primitive, and wires the boot loading toast + theme toast listeners.
+ * `init()` is idempotent (`_started` guard); `_reset()` detaches the
  * listeners and destroys the renderer (registry destroy / test seam).
  *
  * The dependency-injected values from the former `setupNotifications({...})` bag are
@@ -25,16 +25,6 @@ import type { NotifyLevel } from "../../contracts/notify.contract.js";
 import { _UINotifications } from "./notifications.js";
 import { getToastRendererConfig } from "./config.js";
 import { DEFAULT_MAX_VISIBLE, DEFAULT_TOAST_POSITION } from "./constants.js";
-
-/** Detail payload of the `geoleaf:profile:loaded` event (read for the profile toast). */
-interface ProfileLoadedDetail {
-    profileId?: string;
-    data?: {
-        profile?: { label?: string; name?: string; title?: string; [key: string]: unknown };
-        [key: string]: unknown;
-    };
-    [key: string]: unknown;
-}
 
 /** Detail payload of the `geoleaf:theme:applied` event (themeName + layerCount). */
 interface ThemeAppliedDetail {
@@ -56,7 +46,6 @@ function _pm(name: string): void {
 // ── Module-private state (was private to `setupNotifications`) ───────────────
 let _started = false;
 let _loadingToast: HTMLElement | null = null;
-let _pendingProfileToastDetail: ProfileLoadedDetail | null = null;
 /** The renderer handed to the notify primitive — kept so `_reset()` can unregister it. */
 let _registeredRenderer: ((message: string, level: NotifyLevel) => void) | null = null;
 /**
@@ -76,27 +65,6 @@ function showNotification(message: string): boolean {
     return true;
 }
 
-/** Whether the renderer is initialized (container present). */
-function notificationsReady(): boolean {
-    return !!_UINotifications?.container;
-}
-
-function tryShowProfileToast(detail: ProfileLoadedDetail): boolean {
-    if (!detail || !detail.data) return false;
-    const profile = detail.data.profile || {};
-    const profileName =
-        profile.label || profile.name || profile.title || detail.profileId || "Profile";
-    const message = getLabel("toast.profile.loaded", profileName);
-    if (!notificationsReady()) {
-        _pendingProfileToastDetail = detail;
-        return false;
-    }
-    const shown = showNotification(message);
-    if (shown) _pendingProfileToastDetail = null;
-    else _pendingProfileToastDetail = detail;
-    return shown;
-}
-
 // ── Named event handlers (so `_reset()` can detach them) ─────────────────────
 function onThemeApplying(): void {
     // R-perf S1 — mark the start of the data-loading toast interval
@@ -108,14 +76,6 @@ function onThemeApplying(): void {
                 persistent: true,
                 dismissible: false,
             }) ?? null;
-    }
-}
-
-function onProfileLoaded(event: Event): void {
-    const detail = (event as CustomEvent<ProfileLoadedDetail>).detail;
-    if (detail) {
-        _pendingProfileToastDetail = detail;
-        tryShowProfileToast(detail);
     }
 }
 
@@ -158,12 +118,6 @@ function onThemeApplied(event: Event): void {
                 String(themeDetail.layerCount)
             )
         );
-    }
-}
-
-function onMapReady(): void {
-    if (_pendingProfileToastDetail) {
-        tryShowProfileToast(_pendingProfileToastDetail);
     }
 }
 
@@ -210,11 +164,11 @@ export const ToastRendererLifecycle = {
             }
         }
 
-        // ── Boot / profile / theme toast listeners ───────────────────────────
+        // ── Boot / theme toast listeners ─────────────────────────────────────
+        // No `geoleaf:profile:loaded` listener: that event fires before this lifecycle
+        // starts, once per page, so a listener laid here never heard it.
         document.addEventListener("geoleaf:theme:applying", onThemeApplying);
-        document.addEventListener("geoleaf:profile:loaded", onProfileLoaded);
         document.addEventListener("geoleaf:theme:applied", onThemeApplied);
-        document.addEventListener("geoleaf:map:ready", onMapReady);
     },
 
     /**
@@ -233,12 +187,9 @@ export const ToastRendererLifecycle = {
         try {
             if (typeof document !== "undefined") {
                 document.removeEventListener("geoleaf:theme:applying", onThemeApplying);
-                document.removeEventListener("geoleaf:profile:loaded", onProfileLoaded);
                 document.removeEventListener("geoleaf:theme:applied", onThemeApplied);
-                document.removeEventListener("geoleaf:map:ready", onMapReady);
             }
             _loadingToast = null;
-            _pendingProfileToastDetail = null;
             if (_registeredRenderer) {
                 notifyPrimitive.unregisterRenderer(_registeredRenderer);
                 _registeredRenderer = null;

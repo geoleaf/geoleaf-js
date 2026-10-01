@@ -108,10 +108,17 @@ what becomes of the entries set aside are the core's
 
 ### Image lifecycle
 
-1. User selects image → validated (type, size)
-2. If offline → stored as base64 in IndexedDB with `pending` status
-3. When online → uploaded to configured endpoint, status → `synced`
-4. Compression applied before storage (configurable quality, default 0.8)
+The photos of a form belong to the editor plugin (`@geoleaf-plugins/editor`) and to the form
+library it embeds; this plugin shows nothing of them. What becomes of one, in the core's store:
+
+1. The form validates the file (type, size) and compresses it when it is over the field's limit.
+2. A photo that cannot be uploaded at once is kept in the browser database as a **Blob**, flagged
+   _not uploaded_ (`GeoLeaf.Storage.DB.storeImageLocally`). The feature's attribute holds an
+   opaque token, not the bytes: a photo never travels inside the feature's own write.
+3. The editor retries what is pending (`getPendingImages`), uploads it to the endpoint the field
+   declares, and flags it uploaded with the URL the server gave it
+   (`updateImageUploadStatus(id, { uploaded: true, url })`).
+4. Uploaded copies are then purged (`cleanUploadedImages`).
 
 ---
 

@@ -219,6 +219,42 @@ describe("applyState", () => {
         }
     });
 
+    test("no theme in the URL, and a profile that never applies one: the deferred layers still apply after app:ready", () => {
+        // A profile that declares no `themes` never emits `geoleaf:theme:applied`. The
+        // layers and the filter of the URL waited for it, and were lost without a word.
+        vi.useFakeTimers();
+        try {
+            const map = makeMap();
+            applyState({ lat: 48, lng: 2, zoom: 10, layers: ["l-no-theme"] }, map);
+
+            document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+            // One macrotask later: what mounts ON app:ready is up by then.
+            expect(mockSetVisibility).not.toHaveBeenCalled();
+            vi.advanceTimersByTime(1);
+            expect(mockSetVisibility).toHaveBeenCalledWith("l-no-theme", false, "user");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test("no theme in the URL: theme:applied then app:ready applies ONCE", () => {
+        vi.useFakeTimers();
+        try {
+            const map = makeMap();
+            applyState({ lat: 48, lng: 2, zoom: 10, layers: ["l-once-more"] }, map);
+
+            // The usual order: the reveal dispatches app:ready from a listener of theme:applied.
+            document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+            document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+            vi.advanceTimersByTime(5000);
+            // And a later theme switch does not replay the URL either.
+            document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+            expect(mockSetVisibility).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     test("hides layers on geoleaf:theme:applied (no theme change)", () => {
         const map = makeMap();
         applyState({ lat: 48, lng: 2, zoom: 10, layers: ["layer-hidden"] }, map);

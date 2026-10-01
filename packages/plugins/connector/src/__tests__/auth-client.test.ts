@@ -86,6 +86,7 @@ describe("AuthClient.login", () => {
                 ok: true,
                 status: 200,
                 json: () => Promise.reject(new SyntaxError("unexpected token")),
+                text: () => Promise.resolve("{ not json"),
             })
         );
         await expect(AuthClient.login(ENDPOINT, "u", "p")).rejects.toThrow(AuthError);
@@ -101,6 +102,37 @@ describe("AuthClient.login", () => {
         await expect(AuthClient.login(ENDPOINT, "u", "p")).rejects.toThrow(AuthError);
     });
 
+    it.each([
+        ["an expiresIn of zero", { token: TOKEN, expiresIn: 0 }],
+        ["a negative expiresIn", { token: TOKEN, expiresIn: -60 }],
+        ["a token that is not a string", { token: 12345, expiresIn: 3600 }],
+    ])(
+        "refuses %s — it would be stored already expired, or unusable",
+        async (_label: string, body: unknown) => {
+            // The renewal refuses these; the sign-in accepted them, and saved the session as is.
+            mockFetch(200, body);
+            await expect(AuthClient.login(ENDPOINT, "u", "p")).rejects.toThrow(AuthError);
+        }
+    );
+
+    it("a body that never ends is bounded by the exchange's time budget", async () => {
+        // `fetchWithTimeout` stops its clock when the headers arrive: a body that stalled
+        // after them left the login window waiting for as long as the connection stayed open.
+        vi.useFakeTimers();
+        try {
+            mockBody(() => new Promise<string>(() => undefined));
+            let outcome = "pending";
+            AuthClient.login(ENDPOINT, "u", "p").then(
+                () => (outcome = "resolved"),
+                (error: Error) => (outcome = error.message)
+            );
+            await vi.advanceTimersByTimeAsync(15000);
+            expect(outcome).toBe("Network unavailable");
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("throws AuthError('Network unavailable') when fetch rejects", async () => {
         mockFetch(0, {}, new TypeError("Failed to fetch"));
         await expect(AuthClient.login(ENDPOINT, "u", "p")).rejects.toThrow("Network unavailable");
@@ -111,6 +143,7 @@ describe("AuthClient.login", () => {
             ok: true,
             status: 200,
             json: () => Promise.resolve(VALID_RESPONSE),
+            text: () => Promise.resolve(JSON.stringify(VALID_RESPONSE)),
         });
         vi.stubGlobal("fetch", fetchMock);
         await AuthClient.login(ENDPOINT, "user", "pass");
@@ -130,6 +163,7 @@ describe("AuthClient.login", () => {
             ok: true,
             status: 200,
             json: () => Promise.resolve(VALID_RESPONSE),
+            text: () => Promise.resolve(JSON.stringify(VALID_RESPONSE)),
         });
         vi.stubGlobal("fetch", fetchMock);
         await AuthClient.login(ENDPOINT, "user@example.com", "s3cr3t");

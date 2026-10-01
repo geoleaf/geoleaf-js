@@ -35,10 +35,10 @@
  *     declaration decorative.
  *
  * And it is indeed `peerDependencies` that draws the line, not `dependencies`: the
- * historical witness `gtfs-realtime-bindings` is a **`dependencies`** of
- * `realtime-layer`. A runtime dependency leaking as a bare specifier is exactly the
- * defect; a pair declared as `peer` is the contract. The rule would not have let the
- * witness through.
+ * historical witness `gtfs-realtime-bindings` was then a **`dependencies`** of
+ * `realtime-layer` (it is a `devDependencies` today — the package bundles it). A
+ * dependency leaking as a bare specifier is exactly the defect; a pair declared as
+ * `peer` is the contract. The rule would not have let the witness through.
  *
  * ## The three rules
  *

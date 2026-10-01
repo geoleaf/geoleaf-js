@@ -41,7 +41,7 @@ const TITLE_HEIGHT_MM = 14;
  */
 const LEGEND_HEIGHT_MM = 24;
 
-/** Footer band height (mm) when a footer (attribution + description) is present. */
+/** Footer band height (mm) when a footer (basemap credit, description) is present. */
 const FOOTER_HEIGHT_MM = 10;
 
 /**

@@ -30,6 +30,9 @@ interface FeatureIdentity {
     properties?: Record<string, unknown>;
 }
 
+/** Prefix of the ids minted for features that carry no natural identifier. */
+const SYNTHETIC_PREFIX = "__gl_row_";
+
 /** Candidate id-bearing property names, tried in order after the GeoJSON `id`. */
 const _FEATURE_ID_PROPS = ["id", "fid", "osm_id", "OBJECTID", "SITE_ID", "code", "IN1"];
 
@@ -55,10 +58,36 @@ export function _str(v: unknown): string {
 export function resolveFeatureId(feature: FeatureIdentity, syntheticIndex: number): string {
     if (feature.id != null && feature.id !== "") return String(feature.id);
     const p = feature.properties;
-    if (!p) return "__gl_row_" + syntheticIndex;
+    if (!p) return SYNTHETIC_PREFIX + syntheticIndex;
     for (const key of _FEATURE_ID_PROPS) {
         const v = p[key];
         if (v != null && v !== "") return _str(v);
     }
-    return "__gl_row_" + syntheticIndex;
+    return SYNTHETIC_PREFIX + syntheticIndex;
+}
+
+/**
+ * Mints the identity of every feature of a layer, in LOAD order — the ONE numbering.
+ *
+ * ⚠️ The synthetic index is the **count of synthetic ids handed out so far**, not the array
+ * index: a layer mixing identified and unidentified features would otherwise skip numbers. The
+ * table's model and the exports both call this function, so a feature cannot be named one way
+ * in the table and another in an exported file — the exports used to pass the array index.
+ *
+ * 🛑 It numbers a LAYER, from its first feature. Called on a subset — a selection — it would
+ * start again at zero and hand out names that belong to other features: a subset is exported
+ * with the identifiers its features already have.
+ *
+ * @param features - The layer's features, in load order.
+ * @returns One id per feature, positionally aligned with `features`.
+ */
+export function mintFeatureIds(features: readonly FeatureIdentity[]): string[] {
+    const ids: string[] = [];
+    let synthetic = 0;
+    for (const feature of features) {
+        const id = resolveFeatureId(feature, synthetic);
+        if (id.startsWith(SYNTHETIC_PREFIX)) synthetic++;
+        ids.push(id);
+    }
+    return ids;
 }

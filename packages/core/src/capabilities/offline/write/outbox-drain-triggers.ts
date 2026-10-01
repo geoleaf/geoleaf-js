@@ -69,7 +69,18 @@ const DRAIN_POLL_INTERVAL_MS = 60_000;
 const MIN_DRAIN_INTERVAL_MS = 5_000;
 
 /** What asked for a drain — logged, and useful when reading a trace after a tour. */
-type DrainCause = "storageReady" | "online" | "visible" | "poll" | "write";
+type DrainCause =
+    "storageReady" | "online" | "visible" | "poll" | "write" | "banner" | "cache-modal";
+
+/**
+ * The causes a person pressed: the sync strip's "send now" and the offline window's. They pass
+ * the dead-session pause — see {@link _authHalted}.
+ *
+ * ⚠️ A pass sent on a session that is still dead stops at its first 401 and sets that capture
+ * aside as `authRequired`, like any other: one per press, where the automatic triggers would
+ * cost one per minute. Signing back in requeues them.
+ */
+const MANUAL_CAUSES: ReadonlySet<DrainCause> = new Set(["banner", "cache-modal"]);
 
 /** Collaborators the tests replace; production passes none. */
 interface DrainTriggerDeps {
@@ -161,8 +172,9 @@ function _outbox(): { countDue?(now: number): Promise<number> } | null {
  */
 export async function requestDrain(cause: DrainCause): Promise<void> {
     // The arming pass is the session's first: a new page has no halt to respect, and it is
-    // what empties a queue left by a previous one.
-    if (_authHalted && cause !== "storageReady") {
+    // what empties a queue left by a previous one. A manual press is the operator saying the
+    // session is back: it goes too.
+    if (_authHalted && cause !== "storageReady" && !MANUAL_CAUSES.has(cause)) {
         Log.debug(`[Offline.Drain] « ${cause} » ignoré — session à rétablir.`);
         return;
     }

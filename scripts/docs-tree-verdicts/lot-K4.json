@@ -370,6 +370,20 @@
             "description": "Tranche de synchronisation de l'UI : sélecteur de style, légende, cadrage sur les bornes et remontée de progression à l'écran de chargement",
             "confidence": "haute",
             "rationale": "204 LOC, 1 importeur (globals.ui.ts). Seule arête kernel/ → capabilities/ du lot (LegendContract, l.13) : elle vise une membrane runtime dont l'en-tête cible documente le choix (« Kept out of contracts/, which is a pure type surface »), et le lot C5 traite déjà ce fichier-là en renommant legend-contract.ts → legend-seam.ts — rien à faire ici (E3 porte sur le symbole partagé)"
+        },
+        "packages/core/src/kernel/themes/declares-no-themes.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Dit si le profil actif est un profil modulaire sans bloc `themes` — la question que les deux appelants du chargeur de thèmes posent avant de le consulter",
+            "confidence": "haute",
+            "rationale": "2 importeurs : `app/boot-modules/theme-engine.module.ts` et, par le baril, `capabilities/theme-selector`. Le prédicat était privé du premier ; le second redemandait `themes.json` faute de pouvoir le poser. Hors de `theme-loader.ts` pour deux raisons : la branche héritée du chargeur est un contrat documenté qui reste intact, et quatre suites doublent ce module entier — un export de plus les aurait toutes cassées"
         }
     }
 }

@@ -39,6 +39,7 @@ import { createComposedCanvas, registerSlot as _registerSlot } from "./layout-co
 import { registerExporter as _registerExporter, getExporter } from "./format-registry.js";
 import { downloadBlob } from "@geoleaf/host-runtime";
 import { getPrintConfig } from "./config.js";
+import { readBasemapCredit } from "./basemap-credit.js";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -85,7 +86,8 @@ async function _capture(opts: ExportOptions): Promise<{
         includeLegend: flags.includeLegend,
         includeScale: flags.includeScale,
         includeNorthArrow: flags.includeNorthArrow,
-        includeFooter: !!(opts.description ?? "").trim(),
+        // A credited basemap reserves the footer by itself: the credit is printed there.
+        includeFooter: !!(opts.description ?? "").trim() || !!readBasemapCredit(),
     });
     const targetPx = computeTargetPixels(zones, dpi);
 

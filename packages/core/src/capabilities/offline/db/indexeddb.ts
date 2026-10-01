@@ -21,6 +21,7 @@ import { DBModulesRegistry } from "./db-modules-registry.js";
 import { clearPullMarks, readPullState } from "../report/pull-state.js";
 import { presentRecordFeature, type PreservingPutTally } from "./features.js";
 import { mergeIdentityTwins } from "./identity-twins.js";
+import { reflagLocalImages } from "./local-images-v3.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 
@@ -425,48 +426,13 @@ const StorageDB = {
             Log.info("[StorageDB] Created 'conflicts' object store (v6)");
         }
 
-        // v3 — rewrite `local_images.uploaded` from boolean to 0/1.
-        //
-        // Booleans are not valid IndexedDB keys, so every record written by v2 stayed OUT
-        // of the `uploaded` index and `getPendingImages()` rejected with DataError: queued
-        // images were unreachable, never uploaded, and never cleaned (backlog B.6).
-        // Rewriting the value is what puts the records into the index — the index itself
-        // is unchanged and needs no rebuild.
+        // v3 — rewrite `local_images.uploaded` from boolean to 0/1 (`local-images-v3.ts`).
         //
         // Guarded on oldVersion so a fresh database (created just above, already 0/1) does
         // not pay for a pointless cursor pass.
         if (event.oldVersion > 0 && event.oldVersion < 3) {
             const tx = (event.target as IDBOpenDBRequest).transaction;
-            if (tx && db.objectStoreNames.contains("local_images")) {
-                let migrated = 0;
-                const cursorRequest = tx.objectStore("local_images").openCursor();
-                cursorRequest.onsuccess = () => {
-                    const cursor = cursorRequest.result;
-                    if (!cursor) {
-                        if (migrated > 0) {
-                            Log.info(
-                                `[StorageDB] v3 migration: ${migrated} local image(s) re-flagged 0/1 and indexed`
-                            );
-                        }
-                        return;
-                    }
-                    const record = cursor.value as { uploaded?: unknown };
-                    if (typeof record.uploaded !== "number") {
-                        record.uploaded = record.uploaded ? 1 : 0;
-                        cursor.update(record);
-                        migrated++;
-                    }
-                    cursor.continue();
-                };
-                // Never fail the upgrade over the migration: a rejected versionchange
-                // leaves the whole database unopenable, which is far worse than images
-                // that stay invisible until the next write.
-                cursorRequest.onerror = () => {
-                    Log.warn(
-                        `[StorageDB] v3 migration could not read local_images: ${cursorRequest.error}`
-                    );
-                };
-            }
+            if (tx && db.objectStoreNames.contains("local_images")) reflagLocalImages(tx);
         }
 
         // v7 — merge the twin records the identity defect left (until 3.4.0). Only a base that

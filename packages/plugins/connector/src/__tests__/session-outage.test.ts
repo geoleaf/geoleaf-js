@@ -151,6 +151,33 @@ describe("une session sur un 401 — ce qui l'efface, et ce qui ne doit pas", ()
         }
     );
 
+    it("🛑 un renouvellement refusé n'est demandé qu'UNE fois — le refus est retenu tant que le jeton refusé est stocké", async () => {
+        // An expired token: `configure()` asks for the renewal and learns the refusal. It used
+        // to be forgotten at once — the read before the request asked again, and the 401 path a
+        // third time, before the session was declared dead.
+        await mount("401", { token: STORED, expiresAt: Date.now() - HOUR });
+        expect(state.renewals).toBe(1);
+
+        const response = await fetch(`${BASE}/data/p.json`);
+
+        expect(response.status).toBe(401);
+        expect(state.renewals).toBe(1);
+        expect(await store.load(BASE)).toBeNull();
+        expect(events).toContain("geoleaf:connector:auth-error");
+    });
+
+    it("contre-épreuve : un jeton NEUF fait oublier le refus — son renouvellement est demandé", async () => {
+        await mount("401", { token: STORED, expiresAt: Date.now() - HOUR });
+        // A sign-in stored another token; expired here so that its renewal is the first thing asked.
+        await store.save(BASE, FRESH, Date.now() - HOUR);
+        state.renewal = "renewed";
+
+        const response = await fetch(`${BASE}/data/p.json`);
+
+        expect(state.renewals).toBe(2);
+        expect(response.status).toBe(200);
+    });
+
     it("renouvelé : la requête est rejouée avec le jeton neuf", async () => {
         await mount("renewed");
 

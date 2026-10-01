@@ -18,6 +18,7 @@
 
 import type { ComposeSlot, EmpriseBbox, PageZones, PrintableAnnotation, Rect } from "./types.js";
 import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { readBasemapCredit } from "./basemap-credit.js";
 import { drawScaleOverlay } from "./overlays/scale-overlay.js";
 import { drawNorthArrow } from "./overlays/north-arrow.js";
 import { drawLegendInline } from "./overlays/legend-inline.js";
@@ -50,7 +51,7 @@ export function registerSlot(slot: ComposeSlot): void {
 export interface ComposeOptions {
     /** Page title (plain text, escaped before rendering). */
     title: string;
-    /** Optional description shown in the footer area. */
+    /** Optional description shown in the footer area, after the basemap credit. */
     description: string;
     /** Locked scale denominator (e.g. 10000 for 1:10 000). */
     scaleDenominator: number;
@@ -162,18 +163,14 @@ function _drawTitleZone(
     ctx.restore();
 }
 
-/** Draws the footer: attribution + optional description. */
+/** Draws the footer: the credit of the active basemap, then the optional description. */
 function _drawFooterZone(
     ctx: CanvasRenderingContext2D,
     rect: { x: number; y: number; widthPx: number; heightPx: number },
     description: string,
     dpi: number
 ): void {
-    const attribution: string =
-        (
-            getGeoLeaf()?.Core?.getMap?.() as { getAttributionText?(): string } | undefined
-        )?.getAttributionText?.() ?? "";
-    const text = [attribution, description].filter(Boolean).join(" — ");
+    const text = [readBasemapCredit(), description].filter(Boolean).join(" — ");
     if (!text) return;
 
     const fontSize = Math.round(Math.max(7, 2 * (dpi / 25.4)));

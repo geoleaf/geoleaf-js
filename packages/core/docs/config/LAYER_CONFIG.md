@@ -84,6 +84,8 @@ See [schema/README.md](../schema/README.md) for the formal JSON Schema documenta
 
 ## Example Configuration
 
+<!-- geoleaf:docs:schema layer-config -->
+
 ```json
 {
     "id": "villes_principales",

@@ -1173,6 +1173,13 @@ const STEPS = [
         name: "Fetch de production annulables (NF, cliquet)",
         run: ["node", "scripts/check-naked-fetch.cjs"],
     },
+    // NMA — the calls to `getNativeMap()` outside the map adapter are counted (ratchet,
+    // 52 frozen at laying): the door ADR-01 leaves open stays open, but a new call through
+    // it is a decision, not a drift. Seen red both ways — one call added, one removed.
+    {
+        name: "Accès natif à la carte compté (NMA, cliquet)",
+        run: ["node", "scripts/check-native-map-access.cjs"],
+    },
     // LI — every registry entry of the lock carries an integrity hash (ratchet, frozen at laying).
     {
         name: "Intégrité du lock (LI, cliquet)",

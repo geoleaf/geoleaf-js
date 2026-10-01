@@ -376,9 +376,8 @@ test.describe("10-lifecycle — create → destroy → recreate", () => {
         // pending: the window where it mounted its control on the destroyed map. Measured in
         // that window, the uncaught error came from the legend (stack decoded by source map).
         // ⚠️ NOT inside the listener itself: a destroy there runs BEFORE the capabilities'
-        // own app:ready listeners, which then mount on the destroyed map — the scale control
-        // does, measured. That is the wider class of the lifecycle backlog (the capabilities'
-        // teardowns that `Core.destroy()` never reaches), not the window this test pins.
+        // own app:ready listeners. That is another window — the scale control mounted on the
+        // destroyed map there, measured — and the next test pins it.
         await page.addInitScript(() => {
             document.addEventListener(
                 "geoleaf:app:ready",
@@ -398,6 +397,38 @@ test.describe("10-lifecycle — create → destroy → recreate", () => {
             { timeout: MAP_TIMEOUT }
         );
         // Long enough for every debounced rebuild to have fired.
+        await page.waitForTimeout(1500);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
+
+    // The case the test above leaves out on purpose, and the one an integrator reaches: the
+    // destroy runs INSIDE an app:ready listener laid before the capabilities' own. Their
+    // listeners are still to run in that same dispatch — and each one mounted on the map that
+    // had just been destroyed: "map is not ready", uncaught on the page.
+    test("destroy INSIDE an app:ready listener: the capabilities still to mount are disarmed", async ({
+        page,
+    }) => {
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        // An init script runs before the application's modules: this listener is the first one
+        // on the event, so it runs before every capability's.
+        await page.addInitScript(() => {
+            document.addEventListener(
+                "geoleaf:app:ready",
+                () => {
+                    const G = /** @type {any} */ (window).GeoLeaf;
+                    G.Core.destroy(G.Core.listMaps()[0]);
+                },
+                { once: true }
+            );
+        });
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+        await page.waitForFunction(
+            () => /** @type {any} */ (window).GeoLeaf?.Core?.listMaps?.().length === 0,
+            null,
+            { timeout: MAP_TIMEOUT }
+        );
+        // Long enough for every late mount and debounced rebuild to have fired.
         await page.waitForTimeout(1500);
         expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
     });

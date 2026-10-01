@@ -100,11 +100,27 @@ and worker loads go without a token until it answers again.
 
 ### `GeoLeaf.Connector.openLoginModal()`
 
-Opens the login modal manually. Requires a prior `configure()` call carrying `auth`.
+Opens the login modal manually. Requires a prior `configure()` call carrying `auth`. There is one
+login window at a time: called while it is already on screen, it joins that window and its
+promise settles with it.
 
 ```javascript
 GeoLeaf.Connector.openLoginModal();
 ```
+
+### `GeoLeaf.Connector.logout()`
+
+Ends the session: the stored token is erased, from memory and from the browser's database, and
+`geoleaf:connector:signed-out` is fired. A renewal waiting to be retried is disarmed first.
+
+```javascript
+await GeoLeaf.Connector.logout();
+```
+
+It calls no route on the server and erases nothing else: edits waiting to be sent, photos and data
+prepared for offline use stay on the device. In `getToken` mode it does nothing — the host
+application holds the token, and ends its session itself. It never throws, and does nothing before
+`configure()`.
 
 ### `createConnector(config)` — ESM named export
 
@@ -128,14 +144,15 @@ and `configure()` on the same API share the stored token.
 
 ## DOM events
 
-| Event                                         | Detail                       | Fired when                  | Cancelable |
-| --------------------------------------------- | ---------------------------- | --------------------------- | ---------- |
-| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded       | No         |
-| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic renewal succeeded | No         |
-| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | The session ended: refused  | No         |
-| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked   | No         |
-| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked | **Yes**    |
-| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked   | **Yes**    |
+| Event                                         | Detail                       | Fired when                   | Cancelable |
+| --------------------------------------------- | ---------------------------- | ---------------------------- | ---------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded        | No         |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic renewal succeeded  | No         |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | The session ended: refused   | No         |
+| `geoleaf:connector:signed-out`                | `{ baseUrl }`                | `logout()` ended the session | No         |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked    | No         |
+| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked  | **Yes**    |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked    | **Yes**    |
 
 The `cancelable` events let the host application intercept the default behaviour through
 `preventDefault()`:

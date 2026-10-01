@@ -4,14 +4,18 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1a7608c60
-date: 26 septembre 2026
+verifie_contre: c8b7911ec
+date: 1er octobre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/theme-selector/` ·
 **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 01/10/2026 couvre.** `c8b7911ec` touche `theme-selector.ts` : un profil
+> modulaire sans `themes` est reconnu avant tout chargement, et `geoleaf:themes:ready` est émis
+> sans `error` (§Configuration, l'avertissement réécrit avec son commit). Relu et inchangé : le reste.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -158,10 +162,20 @@ contenu de la barre vient de la clé `config` de `themes.json`, chargée par le 
 Le seuil de compacité a un défaut de code (`PRIMARY_COMPACT_THRESHOLD`) qui s'applique quand la clé
 est absente. Les autres n'en ont pas ici : elles viennent validées par le loader du kernel.
 
-⚠️ **La barre n'a pas besoin d'une garde « aucun thème déclaré ».** Sans `themes.json` exploitable,
-le chargement **rejette**, `_createUI` n'est jamais atteint, et l'événement de fin est tout de même
-émis avec son `error`. C'est ce qui rend l'exigence « aucun thème → pas de barre, mais les données
-s'affichent » vraie **par le chemin d'erreur**, pas par un test de longueur de liste.
+⚠️ **Deux chemins rendent « aucun thème → pas de barre, mais les données s'affichent », et ils ne
+se valent pas.**
+
+- **Un profil modulaire sans `themes`** est reconnu AVANT tout chargement (`declaresNoThemes`,
+  du baril `kernel/themes`) : rien n'est demandé, `_createUI` n'est pas atteint, et l'événement de
+  fin est émis **sans** `error` — rien n'a échoué. `init()` se résout. Jusqu'au 01/10/2026 la
+  barre s'en remettait au chemin d'erreur pour ce profil aussi : le chargeur retombait sur le
+  `themes.json` hérité, qui ne peut que rendre 404 — deux requêtes et une erreur de console à
+  chaque chargement de page, mesurées.
+- **Tout autre profil sans `themes.json` exploitable** (profil hérité, fichier illisible) passe
+  par le chemin d'erreur : le chargement **rejette**, `_createUI` n'est jamais atteint, et
+  l'événement de fin est tout de même émis, avec son `error`.
+
+Dans les deux cas le sélecteur n'est pas « initialisé » : `setTheme()` rejette.
 
 ---
 

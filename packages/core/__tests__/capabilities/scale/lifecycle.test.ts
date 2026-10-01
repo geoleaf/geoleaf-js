@@ -15,6 +15,7 @@ vi.mock("../../../src/capabilities/scale/scale-control.js", () => ({
 const { ScaleLifecycle } = await import("../../../src/capabilities/scale/lifecycle.js");
 const { ScaleControl } = await import("../../../src/capabilities/scale/scale-control.js");
 const { markAppReady, resetAppReady } = await import("../../../src/kernel/shared/app-ready.js");
+const { runLifecycleTeardowns } = await import("../../../src/kernel/shared/lifecycle.js");
 
 const MAP = { id: "map" } as never;
 const appReady = (): void => {
@@ -48,5 +49,27 @@ describe("ScaleLifecycle", () => {
         appReady();
         expect(ScaleControl.init).not.toHaveBeenCalled();
         expect(ScaleControl.destroy).toHaveBeenCalled();
+    });
+
+    // `Core.destroy()` runs the lifecycle seam and never the module registry, so `_reset()`
+    // did not run on it. A destroy landing before `geoleaf:app:ready` — from a listener of that
+    // very event laid before this one — let the mount run on the destroyed map: "map is not
+    // ready", uncaught on the page.
+    it("🛑 the lifecycle seam disarms the mount: an app:ready after a destroy mounts nothing", () => {
+        ScaleLifecycle.init(MAP);
+        runLifecycleTeardowns();
+        appReady();
+        expect(ScaleControl.init).not.toHaveBeenCalled();
+        // It DISARMS and nothing more: the adapter is already destroyed when the seam runs,
+        // and the control's own teardown unsubscribes from it, which throws.
+        expect(ScaleControl.destroy).not.toHaveBeenCalled();
+    });
+
+    it("after the seam, a new init arms the mount again", () => {
+        ScaleLifecycle.init(MAP);
+        runLifecycleTeardowns();
+        ScaleLifecycle.init(MAP);
+        appReady();
+        expect(ScaleControl.init).toHaveBeenCalledTimes(1);
     });
 });

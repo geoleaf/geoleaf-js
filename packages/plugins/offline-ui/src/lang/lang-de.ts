@@ -22,7 +22,8 @@ const langStorageDe: StorageLangDict = {
     "storage.confirm.clearPois.message": "Lokalen Cache bereits synchronisierter Objekte leeren?",
     "storage.confirm.clearPois.detail":
         "{cached} zwischengespeicherte Objekte werden gelöscht; {pending} ausstehende Erfassung(en) werden BEIBEHALTEN. Gelöschte Objekte können erneut geladen werden.",
-    "storage.confirm.deleteCache.message": "Offline-Cache dieses Profils löschen?",
+    "storage.confirm.deleteCache.message":
+        "Offline-Cache dieses Profils löschen? Die Kartenkacheln im Cache, die sich alle Profile teilen, werden ebenfalls gelöscht.",
     "storage.confirm.stopDownload.message": "Laufenden Download abbrechen?",
     // Notifications
     "storage.notif.export.success": "JSON-Export erfolgreich",

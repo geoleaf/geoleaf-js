@@ -18,6 +18,7 @@
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { awaitSettledCamera } from "./helpers/camera.js";
+import { armAppReadyWitness, waitAppReadyWitness } from "./helpers/boot.js";
 
 test.use({ baseURL: baseURL("core") }); // deploy-core (profil tourism)
 
@@ -374,6 +375,46 @@ test.describe("cfg-c3 — basemaps/themes/taxonomy (état map/DOM réel)", () =>
         });
         expect(loaded.length).toBeGreaterThan(0);
         expect(loaded.filter((/** @type {string} */ id) => !theme.includes(id))).toEqual([]);
+    });
+
+    // ── themes: a profile that declares none asks for no themes file ─────────────
+    test("themes: un profil sans `themes` ne demande aucun `themes.json`", async ({
+        page,
+        context,
+    }) => {
+        // A modular profile carries its themes IN the bundle. Without them the theme selector,
+        // mounted on app:ready, still asked the loader — which fell back to the legacy
+        // `profiles/<id>/themes.json`: a 404, retried one second later, on every page load.
+        let served = 0;
+        await context.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+            const bundle = await (await route.fetch()).json();
+            delete bundle.themes;
+            served += 1;
+            await route.fulfill({ json: bundle });
+        });
+        // ⚠️ The DECLARATION goes too. A profile that still names `Files.themesFile` while its
+        // bundle carries no themes is not a profile without themes: it is one with a missing
+        // resource, and the boot holds on its « missing resources » screen — measured.
+        await context.route("**/profiles/tourism/profile.json**", async (route) => {
+            const profile = await (await route.fetch()).json();
+            if (profile.Files) delete profile.Files.themesFile;
+            await route.fulfill({ json: profile });
+        });
+        /** @type {string[]} */
+        const asked = [];
+        page.on("request", (request) => {
+            if (/\/themes\.json(\?|$)/.test(request.url())) asked.push(request.url());
+        });
+
+        await armAppReadyWitness(page);
+        await bootMapStyleReady(page);
+        // The selector mounts on app:ready; the retry of a failed load came one second later.
+        await waitAppReadyWitness(page);
+        await page.waitForTimeout(1500);
+
+        // The instrument: the page did boot on the profile without themes.
+        expect(served).toBeGreaterThan(0);
+        expect(asked).toEqual([]);
     });
 
     // ── themes: default theme applied + primary switch (DOM state) ──────────────

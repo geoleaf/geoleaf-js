@@ -73,6 +73,20 @@
             "confidence": "haute",
             "rationale": "4 fichiers / 713 LOC, tous consommés par le seul layout-composer.ts — cohésion par consommateur (E1) satisfaite dans le bon sens, profondeur 5 sous packages/ (E7 : seuil de douleur à 6+)"
         },
+        "packages/plugins/print/src/basemap-credit.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Lit le crédit du fond de carte actif et le réduit à son texte, pour le pied de page de la planche",
+            "confidence": "haute",
+            "rationale": "3 importeurs (layout-composer.ts, modal-compose.ts, print-api.ts) : le dessin du pied de page et les deux sites qui RÉSERVENT sa bande doivent lire le même crédit, sans quoi la bande est réservée vide ou le crédit dessiné hors zone — d'où un module à part plutôt qu'une fonction privée du composeur"
+        },
         "packages/plugins/print/src/config.ts": {
             "kind": "file",
             "name": "ok",

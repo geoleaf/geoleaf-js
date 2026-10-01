@@ -4,14 +4,29 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3977a152b
-date: 28 septembre 2026
+verifie_contre: 6f2ad8f54
+date: 1er octobre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface
 
 **Type :** capacité in-core · **Code :** `packages/core/src/capabilities/offline/` ·
 **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 01/10/2026 couvre — quatre commits.** `6f2ad8f54` : la migration v3
+> des images sort d'`indexeddb.ts` (`db/local-images-v3.ts`) et ne peut plus faire avorter la
+> montée ; ses gardes sont partagées avec la réparation v7 (`db/upgrade-guards.ts`) — écrit dans
+> la section de la montée. `f4ad0a07f` : une saisie en
+> échec est tentée QUATRE fois (`MAX_REPLAY_ATTEMPTS`), le palier de 8 minutes est enfin attendu.
+> `08015cf6a` : une création acquittée par un tableau sans sa ligne est relue par son identité
+> cliente au lieu d'être déclarée synchronisée sans identité serveur. Les deux sont écrits dans
+> les sections concernées, avec leur commit. `089cfb6d2` touche
+> `write/outbox-drain-triggers.ts` : les deux causes manuelles — `banner`, le bouton du bandeau,
+> et `cache-modal`, celui de la fenêtre hors ligne — entrent dans `DrainCause` et passent la
+> pause qui suit un 401. « Un envoi demandé à la main n'est jamais retenu » n'était vrai que de
+> `Storage.pushOutbox()` ; ce l'est désormais de ces deux boutons. Sur une session toujours
+> morte, chaque appui écarte une saisie de plus en `authRequired`, que la reconnexion remet en
+> file. Relu et inchangé : le reste.
 
 > ⚠️ **Ce que l'estampille du 28/09/2026 couvre.** `3977a152b` ne touche de cette capacité que
 > trois `@example` : celui de `discardQuarantined` (`write/quarantine-api.ts`), qui listait par un
@@ -264,9 +279,13 @@ avorter la montée : une lecture ou une écriture qui échoue est journalisée E
 l'autre, laissé filer, fait avorter la transaction de montée, donc l'ouverture, et le moteur
 retombe sur un magasin sans persistance. La base s'ouvre, avec les jumeaux qu'elle n'a pas pu
 fusionner. Jusqu'à la revue d'avant publication, la phrase était vraie des intentions et fausse du
-code : les lectures journalisaient sans annuler. ⚠️ La migration v3 (`local_images`), qui ne
-tourne que pour une base d'avant la v3, promet la même chose dans un commentaire et ne la tient pas
-encore : son curseur journalise une erreur sans l'annuler.
+code : les lectures journalisaient sans annuler. La migration v3 (`local_images`,
+`db/local-images-v3.ts`), qui ne tourne que pour une base d'avant la v3, tient la même promesse
+depuis le 01/10/2026, par les mêmes deux gardes (`db/upgrade-guards.ts`) : la lecture du curseur et
+chaque réécriture sont épargnées, le gestionnaire de succès est gardé. Jusque-là son commentaire le
+promettait et son curseur journalisait une erreur sans l'annuler. ⚠️ Une exception à la
+réécriture ARRÊTE la migration sans faire avorter la montée : les images restantes restent hors
+de l'index jusqu'à leur prochaine écriture.
 
 ### La v6 : `conflicts`, et pourquoi sa clé EST son bornage (17/09/2026)
 
@@ -428,15 +447,21 @@ champ serait une seconde autorité d'ordre, c'est-à-dire la forme même de la c
 
 | Budget                                          | Où il vit                                | Ce qui se passe au bout                                                                              |
 | ----------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `MAX_REPLAY_ATTEMPTS` (**3**)                   | `write/push-engine.ts`, constante unique | l'entrée passe `quarantined` — **retirée du rejeu, jamais du store**, et **comptée** au résumé       |
+| `MAX_REPLAY_ATTEMPTS` (**4**)                   | `write/push-engine.ts`, constante unique | l'entrée passe `quarantined` — **retirée du rejeu, jamais du store**, et **comptée** au résumé       |
 | `RETRY_BACKOFF_BASE_MS` · `_FACTOR` · `_MAX_MS` | idem                                     | chaque échec écrit `nextAttemptAt` sur l'entrée ; le drain la **passe** tant qu'il n'est pas atteint |
 
-🛑 **LE BUDGET COMPTAIT DES GESTES, PAS DU TEMPS — corrigé le 02/09/2026.** Trois essais TOTAUX est
-un nombre défendable pour un réseau qui revient ; c'en est un absurde pour trois drains lancés dans
-la même minute. Or le drain se déclenche au retour du réseau **et** sur le bouton « Réessayer », et
+🛑 **LE BUDGET COMPTAIT DES GESTES, PAS DU TEMPS — corrigé le 02/09/2026.** Trois essais TOTAUX —
+le budget d'alors — est un nombre défendable pour un réseau qui revient ; c'en est un absurde pour
+trois drains lancés dans la même minute. Or le drain se déclenche au retour du réseau **et** sur le bouton « Réessayer », et
 `attempts` est persistant : trois clics d'opérateur pendant une fenêtre de maintenance suffisaient à
 écarter une saisie de terrain. Chaque échec écrit désormais une **date de prochaine tentative** sur
 l'entrée — 30 s, puis ×4 à chaque essai, plafonnée à 8 min.
+
+🛑 **ET LE TROISIÈME DÉLAI N'ÉTAIT JAMAIS ATTEINT — corrigé le 01/10/2026 (core 3.13.1).** Avec trois
+essais TOTAUX, le troisième échec ÉTAIT la mise de côté : seuls 30 s et 2 min se produisaient, le
+plafond de 8 min ne bornait rien, et un serveur indisponible deux minutes et demie mettait toute la
+file de côté, jusqu'à un geste. Arbitré par Mattieu le 30/09/2026 : **quatre** essais. Les trois
+délais sont attendus ; une saisie n'apparaît bloquée qu'après une dizaine de minutes d'échecs.
 
 ⚠️ **Le report vit sur l'ENTRÉE, jamais dans le transport.** `fetchBounded` ne réessaie
 délibérément pas (deux autorités de rejeu se compteraient l'une l'autre) ; attendre dans l'envoi
@@ -499,18 +524,20 @@ quatre sites se serait désynchronisé au premier cinquième chemin.
 
 _Gaté par `__tests__/capabilities/offline/push-engine.test.js` §①quater._
 
-| Réponse                               | Budget             | Motif au plafond                 | Rejouable par l'opérateur |
-| ------------------------------------- | ------------------ | -------------------------------- | ------------------------- |
-| réseau muet                           | consommé           | `retryBudgetExhausted`           | ✅                        |
-| 408, 429, 500, 502, 503, 504          | consommé           | `retryBudgetExhausted`           | ✅                        |
-| **501**                               | **court-circuité** | `notImplementedByServer`         | ✅                        |
-| **401**                               | **court-circuité** | **`authRequired`**               | ✅                        |
-| autres 4xx (400, 403, 405, 422…)      | consommé           | `rejectedByServer`               | ❌                        |
-| 404 sur `update`/`delete`             | court-circuité     | `deletedOnServer`                | ❌                        |
-| couche sans cible d'écriture          | court-circuité     | `layerNoLongerWritable`          | ✅                        |
-| **409 sur `create`, ligne retrouvée** | —                  | — (succès, identité réconciliée) | —                         |
-| **409 sur `create`, aucune ligne**    | consommé           | `rejectedByServer` (409)         | ❌                        |
-| **`200 []` sans filtre sur `update`** | court-circuité     | `deletedOnServer`                | ❌                        |
+| Réponse                                    | Budget             | Motif au plafond                          | Rejouable par l'opérateur |
+| ------------------------------------------ | ------------------ | ----------------------------------------- | ------------------------- |
+| réseau muet                                | consommé           | `retryBudgetExhausted`                    | ✅                        |
+| 408, 429, 500, 502, 503, 504               | consommé           | `retryBudgetExhausted`                    | ✅                        |
+| **501**                                    | **court-circuité** | `notImplementedByServer`                  | ✅                        |
+| **401**                                    | **court-circuité** | **`authRequired`**                        | ✅                        |
+| autres 4xx (400, 403, 405, 422…)           | consommé           | `rejectedByServer`                        | ❌                        |
+| 404 sur `update`/`delete`                  | court-circuité     | `deletedOnServer`                         | ❌                        |
+| couche sans cible d'écriture               | court-circuité     | `layerNoLongerWritable`                   | ✅                        |
+| **409 sur `create`, ligne retrouvée**      | —                  | — (succès, identité réconciliée)          | —                         |
+| **409 sur `create`, aucune ligne**         | consommé           | `rejectedByServer` (409)                  | ❌                        |
+| **`2xx []` sur `create`, ligne retrouvée** | —                  | — (succès, identité relue par `local_id`) | —                         |
+| **`2xx []` sur `create`, aucune ligne**    | consommé           | `rejectedByServer` (statut du 2xx)        | ❌                        |
+| **`200 []` sans filtre sur `update`**      | court-circuité     | `deletedOnServer`                         | ❌                        |
 
 #### Une session morte n'est pas un refus — et elle ARRÊTE le drain
 
@@ -656,7 +683,7 @@ l'entrée empilée : la correction était perdue des deux côtés. L'enregistrem
 réponse, et ce qui a changé entre-temps reste dû.
 
 🛑 **LE DIALECTE `rest` USAIT LE BUDGET D'UN TROU DU CORE.** Refusé par son nom mais rendu comme un
-échec ordinaire, il épuisait les trois essais puis tombait sous `retryBudgetExhausted` — « le
+échec ordinaire, il épuisait le budget d'essais puis tombait sous `retryBudgetExhausted` — « le
 serveur n'a jamais répondu », alors qu'aucune requête n'était partie. Le motif `dialectNotSupported`
 le dit, la mise à l'écart est immédiate, et le rejeu n'est accepté que si la couche ne déclare plus
 ce dialecte. Le défaut du schéma passe à `collection`.

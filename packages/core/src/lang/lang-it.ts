@@ -13,7 +13,6 @@ const lang_it: LangDict = {
     "toast.geoloc.error.position_unavailable": "Posizione non disponibile",
     "toast.geoloc.error.timeout": "Timeout geolocalizzazione",
     "toast.init.loading": "Caricamento dati in corso, attendere.",
-    "toast.profile.loaded": "{0} caricato",
     "toast.layer.truncated.known": "{0}: {1} entità visualizzate su {2} — il livello è troncato.",
     "toast.layer.truncated.unknown": "{0}: {1} entità visualizzate, il livello ne contiene altre.",
     "toast.theme.applied": 'Tema "{0}" caricato ({1} livelli visibili)',

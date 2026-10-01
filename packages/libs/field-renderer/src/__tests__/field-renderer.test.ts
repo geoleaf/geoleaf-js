@@ -864,6 +864,19 @@ describe("tagsComponent — interaction", () => {
         removeBtn.click();
         expect(onChange).toHaveBeenCalledWith(["beta"]);
     });
+
+    // The zone shows a text cursor over its whole box, but only the input line took the
+    // focus: at the finger, a tap beside the pills did nothing.
+    it("a tap on the zone itself gives the focus to its input", () => {
+        const el = tagsComponent.formRender(["alpha"], field(), () => {}, CTX);
+        document.body.appendChild(el);
+        const zone = el.querySelector<HTMLElement>(".gl-form-tags__wrap")!;
+        const input = el.querySelector<HTMLInputElement>("input")!;
+        expect(document.activeElement).not.toBe(input);
+        zone.click();
+        expect(document.activeElement).toBe(input);
+        el.remove();
+    });
 });
 
 describe("ratingComponent — star click onChange", () => {

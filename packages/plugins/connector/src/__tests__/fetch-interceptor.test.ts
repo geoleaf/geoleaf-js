@@ -266,11 +266,14 @@ describe("401 retry behavior", () => {
 
 describe("geoleaf:connector:auth-error on failed retry", () => {
     let interceptor: InterceptorModule;
+    /** The 401 the server answers with, on every call. */
+    let serverResponse: Response;
 
     beforeEach(async () => {
         vi.resetModules();
         // fetch returns 401 on every call
-        const fetchMock = vi.fn().mockResolvedValue(makeOkResponse(401));
+        serverResponse = makeOkResponse(401);
+        const fetchMock = vi.fn().mockResolvedValue(serverResponse);
         vi.stubGlobal("fetch", fetchMock);
         interceptor = await import("../fetch-interceptor.js");
     });
@@ -295,6 +298,14 @@ describe("geoleaf:connector:auth-error on failed retry", () => {
         expect(response.status).toBe(401);
         expect(events.length).toBeGreaterThan(0);
         expect(events[0].detail.baseUrl).toBe(BASE_URL);
+    });
+
+    it("a host with no token to give gets the SERVER's 401 back, not a synthetic one", async () => {
+        interceptor.install({ baseUrl: BASE_URL, getToken: () => null });
+
+        const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+        expect(response).toBe(serverResponse);
     });
 });
 
@@ -442,6 +453,28 @@ describe("mode jeton — un 401 tente le renouvellement AVANT d'effacer quoi que
         expect(store["declareSessionDead"]).not.toHaveBeenCalled();
         expect(events).toHaveLength(0);
     });
+
+    // A server's 401 carries what the caller needs to act on: a `WWW-Authenticate` challenge
+    // (RFC 6750), a body. A synthetic 401 replaced it in every branch that did not renew.
+    it.each([
+        { verdict: "refused", presented: TOKEN },
+        { verdict: "unavailable" },
+        { verdict: "superseded" },
+    ] as const)(
+        "🛑 un renouvellement « $verdict » rend le 401 DU SERVEUR, en-têtes compris",
+        async (outcome: Outcome) => {
+            const original = new Response("{}", {
+                status: 401,
+                headers: { "WWW-Authenticate": 'Bearer error="invalid_token"' },
+            });
+            await mount(outcome, async () => original);
+
+            const response = await globalThis.fetch(`${BASE_URL}/data.geojson`);
+
+            expect(response).toBe(original);
+            expect(response.headers.get("WWW-Authenticate")).toBe('Bearer error="invalid_token"');
+        }
+    );
 
     it("🛑 le point de renouvellement n'est PAS intercepté — sinon il s'attend lui-même", async () => {
         // `AuthClient.refresh` posts to `${endpoint}/refresh` through the GLOBAL

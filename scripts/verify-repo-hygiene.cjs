@@ -111,6 +111,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-slot-declarations.cjs",
     // NF — production fetches carry an abort path (decreasing ratchet).
     "check-naked-fetch.cjs",
+    "check-native-map-access.cjs",
     // LI — registry entries of package-lock.json carry an integrity hash (decreasing ratchet).
     "check-lock-integrity.cjs",
     // CCO — cross-package CSS couplings are declared (ownership convention).

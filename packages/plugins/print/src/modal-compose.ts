@@ -26,6 +26,7 @@ import {
     resolvePageDimensions,
 } from "./page-format.js";
 import type { ComposeOptions } from "./layout-composer.js";
+import { readBasemapCredit } from "./basemap-credit.js";
 import type { EmpriseBbox, PageOrientation, PageZones } from "./types.js";
 
 // ---------------------------------------------------------------------------
@@ -88,7 +89,8 @@ export function buildComposeArgs(inputs: ComposeInputs): ComposeArgs | null {
         // of their own — passing them here would shrink the map for nothing.
         includeScale: false,
         includeNorthArrow: false,
-        includeFooter: !!inputs.description.trim(),
+        // A credited basemap reserves the footer by itself: the credit is printed there.
+        includeFooter: !!inputs.description.trim() || !!readBasemapCredit(),
     };
 
     const zones = computeZones(inputs.format, inputs.orientation, zoneOpts);

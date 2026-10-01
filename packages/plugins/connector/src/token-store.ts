@@ -90,6 +90,16 @@ const _refreshPromise = new Map<string, Promise<RefreshOutcome>>();
  */
 const _pausedUntil = new Map<string, number>();
 
+/**
+ * The token whose renewal the server refused — remembered for as long as it is the one stored.
+ *
+ * A refusal is final for that token: asking again cannot change it. It used to be forgotten at
+ * once, so every reader of an expired session asked again — `configure()`, then the read before
+ * a request, then the 401 path of that request: three round trips before the session was
+ * declared dead. Storing or erasing a token forgets it ({@link _endOutage}); so does a reload.
+ */
+const _refusedToken = new Map<string, string>();
+
 /** Whether the current outage was reported — once per episode, not once per request. */
 const _outageReported = new Set<string>();
 
@@ -110,31 +120,45 @@ function _openDB(): Promise<IDBDatabase> {
     });
 }
 
+/**
+ * Runs one request against the store and settles with its result.
+ *
+ * The promise is AWAITED here, so a caller's `catch` sees a failed request and a
+ * `db.transaction()` that throws — a store missing from a database of the same version. The
+ * database is closed whatever happens: `close()` waits for the running transaction, so a write
+ * still commits, and a failure no longer leaves the connection open.
+ */
+async function _idbRequest<T>(
+    mode: IDBTransactionMode,
+    run: (store: IDBObjectStore) => IDBRequest<T>
+): Promise<T> {
+    const db = await _openDB();
+    try {
+        return await new Promise<T>((resolve, reject) => {
+            const req = run(db.transaction(STORE_NAME, mode).objectStore(STORE_NAME));
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error ?? new Error("IDB request failed"));
+        });
+    } finally {
+        db.close();
+    }
+}
+
 async function _idbGet(baseUrl: string): Promise<TokenRecord | null> {
     try {
-        const db = await _openDB();
-        return new Promise((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, "readonly");
-            const req = tx.objectStore(STORE_NAME).get(baseUrl);
-            req.onsuccess = () => resolve((req.result as TokenRecord) ?? null);
-            req.onerror = () => reject(req.error ?? new Error("IDB get failed"));
-            tx.oncomplete = () => db.close();
-        });
+        const record = await _idbRequest(
+            "readonly",
+            (store) => store.get(baseUrl) as IDBRequest<TokenRecord | undefined>
+        );
+        return record ?? null;
     } catch {
-        return null; // IDB unavailable — graceful degradation
+        return null; // IDB unavailable or unreadable — graceful degradation
     }
 }
 
 async function _idbPut(record: TokenRecord): Promise<void> {
     try {
-        const db = await _openDB();
-        await new Promise<void>((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const req = tx.objectStore(STORE_NAME).put(record);
-            req.onsuccess = () => resolve();
-            req.onerror = () => reject(req.error ?? new Error("IDB put failed"));
-            tx.oncomplete = () => db.close();
-        });
+        await _idbRequest("readwrite", (store) => store.put(record));
     } catch {
         // IDB unavailable — only RAM cache will be used
     }
@@ -142,14 +166,7 @@ async function _idbPut(record: TokenRecord): Promise<void> {
 
 async function _idbDelete(baseUrl: string): Promise<void> {
     try {
-        const db = await _openDB();
-        await new Promise<void>((resolve, reject) => {
-            const tx = db.transaction(STORE_NAME, "readwrite");
-            const req = tx.objectStore(STORE_NAME).delete(baseUrl);
-            req.onsuccess = () => resolve();
-            req.onerror = () => reject(req.error ?? new Error("IDB delete failed"));
-            tx.oncomplete = () => db.close();
-        });
+        await _idbRequest("readwrite", (store) => store.delete(baseUrl));
     } catch {
         // ignore
     }
@@ -157,10 +174,14 @@ async function _idbDelete(baseUrl: string): Promise<void> {
 
 // ─── Internal functions ───────────────────────────────────────────────────────
 
-/** A stored or erased token ends any outage in progress: the next renewal may go at once. */
+/**
+ * A stored or erased token ends any outage in progress, and any refusal remembered: the next
+ * renewal may go at once.
+ */
 function _endOutage(baseUrl: string): void {
     _pausedUntil.delete(baseUrl);
     _outageReported.delete(baseUrl);
+    _refusedToken.delete(baseUrl);
 }
 
 /** Persists a token to IDB and feeds the RAM cache. expiresAt = timestamp ms. */
@@ -319,7 +340,23 @@ function _reportOutage(baseUrl: string): void {
     );
 }
 
+/**
+ * The refusal already received for the token stored now, or `null` — answered without a round
+ * trip (see {@link _refusedToken}).
+ */
+async function _knownRefusal(baseUrl: string): Promise<RefreshOutcome | null> {
+    const refused = _refusedToken.get(baseUrl);
+    if (refused === undefined) return null;
+    if ((await _storedToken(baseUrl)) === refused)
+        return { verdict: "refused", presented: refused };
+    // Another token was stored by a path that does not go through `save` — nothing known of it.
+    _refusedToken.delete(baseUrl);
+    return null;
+}
+
 async function _doRefresh(baseUrl: string, renew: RefreshFn | null): Promise<RefreshOutcome> {
+    const known = await _knownRefusal(baseUrl);
+    if (known) return known;
     if (!renew) {
         // Nothing can renew this session. A stored token is then a refused one: the login
         // window must reopen, rather than a session nothing will ever bring back.
@@ -337,7 +374,8 @@ async function _doRefresh(baseUrl: string, renew: RefreshFn | null): Promise<Ref
 
 /**
  * Anti-concurrent refresh — callers join the in-flight promise; after an attempt that did not
- * conclude, no new one before the pause ends (see {@link _pausedUntil}).
+ * conclude, no new one before the pause ends (see {@link _pausedUntil}); after a refusal, no new
+ * one for that token at all (see {@link _refusedToken}).
  *
  * ⚠️ The in-flight promise is joined whoever started it: the session is the `baseUrl`'s, and a
  * renewal of it concerns every reader of that session.
@@ -357,6 +395,8 @@ function _refreshToken(
             if (outcome.verdict === "unavailable") {
                 _pausedUntil.set(baseUrl, Date.now() + EXCHANGE_TIMEOUT_MS);
                 _reportOutage(baseUrl);
+            } else if (outcome.verdict === "refused") {
+                _refusedToken.set(baseUrl, outcome.presented);
             }
             return outcome;
         })
@@ -466,6 +506,9 @@ async function getTokenAsync(
  * join the SAME in-flight promise — the anti-concurrency property must not be paid for
  * by the recovery path. The pause after an outage — or after a renewed token the server refused —
  * applies too, unless `bypassPause`.
+ *
+ * ⚠️ One case answers without a round trip, `bypassPause` or not: the token stored is the one
+ * whose renewal the server already refused. The refusal is returned again as it was.
  *
  * @param baseUrl - The API this token authenticates against.
  * @param options - `bypassPause`: try now even within the pause — for a change of state.

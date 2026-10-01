@@ -90,6 +90,41 @@ describe("adapters/maplibre-vector-tiles — buildVectorTileLayer (socle B.1)", 
         expect(ids.length).toBeGreaterThanOrEqual(2);
     });
 
+    it("mixed geometry → every sub-layer is confined to the geometries it can draw", () => {
+        // One source-layer holding points, lines and polygons: the engine does not check the
+        // geometry type when it fills a bucket, so an unconfined circle sub-layer draws the
+        // vertices of the lines and polygons, and an unconfined fill tries to fill the lines.
+        buildVectorTileLayer(map, registry, ensureSentinel, "rp", spec({ geometryType: "mixed" }));
+        const filterOf = (type) =>
+            map.addLayer.mock.calls.find((c) => c[0].type === type)[0].filter;
+        expect(filterOf("fill")).toEqual([
+            "match",
+            ["geometry-type"],
+            ["Polygon", "MultiPolygon"],
+            true,
+            false,
+        ]);
+        expect(filterOf("circle")).toEqual([
+            "match",
+            ["geometry-type"],
+            ["Point", "MultiPoint"],
+            true,
+            false,
+        ]);
+        expect(filterOf("line")[2]).toContain("LineString");
+    });
+
+    it("a homogeneous source-layer carries no geometry filter — there is nothing to confine", () => {
+        buildVectorTileLayer(
+            map,
+            registry,
+            ensureSentinel,
+            "rp",
+            spec({ geometryType: "polygon" })
+        );
+        for (const [layer] of map.addLayer.mock.calls) expect(layer.filter).toBeUndefined();
+    });
+
     it("fill-extrusion geometry → a single extrusion sub-layer carrying extrusion paint", () => {
         const ids = buildVectorTileLayer(
             map,

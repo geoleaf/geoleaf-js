@@ -17,7 +17,7 @@
 
 import { ScaleControl, type ScaleMapLike } from "./scale-control.js";
 import { getScaleConfig } from "./config.js";
-import { whenAppReady } from "../../kernel/shared/index.js";
+import { registerLifecycleTeardown, whenAppReady } from "../../kernel/shared/index.js";
 
 let _started = false;
 let _map: ScaleMapLike | null = null;
@@ -38,6 +38,26 @@ function _onAppReady(): void {
     });
 }
 
+/**
+ * What `Core.destroy()` runs for this capability, through the lifecycle seam: it DISARMS.
+ *
+ * `Core.destroy()` never reaches the module registry, so {@link ScaleLifecycle._reset} did not
+ * run on it. A destroy landing before `geoleaf:app:ready` — from a listener of that very event,
+ * laid before this one — let `_onAppReady` mount the scale control on the destroyed map: "map
+ * is not ready", uncaught on the page.
+ *
+ * ⚠️ Not `_reset()`. `Core.destroy()` destroys the adapter BEFORE the seam runs, and the
+ * control's own teardown unsubscribes from that adapter, which throws on a destroyed map.
+ * What it laid dies with the map's container; only what could still fire is taken down here.
+ */
+function _disarmOnDestroy(): void {
+    if (typeof document !== "undefined") {
+        document.removeEventListener("geoleaf:app:ready", _onAppReady);
+    }
+    _map = null;
+    _started = false;
+}
+
 /** Idempotent mount for the Scale capability. Safe to call multiple times. */
 export const ScaleLifecycle = {
     init(map: ScaleMapLike): void {
@@ -45,6 +65,8 @@ export const ScaleLifecycle = {
         _started = true;
         _map = map;
         whenAppReady(_onAppReady);
+        // Registered once: the seam is a Set.
+        registerLifecycleTeardown(_disarmOnDestroy);
     },
 
     /** Detaches the listener and tears down the control (module destroy / test). */

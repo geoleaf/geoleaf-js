@@ -47,6 +47,7 @@ let pushOutbox: any;
 let pullLayer: any;
 let armOutboxDrain: any;
 let disarmOutboxDrain: any;
+let requestDrain: any;
 let requeueAll: any;
 
 let layer: any;
@@ -165,7 +166,7 @@ beforeAll(async () => {
     ({ applyEdit } = await import("../../../src/capabilities/offline/write/local-edit-api.js"));
     ({ pushOutbox } = await import("../../../src/capabilities/offline/write/push-engine.js"));
     ({ pullLayer } = await import("../../../src/capabilities/offline/pull/layer-pull.js"));
-    ({ armOutboxDrain, disarmOutboxDrain } =
+    ({ armOutboxDrain, disarmOutboxDrain, requestDrain } =
         await import("../../../src/capabilities/offline/write/outbox-drain-triggers.js"));
     ({ requeueAll } = await import("../../../src/capabilities/offline/write/quarantine-api.js"));
 });
@@ -470,6 +471,32 @@ describe("une session morte, réseau présent", () => {
         ticks[0]?.();
         expect(await pass).toBe(true);
         expect(await readAll("outbox")).toHaveLength(0);
+    });
+
+    // The two "send now" buttons — the sync strip's and the offline window's — reach
+    // `requestDrain` under their own cause. A manual gesture is never gated: the operator is
+    // telling the device the session is back, which no automatic trigger can observe.
+    test.each(["banner", "cache-modal"])(
+        "🛑 un appui manuel (« %s ») part pendant la pause",
+        async (cause: string) => {
+            await deadSessionTour();
+            const sent = fetchSpy.mock.calls.length;
+            const pass = nextPass();
+            await requestDrain(cause);
+            expect(await pass).toBe(true);
+            expect(fetchSpy.mock.calls.length).toBeGreaterThan(sent);
+        }
+    );
+
+    // The counter-proof: lifting the pause for every cause would bring back one capture set
+    // aside per trigger.
+    test("un déclencheur automatique (« write ») reste retenu pendant la pause", async () => {
+        await deadSessionTour();
+        const sent = fetchSpy.mock.calls.length;
+        const pass = nextPass(200);
+        await requestDrain("write");
+        expect(await pass).toBe(false);
+        expect(fetchSpy.mock.calls.length).toBe(sent);
     });
 });
 

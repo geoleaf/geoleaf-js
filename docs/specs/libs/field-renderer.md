@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 86689a155
-date: 27 septembre 2026
+verifie_contre: 1750a209b
+date: 1er octobre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -237,6 +237,43 @@ clavier simulé, 16 px et 44 px sans chevauchement, ancrage après confirmation 
 `visualViewport` rouge quand la classe du tiroir n'est plus doublée. Verte sous Chromium
 (`chromium-touch`) et, depuis le 12/09/2026, sous WebKit (`webkit-touch`), où `(pointer: coarse)`
 correspond bien : les tailles tactiles y sont mesurées, pas supposées.
+
+## Le formulaire occupé ne se ferme pas sous son écriture (01/10/2026)
+
+Pendant `onSave` ou `onDelete`, `setBusy` ne désactivait que Enregistrer, Annuler et Supprimer. La
+croix, Échap (le piège de focus) et le clic sur le fond appelaient toujours `doClose(false)` — une
+annulation : l'appelant retirait la forme en cours pendant que son écriture était en vol, et
+l'enregistrement aboutissait sur une forme qui n'était plus à l'écran.
+
+Un drapeau `busy`, écrit par `setBusy` et remis à faux au `teardown`, fait refuser à `doClose` toute
+fermeture NON forcée ; la croix est désactivée avec les trois autres boutons. Une fermeture forcée
+passe toujours : c'est la sortie de l'appelant, et celle du succès.
+
+⚠️ **Ce que ça suppose** : que l'écriture se termine. Une promesse `onSave` qui ne se résout jamais
+laisse la fiche sans issue — Annuler était déjà désactivé dans cet état, la croix l'est désormais
+aussi. L'appelant en est le garant.
+
+**Preuve.** `src/__tests__/modal.test.ts` : croix, Échap, fond et `close()` pendant un `onSave` en
+attente — vu rouge sur la croix encore active ; fermeture forcée ; croix rendue après un échec.
+
+### Deux gestes au doigt rendus le même jour
+
+- **Une photo ouverte depuis la fiche s'affichait DERRIÈRE elle.** La lightbox recevait un
+  `z-index: 9999` en ligne (`types/field-media.ts`), qui l'emportait sur le `20000` de sa feuille ;
+  le voile du formulaire est à `10000`. La valeur en ligne est celle de la feuille.
+- **Taper la zone des étiquettes ne donnait pas le focus à son champ.** La zone porte
+  `cursor: text` sur toute sa boîte, mais seule la ligne de saisie prenait le focus : un `click`
+  sur la zone ELLE-MÊME le donne désormais à la saisie (`types/tags.ts`) — une pastille garde son
+  propre geste.
+
+⚠️ **Reste, et ce n'est pas un correctif** : réordonner une liste au doigt. La poignée repose sur
+le glisser HTML5 (`types/list.ts`), qu'aucun navigateur mobile n'émet au toucher ; le geste qui le
+remplace reste à choisir.
+
+**Preuves.** `src/__tests__/shared-scaffolding.test.ts` (« opens above the form overlay », vu rouge
+à 9999 — jsdom ne calcule pas la cascade : le test ne juge que la valeur en ligne, qui est celle
+qui décide) et `src/__tests__/field-renderer.test.ts` (« a tap on the zone itself gives the focus
+to its input », vu rouge).
 
 ## Décisions de conception
 

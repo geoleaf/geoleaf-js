@@ -79,16 +79,35 @@ function _deactivateAll(): void {
     deactivateCustom();
 }
 
-/** Lazily initialises the floating menu, layers, engine, overlays, and restores localStorage. */
+/** What a call that came before the map can do about it. */
+const NOT_READY_HINT =
+    "nothing was opened. Call again once the application is ready (`geoleaf:app:ready`).";
+
+/**
+ * Lazily initialises the floating menu, layers, engine, overlays, and restores localStorage.
+ *
+ * A call that comes too early — before the map exists, or while its style is still loading —
+ * initialises nothing and SAYS so: it used to return without a word in the first case, and to
+ * let `addSource` throw in the second, where the caller is a toolbar listener and the
+ * exception an uncaught error on the page. Nothing is latched: the next call tries again.
+ */
 function _ensureMenu(): void {
     if (_menuInitialized) return;
     const map = _getNativeMap();
-    if (!map) return;
+    if (!map) {
+        console.warn(`[GeoLeaf.Measure] The map is not there yet — ${NOT_READY_HINT}`);
+        return;
+    }
     const cfg = getMeasureConfig();
 
     initEngine(cfg);
     setOnFeatureAdded(() => scheduleSave(getEngineCollection));
-    initLayers(map);
+    try {
+        initLayers(map);
+    } catch (e) {
+        console.warn(`[GeoLeaf.Measure] The map style is still loading — ${NOT_READY_HINT}`, e);
+        return;
+    }
 
     // Init annotation overlay system
     initAnnotationOverlays(map, cfg, {

@@ -251,6 +251,15 @@ describe("_media — _openLightbox", () => {
         _openLightbox("javascript:alert(1)");
         expect(document.querySelector(".gl-lightbox")).toBeNull();
     });
+
+    // The form's own overlay sits at 10000. An inline z-index beats the stylesheet's, so the
+    // inline value is the one that decides: at 9999 the photo opened BEHIND the form.
+    it("opens above the form overlay", () => {
+        _openLightbox("https://example.org/a.png");
+        const overlay = document.querySelector<HTMLElement>(".gl-lightbox")!;
+        expect(Number(overlay.style.zIndex)).toBeGreaterThan(10000);
+        overlay.remove();
+    });
 });
 
 describe("_media — _uploadFile", () => {

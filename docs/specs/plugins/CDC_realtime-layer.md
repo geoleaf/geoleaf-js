@@ -4,14 +4,18 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 6111290d1
-date: 28 septembre 2026
+verifie_contre: 711ee88bd
+date: 1er octobre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules
 
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/realtime-layer` ·
 **Code :** `packages/plugins/realtime-layer/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
+
+> ⚠️ **Ce que l'estampille du 01/10/2026 couvre** — realtime-layer 1.0.7. `711ee88bd` ne touche
+> aucun source : `gtfs-realtime-bindings` passe en `devDependencies` (§Dépendances, ligne réécrite
+> avec son commit). Les fichiers publiés sont inchangés. Relu et inchangé : le reste.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
 >
@@ -294,11 +298,11 @@ build sorti vert. `includeFlag: null` signifie que le plugin part dans **toutes*
 
 ### Dépendances
 
-| Dépendance                   | Nature                                                                                                                                                                                                                                          |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@geoleaf/core`              | Le namespace `GeoLeaf.GeoJSON` et l'événement de fin de boot. ⚠️ Déclaré en **`peerDependencies`** (`^3.0.0`) et non plus en `dependencies` : l'intégrateur installe le core lui-même, et le plugin ne peut plus en embarquer une seconde copie |
-| `gtfs-realtime-bindings`     | **Seule dépendance externe** — tirée seulement quand un décodeur GTFS-RT sert                                                                                                                                                                   |
-| `@geoleaf-plugins/websocket` | **Facultative**, déclarée au manifeste, atteinte par le namespace public                                                                                                                                                                        |
+| Dépendance                   | Nature                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@geoleaf/core`              | Le namespace `GeoLeaf.GeoJSON` et l'événement de fin de boot. ⚠️ Déclaré en **`peerDependencies`** (`^3.0.0`) et non plus en `dependencies` : l'intégrateur installe le core lui-même, et le plugin ne peut plus en embarquer une seconde copie                                                                                                                                       |
+| `gtfs-realtime-bindings`     | **Seule dépendance externe, EMBARQUÉE** — son code est dans le chunk `gtfs-rt`, chargé seulement quand un décodeur GTFS-RT sert. ⚠️ Déclarée en **`devDependencies`** et non plus en `dependencies` (1.0.7) : aucun fichier publié ne l'importe, et la déclarer à l'exécution faisait installer chez l'intégrateur sa CLI `protobufjs-cli` et tout son sous-arbre, que rien ne charge |
+| `@geoleaf-plugins/websocket` | **Facultative**, déclarée au manifeste, atteinte par le namespace public                                                                                                                                                                                                                                                                                                              |
 
 ⚠️ **La dépendance externe est la seule du lot des plugins de ce palier**, et elle porte le poids.
 Elle a aussi une histoire de sécurité : sa montée de version majeure a levé une série d'alertes sur

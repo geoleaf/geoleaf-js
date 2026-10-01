@@ -31,6 +31,7 @@
 
 import { Log } from "../../../utils/log/index.js";
 import { CLIENT_KEY_PREFIX, SERVER_KEY_PREFIX } from "./local-edit.js";
+import { guarded, spare } from "./upgrade-guards.js";
 
 /** A `features` record, reduced to what the repair reads. */
 interface TwinCandidate {
@@ -96,30 +97,8 @@ function planTwinMerge(records: TwinCandidate[], named: Set<string>): TwinPlan {
     return plan;
 }
 
-/**
- * Keeps a failed request from aborting the upgrade: an error event left uncancelled aborts its
- * transaction — here the version-change one, so the whole open would fail.
- */
-function spare(request: IDBRequest, what: string): void {
-    request.onerror = (event) => {
-        event.preventDefault();
-        Log.warn(`[StorageDB] v7 repair could not ${what}: ${request.error}`);
-    };
-}
-
-/**
- * Runs `step` as a request's success handler: an exception out of it would abort the
- * transaction too.
- */
-function guarded(step: () => void): () => void {
-    return () => {
-        try {
-            step();
-        } catch (err) {
-            Log.warn(`[StorageDB] v7 repair stopped: ${err}`);
-        }
-    };
-}
+/** How the log names this step. */
+const STEP = "v7 repair";
 
 /**
  * Applies {@link planTwinMerge} inside the version-change transaction. Never throws and never
@@ -137,16 +116,18 @@ function guarded(step: () => void): () => void {
 export function mergeIdentityTwins(tx: IDBTransaction): void {
     const features = tx.objectStore("features");
     const readRecords = features.getAll();
-    spare(readRecords, "read features");
-    readRecords.onsuccess = guarded(() => {
+    spare(readRecords, STEP, "read features");
+    readRecords.onsuccess = guarded(STEP, () => {
         const readQueue = tx.objectStore("outbox").getAll();
-        spare(readQueue, "read the outbox");
-        readQueue.onsuccess = guarded(() => {
+        spare(readQueue, STEP, "read the outbox");
+        readQueue.onsuccess = guarded(STEP, () => {
             const entries = (readQueue.result ?? []) as { layerId: string; localId: string }[];
             const named = new Set(entries.map((e) => keyOf(e.layerId, e.localId)));
             const plan = planTwinMerge((readRecords.result ?? []) as TwinCandidate[], named);
-            for (const r of plan.puts) spare(features.put(r), `write ${r.layerId}/${r.localId}`);
-            for (const key of plan.deletes) spare(features.delete(key), `remove ${key.join("/")}`);
+            for (const r of plan.puts)
+                spare(features.put(r), STEP, `write ${r.layerId}/${r.localId}`);
+            for (const key of plan.deletes)
+                spare(features.delete(key), STEP, `remove ${key.join("/")}`);
             if (plan.puts.length + plan.deletes.length > 0) {
                 Log.info(
                     `[StorageDB] v7 repair: ${plan.deletes.length} twin record(s) removed, ` +

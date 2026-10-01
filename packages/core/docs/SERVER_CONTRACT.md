@@ -128,15 +128,15 @@ The mark is dropped, and the next pull is **complete** again, when:
 - a served marker is not a readable instant.
 
 ::: info
-**Measured against a real server on 20/09/2026** — pygeoapi over PostgreSQL for the reads,
-PostgREST for the writes, on the repository's proof bench. What that run established, and what it
-did not:
+**Measured against a real server on 20/09/2026** — an OGC API Features server for the reads, a
+REST layer over the same database for the writes, on the repository's proof bench. What that run
+established, and what it did not:
 
-- `datetime` does filter on the freshness marker, once the collection declares which temporal
-  property it applies to (`time_field` in pygeoapi). A collection that declares none answers
-  `datetime` with a `500` — loudly, which is the safe failure: a server that answered by
-  _ignoring_ the filter would serve its whole collection to every delta, and the pull would
-  report success.
+- `datetime` does filter on the freshness marker, once the collection declares — in the
+  server's own configuration — which temporal property it applies to. A collection that
+  declares none answers `datetime` with a `500` — loudly, which is the safe failure: a server
+  that answered by _ignoring_ the filter would serve its whole collection to every delta, and
+  the pull would report success.
 - The `next` link does carry `datetime` through, URL-encoded. GeoLeaf follows that link verbatim
   (§1.1), so a server dropping the parameter would answer page two with the entire collection.
 - The freshness marker the read side serves does select the row on the write side — **without the
@@ -187,20 +187,21 @@ online adapter only; a queued edit on a layer declaring it is set aside as `dial
 
 ### 2.2 How each answer is read
 
-| Answer                                                   | Reading                                                                                                                                                                                                  |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2xx with the row — `[row]` or `row`                      | success. `row.id` becomes the server identity, and `row[<versionProperty>]` the new marker                                                                                                               |
-| 2xx with `[]`, filtered update or delete                 | **conflict**: the row changed since the capture. GeoLeaf reads it (`GET {endpoint}?id=eq.<serverId>`), keeps that version locally, and sends the write again without the marker filter — the device wins |
-| 2xx with `[]`, unfiltered update                         | the row no longer exists: set aside as `deletedOnServer`                                                                                                                                                 |
-| 2xx with `[]`, unfiltered delete                         | success — the row is already gone                                                                                                                                                                        |
-| 2xx without a readable array — `204`, an empty body      | success — but the entity's stored marker is cleared, so its next edit goes out unfiltered, and a create answered so gets no server identity                                                              |
-| 409 on a create                                          | "already have it": GeoLeaf reads `GET {endpoint}?local_id=eq.<localId>&select=id`. A row: success, identity recorded. `[]`: a refusal, retried like a 403 (below). Unreadable: retried                   |
-| 409 on an update or a delete                             | success                                                                                                                                                                                                  |
-| 404 on an update or a delete                             | set aside as `deletedOnServer`                                                                                                                                                                           |
-| 401                                                      | set aside as `authRequired`, and the queue stops until the session comes back (§3)                                                                                                                       |
-| 501                                                      | set aside as `notImplementedByServer`                                                                                                                                                                    |
-| 408, 429, 500, 502, 503, 504, a network error, a timeout | retried — three attempts in all, the second 30 s after the first failure, the third 2 minutes after the second — then set aside as `retryBudgetExhausted`                                                |
-| 403, and any other 4xx                                   | retried the same way, then set aside as `rejectedByServer`                                                                                                                                               |
+| Answer                                                   | Reading                                                                                                                                                                                                                                                                         |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2xx with the row — `[row]` or `row`                      | success. `row.id` becomes the server identity, and `row[<versionProperty>]` the new marker                                                                                                                                                                                      |
+| 2xx with `[]`, filtered update or delete                 | **conflict**: the row changed since the capture. GeoLeaf reads it (`GET {endpoint}?id=eq.<serverId>`), keeps that version locally, and sends the write again without the marker filter — the device wins                                                                        |
+| 2xx with `[]`, unfiltered update                         | the row no longer exists: set aside as `deletedOnServer`                                                                                                                                                                                                                        |
+| 2xx with `[]`, unfiltered delete                         | success — the row is already gone                                                                                                                                                                                                                                               |
+| 2xx with `[]` on a create                                | the row was not returned, and whether it was written is unknown: GeoLeaf reads `GET {endpoint}?local_id=eq.<localId>&select=id`, as after a 409. A row: success, identity recorded. `[]`: the server wrote nothing — a refusal, retried like a 403 (below). Unreadable: retried |
+| 2xx without a readable array — `204`, an empty body      | success — but the entity's stored marker is cleared, so its next edit goes out unfiltered, and a create answered so gets no server identity                                                                                                                                     |
+| 409 on a create                                          | "already have it": GeoLeaf reads `GET {endpoint}?local_id=eq.<localId>&select=id`. A row: success, identity recorded. `[]`: a refusal, retried like a 403 (below). Unreadable: retried                                                                                          |
+| 409 on an update or a delete                             | success                                                                                                                                                                                                                                                                         |
+| 404 on an update or a delete                             | set aside as `deletedOnServer`                                                                                                                                                                                                                                                  |
+| 401                                                      | set aside as `authRequired`, and the queue stops until the session comes back (§3)                                                                                                                                                                                              |
+| 501                                                      | set aside as `notImplementedByServer`                                                                                                                                                                                                                                           |
+| 408, 429, 500, 502, 503, 504, a network error, a timeout | retried — four attempts in all: 30 s after the first failure, 2 minutes after the second, 8 minutes after the third — then set aside as `retryBudgetExhausted`                                                                                                                  |
+| 403, and any other 4xx                                   | retried the same way, then set aside as `rejectedByServer`                                                                                                                                                                                                                      |
 
 An edit set aside is kept, never dropped: the device shows it, and an operator re-queues it — for
 a motive whose cause can be lifted — or discards it after seeing it.
@@ -209,24 +210,26 @@ a motive whose cause can be lifted — or discards it after seeing it.
 
 - **`local_id` is unique.** A create replayed after a lost answer must get a `409`, not a second row.
 - **`Prefer: return=representation` is honoured**, the row carrying `id` and the marker. A create
-  answered without its row leaves the entity without a server identity: its later edits cannot be
-  sent. An update answered without it leaves no marker, and the next edit goes out unfiltered.
+  answered `[]` costs a second request — GeoLeaf looks the row up by `local_id` (§2.2). A create
+  answered with no readable body at all — a `204` — leaves the entity without a server identity:
+  its later edits cannot be sent. An update answered without its row leaves no marker, and the
+  next edit goes out unfiltered.
 - **A filtered update or delete that matches nothing answers 2xx with `[]`** — not `412`, not `404`.
   A `404` sets the edit aside as deleted, and a `409` on an update counts as a success.
 - **The marker served by the read side selects the row on the write side.** GeoLeaf sends back
   the exact string it was served, so the write endpoint must _parse_ it rather than compare it as
   text. The two ends may serialise the same instant differently and still be correct — measured on
-  20/09/2026, pygeoapi pads microseconds to six digits (`…711140+00:00`) where PostgREST serves
-  PostgreSQL's canonical form (`…71114+00:00`), for roughly one row in ten. A write endpoint that
-  string-compared would lose the filter _silently_: §2.2 reads the empty answer as a conflict, and
-  the device wins every time.
+  20/09/2026, the read side padded microseconds to six digits (`…711140+00:00`) where the write
+  side served the database's canonical form (`…71114+00:00`), for roughly one row in ten. A write
+  endpoint that string-compared would lose the filter _silently_: §2.2 reads the empty answer as
+  a conflict, and the device wins every time.
 - **A delete answers with the row it deleted**, even when the deletion is a soft one. A server
   that marks the row instead of removing it, and answers the delete with an empty body, is read by
   §2.2 as a _conflict_ rather than a success: the queue re-reads the row, keeps that copy on the
   device as a live entity, and sends the write again unfiltered. The deletion does land, after a
-  detour indistinguishable from a data race. Measured on 20/09/2026 — a PostgreSQL `BEFORE DELETE`
-  trigger that suppresses the delete empties PostgREST's `RETURNING`; an `INSTEAD OF DELETE` on a
-  view that returns the old row does not.
+  detour indistinguishable from a data race. Measured on 20/09/2026 — a `BEFORE DELETE` trigger
+  that suppresses the delete empties the `RETURNING` clause the write endpoint answers from; an
+  `INSTEAD OF DELETE` on a view that returns the old row does not.
 - **The primary key is `id`, and `endpoint` carries no query string** — GeoLeaf appends its own.
 
 ### 2.4 An edit on an entity deleted on the server
@@ -272,9 +275,11 @@ Content-Type: application/json
 { "login": "…", "password": "…" }
 ```
 
-A 2xx JSON answer carrying `token` and `expiresIn` — the lifetime **in seconds**, a number — signs
-in. The token is opaque to GeoLeaf: it is never decoded. `401`, `404`, a `5xx`, any other non-2xx,
-an unreadable body or a missing field each fail the sign-in with their own message.
+A 2xx JSON answer carrying a non-empty string `token` and `expiresIn` — the lifetime **in
+seconds**, a finite number greater than 0 — signs in. The token is opaque to GeoLeaf: it is never
+decoded. `401`, `404`, a `5xx` and any other non-2xx each fail the sign-in with their own message;
+so does a body that is not that JSON. The exchange is given 15 seconds, body included: past them
+it fails as an unreachable server does.
 
 **Renewal**, derived from the same endpoint — `/refresh` is appended to it as it is written, so
 `…/auth/login` becomes `…/auth/login/refresh`:

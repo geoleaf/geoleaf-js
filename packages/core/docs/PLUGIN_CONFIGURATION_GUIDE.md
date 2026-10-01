@@ -275,6 +275,8 @@ Each FlatGeobuf layer is declared in a `<layer>_config.json` file with `"plugin"
 
 **Example — layer with bbox and auto-refresh (zones_desserte):**
 
+<!-- geoleaf:docs:schema layer-config -->
+
 ```json
 {
     "id": "zones_desserte",
@@ -294,13 +296,14 @@ Each FlatGeobuf layer is declared in a `<layer>_config.json` file with `"plugin"
         "default": "defaut.json",
         "available": [{ "id": "defaut", "label": "défaut", "file": "defaut.json" }]
     },
-    "tooltip": { "mode": "hover", "fields": [{ "field": "properties.nom", "label": "Zone" }] },
     "table": { "enabled": false },
     "clustering": { "enabled": false }
 }
 ```
 
 **Example — local file layer without bbox (eco_regions_fgb):**
+
+<!-- geoleaf:docs:schema layer-config -->
 
 ```json
 {
@@ -501,6 +504,8 @@ Layers with `data.realtime.enabled: true` start automatically on the `geoleaf:ap
 
 ### `profile.json`
 
+<!-- geoleaf:docs:schema profile -->
+
 ```json
 {
     "id": "mon-profil",
@@ -567,14 +572,14 @@ import "@geoleaf-plugins/connector"; // optional — when an authenticated API i
 import "@geoleaf-plugins/offline-ui"; // unlocks showCacheButton, the offline cache interface
 import "@geoleaf-plugins/editor"; // unlocks modules.editor.* (POI editing and capture)
 
-GeoLeaf.init({
-    map: { target: "map" },
-    data: {
-        activeProfile: "mon-profil",
-        profilesBasePath: "./profiles/",
+GeoLeaf.boot({
+    config: {
+        data: {
+            activeProfile: "mon-profil",
+            profilesBasePath: "./profiles/",
+        },
     },
 });
-GeoLeaf.boot();
 ```
 
 ::: warning

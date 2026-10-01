@@ -303,14 +303,18 @@ Profiles can be created for any business domain. See [PROFILES_GUIDE.md](PROFILE
 
 ### Switching Profiles
 
-#### At initialisation
+#### At start-up
+
+The profile is named by the configuration `GeoLeaf.boot()` loads — `GeoLeaf.init()` reads only
+`map` and `ui`, and ignores a `data` key without a word:
 
 ```javascript
-const map = GeoLeaf.init({
-    map: { target: "map", center: [48.8, 2.3], zoom: 10 },
-    data: {
-        activeProfile: "tourism",
-        profilesBasePath: "/profiles/",
+GeoLeaf.boot({
+    config: {
+        data: {
+            activeProfile: "tourism",
+            profilesBasePath: "/profiles/",
+        },
     },
 });
 ```
@@ -650,6 +654,8 @@ Layers of type `fill-extrusion` render GeoJSON polygons as 3D volumes (buildings
 - Regulatory or risk zones with a 3D visual indicator
 
 **`{layer}_config.json` configuration:**
+
+<!-- geoleaf:docs:schema layer-config -->
 
 ```json
 {
@@ -1218,12 +1224,17 @@ See [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) → the "Plug
 
 ### Debug mode
 
+`debug` is a key of the configuration `GeoLeaf.boot()` loads (§5.1) — passed to `GeoLeaf.init()`, it
+is ignored without a word:
+
 ```javascript
-const map = GeoLeaf.init({
-    map: { target: "map", center: [48.8, 2.3], zoom: 10 },
-    debug: {
-        enabled: true,
-        modules: ["*"], // Or specific: ['poi', 'config', 'storage']
+GeoLeaf.boot({
+    config: {
+        debug: {
+            enabled: true,
+            modules: ["*"], // Or specific: ['poi', 'config', 'storage']
+        },
+        data: { activeProfile: "tourism", profilesBasePath: "/profiles/" },
     },
 });
 ```

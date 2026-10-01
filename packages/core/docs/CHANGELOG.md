@@ -11,6 +11,188 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Removed
+
+- **The "profile loaded" toast, which never showed.** Its listener was laid while the modules
+  start, after `geoleaf:profile:loaded` had fired — once per page, a profile switch reloading it.
+  The library therefore never rendered that toast; only an event emitted by hand reached it. The
+  listener, its retry on `geoleaf:map:ready` and the `toast.profile.loaded` label are gone. The
+  event itself is unchanged, and the "theme applied" toast still follows a boot.
+
+### Fixed
+
+- **`@geoleaf-plugins/table` 1.1.2 — a KML or GPX export names a feature as the table does.** A
+  feature with no identifier of its own is given a synthetic one, `__gl_row_<n>`. The table
+  counted the synthetic identifiers handed out so far; the KML and GPX exports passed the
+  position in the exported array. On a layer mixing identified and unidentified features — and
+  on any selection — the same feature was `__gl_row_2` in the table and `__gl_row_5` in the file.
+  One function now numbers a layer for both, and a selection is exported with the identifiers
+  its features already have. Only the `<name>` of a placemark or waypoint changes; GeoJSON, CSV
+  and Excel exports never carried it.
+- **The editor's drawing chunk carries one copy of Terra Draw, not two**
+  (`@geoleaf-plugins/editor` 1.5.5). The MapLibre adapter resolved its `terra-draw` peer against
+  an older copy than the one the editor declares, and both were bundled in the chunk loaded at
+  the first drawing tool. One copy remains — 1.32.3, the one the editor already ran. The chunk
+  loses about 6 KB (1.3 KB gzipped).
+- **The offline-ui README describes the plugin that ships** (`@geoleaf-plugins/offline-ui`
+  1.6.3). It still listed the storage, the write queue and the connectivity detection as the
+  plugin's — they are the core's —, said the core was a `dependencies` entry when it is a peer,
+  and documented `getStats()` with a `sync: { pending, failed }` block and a `tileCacheSize`
+  that do not exist. The statistics are `features`, `outbox` and `conflicts` counts.
+- **A vector-tile layer declared `"mixed"` confines each of its sub-layers to its geometry.** Its
+  fill, line and circle sub-layers were built on the same source-layer with no filter, and the
+  engine does not check the geometry type when it fills a bucket: a circle was drawn on every
+  vertex of the lines and polygons. They now carry the geometry guard the GeoJSON layers already
+  had. A layer of a single geometry kind is unchanged.
+- **`Baselayers.init()`'s example passed an option that does not exist.** Its `@example`, its
+  `@param` and the Baselayers page said `defaultKey`; the option is `activeKey`. The ghost key
+  was read by nothing, and the example activated the first registered basemap instead of the one
+  it named.
+- **`pulledPartial` no longer claims the runs the cap cuts short.** Its description said a pull
+  "the hard cap cut short" was reported `pulledPartial`. Such a run goes to its end and is
+  reported `pulled`; the status is the one of a pull the caller aborted or the page left
+  mid-run. The offline-ui overview (`@geoleaf-plugins/offline-ui` 1.6.3) also described stored
+  photos as base64 strings ending `synced`: they are Blobs carrying an uploaded flag, purged once
+  uploaded.
+- **Three descriptions of the write path said something else than the code.** The schema said a
+  layer whose write target is disabled "has no outbox": its edits are kept locally, then set
+  aside as `layerNoLongerWritable`. It did not say that an absent `write.properties` sends every
+  property. And the editor's README (`@geoleaf-plugins/editor` 1.5.5) described
+  `persistence.mode: "auto"` as an online/offline detection, which it has not been for a while —
+  it also now says that `persistence.dialect` (default `"rest"`) and a layer's `write.dialect`
+  (default `"collection"`) govern two different paths.
+- **A profile that declares no `themes` no longer asks for a `themes.json`.** The theme selector,
+  mounted on `geoleaf:app:ready`, still asked the theme loader, which fell back to the legacy
+  `profiles/<id>/themes.json`: a `404`, retried one second later, and a console error on every
+  page load. A modular profile without a `themes` block is now recognised before any request.
+  `geoleaf:themes:ready` is still emitted for it, without an `error`.
+- **A shared link keeps its layers and its filter on a profile that declares no `themes`.** When
+  the link carries no theme, the layer visibility and the filter it carries were restored on the
+  first `geoleaf:theme:applied` — an event a profile without `themes` never emits, so they were
+  lost without a word. They are now restored right after `geoleaf:app:ready` when no theme was
+  applied.
+- **The offline database's v3 migration can no longer abort the upgrade.** It rewrites the
+  `uploaded` flag of the stored images and runs only for a database older than v3. Its comment
+  promised never to fail the upgrade over the migration, and it did not hold: a failed cursor
+  read was logged without being cancelled, a failed rewrite had no handler, and an exception in
+  its success handler was not caught — each aborts the version change, hence the open, and the
+  engine falls back on a store with no persistence. The three are now guarded, as the v7 repair
+  already was.
+- **`@geoleaf-plugins/realtime-layer` 1.0.7 — installing the plugin no longer installs a
+  command-line toolchain.** `gtfs-realtime-bindings` was declared as a runtime dependency although
+  the plugin bundles it in its `gtfs-rt` chunk and no published file imports it: every install
+  pulled it, and with it `protobufjs-cli` and its own tree, which nothing loads. It is now a
+  development dependency. The published files are unchanged.
+- **`@geoleaf-plugins/print` 1.3.3 bundles DOMPurify 3.4.16.** The PDF export's lazy chunk
+  embeds the copy its PDF library depends on; it moves from 3.4.13 to a release that closes a
+  low-severity advisory. Nothing else of the print bundle changes.
+- **`@geoleaf-plugins/print` 1.3.3 — a printed map credits its basemap.** The footer asked the
+  map for an attribution text through a method that does not exist, and the off-screen map is
+  created without an attribution control: no printed page carried the credit of any provider. The
+  footer now prints the credit the active basemap declares — `attribution`, or the legacy
+  `options.attribution` — as plain text, before the description. A credited basemap reserves
+  the footer band by itself, so the map zone is 10 mm shorter on a page that had no description.
+- **`Core.destroy()` called from a `geoleaf:app:ready` listener no longer leaves an uncaught
+  error.** The scale bar and the coordinates readout mount on that event; a destroy run by a
+  listener laid before theirs let them mount on the map just destroyed — "map is not ready",
+  thrown to the page. Both are disarmed when the last map is destroyed. `Core.destroy()` is still
+  not an unmount: an application started by `boot()` is taken down by `GeoLeaf.mount()`.
+- **A creation the server acknowledges without its row is no longer "synchronised" with no
+  identity.** A `2xx` answered with `[]` came out a plain success: the entity was marked
+  synchronised without a server identity, and every later edit of it was never sent. GeoLeaf now
+  looks the row up by its client identity, as it does after a `409`: found, the identity is
+  recorded; absent, the server wrote nothing and the edit is retried, then set aside as
+  `rejectedByServer`; unreadable, it is retried. An answer with no readable body — a `204` —
+  keeps its reading, which the server contract states.
+- **An edit that fails is attempted four times, not three.** The retry delays were announced as
+  30 s, then 2 min, then 8 min, and the last one was never waited: with three attempts in all, the
+  third failure set the edit aside. A server away for three minutes therefore set the whole queue
+  aside until someone pressed "retry all". With four attempts the three delays apply, and an edit
+  is set aside after about ten minutes of failures instead of two and a half.
+- **"Sync now" is sent during the pause that follows a 401.** The sync bar's button and the send
+  button of the offline window went through the automatic path, which a dead session pauses:
+  they did nothing, without a word, while still being offered. A press is the operator saying
+  the session is back, and it now runs a pass. If the session is still dead, that pass stops at
+  its first 401 and sets one more entry aside, as any pass does.
+- **A layer with clustering switched off keeps the filter's GPU path.** The filter took any layer
+  carrying a `clusterRadius` or a `disableClusteringAtZoom` for a clustered one, without reading
+  the decision: a layer declaring `clustering: { enabled: false }` beside its radius had its
+  source re-fed whole on every filter pass. The decision is read first; a layer that says nothing
+  is still treated as possibly clustered.
+- **Switching from a vector basemap to a WMS, an image or a hillshade basemap shows it.** After a
+  vector basemap the incoming one was built by the XYZ tile constructor whatever its type; these
+  three forms carry no tile template, so the map got an empty raster source and still announced
+  the change. The switch now builds the source of the basemap's type, as a switch between raster
+  basemaps always did.
+- The shipped schema of a layer said that a layer reading the local store "is truncated just like
+  the one that fills it". Only the pull reads `offline.maxFeatures`: on a layer that declares no
+  `offline.source`, `maxFeatures` and `maxAgeMs` have no effect. The `$comment` of the `offline`
+  block says so.
+- The contract described the `layerNoLongerWritable` reason as "the layer stopped being editable
+  between capture and push". Its only producer is a `write` target that is absent, switched off
+  or without an `endpoint`; `edition` is not read again when an entry is pushed. The TSDoc of
+  `QuarantineReason` says what the reason covers.
+- **A token store the browser cannot read no longer stops `configure()`**
+  (`@geoleaf-plugins/connector` 1.3.4). A failed read — a request that errors, or a store missing
+  from a database of the same version — rejected instead of answering "nothing stored", and the
+  rejection reached `configure()` before the fetch interceptor was installed. The read now
+  degrades as the write and the delete already did, and the database connection is closed on a
+  failure as well.
+- **A refused renewal is asked once, not three times** (`@geoleaf-plugins/connector` 1.3.4). A
+  refusal was forgotten as soon as it was received: on an expired session `configure()` asked for
+  the renewal, the read before the first request asked again, and the `401` path of that request
+  a third time, before the session was declared ended. The refusal is now remembered for as long
+  as the refused token is the one stored — a sign-in, a sign-out or a reload forgets it.
+- **A sign-in is held to the rules of a renewal** (`@geoleaf-plugins/connector` 1.3.4). The
+  15-second budget of a sign-in stopped at the response headers: a body that stalled after them
+  left the login window waiting for as long as the connection stayed open. It now covers the body.
+  The answer was also read less strictly than a renewal's — an `expiresIn` of `0` or below, or a
+  `token` that is not a string, was accepted and the session stored already expired. Both are
+  refused, as a renewal refuses them.
+- **Two login windows can no longer stack** (`@geoleaf-plugins/connector` 1.3.4). Only the guided
+  reconnection checked that a window was already open; `configure()` on an absent session,
+  `openLoginModal()` and the credential button each opened their own. Two windows then carried
+  the same element ids and one promise each: signing in through one left the other open, and
+  closing the one `configure()` had opened rejected it on a valid session. A call made while the
+  window is on screen now joins it and shares its promise.
+- **A request whose session could not be renewed gets the server's own `401` back**
+  (`@geoleaf-plugins/connector` 1.3.4). In every branch that does not replay the request — a
+  refused renewal, one that could not conclude, a host with no token to give — the interceptor
+  answered with a synthetic `401` carrying neither headers nor body. The server's response is
+  returned untouched: a `WWW-Authenticate` challenge now reaches the caller.
+- **A form that is saving can no longer be closed under its write** (`@geoleaf/field-renderer`
+  1.4.1, bundled in `@geoleaf-plugins/editor` 1.5.5). While `onSave` or `onDelete` was in flight
+  the three buttons were disabled, but the cross, Escape and a click on the backdrop still closed
+  the form — a cancel, which withdrew the drawn shape while its write was landing. A non-forced
+  close is now ignored until the write settles, and the cross is disabled with the buttons.
+- **Two gestures of the form at the finger** (`@geoleaf/field-renderer` 1.4.1, bundled in
+  `@geoleaf-plugins/editor` 1.5.5). A photo opened from the form showed BEHIND it — its lightbox
+  carried an inline `z-index` below the form's overlay. And a tap on the tags zone, beside the
+  pills, did not give the focus to its input although the zone shows a text cursor.
+- **Ctrl+Z no longer undoes the creation whose form is open** (`@geoleaf-plugins/editor` 1.5.5).
+  The shortcut skipped text fields only: with the focus on a button of the form, or fallen back
+  on the page after a click on the backdrop, it undid the shape under its own form, and a save
+  then persisted a feature no longer on screen. Undo and redo are ignored while a modal dialog
+  is open.
+- **`GeoLeaf.Measure` called before the map says so** (`@geoleaf-plugins/measure` 1.0.8). A call
+  that came before the map existed returned without a word; one that came while the map style
+  was still loading let `addSource` throw — from a toolbar listener, an uncaught error on the
+  page. Both now warn in the console, naming the signal to wait for, and the next call
+  initialises the tool as before.
+- **A download that did not happen is no longer announced as done**
+  (`@geoleaf-plugins/offline-ui` 1.6.3). `cacheProfile` resolves with an `error` when nothing was
+  downloaded — a second click while a stopped download was still finishing its page, a cache
+  switched off. The control read `cancelled` only, and showed "0 resources", then "profile
+  downloaded: 0 B". It now reports the failure, with the reason.
+- **The "clear the cache" confirmation says what it deletes** (`@geoleaf-plugins/offline-ui`
+  1.6.3). It asked to delete the offline cache "for this profile"; the same gesture also empties
+  the basemap tile cache, which every profile shares. The message says so, in the six languages.
+  What is deleted does not change.
+- The README of `@geoleaf-plugins/connector` (1.3.4) documents `GeoLeaf.Connector.logout()` and
+  the `geoleaf:connector:signed-out` event, which it had never named.
+
 ## [3.13.0] - 2026-09-29
 
 ### Added

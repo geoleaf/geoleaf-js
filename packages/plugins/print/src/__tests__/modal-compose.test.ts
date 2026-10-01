@@ -63,6 +63,15 @@ describe("buildComposeArgs", () => {
         ).toBeGreaterThan(0);
     });
 
+    it("opens the footer band for a credited basemap, even without a description", () => {
+        (globalThis as any).GeoLeaf.Baselayers = {
+            getActiveLayer: () => ({ attribution: "© Example Tiles" }),
+        };
+        expect(
+            buildComposeArgs(makeInputs({ description: "" }))!.zones.footer.height
+        ).toBeGreaterThan(0);
+    });
+
     it("opens the legend band when the legend is checked", () => {
         expect(buildComposeArgs(makeInputs({ includeLegend: false }))!.zones.legend.height).toBe(0);
         expect(

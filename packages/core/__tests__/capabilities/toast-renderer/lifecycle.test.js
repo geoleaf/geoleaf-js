@@ -2,8 +2,8 @@
  * S7 — toast-renderer capability lifecycle.
  *
  * Covers: container creation, notify-primitive `registerRenderer` wiring, boot
- * loading toast (geoleaf:theme:applying/applied), profile toast
- * (geoleaf:profile:loaded), the opt-out config gate, and `_reset` teardown.
+ * loading toast (geoleaf:theme:applying/applied), the absence of a profile toast, the
+ * opt-out config gate, and `_reset` teardown.
  *
  * Replaces the notification-boot tests formerly in app/init.test.js — the renderer
  * left UIModule/setupNotifications for this in-core capability (driven by
@@ -61,7 +61,10 @@ describe("toast-renderer capability — lifecycle", () => {
         expect(dismissSpy).toHaveBeenCalled();
     });
 
-    it("emits a profile toast through the primitive on profile:loaded", () => {
+    // `geoleaf:profile:loaded` fires BEFORE this lifecycle starts, once per page: a listener
+    // laid here never heard it in production. Only a hand-emitted event reached it — and a
+    // `Core.destroy()` followed by a new boot, where the listener of the first boot was left.
+    it("shows no toast on profile:loaded, nor on the map:ready that used to retry it", () => {
         const notifySpy = vi.spyOn(notifyPrimitive, "notify");
         ToastRendererLifecycle.init();
         document.dispatchEvent(
@@ -69,7 +72,8 @@ describe("toast-renderer capability — lifecycle", () => {
                 detail: { data: { profile: { label: "My profile" } } },
             })
         );
-        expect(notifySpy).toHaveBeenCalledWith(expect.any(String), "success");
+        document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
+        expect(notifySpy).not.toHaveBeenCalled();
     });
 
     it("is inert when the capability is disabled (opt-out gate)", () => {

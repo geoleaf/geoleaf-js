@@ -1015,6 +1015,8 @@ await GeoLeaf.Theme.setActive("my-custom");
 
 **Per-layer config (`layers/{layerId}/{layerId}_config.json`):**
 
+<!-- geoleaf:docs:schema layer-config -->
+
 ```json
 {
     "id": "cities",

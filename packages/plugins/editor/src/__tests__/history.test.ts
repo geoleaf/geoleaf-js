@@ -347,6 +347,29 @@ describe("shortcuts", () => {
         div.remove();
     });
 
+    // The form is a modal dialog, and its buttons are not text fields: a Ctrl+Z pressed with
+    // the focus on one of them — or fallen back on the document after a click on the backdrop
+    // — undid the very creation whose form was open, and the shape vanished under it.
+    it("is ignored while a modal dialog is open, wherever the focus is", () => {
+        const dialog = document.createElement("div");
+        dialog.setAttribute("aria-modal", "true");
+        const button = document.createElement("button");
+        dialog.appendChild(button);
+        document.body.appendChild(dialog);
+
+        const prevented = _key({ key: "z", ctrlKey: true }, button);
+        _key({ key: "z", ctrlKey: true });
+        _key({ key: "y", ctrlKey: true }, button);
+        expect(onUndo).not.toHaveBeenCalled();
+        expect(onRedo).not.toHaveBeenCalled();
+        // Left to the browser: nothing was undone, so nothing is swallowed.
+        expect(prevented).toBe(false);
+
+        dialog.remove();
+        _key({ key: "z", ctrlKey: true });
+        expect(onUndo).toHaveBeenCalledOnce();
+    });
+
     it("detachShortcuts removes the listener", () => {
         detachShortcuts();
         _key({ key: "z", ctrlKey: true });

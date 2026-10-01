@@ -122,6 +122,51 @@ test.describe("19 — permalink restore/sync (état map/DOM réel)", () => {
         expect(value).toBe("montagne");
     });
 
+    // ── the same restore on a profile that applies NO theme ───────────────────────
+    test("restore: sur un profil sans `themes`, gl_filter est restauré quand même", async ({
+        page,
+        context,
+    }) => {
+        // A profile that declares no `themes` never emits `geoleaf:theme:applied`, the event
+        // the restore above waits for: the filter of the URL was lost without a word.
+        let served = 0;
+        await context.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+            const bundle = await (await route.fetch()).json();
+            delete bundle.themes;
+            served += 1;
+            await route.fulfill({ json: bundle });
+        });
+        // ⚠️ The DECLARATION goes too. A profile that still names `Files.themesFile` while its
+        // bundle carries no themes is not a profile without themes: it is one with a missing
+        // resource, and the boot holds on its « missing resources » screen — measured.
+        await context.route("**/profiles/tourism/profile.json**", async (route) => {
+            const profile = await (await route.fetch()).json();
+            if (profile.Files) delete profile.Files.themesFile;
+            await route.fulfill({ json: profile });
+        });
+
+        await page.goto("/#gl_lat=12.34&gl_lng=56.78&gl_zoom=7&gl_filter=montagne");
+        await waitMapStyleReady(page);
+
+        await page.waitForFunction(
+            () => {
+                const input = /** @type {HTMLInputElement|null} */ (
+                    document.querySelector('[data-gl-filter-id="searchText"] input[type="text"]')
+                );
+                return !!input && input.value === "montagne";
+            },
+            null,
+            { timeout: 20000 }
+        );
+        // The instrument: the profile the page booted on is the one without themes.
+        expect(served).toBeGreaterThan(0);
+        expect(
+            await page.evaluate(
+                () => /** @type {any} */ (window).GeoLeaf.Config.getActiveProfile()?.themes
+            )
+        ).toBeUndefined();
+    });
+
     // ── _captureState + buildUrl + startSync: a move writes the URL ──────────────
     test("sync: un déplacement de la carte sérialise l'état dans l'URL", async ({ page }) => {
         await page.goto("/");

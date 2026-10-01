@@ -155,6 +155,39 @@ describe("Coverage — table/export", () => {
         });
     });
 
+    describe("the names an export gives — the table's own, never a second numbering", () => {
+        // A layer mixing features that carry an id and features that do not.
+        const mixed = [
+            { id: "a", properties: {}, geometry: { type: "Point", coordinates: [1, 1] } },
+            { properties: {}, geometry: { type: "Point", coordinates: [2, 2] } },
+            { id: "b", properties: {}, geometry: { type: "Point", coordinates: [3, 3] } },
+            { properties: {}, geometry: { type: "Point", coordinates: [4, 4] } },
+        ];
+        const names = (xml: string): string[] =>
+            [...xml.matchAll(/<(?:Placemark|wpt)[^>]*>\s*<name>([^<]*)<\/name>/g)].map(
+                (m) => m[1] ?? ""
+            );
+
+        it("KML: an unidentified feature is numbered as the table numbers it", () => {
+            // The array index used to be passed: `__gl_row_1` and `__gl_row_3` here, for the
+            // features the table calls `__gl_row_0` and `__gl_row_1`.
+            expect(names(buildKML(mixed))).toEqual(["a", "__gl_row_0", "b", "__gl_row_1"]);
+        });
+
+        it("GPX: an unidentified feature is numbered as the table numbers it", () => {
+            expect(names(buildGPX(mixed))).toEqual(["a", "__gl_row_0", "b", "__gl_row_1"]);
+        });
+
+        it("KML and GPX use the identifiers they are handed, and mint none", () => {
+            // A selection is a SUBSET: numbered from its own start, its second unidentified
+            // feature would take the name of the layer's first.
+            const selection = [mixed[3]!, mixed[2]!];
+            const ids = ["__gl_row_1", "b"];
+            expect(names(buildKML(selection, "layer", ids))).toEqual(ids);
+            expect(names(buildGPX(selection, "layer", ids))).toEqual(ids);
+        });
+    });
+
     describe("buildKML", () => {
         it("wraps output in <kml> and <Document>", () => {
             const kml = buildKML([], "test-layer");

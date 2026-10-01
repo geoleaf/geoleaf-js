@@ -10,7 +10,7 @@
  * Pure export helpers: GeoJSON (existing), CSV, KML, GPX, Excel (lazy).
  */
 
-import { resolveFeatureId, _str } from "./feature-id.js";
+import { mintFeatureIds, resolveFeatureId, _str } from "./feature-id.js";
 
 // Re-exported so `import { resolveFeatureId } from "./export.js"` keeps working
 // for `table-api` and the existing test suites; the implementation is shared
@@ -197,11 +197,24 @@ function _geomToKml(geom: ExportGeometry | null | undefined): string {
     return "";
 }
 
-/** Builds a KML string from features (no external dependency). */
-export function buildKML(features: GeoJSONFeature[], layerId?: string): string {
+/**
+ * Builds a KML string from features (no external dependency).
+ *
+ * @param features - The features to export.
+ * @param layerId - The document's name.
+ * @param ids - The name of each feature, aligned with `features`. Required for a SUBSET of a
+ *   layer — a selection —, whose features already have their identifiers; omitted, `features`
+ *   is taken for a whole layer and numbered as the table numbers it.
+ * @returns The KML document.
+ */
+export function buildKML(
+    features: GeoJSONFeature[],
+    layerId?: string,
+    ids: readonly string[] = mintFeatureIds(features)
+): string {
     const placemarks = features
         .map((f, i) => {
-            const name = _escKmlXml(resolveFeatureId(f, i));
+            const name = _escKmlXml(ids[i] ?? "");
             const desc = Object.entries(f.properties || {})
                 .map(([k, v]) => `${k}: ${_str(v)}`)
                 .join("\n");
@@ -262,13 +275,24 @@ function _gpxElementForFeature(geom: ExportGeometry, name: string, desc: string)
     return `  <rte>\n    <name>${name}</name>\n    <desc>${desc}</desc>\n${rtepts}\n  </rte>`;
 }
 
-/** Builds a GPX string from features (no external dependency). */
-export function buildGPX(features: GeoJSONFeature[], layerId?: string): string {
+/**
+ * Builds a GPX string from features (no external dependency).
+ *
+ * @param features - The features to export.
+ * @param layerId - The document's name.
+ * @param ids - The name of each feature, aligned with `features` — see {@link buildKML}.
+ * @returns The GPX document.
+ */
+export function buildGPX(
+    features: GeoJSONFeature[],
+    layerId?: string,
+    ids: readonly string[] = mintFeatureIds(features)
+): string {
     const elements: string[] = [];
     for (const [i, f] of features.entries()) {
         const geom = f.geometry as ExportGeometry | null | undefined;
         if (!geom) continue;
-        const name = _escGpxXml(resolveFeatureId(f, i));
+        const name = _escGpxXml(ids[i] ?? "");
         const desc = _escGpxXml(JSON.stringify(f.properties || {}));
         elements.push(_gpxElementForFeature(geom, name, desc));
     }
@@ -285,7 +309,8 @@ export async function downloadFeatures(
     format: ExportFormat,
     layerId: string,
     suffix: string,
-    options?: ExportOptions
+    options?: ExportOptions,
+    ids?: readonly string[]
 ): Promise<void> {
     const base = (layerId || "export") + "_" + suffix;
     switch (format) {
@@ -301,13 +326,13 @@ export async function downloadFeatures(
             break;
         case "kml":
             downloadFile(
-                buildKML(features, layerId),
+                buildKML(features, layerId, ids),
                 base + ".kml",
                 "application/vnd.google-earth.kml+xml"
             );
             break;
         case "gpx":
-            downloadFile(buildGPX(features, layerId), base + ".gpx", "application/gpx+xml");
+            downloadFile(buildGPX(features, layerId, ids), base + ".gpx", "application/gpx+xml");
             break;
         case "excel": {
             const mod = await import("./lazy/export-excel.js");

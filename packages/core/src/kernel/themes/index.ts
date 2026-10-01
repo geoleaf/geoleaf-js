@@ -21,4 +21,5 @@ export type { NormalizedTheme, ValidatedThemesConfig } from "./theme-loader.js";
 export type { ThemeConfig } from "./theme-applier/core.js";
 
 export { ThemeLoader } from "./theme-loader.js";
+export { declaresNoThemes } from "./declares-no-themes.js";
 export { ThemeApplierCore } from "./theme-applier/core.js";

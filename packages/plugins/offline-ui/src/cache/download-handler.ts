@@ -125,6 +125,12 @@ const DownloadHandler = {
                 selection: selection,
             });
 
+            // A result carrying `error` is not a download: a second click while one is still
+            // finishing, a cache switched off. It joins the failure branch below instead of
+            // being announced — "0 resources", then "profile downloaded: 0 B".
+            const failure = (result as { error?: unknown }).error;
+            if (typeof failure === "string" && failure) throw new Error(failure);
+
             // 🛑 A stopped download is not announced as a success. « Stop » already said so:
             // on `geoleaf:cache:cancelled` the control showed "stopped" and handed the button
             // back. A success announced here, once `cacheProfile` resolved, contradicted it.

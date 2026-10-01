@@ -139,6 +139,11 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
     let mediaQuery: MediaQueryList | null = null;
     /** Releases the visual viewport tracking of the CURRENT overlay — a no-op while closed. */
     let releaseViewport: () => void = () => {};
+    /**
+     * True while `onSave` or `onDelete` is in flight. A non-forced close is refused then: it is
+     * a cancel, and the caller's cancel withdraws the very shape the write is persisting.
+     */
+    let busy = false;
 
     function isMobile(): boolean {
         return mediaQuery ? mediaQuery.matches : window.innerWidth < breakpointPx;
@@ -182,6 +187,7 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
         const onCancel = currentOptions?.onCancel;
         overlay.remove();
         overlay = null;
+        busy = false;
         fieldBridge = null;
         headerSlot = null;
         mediaQuery = null;
@@ -192,10 +198,12 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
     /**
      * Closes the modal. On a dirty cancel (not forced), shows a styled confirm
      * dialog instead of the native `window.confirm`; the teardown is deferred
-     * until the user confirms.
+     * until the user confirms. A non-forced close is ignored while a write is in flight —
+     * the cross, Escape, the backdrop and `close()` alike; a forced one always goes through.
      */
     function doClose(force: boolean, reason: "cancel" | "save" = "cancel"): void {
         if (!overlay) return;
+        if (!force && busy) return;
         if (!force && opts.confirmCancelOnDirty && isDirty()) {
             void confirmDiscard().then((ok) => {
                 if (ok) teardown(reason);
@@ -378,6 +386,8 @@ export function createResponsiveModal(opts: ResponsiveModalOptions): ResponsiveM
 
         /** Toggles the busy state (disabled buttons + save spinner) during persistence. */
         function setBusy(on: boolean): void {
+            busy = on;
+            btnClose.disabled = on;
             btnSave.disabled = on;
             btnCancel.disabled = on;
             if (btnDelete) btnDelete.disabled = on;

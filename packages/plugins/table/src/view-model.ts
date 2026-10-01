@@ -38,14 +38,11 @@
  */
 
 import { getNestedValue } from "@geoleaf/host-runtime";
-import { resolveFeatureId } from "./feature-id.js";
+import { mintFeatureIds } from "./feature-id.js";
 import { formatValue } from "./format-value.js";
 import { sortInPlace } from "./sort.js";
 import type { SortState } from "./sort.js";
 import type { TableColumnDef, TableFeature } from "./types.js";
-
-/** Prefix of the ids minted for features that carry no natural identifier. */
-const SYNTHETIC_PREFIX = "__gl_row_";
 
 /** A rendered row: the feature and the identity the DOM will carry for it. */
 export interface TableRow {
@@ -92,10 +89,8 @@ function reindex(): void {
 /**
  * Pairs every feature with its identity, in LOAD order.
  *
- * ⚠️ The synthetic index is the **count of synthetic ids handed out so far**, not the
- * array index — a layer mixing identified and unidentified features would otherwise skip
- * numbers. This convention is the one `table-api.refresh()` has always used to key
- * `_featureIdMap`, and keeping the two in one place is the point of this function.
+ * ⚠️ The numbering is `mintFeatureIds`'s — the count of synthetic ids handed out so far, not
+ * the array index — and it is the one the exports use too.
  *
  * 🛑 Identity is fixed HERE and travels with the feature from then on. Recomputing it
  * after a sort would hand a re-ordered synthetic id to a feature that a user may already
@@ -106,14 +101,8 @@ function reindex(): void {
  * @returns One row per feature, positionally aligned with `features`.
  */
 function buildRows(features: TableFeature[]): TableRow[] {
-    const rows: TableRow[] = [];
-    let synthetic = 0;
-    for (const feature of features) {
-        const id = resolveFeatureId(feature, synthetic);
-        if (id.startsWith(SYNTHETIC_PREFIX)) synthetic++;
-        rows.push({ feature, id });
-    }
-    return rows;
+    const ids = mintFeatureIds(features);
+    return features.map((feature, index) => ({ feature, id: ids[index] ?? "" }));
 }
 
 /**

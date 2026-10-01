@@ -213,6 +213,38 @@ describe("measure-api", () => {
             expect(mocks.initEngine).toHaveBeenCalledTimes(1);
         });
 
+        // A call that comes before the map — an integrator calling `startMeasure()` early, a
+        // key reaching the toolbar under the loader — got no menu and not a word.
+        it("says so when it is called before the map exists", async () => {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            mocks._getNativeMap.mockReturnValue(null);
+            const api = await load();
+            api.openMeasureMenu();
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[GeoLeaf.Measure]"));
+            warn.mockRestore();
+        });
+
+        // The map exists but its style is still loading: `addSource` throws "Style is not done
+        // loading". The caller is a toolbar listener, where that is an uncaught error on the
+        // page — it must be said, not thrown, and the next call must boot.
+        it("a map whose style is still loading is reported, not thrown, and the next call boots", async () => {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            const api = await load();
+            mocks.initLayers.mockImplementationOnce(() => {
+                throw new Error("Style is not done loading");
+            });
+            expect(() => api.openMeasureMenu()).not.toThrow();
+            expect(mocks.initMenu).not.toHaveBeenCalled();
+            expect(warn).toHaveBeenCalledWith(
+                expect.stringContaining("[GeoLeaf.Measure]"),
+                expect.any(Error)
+            );
+
+            api.openMeasureMenu();
+            expect(mocks.initMenu).toHaveBeenCalledTimes(1);
+            warn.mockRestore();
+        });
+
         it("restores only annotation features from storage at boot", async () => {
             mocks.initPersistence.mockReturnValue([
                 { properties: { annotationKind: "label" } },

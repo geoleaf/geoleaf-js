@@ -55,9 +55,11 @@ export function _openLightbox(src: string): void {
     const safeSrc = _safeImageSrc(src);
     if (!safeSrc) return;
     const overlay = _el("div", "gl-lightbox");
+    // The z-index is the stylesheet's (`.gl-lightbox`), repeated here because an inline value
+    // wins over it: at 9999 the photo opened BEHIND the form, whose overlay sits at 10000.
     applyCssText(
         overlay,
-        "position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out"
+        "position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:20000;cursor:zoom-out"
     );
     const img = _el("img");
     img.src = safeSrc;

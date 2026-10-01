@@ -440,6 +440,54 @@ describe("createResponsiveModal — save/cancel semantics (S10)", () => {
         modal.close(true);
     });
 
+    // While the write is in flight, a NON-forced close is a cancel: the caller withdraws the
+    // drawn shape, and the save then lands on a shape that is no longer on screen. The three
+    // buttons were disabled; the cross, Escape and the backdrop still closed.
+    it("a pending save cannot be cancelled by the cross, Escape, the backdrop or close()", async () => {
+        let resolveSave: () => void = () => {};
+        const onSave = vi.fn(() => new Promise<void>((r) => (resolveSave = r)));
+        const onCancel = vi.fn();
+        const modal = createResponsiveModal(baseOpts);
+        modal.open({ title: "New", schema, onSave, onCancel });
+        clickSave();
+
+        const cross = document.body.querySelector<HTMLButtonElement>(".gl-form-modal__btn--close")!;
+        expect(cross.disabled).toBe(true);
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        document.body.querySelector<HTMLElement>(".gl-form-modal-overlay")!.click();
+        modal.close();
+        expect(modal.isOpen()).toBe(true);
+        expect(onCancel).not.toHaveBeenCalled();
+
+        resolveSave();
+        await flush();
+        expect(modal.isOpen()).toBe(false);
+        expect(onCancel).not.toHaveBeenCalled();
+    });
+
+    it("a forced close goes through a pending save — the caller's own exit", () => {
+        const onSave = vi.fn(() => new Promise<void>(() => undefined));
+        const modal = createResponsiveModal(baseOpts);
+        modal.open({ title: "New", schema, onSave });
+        clickSave();
+        modal.close(true);
+        expect(modal.isOpen()).toBe(false);
+    });
+
+    it("the cross closes again once a failed save cleared the busy state", async () => {
+        const onSave = vi.fn(() => Promise.reject(new Error("network")));
+        const onCancel = vi.fn();
+        const modal = createResponsiveModal(baseOpts);
+        modal.open({ title: "New", schema, onSave, onCancel });
+        clickSave();
+        await flush();
+        const cross = document.body.querySelector<HTMLButtonElement>(".gl-form-modal__btn--close")!;
+        expect(cross.disabled).toBe(false);
+        cross.click();
+        expect(modal.isOpen()).toBe(false);
+        expect(onCancel).toHaveBeenCalledOnce();
+    });
+
     it("re-opening over an existing modal still fires the prior onCancel", () => {
         const firstCancel = vi.fn();
         const modal = createResponsiveModal(baseOpts);

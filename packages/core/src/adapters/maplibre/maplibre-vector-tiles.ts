@@ -34,7 +34,7 @@ import {
     collectHatchPatterns,
     type CasingConfig,
 } from "./maplibre-style-converter.js";
-import { setPaintAt } from "./maplibre-primitives.js";
+import { setPaintAt, withGeometryGuard } from "./maplibre-primitives.js";
 import { registerHatchPattern } from "./maplibre-hatch-patterns.js";
 import { validateFillExtrusionStyle } from "./maplibre-extrusion-validator.js";
 import { Log } from "../../utils/log/index.js";
@@ -66,6 +66,12 @@ interface VtBuildCtx {
     beforeId: string | undefined;
     createdSubIds: string[];
     createdTypes: SubLayerType[];
+    /**
+     * Whether the source-layer holds several geometry kinds (`geometryType: "mixed"`), so that
+     * each sub-layer must be confined to the kinds it can draw. A homogeneous source-layer has
+     * nothing to confine, and its sub-layers carry no filter.
+     */
+    confine: boolean;
 }
 
 /**
@@ -197,6 +203,11 @@ function _addVtSubLayer(ctx: VtBuildCtx, subType: SubLayerType, mlType: string):
     const subId = toSubLayerId(layerId, subType);
     const paint = resolveVtSubLayerPaint(subId, styleRules, mergedFlat, layerId);
     if (!paint) return;
+    // The engine does not check the geometry type when it fills a bucket: on a mixed
+    // source-layer an unconfined circle sub-layer draws the vertices of the lines and
+    // polygons, and an unconfined fill tries to fill the lines. Same guard as the GeoJSON
+    // sub-layers; a filter set later composes with it (`MaplibreAdapter.setLayerFilter`).
+    const guard = ctx.confine ? withGeometryGuard(subType, null) : null;
     map.addLayer(
         {
             id: subId,
@@ -204,6 +215,7 @@ function _addVtSubLayer(ctx: VtBuildCtx, subType: SubLayerType, mlType: string):
             source: sourceId,
             "source-layer": sourceLayer,
             paint,
+            ...(guard && { filter: guard }),
             ...vtZoom,
         } as MaplibreLayerSpec,
         beforeId
@@ -287,6 +299,7 @@ export function buildVectorTileLayer(
         beforeId,
         createdSubIds,
         createdTypes,
+        confine: geomType === "mixed",
     };
     // Each helper self-guards on geomType.
     _addVtFillLayer(ctx, geomType);

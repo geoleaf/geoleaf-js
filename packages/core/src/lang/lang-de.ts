@@ -15,7 +15,6 @@ const lang_de: LangDict = {
     "toast.geoloc.error.position_unavailable": "Position nicht verf\u00fcgbar",
     "toast.geoloc.error.timeout": "Zeitlimit f\u00fcr Geolokalisierung \u00fcberschritten",
     "toast.init.loading": "Daten werden geladen, bitte warten.",
-    "toast.profile.loaded": "{0} geladen",
     "toast.layer.truncated.known":
         "{0}: {1} von {2} Objekten angezeigt — die Ebene ist abgeschnitten.",
     "toast.layer.truncated.unknown": "{0}: {1} Objekte angezeigt, die Ebene enthält mehr.",

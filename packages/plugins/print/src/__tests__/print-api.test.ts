@@ -250,6 +250,22 @@ describe("print-api", () => {
             });
         });
 
+        it("reserves the footer band for a credited basemap, even without a description", async () => {
+            const g = globalThis as { GeoLeaf?: Record<string, unknown> };
+            const before = g.GeoLeaf;
+            g.GeoLeaf = {
+                ...(before ?? {}),
+                Baselayers: { getActiveLayer: () => ({ attribution: "© Example Tiles" }) },
+            };
+            try {
+                await exportImage({ title: "", description: "" } as never);
+            } finally {
+                if (before === undefined) delete g.GeoLeaf;
+                else g.GeoLeaf = before;
+            }
+            expect(mocks.computeZones.mock.calls[0][2]).toMatchObject({ includeFooter: true });
+        });
+
         it("falls back to config then to built-in defaults for the include flags", async () => {
             mocks.getPrintConfig.mockReturnValue({
                 dpi: 300,

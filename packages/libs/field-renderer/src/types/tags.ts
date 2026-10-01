@@ -95,6 +95,12 @@ function formRender(
         if (input.value.trim()) addTag(input.value);
     });
 
+    // The zone shows a text cursor over its whole box: a tap beside the pills must reach the
+    // input, as it would in a text field. Only the zone itself — a pill keeps its own gesture.
+    tagsWrap.addEventListener("click", (e) => {
+        if (e.target === tagsWrap) input.focus();
+    });
+
     if (options.length > 0) {
         const datalist = _el("datalist");
         datalist.id = `${inputId}-list`;

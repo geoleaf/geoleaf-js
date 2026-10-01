@@ -88,7 +88,14 @@ export type SyncState = "pending" | "inFlight" | "synced" | "failed" | "quaranti
 export type QuarantineReason =
     /** The server deleted the entity while it was being edited locally. */
     | "deletedOnServer"
-    /** The layer stopped being editable between capture and push. */
+    /**
+     * The layer has no write target when the entry is pushed: its `write` block is absent,
+     * switched off, or carries no `endpoint`.
+     *
+     * ⚠️ `edition` is not read again: an edit captured while the layer allowed it is still
+     * sent once the permission has been withdrawn from the profile. What refuses it then is
+     * the server.
+     */
     | "layerNoLongerWritable"
     /**
      * The push was refused by the server for a reason replay cannot fix.
@@ -101,6 +108,10 @@ export type QuarantineReason =
      * only, 404 and 501 excepted: malformed request, missing right, verb not allowed,
      * unprocessable entity. A server outage is `retryBudgetExhausted`; an unimplemented verb is
      * `notImplementedByServer`.
+     *
+     * It also names a creation the server did not write: answered `409`, or acknowledged with
+     * an empty array, while the re-read through the client identity finds no row. The status
+     * that travels with the entry is then the one of that answer — a 2xx in the second case.
      */
     | "rejectedByServer"
     /**
@@ -298,9 +309,9 @@ export interface OutboxEntry {
      * Earliest date this entry may be replayed, milliseconds since epoch. Absent when it
      * is replayable now.
      *
-     * 🛑 **WITHOUT IT, THE BUDGET WAS NOT A BUDGET.** `MAX_REPLAY_ATTEMPTS` counts three
-     * TOTAL attempts and `attempts` persists in the database, while the drain fires on
-     * network return **and** on the operator's "Retry" button. Three clicks inside a
+     * 🛑 **WITHOUT IT, THE BUDGET WAS NOT A BUDGET.** `MAX_REPLAY_ATTEMPTS` counts TOTAL
+     * attempts — four — and `attempts` persists in the database, while the drain fires on
+     * network return **and** on the operator's "Retry" button. As many clicks inside a
      * maintenance window therefore spent a field capture's whole budget in under a minute
      * and set it aside — the cap measured a number of gestures, never a duration.
      *
@@ -632,7 +643,7 @@ export interface LayerWriteTarget {
     readonly auth?: WriteAuth;
     /** Property key carrying the geometry in a `collection` body. Defaults to `"geom"`. */
     readonly geometryProperty?: string;
-    /** Whitelist of property keys sent in a `collection` body. */
+    /** Whitelist of property keys sent in a `collection` body. Absent: every property is sent. */
     readonly properties?: readonly string[];
 }
 
@@ -717,8 +728,12 @@ export type LayerOfflineStatus =
     | "declaredNeverPulled"
     | "pulled"
     /**
-     * A pull reached the source and wrote, but did not finish — the caller aborted, or
-     * the hard cap cut it short.
+     * A pull reached the source and wrote, but did not finish — the caller aborted, or the
+     * page closed mid-run.
+     *
+     * ⚠️ A run the hard cap cuts short is NOT this: it went to its end and is reported
+     * `pulled`. What the cap left out is said elsewhere — by the truncation notice the pull
+     * raises for a full run — not by this status.
      *
      * 🛑 **Added by R9, when the pull started committing PAGE BY PAGE.** Before that a
      * pull was atomic in practice: one transaction, so it either landed whole or not at

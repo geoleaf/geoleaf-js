@@ -260,6 +260,48 @@ describe("createComposedCanvas", () => {
         );
     });
 
+    it("credits the active basemap in the footer, as plain text", async () => {
+        (globalThis as any).GeoLeaf.Baselayers = {
+            getActiveLayer: () => ({
+                attribution: '&copy; <a href="https://example.org">Example Tiles</a> contributors',
+            }),
+        };
+        const zones = { ...makeZones(), footer: { x: 10, y: 268, width: 190, height: 10 } };
+        const targetPx = { ...makeTargetPixels(), footer: { widthPx: 2480, heightPx: 118 } };
+        const result = await createComposedCanvas(mapCanvas, zones, targetPx, {
+            ...BASE_OPTS,
+            title: "",
+            description: "Levé",
+        });
+        const ctx = result.getContext("2d") as any;
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            "© Example Tiles contributors — Levé",
+            expect.any(Number),
+            expect.any(Number),
+            expect.any(Number)
+        );
+    });
+
+    it("reads the credit from the legacy option bag when the definition has no `attribution`", async () => {
+        (globalThis as any).GeoLeaf.Baselayers = {
+            getActiveLayer: () => ({ options: { attribution: "© Legacy Tiles" } }),
+        };
+        const zones = { ...makeZones(), footer: { x: 10, y: 268, width: 190, height: 10 } };
+        const targetPx = { ...makeTargetPixels(), footer: { widthPx: 2480, heightPx: 118 } };
+        const result = await createComposedCanvas(mapCanvas, zones, targetPx, {
+            ...BASE_OPTS,
+            title: "",
+            description: "",
+        });
+        const ctx = result.getContext("2d") as any;
+        expect(ctx.fillText).toHaveBeenCalledWith(
+            "© Legacy Tiles",
+            expect.any(Number),
+            expect.any(Number),
+            expect.any(Number)
+        );
+    });
+
     it("does NOT draw the footer when the footer zone has zero height", async () => {
         // makeZones() footer.height === 0 → _drawFooterZone is never reached.
         const result = await createComposedCanvas(mapCanvas, makeZones(), makeTargetPixels(), {

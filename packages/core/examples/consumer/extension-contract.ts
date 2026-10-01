@@ -167,23 +167,24 @@ import type { PluginRegisterOptions } from "@geoleaf/host-runtime";
 type AssertAssignable<T extends U, U> = T;
 
 /*
- * ⚠️ `GeoLeafGlobal` → `GeoLeafHost` is NOT asserted here, and that is a
- * measured limit, not an oversight.
+ * ⚠️ `GeoLeafGlobal` → `GeoLeafHost` is NOT asserted here, and the reason has changed.
  *
  * `GeoLeafGlobal` is an AMBIENT declaration (`declare global` in
- * `packages/core/src/global.d.ts`). An ambient type only exists if its file is
- * in the program, and no published subpath leads there: `types` points at
- * `dist/types/bundle-esm-entry.d.ts`, which does not reference it, and
- * `"./dist/*"` — which would have made it reachable — was removed from
- * `exports` because it was an API leak. Written as-is,
- * `typeof globalThis.GeoLeaf` compiles to an implicit `any` (TS7017): an
- * assertion that verifies nothing while looking like it verifies.
+ * `packages/core/src/global.d.ts`), and it IS in the program of whoever imports the
+ * package: the published entry, `dist/types/bundle-esm-entry.d.ts`, opens on a reference
+ * to it. This comment said the opposite until 01/10/2026 — that no published subpath led
+ * there, and that `typeof globalThis.GeoLeaf` compiled to an implicit `any` — which
+ * stopped being true the day the entry gained that reference.
  *
- * The gesture that would open it — publishing a `./global` subpath toward
- * `dist/types/global.d.ts` — is deliberately not made here: it would publicly
- * commit a shape the API review plans to rework (member promotion, then removal
- * of the `[key: string]: unknown` trailer, which is breaking). Publishing now
- * would amount to freezing what is about to be broken.
+ * So the assertion can be written, and written today it FAILS (TS2344, measured on
+ * 01/10/2026): `Core.getMap()` returns `unknown` on the ambient side, where the host
+ * contract declares `HostMapAdapter | null | undefined`. That is the first of the
+ * divergent shapes the name-based gate below cannot see; the compiler stops at the first
+ * one, so there may be more.
+ *
+ * It is left out rather than forced through: the ambient shape is the one the API review
+ * plans to rework (member promotion, then removal of the `[key: string]: unknown` trailer,
+ * which is breaking), and pinning it here would freeze what is about to move.
  *
  * Meanwhile, the two contracts' comparison is held by NAMES
  * (`scripts/verify-host-contract-sync.cjs`, HOST-01/02/03), not by shapes. The

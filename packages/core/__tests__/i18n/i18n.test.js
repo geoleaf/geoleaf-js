@@ -134,17 +134,12 @@ describe("getLabel() — default French", () => {
         expect(getLabel("nonexistent.key.xyz")).toBe("nonexistent.key.xyz");
     });
 
-    it("interpolates single {0} placeholder", () => {
-        const result = getLabel("toast.profile.loaded", "MyProfile");
-        expect(result).toBe("MyProfile chargé");
-    });
-
     it("interpolates {0} in format.zoom.level", () => {
         expect(getLabel("format.zoom.level", "12")).toBe("Zoom : 12");
     });
 
     it("leaves {0} intact when no interpolation arg provided", () => {
-        expect(getLabel("toast.profile.loaded")).toContain("{0}");
+        expect(getLabel("format.zoom.level")).toContain("{0}");
     });
 
     it("ui.filter.activate returns French 'Activer'", () => {

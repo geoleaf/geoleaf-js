@@ -91,6 +91,44 @@ describe("TokenStore", () => {
             const result = await TokenStore.load(BASE_URL);
             expect(result).toBeNull();
         });
+
+        // A read that fails degrades to "nothing stored" and never rejects: the session is
+        // resolved on the way to `configure()`, before the interceptor is installed.
+        it.each(["transactionThrows", "requestFails"] as const)(
+            "returns null when the read fails (%s)",
+            async (fault: "transactionThrows" | "requestFails") => {
+                idbMock._db.set(BASE_URL, {
+                    baseUrl: BASE_URL,
+                    token: TOKEN,
+                    expiresAt: EXPIRES_FAR,
+                });
+                idbMock._faults[fault] = true;
+                await expect(TokenStore.load(BASE_URL)).resolves.toBeNull();
+            }
+        );
+
+        it("a failed read resolves the session as absent, and closes the database", async () => {
+            idbMock._faults.transactionThrows = true;
+            const before = idbMock._closes;
+            await expect(TokenStore.resolveSession(BASE_URL)).resolves.toEqual({
+                token: null,
+                verdict: "absent",
+            });
+            expect(idbMock._closes).toBe(before + 1);
+        });
+    });
+
+    describe("a failed write", () => {
+        it.each(["save", "clear"] as const)(
+            "%s closes the database it opened",
+            async (write: "save" | "clear") => {
+                idbMock._faults.requestFails = true;
+                const before = idbMock._closes;
+                if (write === "save") await TokenStore.save(BASE_URL, TOKEN, EXPIRES_FAR);
+                else await TokenStore.clear(BASE_URL);
+                expect(idbMock._closes).toBe(before + 1);
+            }
+        );
     });
 
     // ─── clear ────────────────────────────────────────────────────────────────

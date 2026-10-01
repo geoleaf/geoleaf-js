@@ -36,16 +36,16 @@ export type { BaselayersInitOptions };
 /**
  * Registers the default basemaps, renders the controls and activates the initial basemap.
  *
- * @param options - `map` is the MapLibre instance to drive; `defaultKey` selects the basemap
- *   activated at boot.
+ * @param options - `map` is the MapLibre instance to drive; `activeKey` selects the basemap
+ *   to activate. Without it, the first registered basemap is activated.
  * @returns The active key and the registered layers, as they stand at the end of the call —
  *   ⚠️ `activeKey` may still be `null`, activation being deferred until the style is loaded.
  *
  * @example
  * ```js
  * GeoLeaf.Baselayers.init({
- *     map: map, // instance MapLibre GL
- *     defaultKey: "street-vector",
+ *     map: map, // MapLibre GL instance
+ *     activeKey: "street-vector",
  * });
  * ```
  */

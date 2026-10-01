@@ -216,7 +216,7 @@ Add an `editorConfig` key to your GeoLeaf profile JSON. All fields are optional 
 | `api.authHeader`                 | string \| null         | `null`        | Optional `Authorization` header value.                                                                                                                                                                                                                                                                |
 | `api.timeoutMs`                  | number                 | `8000`        | Network timeout of a DIRECT write (mode `online`, or a layer this device cannot hold). A write the outbox holds is sent by the core's drain, under its own budget.                                                                                                                                    |
 | `api.geometryProperty`           | string                 | `"geom"`      | Geometry property key in the `"collection"` dialect.                                                                                                                                                                                                                                                  |
-| `persistence.mode`               | string                 | `"auto"`      | `"auto"` (online/offline detection), `"online"`, or `"offline"`.                                                                                                                                                                                                                                      |
+| `persistence.mode`               | string                 | `"auto"`      | `"auto"` (the outbox when this device can hold the layer's writes, the direct adapter otherwise), `"online"`, or `"offline"` — see Persistence. Being online or not plays no part.                                                                                                                    |
 | `persistence.dialect`            | string                 | `"rest"`      | `"rest"` (`{feature, layerId}` envelope) or `"collection"` (flat OGC/PostgREST body, create-only).                                                                                                                                                                                                    |
 | `persistence.conflictResolution` | string                 | `"prompt"`    | HTTP 409 strategy: `"client-wins"`, `"server-wins"`, `"prompt"`.                                                                                                                                                                                                                                      |
 | `undoStackSize`                  | number                 | `100`         | Maximum undo/redo depth per session.                                                                                                                                                                                                                                                                  |
@@ -250,6 +250,13 @@ answering a creation without an id.
 
 **REST dialect** (`dialect: "rest"`): `POST/PUT/DELETE {baseUrl}/features?layerId=…` with a `{ feature, layerId }` envelope.
 **Collection dialect** (`dialect: "collection"`): `POST {baseUrl}/{layerId}` with a flat `{ ...properties, geom: geometry }` body (OGC API Features / PostgREST). Create-only at this time.
+
+⚠️ **Two defaults that differ, for two paths that differ.** `persistence.dialect` defaults to
+`"rest"`; a layer's `write.dialect` defaults to `"collection"`. `persistence.dialect` is what the
+DIRECT adapter speaks, to `api.baseUrl` — it does not read the layer's `write` block. A write held
+by the outbox is sent by the core's drain to the layer's `write.endpoint`, in `collection`,
+whatever `persistence.dialect` says. A layer written through both paths needs the two to name
+the same server contract.
 
 On HTTP 409, conflict resolution follows `persistence.conflictResolution`; `"prompt"` opens a merge dialog.
 

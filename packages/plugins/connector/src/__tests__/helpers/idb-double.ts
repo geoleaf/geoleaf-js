@@ -9,6 +9,12 @@
  * ⚠️ It implements `get`, `put` and `delete` on one store, and the success path of `open`.
  * Nothing else: a caller reaching for more gets `undefined` and should extend the double
  * rather than trust a partial one.
+ *
+ * Two failures a device reaches are armed through `_faults`, both off by default:
+ * `transactionThrows` — `db.transaction()` throws, as it does for a store missing from a
+ * database of the same version — and `requestFails` — the request settles through `onerror`.
+ * Like the real thing, a failed request never reaches `oncomplete`. `_closes` counts the
+ * `close()` calls, so a suite can tell a database left open on a failure path.
  */
 
 /** A record as `token-store.ts` persists it. */
@@ -52,25 +58,41 @@ function _request<T>(work: () => T): RequestDouble<T> {
  */
 export function makeIDBDouble() {
     const records = new Map<string, IDBDoubleRecord>();
+    const faults = { transactionThrows: false, requestFails: false };
+    let closes = 0;
+
+    /** Runs `work`, unless the request is armed to fail. */
+    const settle = <T>(work: () => T): RequestDouble<T> =>
+        _request(() => {
+            if (faults.requestFails) throw new Error("IDB request failed");
+            return work();
+        });
 
     const database = {
-        close: (): void => undefined,
+        close: (): void => {
+            closes += 1;
+        },
         objectStoreNames: { contains: (): boolean => false },
         createObjectStore: (): void => undefined,
         transaction() {
+            if (faults.transactionThrows) throw new Error("NotFoundError: no such object store");
             const tx: { oncomplete: (() => void) | null; objectStore: () => unknown } = {
                 oncomplete: null,
                 objectStore: () => ({
-                    get: (key: string) => _request(() => records.get(key)),
+                    get: (key: string) => settle(() => records.get(key)),
                     put: (value: IDBDoubleRecord) =>
-                        _request(() => void records.set(value.baseUrl, value)),
-                    delete: (key: string) => _request(() => void records.delete(key)),
+                        settle(() => void records.set(value.baseUrl, value)),
+                    delete: (key: string) => settle(() => void records.delete(key)),
                 }),
             };
-            // The store closes the database on `oncomplete`: fire it once the request settled.
+            // The store closed the database on `oncomplete`: fire it once the request settled —
+            // and never after a failed request, whose transaction aborts instead.
+            const completes = !faults.requestFails;
             void Promise.resolve()
                 .then(() => undefined)
-                .then(() => tx.oncomplete?.());
+                .then(() => {
+                    if (completes) tx.oncomplete?.();
+                });
             return tx;
         },
     };
@@ -94,5 +116,10 @@ export function makeIDBDouble() {
             return request;
         },
         _db: records,
+        _faults: faults,
+        /** How many times the store closed the database. */
+        get _closes(): number {
+            return closes;
+        },
     };
 }

@@ -11,15 +11,18 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 
 ## Features
 
-- **IndexedDB persistence** — POI data, layer metadata, sync queue, images, backups
-- **Profile caching** — downloads a profile's tiles and resources for fully offline access
-- **Sync queue** — records CRUD operations while offline and replays them when the network returns
-- **Offline image handling** — local image storage, with deferred upload once connectivity is back
-- **Offline detector** — automatic connectivity monitoring with a built-in visual indicator
-- **Cache button** — a native MapLibre UI control to start and follow the offline download
+- **Cache button** — a control in the core's toolbar that opens the offline window
+- **Layer picker** — choose which layers of the profile to take offline, then start and follow
+  the download (`GeoLeaf.Storage.CacheManager.cacheProfile`)
+- **Synchronisation panel** — the state of the write queue the core holds, and a button to send
+  it now
 - **"Can I leave?"** — the core's pre-departure check (`GeoLeaf.Storage.preflight()`, core ≥ 3.10.0)
   shown next to the download: storage persistence, each layer's offline state, what the
   preparation left out, the write session (core ≥ 3.11.0), and the core's verdict
+
+What this plugin does **not** contain: the storage itself, the cache, the pull of a layer's
+entities, the write queue and its replay, the connectivity detection. They are the core's offline
+capability; this plugin only draws them.
 
 ---
 
@@ -29,9 +32,9 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 npm install @geoleaf/core @geoleaf-plugins/offline-ui
 ```
 
-> **Important** — Requires `@geoleaf/core` v3.x. The core is declared in **`dependencies`**, not in
-> `peerDependencies` — as it is for the other plugins. This means npm may install a **second copy**
-> of the core rather than reusing yours; deduplicate if your bundler reports two instances.
+> **Important** — Requires `@geoleaf/core` v3.x, declared in **`peerDependencies`**: install the
+> core yourself, the plugin never brings a second copy of it. Load the plugin **after** the core
+> and **before** `GeoLeaf.boot()`.
 
 ---
 
@@ -43,18 +46,17 @@ npm install @geoleaf/core @geoleaf-plugins/offline-ui
 import "@geoleaf/core";
 import "@geoleaf-plugins/offline-ui";
 
-// The plugin wires itself to GeoLeaf.Storage automatically
-await GeoLeaf.init({
-    map: { target: "map" },
-    data: { activeProfile: "tourism", profilesBasePath: "./profiles/" },
+// The plugin registers its interface on import; `GeoLeaf.Storage` is the core's facade
+GeoLeaf.boot({
+    config: { data: { activeProfile: "tourism", profilesBasePath: "./profiles/" } },
 });
 
 // Check offline status
 const isOffline = GeoLeaf.Storage.isOffline();
 
-// Cache statistics
+// Storage statistics
 const stats = await GeoLeaf.Storage.getStats();
-console.log(stats.tileCacheSize, stats.poiCount);
+console.log(stats.storage.used, stats.features.count, stats.outbox.count);
 ```
 
 ### ESM (CDN / script tag)
@@ -78,9 +80,8 @@ Load it **after** `@geoleaf/core`:
     src="node_modules/@geoleaf-plugins/offline-ui/dist/geoleaf-offline-ui.plugin.js"
 ></script>
 <script type="module">
-    await GeoLeaf.init({
-        map: { target: "map" },
-        data: { activeProfile: "tourism", profilesBasePath: "./profiles/" },
+    GeoLeaf.boot({
+        config: { data: { activeProfile: "tourism", profilesBasePath: "./profiles/" } },
     });
     console.log("Offline ready:", GeoLeaf.Storage.isOffline());
 </script>
@@ -90,9 +91,14 @@ Load it **after** `@geoleaf/core`:
 
 ## API
 
+`GeoLeaf.Storage` is a facade of **`@geoleaf/core`** — this plugin drives it and mounts no
+namespace of its own. The members below are the ones its interface uses; the core's API
+reference documents the facade.
+
 ### `GeoLeaf.Storage.init()`
 
-Initialises the plugin (called automatically on load).
+Initialises the core's storage modules (the database, the cache manager). The core's offline
+capability calls it while the application boots.
 
 ### `GeoLeaf.Storage.isOffline()` → `boolean`
 
@@ -106,7 +112,9 @@ Returns the complete storage statistics:
 {
   storage: { used: number; quota: number; percentage: number };
   layers: { count: number; byProfile: Record<string, number> };
-  sync: { pending: number; failed: number };
+  features: { count: number }; // entities held locally
+  outbox: { count: number }; // writes still owed to the server
+  conflicts: { count: number }; // versions a settled conflict set aside, and kept
   cache: { profiles: string[] };
   online: boolean;
 }
@@ -144,7 +152,7 @@ Removes the whole cache and empties the `preferences` and `metadata` tables.
 | `geoleaf:offline:pull-progress` | `{ layerId, current, total, totalIsKnown, percentage }` | One page of a layer's entities landed. `totalIsKnown` is `false` when the source served no `numberMatched`: `total` is then a running count, not a whole |
 | `geoleaf:cache:completed`       | `{ profileId }`                                         | A download finishes                                                                                                                                      |
 | `geoleaf:cache:cleared`         | `{ profileId }`                                         | A profile's cache is removed                                                                                                                             |
-| `geoleaf:poi:synced`            | `{ results }`                                           | The sync queue has been sent                                                                                                                             |
+| `geoleaf:poi:synced`            | the push tally itself — `{ synced, failed, … }`         | The sync queue has been sent                                                                                                                             |
 | `geoleaf:storage:initialized`   | —                                                       | Storage is initialised                                                                                                                                   |
 | `geoleaf:storage:cleared`       | —                                                       | All storage has been removed                                                                                                                             |
 
@@ -186,13 +194,13 @@ src/
 
 ## Documentation
 
-| Guide                                                                                                                    | Contents                                    |
-| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
-| [Installation](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/INSTALLATION.md)         | Prerequisites, GitHub registry, npm scripts |
-| [Configuration](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/CONFIGURATION.md)       | JSON profile options, `storage.*` keys      |
-| [API Reference](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/API_REFERENCE.md)       | Full API with TypeScript signatures         |
-| [Examples](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/EXAMPLES.md)                 | Ready-to-use recipes                        |
-| [Offline Detector](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/offline-detector.md) | Network monitoring and advanced settings    |
+| Guide                                                                                                                    | Contents                                 |
+| ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| [Installation](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/INSTALLATION.md)         | Prerequisites and setup                  |
+| [Configuration](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/CONFIGURATION.md)       | JSON profile options                     |
+| [API Reference](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/API_REFERENCE.md)       | Full API with TypeScript signatures      |
+| [Examples](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/EXAMPLES.md)                 | Ready-to-use recipes                     |
+| [Offline Detector](https://github.com/geoleaf/geoleaf-js/blob/main/packages/plugins/offline-ui/docs/offline-detector.md) | Network monitoring and advanced settings |
 
 ---
 

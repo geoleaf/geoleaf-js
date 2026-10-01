@@ -26,11 +26,9 @@
 import "@geoleaf-plugins/offline-ui";
 
 // Initialise after GeoLeaf Core
-await GeoLeaf.init({
-    map: { target: "map" },
-    data: { activeProfile: "my-app", profilesBasePath: "./profiles/" },
+GeoLeaf.boot({
+    config: { data: { activeProfile: "my-app", profilesBasePath: "./profiles/" } },
 });
-GeoLeaf.boot();
 
 const ok = await GeoLeaf.Storage.init({
     indexedDB: { name: "my-app-db", version: 1 },

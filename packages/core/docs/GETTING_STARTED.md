@@ -16,7 +16,7 @@ title: "GeoLeaf-JS — Getting Started"
 2. [Installation (browser)](#installation-browser)
 3. [Two initialisation modes](#two-initialisation-modes)
 4. [First map (Core.init)](#first-map)
-5. [Full project with a profile (GeoLeaf.init)](#full-project-with-a-profile-geoleafinit)
+5. [Full project with a profile (GeoLeaf.boot)](#full-project-with-a-profile-geoleafboot)
 6. [What's in the bundle](#whats-in-the-bundle)
 7. [TypeScript usage](#typescript-usage)
 8. [Build and serve locally](#build-and-serve-locally)
@@ -164,15 +164,15 @@ Once loaded, `window.GeoLeaf` is available globally.
 
 GeoLeaf offers two initialisation modes, depending on how complex the project is:
 
-| Mode             | API                                            | When to use it                                                        |
-| ---------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
-| **Simple map**   | `Core.init({ mapId, center, zoom })`           | Quick prototype, map without profile-configured layers                |
-| **Full project** | `GeoLeaf.init({ map, data }) + GeoLeaf.boot()` | Application with a JSON profile (layers, filters, theme, clustering…) |
+| Mode             | API                                                         | When to use it                                                        |
+| ---------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Simple map**   | `Core.init({ mapId, center, zoom })`                        | Quick prototype, map without profile-configured layers                |
+| **Full project** | `GeoLeaf.boot({ config })` or `GeoLeaf.boot({ configUrl })` | Application with a JSON profile (layers, filters, theme, clustering…) |
 
 ```mermaid
 flowchart TD
     A(["Start"]) --> B{"GeoJSON layers,\nfilters, theme,\nclustering?"}
-    B -->|Yes| C["GeoLeaf.init() + GeoLeaf.boot()\n→ Full project with a profile"]
+    B -->|Yes| C["GeoLeaf.boot()\n→ Full project with a profile"]
     B -->|No| D{"Quick prototype\nor demo?"}
     D -->|Yes| E["Core.init()\n→ Simple map, no profile"]
     D -->|No| C
@@ -180,7 +180,7 @@ flowchart TD
     style E fill:#457b9d,color:#fff
 ```
 
-> For a real project, **prefer `GeoLeaf.init()` with a profile** — this is the recommended approach. For a complete tutorial from scratch, see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md).
+> For a real project, **prefer `GeoLeaf.boot()` with a profile** — this is the recommended approach. For a complete tutorial from scratch, see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md).
 
 ---
 
@@ -250,20 +250,22 @@ Core.init({
 
 ---
 
-## Full project with a profile (GeoLeaf.init)
+## Full project with a profile (GeoLeaf.boot)
 
-For projects with profile-configured GeoJSON layers, filters, theme and clustering, use the high-level `GeoLeaf.init()` + `GeoLeaf.boot()` API:
+For projects with profile-configured GeoJSON layers, filters, theme and clustering, use
+`GeoLeaf.boot()`: it loads the configuration, then the profile it names, and creates the map.
 
 ```html
+<div id="geoleaf-map"></div>
 <script type="module">
-    GeoLeaf.init({
-        map: { target: "map" },
-        data: {
-            activeProfile: "mon-profil",
-            profilesBasePath: "./profiles/",
+    GeoLeaf.boot({
+        config: {
+            data: {
+                activeProfile: "mon-profil",
+                profilesBasePath: "./profiles/",
+            },
         },
     });
-    GeoLeaf.boot();
 </script>
 ```
 
@@ -275,17 +277,17 @@ import GeoLeaf from "@geoleaf/core";
 // GeoLeaf reads the engine from `globalThis.maplibregl`, which MapLibre 6 no longer sets
 Object.assign(globalThis, { maplibregl });
 
-GeoLeaf.init({
-    map: { target: "map" },
-    data: {
-        activeProfile: "mon-profil",
-        profilesBasePath: "./profiles/",
+GeoLeaf.boot({
+    config: {
+        data: {
+            activeProfile: "mon-profil",
+            profilesBasePath: "./profiles/",
+        },
     },
 });
-GeoLeaf.boot();
 ```
 
-`GeoLeaf.init()` loads `./profiles/mon-profil/profile.json`, then the files **that profile
+`GeoLeaf.boot()` loads `./profiles/mon-profil/profile.json`, then the files **that profile
 declares** in its `Files` key — it does not guess them. The expected layout:
 
 ```
@@ -295,7 +297,13 @@ profiles/mon-profil/
 └── config/plugins/              ← one file per capability: taxonomy.json · filter.json · …
 ```
 
-`GeoLeaf.boot()` then starts rendering the map.
+The map is created in the element the loaded configuration names — `map.target`, then `map.id`,
+`geoleaf-map` when it names none. With a configuration file rather than an object:
+`GeoLeaf.boot({ configUrl: "/geoleaf.config.json" })`.
+
+> ⚠️ Do not call `GeoLeaf.init()` before `GeoLeaf.boot()`. `GeoLeaf.init()` creates a map and reads
+> only `map` and `ui`: a `data` key passed to it is ignored without a word, and `boot()` creates
+> the map itself.
 
 > For the full structure of a profile and a step-by-step tutorial, see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md) and [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
 

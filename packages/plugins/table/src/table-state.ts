@@ -127,14 +127,26 @@ export function fireEvent<K extends TableEventName>(
     }
 }
 
-/** Returns the selected features via the ID→index cache mapping. */
-export function getSelectedFeatures(): TableFeature[] {
-    const result: TableFeature[] = [];
+/**
+ * Returns the selected features WITH their identifiers, via the ID→index cache mapping — two
+ * arrays positionally aligned. An export names a selected feature by the identifier the table
+ * gave it, which only this pairing carries: a selection is a subset, and cannot be renumbered.
+ */
+export function getSelectedEntries(): { ids: string[]; features: TableFeature[] } {
+    const ids: string[] = [];
+    const features: TableFeature[] = [];
     tableState._selectedIds.forEach((id) => {
         const index = tableState._featureIdMap.get(id);
-        if (index != null && tableState._cachedData[index]) {
-            result.push(tableState._cachedData[index]);
+        const feature = index != null ? tableState._cachedData[index] : undefined;
+        if (feature) {
+            ids.push(id);
+            features.push(feature);
         }
     });
-    return result;
+    return { ids, features };
+}
+
+/** Returns the selected features via the ID→index cache mapping. */
+export function getSelectedFeatures(): TableFeature[] {
+    return getSelectedEntries().features;
 }

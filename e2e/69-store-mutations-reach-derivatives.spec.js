@@ -70,10 +70,9 @@ async function armLayer(context) {
         cfg.editableGeometryTypes = ["LineString"];
         cfg.interactiveShape = true;
         cfg.table = { enabled: true, columns: [{ field: "properties.name", label: "Nom" }] };
-        // ⚠️ The shipped layer declares `clustering: { enabled: false, disableClusteringAtZoom }`
-        // and the filter takes ANY `disableClusteringAtZoom` for a clustered layer — measured on
-        // 27/09/2026, it re-fed the source instead of taking the GPU path this spec is about.
-        delete cfg.clustering;
+        // The shipped layer declares `clustering: { enabled: false, disableClusteringAtZoom }`,
+        // and it is kept as shipped: a clustering switched off is not a clustered layer, so the
+        // filter takes the GPU path this spec is about.
         await route.fulfill({ json: bundle });
     });
     await context.route(`**/${LAYER}/data/${LAYER}.geojson**`, (route) =>

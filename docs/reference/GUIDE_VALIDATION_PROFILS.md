@@ -62,6 +62,8 @@ Depuis le layout profil v2 (2026-06), `profile.json` ne contient que l'identité
 
 **`profile.json` :**
 
+<!-- geoleaf:docs:schema profile -->
+
 ```json
 {
     "id": "tourism",

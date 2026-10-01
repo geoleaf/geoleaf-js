@@ -214,31 +214,34 @@ order. A pass starts on:
 A capture written through `applyEdit()` directly asks for no pass: the next trigger sends it, or a
 call to `pushOutbox()`.
 
-An entry is attempted **three times in all**. After a failure it waits — 30 seconds after the
-first, 2 minutes after the second — and a pass walks past an entry whose wait is not over. The
-third failure sets it aside. Some answers set an entry aside at once: how each answer is read is
-§2.2 of the [server contract](SERVER_CONTRACT.md).
+An entry is attempted **four times in all**. After a failure it waits — 30 seconds after the
+first, 2 minutes after the second, 8 minutes after the third — and a pass walks past an entry whose
+wait is not over. The fourth failure sets it aside: a server away for about ten minutes does not
+set the queue aside. Some answers set an entry aside at once: how each answer is read is §2.2 of
+the [server contract](SERVER_CONTRACT.md).
 
 **A 401 stops the queue.** The entry is set aside as `authRequired`, the pass ends there —
 everything behind it would meet the same dead session — and every trigger above but the first
 and `pushOutbox()` pauses, until a pass ends without a 401 or the page is loaded again.
-⚠️ During the pause, the sync bar's **Sync now** button does nothing: it goes through the
-automatic path. How the queue starts again is under [Authentication](#authentication).
+The sync bar's **Sync now** button, and the send button of the offline window, are not paused:
+a person pressing them is saying the session is back. ⚠️ If it is not, that pass stops at its
+first 401 too, and sets one more entry aside. How the queue starts again is under
+[Authentication](#authentication).
 
 ## Entries set aside
 
 An entry the queue cannot send as it is gets **set aside** — kept, counted, never dropped — with
 one motive:
 
-| Motive                   | Cause                                                                                            | Way out                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------ | --------------------------------------- |
-| `retryBudgetExhausted`   | three failures: a network error, a timeout, or a server unavailable (408, 429, 500, 502–504)     | requeue                                 |
-| `rejectedByServer`       | three refusals — a 403 or another 4xx — or a create answered 409 whose row the server then lacks | discard                                 |
-| `authRequired`           | a 401                                                                                            | requeue, once the session is back       |
-| `deletedOnServer`        | the entity no longer exists on the server                                                        | discard                                 |
-| `notImplementedByServer` | the server answered 501                                                                          | requeue, once the server implements it  |
-| `layerNoLongerWritable`  | the layer has no `write` target, or it is disabled                                               | requeue, once `write.enabled` is `true` |
-| `dialectNotSupported`    | the layer declares `write.dialect: "rest"`                                                       | requeue, once it declares `collection`  |
+| Motive                   | Cause                                                                                                                       | Way out                                 |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| `retryBudgetExhausted`   | four failures: a network error, a timeout, or a server unavailable (408, 429, 500, 502–504)                                 | requeue                                 |
+| `rejectedByServer`       | four refusals — a 403 or another 4xx — or a create answered 409, or acknowledged with `[]`, whose row the server then lacks | discard                                 |
+| `authRequired`           | a 401                                                                                                                       | requeue, once the session is back       |
+| `deletedOnServer`        | the entity no longer exists on the server                                                                                   | discard                                 |
+| `notImplementedByServer` | the server answered 501                                                                                                     | requeue, once the server implements it  |
+| `layerNoLongerWritable`  | the layer has no `write` target, or it is disabled                                                                          | requeue, once `write.enabled` is `true` |
+| `dialectNotSupported`    | the layer declares `write.dialect: "rest"`                                                                                  | requeue, once it declares `collection`  |
 
 - `GeoLeaf.Storage.requeueableReasons()` returns the motives a requeue can lift.
   `requeueQuarantined(entryId)` puts one entry back in the queue, `requeueAll(motive?)` every
