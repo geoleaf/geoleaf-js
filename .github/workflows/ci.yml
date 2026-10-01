@@ -880,6 +880,12 @@ jobs:
             - name: Fetch de production annulables (NF, cliquet)
               run: node scripts/check-naked-fetch.cjs
 
+            # `getNativeMap()` est la porte que l'ADR-01 laisse ouverte : chaque appel hors de
+            # l'adaptateur est un endroit qu'il ne médie pas. Le compte est gelé par fichier —
+            # un appel de plus se décide, il ne dérive pas. Keep in sync with ci-local.cjs.
+            - name: Accès natif à la carte compté (NMA, cliquet)
+              run: node scripts/check-native-map-access.cjs
+
             # Une entrée de registre du lock sans `integrity` n'est pas vérifiée par empreinte
             # épinglée dans le dépôt — le compte est un cliquet décroissant. Keep in sync with ci-local.cjs.
             - name: Intégrité du lock (LI, cliquet)

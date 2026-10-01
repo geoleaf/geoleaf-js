@@ -15,7 +15,7 @@
             "severity": null,
             "description": "NMA-01…03 — les appels à `getNativeMap()` hors de l'adaptateur de carte sont comptés par fichier, sous cliquet",
             "confidence": "haute",
-            "rationale": "Câblé dans ci:local à la pose. Tient l'invariant que l'ADR-01 laissait sans garde : l'accès natif est une porte ouverte, donc un compte qui montait sans que rien le voie. À L'AST et non au grep : le grep de la ligne d'origine mêlait commentaires, déclarations et appels, et ne voyait ni les appels génériques ni ceux qui passent par la couture `_getNativeMap` de chaque plugin. Vue rouge dans les deux sens sur mutation réelle — un appel ajouté, un appel retiré. Périmètre dérivé de `lib/packages.cjs`, jamais d'un chemin en dur"
+            "rationale": "Câblé dans ci:local à la pose, dans ci.yml le même jour. Tient l'invariant que l'ADR-01 laissait sans garde : l'accès natif est une porte ouverte, donc un compte qui montait sans que rien le voie. À L'AST et non au grep : le grep de la ligne d'origine mêlait commentaires, déclarations et appels, et ne voyait ni les appels génériques ni ceux qui passent par la couture `_getNativeMap` de chaque plugin. Vue rouge dans les deux sens sur mutation réelle — un appel ajouté, un appel retiré. Périmètre dérivé de `lib/packages.cjs`, jamais d'un chemin en dur"
         }
     }
 }
