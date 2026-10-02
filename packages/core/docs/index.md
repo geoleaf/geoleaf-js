@@ -31,12 +31,19 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.13.1 <Badge type="tip" text="2026-10-01" />
+## Release v3.14.0 <Badge type="tip" text="2026-10-02" />
 
-A patch release: no new public member. The write cycle, the sign-in and the application's
-teardown each lose a way to go wrong without a word.
+A configuration copied from the FlatGeobuf plugin's README now passes profile validation.
 
 **Highlights:**
+
+- **New** — the layer schema declares `defaultVisible` and `cluster`, the two root keys the
+  FlatGeobuf plugin reads, for a layer declaring `plugin: "flatgeobuf"`. They are refused on any
+  other layer, where nothing reads them. The published schema and the profile types generated
+  from it (`@geoleaf/core/schemas`) carry both.
+
+Release v3.13.1 (2026-10-01) — a patch release, no new public member: the write cycle, the
+sign-in and the application's teardown each lose a way to go wrong without a word.
 
 - **Fixed** — an edit that fails is attempted four times, so the announced 8-minute delay is
   waited; a creation the server acknowledges without its row is looked up by its client identity
