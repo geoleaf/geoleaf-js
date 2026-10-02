@@ -11,6 +11,19 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.14.0] - 2026-10-02
+
+### Added
+
+- **`defaultVisible` and `cluster` are declared by the layer schema, for FlatGeobuf layers**
+  (`@geoleaf/core` 3.14.0). The FlatGeobuf plugin reads both at the root of a layer's
+  configuration, and its README shows them; the layer schema is closed and declared neither, so
+  a configuration copied from that README failed profile validation. Both are now accepted, as
+  booleans, on a layer declaring `plugin: "flatgeobuf"` — and refused on any other layer, where
+  nothing reads them: visibility there belongs to the themes, and clustering to the `clustering`
+  object. The published schema and the profile types generated from it carry the two keys. The
+  plugin itself is unchanged.
+
 ## [3.13.1] - 2026-10-01
 
 ### Removed

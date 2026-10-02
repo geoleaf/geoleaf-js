@@ -1,7 +1,7 @@
 {
     "_comment": "DOC-CONFIG-EXAMPLES — clés de configuration citées par un exemple JSON de la doc PRODUIT et absentes du schéma qui les gouverne. Chaque entrée est un extrait copiable-collable qui ferait échouer `npm run validate:profiles` chez l'intégrateur, parce que les objets à forme fixe sont `additionalProperties: false`. Cette liste ne peut que RÉTRÉCIR (CDE-02) et aucune entrée ne peut y NAÎTRE (CDE-01). Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé la doc, jamais pour faire taire un exemple neuf.",
     "_generated": "node scripts/check-doc-config-examples.cjs --update-baseline",
-    "count": 133,
+    "count": 132,
     "entries": [
         "docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md :: <layers.schema.json>.enabled",
         "docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md :: layers.routes",
@@ -127,7 +127,6 @@
         "packages/core/docs/ui/GeoLeaf_UI_README.md :: ui.showCoordinates",
         "packages/core/docs/ui/GeoLeaf_UI_README.md :: ui.showScale",
         "packages/core/docs/ui/PERMALINK.md :: ui.permalink",
-        "packages/plugins/flatgeobuf/README.md :: <layer-config.schema.json>.defaultVisible",
         "packages/plugins/print/README.md :: <style.schema.json>.bbox",
         "packages/plugins/print/README.md :: <style.schema.json>.bearing",
         "packages/plugins/print/README.md :: <style.schema.json>.center",

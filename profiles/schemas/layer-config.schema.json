@@ -127,6 +127,16 @@
             "type": "string",
             "description": "Optional plugin tag associated with this layer."
         },
+        "defaultVisible": {
+            "type": "boolean",
+            "default": true,
+            "description": "FlatGeobuf layers only (`plugin: \"flatgeobuf\"`): whether the layer is visible once loaded. Read by the plugin's loader, and by nothing else — the schema refuses the key on any other layer, whose visibility belongs to the themes (`layers[].visible`)."
+        },
+        "cluster": {
+            "type": "boolean",
+            "default": false,
+            "description": "FlatGeobuf layers only (`plugin: \"flatgeobuf\"`): point clustering on or off. Read by the plugin's loader, and by nothing else — the schema refuses the key on any other layer, where clustering is the `clustering` object. The plugin does not read `clustering`."
+        },
         "type": {
             "type": "string",
             "description": "Optional layer type tag."
@@ -584,6 +594,17 @@
         }
     },
     "allOf": [
+        {
+            "$comment": "`defaultVisible` and `cluster` are the FlatGeobuf plugin's own keys: its loader reads them, no other does. Declared at the root because the schema is closed, and confined here so that a GeoJSON layer cannot carry a key nothing would read — the class the closed schema exists to refuse. `required` in the `if` is what keeps a layer WITHOUT `plugin` from matching vacuously. The negative cases live in `packages/core/__tests__/config/layer-show-in-layer-manager-schema.test.ts`.",
+            "if": {
+                "type": "object",
+                "required": ["plugin"],
+                "properties": { "plugin": { "const": "flatgeobuf" } }
+            },
+            "else": {
+                "properties": { "defaultVisible": false, "cluster": false }
+            }
+        },
         {
             "$comment": "A field in edition obliges its layer to declare BOTH its editability (`edition.update: true`) and its write target (`write`). Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. Anchored on `update` and NOT on `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. The repository's profiles only exercise the positive case; the negative ones live in `packages/core/__tests__/config/attributes-opposability.test.js`.",
             "if": {
