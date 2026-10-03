@@ -453,6 +453,28 @@ const STEPS = [
         name: "Le livrable emporte son contrat serveur (DEPLOY-SERVER-CONTRACT)",
         run: ["node", "scripts/verify-deploy-server-contract.cjs"],
     },
+    // The WORKSTATION variant is the build `deploy-full` is (DLF-00…06).
+    //
+    // 🛑 This runner CREATES the defect it now judges. "Build deploy variants" rebuilds
+    // the two shippable variants at every run and never `deploy-local` — the `local`
+    // mode must be typed, by decision. So each run after a source change left the
+    // workstation's dev URL answering for the previous bundle, and nothing was red:
+    // the secrets gate excludes that variant by name, by decision too.
+    //
+    // ⚠️ Same position, same motive as the two gates above, and here it is the ORACLE:
+    // `deploy-full` is the reference, known fresh only right after the build step.
+    // Moved before it, this would compare two variants of unknown age and call it
+    // freshness.
+    //
+    // ⚠️ It SKIPS, by name, where `deploy-local` does not exist — a fresh clone, a
+    // runner. That is not a hole: with no workstation variant, nothing can serve a
+    // stale one. Hence no `ci.yml` counterpart, where it could only ever skip.
+    // Seen red on the real case at laying (a variant one core release behind), then on
+    // mutations played on copies — one of which found the gate itself too lenient.
+    {
+        name: "La variante de poste est le build du livrable (DEPLOY-LOCAL-FRESH)",
+        run: ["node", "scripts/verify-deploy-local-fresh.cjs"],
+    },
     // DEPLOY determinism — placed HERE, and the position is the wiring's
     // reason for being.
     //

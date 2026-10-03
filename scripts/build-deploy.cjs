@@ -293,6 +293,58 @@ function stripDevConnectorScript(html, variantLabel) {
 }
 
 /**
+ * Cuts TILE DOWNLOAD in what gets exposed (12/08/2026): every `enableTileCache` flag of a
+ * profile JSON is set to `false`.
+ *
+ * 🛑 The motive is NOT the proof backend, and that is why this treatment has its own
+ * function rather than a line in `dev-backend.cjs`: the demo profile's tiles come from
+ * **third parties** — `server.arcgisonline.com`, `opentopomap.org`,
+ * `basemaps.cartocdn.com` —, whose terms of use typically forbid bulk scraping. A
+ * "download offline" button on a public page is exactly the gesture they ban, and the
+ * sanction falls on the emitting origin.
+ *
+ * ⚠️ This veto only cuts the explicit download. The service worker's cache stays active,
+ * and it must: it only writes responses **already returned from the network**
+ * (`sw-core.js` — "THE ONLY WRITER of CACHE_TILES"), so it REDUCES traffic to those third
+ * parties instead of increasing it. Confusing it with scraping would remove a protection
+ * believing one is being laid.
+ *
+ * 🖐 WHAT THIS DOES NOT PROTECT, and it must be said: a visitor controls their browser.
+ * They can flip the flag back to `true` in the JSON response, or call the API directly.
+ * This setting removes the feature from the INTERFACE; it is not an access control. The
+ * only real protection against scraping is on the side serving the tiles (quota, referer,
+ * key) — no client configuration can replace it.
+ *
+ * ⚠️ RECURSIVE pass: the flag lives at two depths — `.cache.enableTileCache` in
+ * `config/plugins/offline.json`, and `.modules.offline.cache.enableTileCache` in
+ * `profile-bundle.json`. Treating one without the other would leave the second alive, and
+ * IT is what the loader reads — the same trap as the proof-backend bindings.
+ *
+ * At module level, and exported, because `verify-deploy-local-fresh.cjs` re-applies it to
+ * the workstation variant's profiles: a shippable profile is the workstation one MINUS
+ * this pass and `stripDevBackendBindings`, and that gate holds the equality with the
+ * functions that produce the difference rather than with a description of it.
+ *
+ * @param {any} node Root of the profile JSON (mutated in place).
+ * @returns {number} Number of flags set to `false`.
+ */
+function vetoTileDownload(node) {
+    let n = 0;
+    const walk = (obj) => {
+        if (Array.isArray(obj)) return obj.forEach(walk);
+        if (!obj || typeof obj !== "object") return;
+        for (const [k, val] of Object.entries(obj)) {
+            if (k === "enableTileCache" && val !== false) {
+                obj[k] = false;
+                n += 1;
+            } else walk(val);
+        }
+    };
+    walk(node);
+    return n;
+}
+
+/**
  * Marker pair delimiting a variant-gated block inside `apps/geoleaf-app/init.js`.
  * @param {string} name gated plugin dir name, e.g. "editor"
  */
@@ -600,10 +652,25 @@ const INCLUDE_DEV_CONNECTOR = PLUGIN_MODE === "local";
  *   GEOLEAF_BACKEND_BASE_URL=https://qgis.geoleaf.dev npm run build:deploy
  */
 const BACKEND_BASE_URL = process.env.GEOLEAF_BACKEND_BASE_URL?.trim() || null;
+/**
+ * Directory names of the two variants that carry the SAME plugin set and differ by
+ * `includeDevConnector` alone — the shippable one and the workstation one.
+ *
+ * Exported so `verify-deploy-local-fresh.cjs` compares the directories this file WRITES,
+ * not a copy of their names. ⚠️ The direction of failure is what earns the export: that
+ * gate skips, by name, where the workstation variant does not exist. A rename here that it
+ * did not follow would make it skip forever — green, having compared nothing.
+ */
+const FULL_VARIANT_NAME = "deploy-full";
+const WORKSTATION_VARIANT_NAME = "deploy-local";
 // Single-variant builds normally deploy to the deploy/ root (name ""). The gated variants
 // get their own named folder so they can sit alongside deploy-core for testing.
 const SINGLE_VARIANT_NAME =
-    PLUGIN_MODE === "full" ? "deploy-full" : PLUGIN_MODE === "local" ? "deploy-local" : "";
+    PLUGIN_MODE === "full"
+        ? FULL_VARIANT_NAME
+        : PLUGIN_MODE === "local"
+          ? WORKSTATION_VARIANT_NAME
+          : "";
 // Connector is always included in every variant — no flag needed.
 // ⚠️ ARCHI S8 — a module-level aggregate flag sat here, declared and NEVER READ. Removed
 // rather than renamed: the per-variant decisions are all taken from the `v.include*` flags
@@ -1178,7 +1245,7 @@ function main() {
               // reason target this one since the merge: not a port change,
               // a change of carrying variant.
               {
-                  name: "deploy-full",
+                  name: FULL_VARIANT_NAME,
                   includeStorage: true,
                   includeCog: true,
                   includeEditor: true,
@@ -1231,6 +1298,9 @@ function main() {
             }
             // Scoping the clean trades a loud breakage for a quiet divergence: a variant left
             // in place keeps answering its dev URL from an older build. Name it, with its date.
+            // ⚠️ A warning in a build log is read by nobody, and the workstation variant is
+            // the one left behind at EVERY `--plugins=all`: its divergence is judged, on
+            // bytes, by `verify-deploy-local-fresh.cjs`.
             const rebuilt = new Set(variants.map((v) => v.name));
             for (const entry of fs.readdirSync(DEPLOY, { withFileTypes: true })) {
                 if (!entry.isDirectory() || rebuilt.has(entry.name)) continue;
@@ -2238,55 +2308,9 @@ function main() {
             }
         }
 
-        // 9a bis — TILE DOWNLOAD is cut in what gets exposed (12/08/2026).
-        //
-        // 🛑 The motive is NOT the proof backend, and that is why this
-        // treatment has its own function rather than a line in
-        // `dev-backend.cjs`: the demo profile's tiles come from **third
-        // parties** — `server.arcgisonline.com`, `opentopomap.org`,
-        // `basemaps.cartocdn.com` —, whose terms of use typically forbid
-        // bulk scraping. A "download offline" button on a public page is
-        // exactly the gesture they ban, and the sanction falls on the
-        // emitting origin.
-        //
-        // ⚠️ This veto only cuts the explicit download. The service
-        // worker's cache stays active, and it must: it only writes
-        // responses **already returned from the network** (`sw-core.js` —
-        // "THE ONLY WRITER of CACHE_TILES"), so it REDUCES traffic to
-        // those third parties instead of increasing it. Confusing it with
-        // scraping would remove a protection believing one is being laid.
-        //
-        // 🖐 WHAT THIS DOES NOT PROTECT, and it must be said: a visitor
-        // controls their browser. They can flip the flag back to `true` in
-        // the JSON response, or call the API directly. This setting removes
-        // the feature from the INTERFACE; it is not an access control. The
-        // only real protection against scraping is on the side serving the
-        // tiles (quota, referer, key) — no client configuration can replace it.
-        //
-        // ⚠️ RECURSIVE pass: the flag lives at two depths —
-        // `.cache.enableTileCache` in `config/plugins/offline.json`, and
-        // `.modules.offline.cache.enableTileCache` in
-        // `profile-bundle.json`. Treating one without the other would leave
-        // the second alive, and IT is what the loader reads — the same trap
-        // as the bindings below.
-        //
-        // @param {any} node Root of the profile JSON (mutated in place).
-        // @returns {number} Number of flags set to `false`.
-        const vetoTileDownload = (node) => {
-            let n = 0;
-            const walk = (obj) => {
-                if (Array.isArray(obj)) return obj.forEach(walk);
-                if (!obj || typeof obj !== "object") return;
-                for (const [k, val] of Object.entries(obj)) {
-                    if (k === "enableTileCache" && val !== false) {
-                        obj[k] = false;
-                        n += 1;
-                    } else walk(val);
-                }
-            };
-            walk(node);
-            return n;
-        };
+        // 9a bis — TILE DOWNLOAD is cut in what gets exposed (12/08/2026): that is
+        // `vetoTileDownload`, applied in the pass just below. Its rationale lives on the
+        // function, at module level.
 
         // 9a — The PROOF backend does not leave for a client.
         //
@@ -2496,9 +2520,19 @@ if (require.main === module) {
 // corpus, two consumers (same doctrine as `boot-assets.cjs`). A gate
 // comparing to its own copy of the markers would stay green the day they
 // are renamed here, i.e. the day the removal stops.
+//
+// The five entries below it serve `verify-deploy-local-fresh.cjs`, on the same doctrine:
+// the workstation variant must equal `deploy-full` up to what `includeDevConnector`
+// produces, and each of those differences is re-derived with the function — or read from
+// the constant — that produces it HERE.
 module.exports = {
     stripPluginScript,
     resolvePluginMode,
     buildsAllVariants,
     DEV_CONNECTOR_MARKERS,
+    stripDevConnectorScript,
+    vetoTileDownload,
+    BACKEND_BASE_URL,
+    FULL_VARIANT_NAME,
+    WORKSTATION_VARIANT_NAME,
 };

@@ -434,6 +434,11 @@ const SCRIPTS_ALLOWLIST = new Set([
     // leave with the folder — its own comment admitted it. A `deploy-full`
     // copied onto an nginx production did not boot that day.
     "verify-deploy-server-contract.cjs",
+    // The workstation variant is the SAME BUILD as `deploy-full` (DLF-00…06). Third gate
+    // reading `deploy/`'s content, and the only one looking at the variant the two above
+    // leave out by name: `ci:local` rebuilds the shippable variants at every run and
+    // never that one, so its dev URL kept answering for a previous bundle.
+    "verify-deploy-local-fresh.cjs",
     // lib/ — the server contract itself: the 3 files emitted into each
     // deliverable, plus the `declaresMjsType()` predicate saying what
     // "declaring the type" means. One corpus, two readers (build-deploy +

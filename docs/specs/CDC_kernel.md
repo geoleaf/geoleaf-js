@@ -1598,7 +1598,9 @@ sont pas. Le décompte se lit avec `ls deploy/`, il ne se recopie pas. **`deploy
 variante de poste (`npm run build:deploy:local`) : elle seule reçoit `connector.local.js`, porteur
 d'un jeton, et elle seule conserve la balise qui le charge — un livrable n'a **ni le fichier, ni la
 moindre référence à lui**. Invariants tenus par `scripts/verify-deploy-no-secrets.cjs` (DNS-02) et
-`APP-11`, détaillés dans `specs/plugins/CDC_connector.md`.
+`APP-11`, détaillés dans `specs/plugins/CDC_connector.md`. Sa fraîcheur est tenue à part :
+`ci:local` ne la rebâtit jamais, et `scripts/verify-deploy-local-fresh.cjs` exige qu'elle reste le
+même build que `deploy-full` (`specs/contrats/APP_SHELL.md`, §Le bootstrap de poste).
 
 ⚠️ Plusieurs de ses invariants protègent des formes **mono-ligne** que `build-deploy.cjs` patche
 par regex `/gm` sans flag `/s` : **ne jamais laisser Prettier reformater `index.html`**, et ne

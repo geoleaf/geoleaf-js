@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "deploy-local-fresh",
+    "scope": ["scripts/verify-deploy-local-fresh.cjs"],
+    "verdicts": {
+        "scripts/verify-deploy-local-fresh.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "DLF-00…06 — la variante de poste `deploy-local` est le même build que `deploy-full`, à ce que `includeDevConnector` produit près",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local à la pose, derrière l'étape qui bâtit le déployé : `deploy-full` est la référence, fraîche à cet endroit seulement. Tient ce que rien ne tenait : ci:local rebâtit les deux livrables à chaque run et jamais la variante de poste, que la gate des secrets écarte par nom — son URL de dev répondait pour le bundle précédent sans qu'aucun rouge le dise. Oracle d'OCTETS et non d'âge, de sha ou d'empreinte des sources : le build sert de modèle à ses propres entrées, sans liste à tenir. Chaque écart admis est re-dérivé par la fonction du build qui le produit, importée et non recopiée. Saute en le nommant là où la variante n'existe pas, donc pas de pendant dans ci.yml. Vue rouge sur le cas réel à la pose, puis sur mutations jouées sur des copies"
+        }
+    }
+}

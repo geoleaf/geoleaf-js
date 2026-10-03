@@ -294,6 +294,16 @@ indiscernables « aucun bootstrap » et « un bootstrap qu'on n'a pas su lire »
 **un secret se lit**. `curl https://<hôte>/connector.local.js` le rendait en clair. Gardé par
 `scripts/verify-deploy-no-secrets.cjs` (DNS-01…04) et APP-11.
 
+⚠️ **`deploy-local` vieillit sans que rien ne la rebâtisse.** `ci:local` reconstruit les deux
+variantes livrables à chaque run et jamais celle-ci — le mode `local` se tape à la main, par
+décision — et la gate des secrets l'écarte par nom, par décision aussi. Son URL de dev répond
+alors pour le bundle précédent, sans rien signaler. Sa fraîcheur est donc **jugée, pas
+supposée** : `scripts/verify-deploy-local-fresh.cjs` (DLF-00…06) exige qu'elle soit **le même
+build que `deploy-full`**, aux seules différences que ce bootstrap entraîne — la balise, le
+fichier, les liaisons au backend de preuve, le contrat serveur. Chacune est re-dérivée par la
+fonction de `scripts/build-deploy.cjs` qui la produit. Un rouge se solde par
+`npm run build:deploy:local`, à lancer avant `ci:local`.
+
 ---
 
 ## Ce qui ne se documente pas ici
