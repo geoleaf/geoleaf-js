@@ -31,12 +31,28 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.14.1 <Badge type="tip" text="2026-10-03" />
+## Release v3.14.2 <Badge type="tip" text="2026-10-04" />
 
-A patch release: no new public member. A hatched layer and a gallery of photos each lose a way
-to drop something without a word.
+A patch release: no new public member. An application mounted again gets its plugins back, a
+vector-tile layer of lines is drawn, and a configuration key that hardened nothing is gone.
 
 **Highlights:**
+
+- **Fixed** — an application mounted again gives its plugins back, and takes them down when it is
+  unmounted (`@geoleaf-plugins/connector` 1.3.5, `editor` 1.5.7, `geocoding` 1.1.3, `measure`
+  1.0.9, `position-share` 1.0.2, `print` 1.3.4, `table` 1.1.3). A plugin loaded on demand lost its
+  toolbar button at the next mount and was never torn down; the editor and the measure tools kept
+  the map of the previous application.
+- **Fixed** — a vector-tile layer declared `polyline` or `multiline` draws its lines. Both names
+  are admitted by the layer schema; the vector-tile path read lists of its own that held neither,
+  and such a layer was created with nothing on the map and no warning.
+- **Removed** — the `security.httpsOnly` configuration key, which nothing read. It was typed and
+  documented as the way to refuse `http:` resources, and setting it changed nothing. The
+  call-site option of `validateUrl()` is unchanged. To refuse `http:` for a whole deployment, use
+  CSP `upgrade-insecure-requests` and HSTS.
+
+Release v3.14.1 (2026-10-03) — a patch release, no new public member: a hatched layer and a
+gallery of photos each lose a way to drop something without a word.
 
 - **Fixed** — a hatched layer keeps its pattern when a basemap switch makes the engine rebuild the
   style instead of diffing it, which an incoming vector style declaring `terrain` or
