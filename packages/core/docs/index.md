@@ -31,11 +31,27 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.14.0 <Badge type="tip" text="2026-10-02" />
+## Release v3.14.1 <Badge type="tip" text="2026-10-03" />
 
-A configuration copied from the FlatGeobuf plugin's README now passes profile validation.
+A patch release: no new public member. A hatched layer and a gallery of photos each lose a way
+to drop something without a word.
 
 **Highlights:**
+
+- **Fixed** — a hatched layer keeps its pattern when a basemap switch makes the engine rebuild the
+  style instead of diffing it, which an incoming vector style declaring `terrain` or
+  `centerAltitude` does. The layers were carried into the new style; the patterns they name were
+  not, and a pattern-only fill drew nothing.
+- **Fixed** — a gallery's photos follow the same road as a single photo
+  (`@geoleaf/field-renderer` 1.4.2, `@geoleaf-plugins/editor` 1.5.6). Taken off-network, each one
+  is written back onto the feature by its URL once uploaded, in place of its token; with no upload
+  endpoint, the gallery keeps the file instead of writing a `blob:` address that dies with the
+  page.
+- **Fixed** — the preview of a photo waiting for its upload is displayed, in the form and in the
+  lightbox, for a single photo and a gallery alike (`@geoleaf/field-renderer` 1.4.2).
+
+Release v3.14.0 (2026-10-02) — a configuration copied from the FlatGeobuf plugin's README now
+passes profile validation.
 
 - **New** — the layer schema declares `defaultVisible` and `cluster`, the two root keys the
   FlatGeobuf plugin reads, for a layer declaring `plugin: "flatgeobuf"`. They are refused on any
