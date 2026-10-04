@@ -724,6 +724,17 @@ const STEPS = [
         name: "Exemples de config JSON de la doc produit (DOC-CONFIG-EXAMPLES)",
         run: ["npm", "run", "check:doc-config-examples"],
     },
+    // DOC-CONFIG-DEFAULTS — the neighbour hole: a default value written in a
+    // TABLE CELL of the integrator guide was read by nothing. The gate above
+    // reads JSON blocks, `verify:config-coverage` reads the inventory's KEY
+    // column. This one confronts the guide's defaults with the inventory's,
+    // and with a code constant where a row is bound to one.
+    // 🛑 A CONCORDANCE, not a truth: two texts wrong together come out green —
+    // its header says so. Seen red on its five rules before being believed.
+    {
+        name: "Défauts annoncés par le guide intégrateur (DOC-CONFIG-DEFAULTS)",
+        run: ["npm", "run", "check:doc-config-defaults"],
+    },
     // TSDOC-CONFORMITY (27/07/2026) — MOD-HEADERS' counterpart on the
     // block's CONTENT, not its presence. MH-01 guarantees a new file is
     // documented; this one guarantees the documentation describes the

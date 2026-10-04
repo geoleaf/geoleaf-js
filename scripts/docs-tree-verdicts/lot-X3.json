@@ -139,7 +139,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Générateur Canvas des motifs de hachure (diagonale, points, croix, x, horizontal, vertical), enregistrés en images MapLibre pour la propriété `fill-pattern`",
+            "description": "Générateur Canvas des motifs de hachure (diagonale, points, croix, x, horizontal, vertical), enregistrés en images MapLibre pour la propriété `fill-pattern`, mémorisés par carte pour être remis après une reconstruction du style",
             "confidence": "haute",
             "rationale": "245 LOC, 4 exports, 4 importeurs tous internes. T1 §2.10 relève un clone de 14 lignes avec `plugins/cog/src/cog-renderer.ts#20-33` (fabrique `OffscreenCanvas`) : le fork est du côté plugin, INV-NS interdisant au plugin d'importer les sources du core — l'original reste ici, X2e ne vise pas ce fichier"
         },

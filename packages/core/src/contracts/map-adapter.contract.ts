@@ -559,9 +559,10 @@ export interface IMapAdapter {
     declareOwnedStyleIds?(owner: string, ids: DeclaredStyleIds | null): void;
 
     /**
-     * Re-registers runtime images (e.g. POI sprite icons) wiped by
-     * `map.setStyle()`. Sources and layers are preserved by the style transform;
-     * images are not part of the style spec and must be re-added after the swap.
+     * Puts back the runtime images (hatch patterns, POI sprite icons) a style change may
+     * have left behind. Sources and layers are carried by the style transform; images are
+     * not part of the style spec, and an engine that rebuilds the style instead of diffing
+     * it starts with none. Only what is missing is added.
      *
      * Called by the basemap registry inside the post-swap `style.load` handler.
      */

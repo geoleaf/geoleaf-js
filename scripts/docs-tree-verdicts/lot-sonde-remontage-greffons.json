@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "sonde-remontage-greffons",
+    "scope": ["scripts/probe-remount-plugins.mjs"],
+    "verdicts": {
+        "scripts/probe-remount-plugins.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde Chromium de ce que quatre greffons laissent derrière un `unmount()` et de leur retour au `mount()` suivant, sur `deploy-full`",
+            "confidence": "haute",
+            "rationale": "N1 : basename `probe-<sujet>.mjs`, la forme des autres sondes de ce répertoire. Elle n'est pas redondante avec `e2e/71-mount-remount.spec.js` : cette spec éprouve le remontage du core sur `deploy-core` ; rejouée contre `deploy-full` elle est verte et ne dit rien de `connector`, `table`, `editor` ni `position-share`, dont trois sont paresseux — une page qui se contente de booter ne tient rien d'eux. La sonde les amène à leur état construit, puis prend cinq lectures (démarré, repris, construit, démonté, remonté) de leur DOM, des boutons de barre, des couches de dessin, des écouteurs, minuteries et observateurs ; un second parcours active le connecteur et l'émission de position. Un cinquième greffon, `measure`, sert de témoin de la classe. C'est une mesure, pas une garde."
+        }
+    }
+}

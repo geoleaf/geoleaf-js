@@ -183,7 +183,8 @@ export function _applyWmtsBasemap(
  * no re-injection (the former `geoleaf:style:rebuild` dance; audit redundancy #1).
  *
  * After the new style loads:
- * 1. Re-registers runtime images (sprite icons) wiped by `setStyle()`.
+ * 1. Puts back the runtime images (hatch patterns, sprite icons) a style REBUILD wiped —
+ *    the engine keeps them when it can diff the two styles.
  * 2. Applies the target basemap (raster source/layer inserted at the bottom, or
  *    vector filters).
  * 3. Activates terrain if the target has `terrain.default3D: true`.
@@ -231,9 +232,9 @@ export function _applyViaStyleChange(
         // Guard against superseded style changes (rapid basemap switching)
         if (_styleGeneration !== generation) return;
 
-        // 1. Re-register runtime images (sprite icons) wiped by setStyle().
-        //    transformStyle preserved the sources/layers; images are not part of
-        //    the style spec, so they must be re-added here.
+        // 1. Put back the runtime images (hatch patterns, sprite icons). transformStyle
+        //    carried the sources/layers; images are not part of the style spec, and a
+        //    style the engine rebuilt rather than diffed starts with none.
         adapter?.reregisterStyleImages?.();
 
         // 2. Apply basemap

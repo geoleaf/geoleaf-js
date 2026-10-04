@@ -264,6 +264,7 @@ CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFac
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.requeueAll.requeueAll | doc:b0c8b579ffcb
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.requeueableReasons.requeueableReasons | doc:c9feb26fb00b
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.resolveOptions.resolveOptions | doc:8fbf1509e92a
+CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.readStoredEntity.readStoredEntity | doc:d676dd4c16ba
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.storageDb.storageDb | doc:1f2e3328804e
 CallSignature | @geoleaf-plugins/editor.persistence/storage-seam.storageFacade.storageFacade | doc:fd7895523e3c
 CallSignature | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type | doc:-
@@ -1192,7 +1193,7 @@ CallSignature | @geoleaf/field-renderer.types/field-media.ImageUploadStrategy.__
 CallSignature | @geoleaf/field-renderer.types/field-media._createObjectUrl._createObjectUrl | doc:24b1567ba370
 CallSignature | @geoleaf/field-renderer.types/field-media._openLightbox._openLightbox | doc:ad03192ca984
 CallSignature | @geoleaf/field-renderer.types/field-media._openLightboxResolved._openLightboxResolved | doc:fd5580a1f7c0
-CallSignature | @geoleaf/field-renderer.types/field-media._resolveImageSrc._resolveImageSrc | doc:4f1d498d36d5
+CallSignature | @geoleaf/field-renderer.types/field-media._resolveImageSrc._resolveImageSrc | doc:1127d9d0b7b9
 CallSignature | @geoleaf/field-renderer.types/field-media._safeImageSrc._safeImageSrc | doc:e3d190a1c074
 CallSignature | @geoleaf/field-renderer.types/field-media._uploadFile._uploadFile | doc:125e642560de
 CallSignature | @geoleaf/field-renderer.types/field-media._validateFile._validateFile | doc:841fcb083c3d
@@ -1275,7 +1276,7 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdap
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.removeControl.removeControl | doc:58adbe377c5c
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.removeLayer.removeLayer | doc:752e95605c10
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.removeMarker.removeMarker | doc:8c6d21da7b9b
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.reregisterStyleImages.reregisterStyleImages | doc:9d8ca8a66d30
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.reregisterStyleImages.reregisterStyleImages | doc:15bd2d990065
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.resize.resize | doc:f858ad6986cd
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setFeatureState.setFeatureState | doc:65803cc302e1
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerFilter.setLayerFilter | doc:e748f4c17c0a
@@ -1301,7 +1302,9 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-event-wrappers.detac
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-extrusion-validator.validateFillExtrusionStyle.validateFillExtrusionStyle | doc:63f6a024785f
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.buildHatchPatternId.buildHatchPatternId | doc:72b2214f0666
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.generateHatchImage.generateHatchImage | doc:59eb23f7ffea
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern | doc:cf4b5b4bd9e9
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern | doc:26c9a11ee276
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns | doc:8fde4981e30a
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns.reregisterHatchPatterns | doc:071fc37ed342
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup | doc:54a1c866ffd9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer | doc:3ba9f647a41c
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.ensureSentinel.__type.__type | doc:-
@@ -2321,7 +2324,7 @@ CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.poin
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.removeControl.removeControl | doc:58adbe377c5c
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.removeLayer.removeLayer | doc:16f2ff90525f
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.removeMarker.removeMarker | doc:8c6d21da7b9b
-CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.reregisterStyleImages.reregisterStyleImages | doc:b85f041ea9e7
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.reregisterStyleImages.reregisterStyleImages | doc:f0cd76ca88f4
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.resize.resize | doc:827fce2d66b9
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setFeatureState.setFeatureState | doc:0f6d29361f7d
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerFilter.setLayerFilter | doc:90f621057278
@@ -2723,7 +2726,7 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setActiveKey._s
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setActiveType._setActiveType | doc:96ee098b1e7a
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setMap._setMap | doc:f88ffdc06465
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setWmtsAbort._setWmtsAbort | doc:afbb1db0f1e5
-CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyViaStyleChange._applyViaStyleChange | doc:429d1c6c1148
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyViaStyleChange._applyViaStyleChange | doc:398e1d3c81ee
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyWmtsBasemap._applyWmtsBasemap | doc:07ba9163d8a1
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._dispatchBasemapChange._dispatchBasemapChange | doc:7ba0f55638b9
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-types.BasemapsCoreSurface.getAdapter.__type.__type | doc:-
@@ -3987,6 +3990,7 @@ Function | @geoleaf-plugins/editor.persistence/session-export.resetSessionTracki
 Function | @geoleaf-plugins/editor.persistence/session-export.sessionFeatureCount | doc:-
 Function | @geoleaf-plugins/editor.persistence/session-export.trackSessionFeature | doc:-
 Function | @geoleaf-plugins/editor.persistence/storage-queue-adapter.createStorageQueueAdapter | doc:-
+Function | @geoleaf-plugins/editor.persistence/storage-seam.readStoredEntity | doc:-
 Function | @geoleaf-plugins/editor.persistence/storage-seam.storageDb | doc:-
 Function | @geoleaf-plugins/editor.persistence/storage-seam.storageFacade | doc:-
 Function | @geoleaf-plugins/editor.persistence/submit.submitFeature | doc:-
@@ -4511,6 +4515,8 @@ Function | GeoLeaf Core API.adapters/maplibre/maplibre-extrusion-validator.valid
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.buildHatchPatternId | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.generateHatchImage | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern | doc:-
+Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns | doc:-
+Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.toSourceId | doc:-
@@ -5404,6 +5410,7 @@ Interface | @geoleaf-plugins/editor.persistence/storage-seam.OutboxAccess | doc:
 Interface | @geoleaf-plugins/editor.persistence/storage-seam.OutboxRow | doc:134b65e9ff52
 Interface | @geoleaf-plugins/editor.persistence/storage-seam.PendingEdit | doc:7e1788705a8e
 Interface | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade | doc:d1e826e24969
+Interface | @geoleaf-plugins/editor.persistence/storage-seam.StoredEntity | doc:3a96b3ff97d5
 Interface | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail | doc:29e1ec76cf53
 Interface | @geoleaf-plugins/editor.persistence/submit.SubmitContext | doc:72a27387657a
 Interface | @geoleaf-plugins/editor.persistence/submit.SubmitOutcome | doc:1fe2491c07ea
@@ -8832,6 +8839,8 @@ Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.mayEdit.mayEdit.layerId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.requeueAll.requeueAll.reason | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.resolveOptions.resolveOptions.url | doc:-
+Parameter | @geoleaf-plugins/editor.persistence/storage-seam.readStoredEntity.readStoredEntity.layerId | doc:0d6019492f53
+Parameter | @geoleaf-plugins/editor.persistence/storage-seam.readStoredEntity.readStoredEntity.localId | doc:82cbfb39a674
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type.layerId | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.addHost.__type.__type.saved | doc:-
 Parameter | @geoleaf-plugins/editor.persistence/submit.SubmitContext.commitHost.__type.__type.featureId | doc:-
@@ -10015,6 +10024,9 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerH
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern.mapArg | doc:daaa32bc7b3d
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern.patternId | doc:54d83f94cd5a
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern.pixelRatio | doc:e572d1237ac4
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns.layerId | doc:c1a803bb7c6e
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns.mapArg | doc:d38e6d35ee55
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns.reregisterHatchPatterns.mapArg | doc:d38e6d35ee55
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.clusterIds | doc:d82e6ebe3e8d
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.id | doc:06c11cc1e4c8
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.map | doc:986881a4aece
@@ -13353,6 +13365,7 @@ Property | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.a
 Property | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.applyEdit.applyEdit.input.__type.kind | doc:-
 Property | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.applyEdit.applyEdit.input.__type.layerId | doc:-
 Property | @geoleaf-plugins/editor.persistence/storage-seam.StorageWriteFacade.applyEdit.applyEdit.input.__type.localId | doc:-
+Property | @geoleaf-plugins/editor.persistence/storage-seam.StoredEntity.feature | doc:-
 Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.featureId | doc:-
 Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.isUpdate | doc:-
 Property | @geoleaf-plugins/editor.persistence/submit.FeatureSavedDetail.layerId | doc:-

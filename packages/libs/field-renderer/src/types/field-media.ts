@@ -19,13 +19,19 @@ export const ACCEPTED_MIME = ["image/jpeg", "image/png", "image/webp", "image/gi
 export const ACCEPTED_ACCEPT = ACCEPTED_MIME.join(",");
 
 /**
- * Object URLs minted by this module.
+ * Object URLs minted by this module, or answered by the host's preview resolver.
  *
  * `safeUrl()` whitelists http/https/data:<image> only — `blob:` is NOT in it.
  * Running a freshly created object URL through it would return "" and wipe the
  * preview of the file the user just picked, on every profile without an
  * `uploadEndpoint`. These URLs are ours and same-origin by construction, so
  * they are allowed explicitly rather than by loosening the whitelist.
+ *
+ * 🛑 THE HOST'S ARE ALLOWED THE SAME WAY, AND FOR A LONG TIME THEY WERE NOT. A host that
+ * keeps a capture answers its token with an object URL on the stored file — the only thing
+ * it can answer. That URL went through `safeUrl()` like a value read from data and came out
+ * empty: the preview of every photo waiting for its upload was a blank strip. See
+ * {@link _resolveImageSrc} for what is admitted, and why it stays narrow.
  */
 const _ownObjectUrls = new Set<string>();
 
@@ -151,7 +157,7 @@ export function setImagePreviewResolver(fn: ImagePreviewResolver | null): void {
  * Resolves a stored value to a displayable, protocol-checked `img.src`.
  *
  * ⚠️ Falls back to the value itself, so an ordinary server URL needs no resolver and the
- * absence of one is not an outage.
+ * absence of one is not an outage. An object URL the resolver answers is displayed as it is.
  *
  * @param value - The value held by the field.
  * @returns a safe `src`, or `""` when nothing can be displayed.
@@ -159,6 +165,12 @@ export function setImagePreviewResolver(fn: ImagePreviewResolver | null): void {
 export async function _resolveImageSrc(value: string): Promise<string> {
     if (!value) return "";
     const resolved = _previewResolver ? await _previewResolver(value) : null;
+    // ⚠️ ONLY `blob:`, AND ONLY FROM THE RESOLVER. An object URL designates an object this
+    // very document created and nothing else, and this module only ever puts it in an
+    // `<img>`: admitting it opens no scheme a value from data could exploit. Anything else
+    // the resolver answers, and the value itself when it answers nothing, is protocol-checked
+    // as before — the whitelist is not loosened.
+    if (resolved?.startsWith("blob:")) _ownObjectUrls.add(resolved);
     return _safeImageSrc(resolved ?? value);
 }
 

@@ -21,7 +21,7 @@
  */
 import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { setImageUploadStrategy, setImagePreviewResolver } from "@geoleaf/field-renderer";
-import { storageFacade } from "./storage-seam.js";
+import { readStoredEntity, storageFacade } from "./storage-seam.js";
 
 /** The core's image store, read at call time — the plugin does not depend on `offline-ui`. */
 interface ImagesDb {
@@ -404,6 +404,14 @@ function _isRetryable(img: PendingImage, report: RetryReport): boolean {
  * A photo whose feature was never bound cannot be reconciled — it is uploaded and kept, and
  * says so, rather than silently patching the wrong record.
  *
+ * 🛑 THE TOKEN IS REPLACED WHERE IT STANDS, AND ONLY IF IT STILL STANDS THERE. The entity is
+ * read first, and the edit carries the attribute's current value with this one token turned
+ * into its URL. A gallery holds a list, so writing the URL onto the key would have replaced
+ * the list by a string; and its entries are reordered and removed while a photo waits, so the
+ * token is found by VALUE, never by position. A token the attribute no longer holds — the
+ * photo was removed, or replaced, before its upload landed — is not written back at all:
+ * the URL would overwrite what the user put there since.
+ *
  * @param img - The stored image, carrying its return address.
  * @param url - The URL the server returned.
  */
@@ -414,17 +422,43 @@ async function _reconcile(img: PendingImage, url: string): Promise<void> {
     }
     const facade = storageFacade();
     if (!facade?.applyEdit) return;
+    const entity = await readStoredEntity(img.layerId, img.localId);
+    const value = _withUrl(
+        entity?.feature?.properties?.[img.fieldPath],
+        `${_TOKEN_PREFIX}${img.id}`,
+        url
+    );
+    if (value === undefined) {
+        Log?.debug?.("[editor/image] The owning feature no longer holds this image:", img.id);
+        return;
+    }
     // ⚠️ Method call on the facade, never detached: it reads `this._modules` to reach the
     // engine. The same mistake once made every offline save write nothing, silently.
     const report = await facade.applyEdit({
         layerId: img.layerId,
         kind: "update",
         localId: img.localId,
-        feature: { type: "Feature", properties: { [img.fieldPath]: url } },
+        feature: { type: "Feature", properties: { [img.fieldPath]: value } },
     });
     if (report.refused) {
         Log?.warn?.("[editor/image] Reconciling edit refused:", img.id, report.refused);
     }
+}
+
+/**
+ * An attribute's value with one image token turned into its URL.
+ *
+ * @param current     - What the attribute holds: a token, a list holding it, or anything else.
+ * @param placeholder - The image token to replace.
+ * @param url         - The URL to put in its place.
+ * @returns the new value, or `undefined` when `current` does not hold the token.
+ */
+function _withUrl(current: unknown, placeholder: string, url: string): unknown {
+    if (current === placeholder) return url;
+    if (Array.isArray(current) && current.includes(placeholder)) {
+        return current.map((entry: unknown) => (entry === placeholder ? url : entry));
+    }
+    return undefined;
 }
 
 /**

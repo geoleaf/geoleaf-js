@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="fr">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <title>GeoLeaf — sonde : un Blob dans IndexedDB</title>
+
+        <!--
+      Standalone probe — what IndexedDB accepts to store, on a REAL device, in a PRIVATE window.
+
+      WHY THIS FILE EXISTS. The editor keeps a photo taken off-network as a `Blob` in IndexedDB.
+      Under Playwright's WebKit, in a non-persistent context, that `put` is refused ("Error
+      preparing Blob/File data to be stored in object store") and the capture falls back to a
+      data-URL written into the feature's attribute. WebKit's own source says the refusal is
+      deliberate for an EPHEMERAL session (`IDBTransaction::putOrAddOnServer`; commit "Return error
+      when storing blobs in IndexedDB for ephemeral session", 2025-01-31). Safari's private
+      browsing is such a session — which is a deduction from the engine, not a reading on a
+      device. This page is that reading.
+
+      WHAT IT MEASURES. Five values, each `put` in its OWN transaction of a throw-away database:
+      a Blob, a File, an ArrayBuffer, a Uint8Array, and `{ bytes: ArrayBuffer, type }` — the shape
+      a fix would store instead of the Blob. For each: whether it was stored, and if not the FORM
+      of the refusal (an exception thrown by `put`, an error on the request, an abort of the
+      transaction with no request error, or nothing at all within the time allowed). A stored
+      value is read back and its bytes compared.
+
+      HOW TO USE IT. Serve this single file from an origin the device can reach — unlike the
+      Storage API, IndexedDB needs no secure context, so plain http over the local network will
+      do; `file://` will not. Then read it TWICE on the same device:
+        1. in an ordinary Safari tab;
+        2. in a PRIVATE tab.
+      Keep both rendered blocks VERBATIM — they are the reading. The probe prints the userAgent
+      itself, so the device and OS version travel with the report.
+
+      NOT WIRED TO ANY GATE, and deliberately so: no CI runner can stand in for a device. Zero
+      dependency, zero network access, safe to copy anywhere. `scripts/probe-idb-blob-ephemeral.mjs`
+      loads this very file under Playwright, so that what it displays is what it measures.
+    -->
+
+        <style>
+            :root {
+                color-scheme: light dark;
+                --ok: #1a7f37;
+                --no: #b3261e;
+                --unk: #7a5c00;
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                padding: 1rem;
+                font:
+                    15px/1.5 system-ui,
+                    -apple-system,
+                    sans-serif;
+                max-width: 44rem;
+            }
+            h1 {
+                font-size: 1.15rem;
+                margin: 0 0 0.25rem;
+            }
+            p.sub {
+                margin: 0 0 1rem;
+                opacity: 0.7;
+                font-size: 0.85rem;
+            }
+            .verdict {
+                font-size: 1.2rem;
+                font-weight: 700;
+                padding: 0.6rem 0.8rem;
+                border-radius: 0.5rem;
+                border: 2px solid currentColor;
+                margin-bottom: 1rem;
+            }
+            .verdict.ok {
+                color: var(--ok);
+            }
+            .verdict.no {
+                color: var(--no);
+            }
+            .verdict.unk {
+                color: var(--unk);
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 1rem;
+                font-size: 0.9rem;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 0.35rem 0.4rem;
+                border-bottom: 1px solid rgba(127, 127, 127, 0.3);
+                vertical-align: top;
+            }
+            td.ok {
+                color: var(--ok);
+                font-weight: 600;
+            }
+            td.no {
+                color: var(--no);
+                font-weight: 600;
+            }
+            button {
+                font: inherit;
+                padding: 0.7rem 1rem;
+                width: 100%;
+                margin-bottom: 1rem;
+                border-radius: 0.5rem;
+                border: 1px solid currentColor;
+                background: transparent;
+                color: inherit;
+            }
+            pre {
+                white-space: pre-wrap;
+                word-break: break-word;
+                background: rgba(127, 127, 127, 0.12);
+                padding: 0.8rem;
+                border-radius: 0.5rem;
+                font-size: 13px;
+                user-select: all;
+                -webkit-user-select: all;
+            }
+            footer {
+                margin-top: 1rem;
+                font-size: 0.8rem;
+                opacity: 0.7;
+            }
+        </style>
+    </head>
+
+    <body>
+        <h1>Sonde : un Blob dans IndexedDB</h1>
+        <p class="sub">
+            À lire deux fois sur le même appareil : dans un onglet ordinaire, puis dans un onglet de
+            navigation privée.
+        </p>
+
+        <div id="verdict" class="verdict unk">Mesure en cours…</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Valeur</th>
+                    <th>Stockée</th>
+                    <th>Détail</th>
+                </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+        </table>
+
+        <button id="again" type="button">Rejouer la mesure</button>
+
+        <pre id="verbatim">…</pre>
+
+        <footer>
+            Le bloc ci-dessus est la lecture : à garder tel quel, pour les deux onglets. Aucune
+            donnée ne quitte cette page ; la base de test est supprimée après chaque mesure.
+        </footer>
+
+        <script>
+            (function () {
+                "use strict";
+
+                /** How long a `put` is given to settle before it is called silent. */
+                var SETTLE_MS = 8000;
+                /** A recognisable payload: 256 bytes, 0…255. */
+                var BYTES = new Uint8Array(256);
+                for (var i = 0; i < BYTES.length; i++) BYTES[i] = i;
+
+                /** The five values, built fresh for each measure. */
+                function samples() {
+                    var copy = function () {
+                        return BYTES.slice().buffer;
+                    };
+                    var out = [
+                        ["Blob", new Blob([BYTES], { type: "image/png" })],
+                        ["ArrayBuffer", copy()],
+                        ["Uint8Array", BYTES.slice()],
+                        ["{ bytes, type }", { bytes: copy(), type: "image/png" }],
+                    ];
+                    try {
+                        out.splice(1, 0, [
+                            "File",
+                            new File([BYTES], "photo.png", { type: "image/png" }),
+                        ]);
+                    } catch (e) {
+                        out.splice(1, 0, ["File", null]);
+                    }
+                    return out;
+                }
+
+                function describe(error) {
+                    if (!error) return "(sans erreur nommée)";
+                    return (error.name || "Error") + " : " + (error.message || String(error));
+                }
+
+                function openDb(name) {
+                    return new Promise(function (resolve, reject) {
+                        var request = indexedDB.open(name, 1);
+                        request.onupgradeneeded = function () {
+                            request.result.createObjectStore("v", { keyPath: "id" });
+                        };
+                        request.onsuccess = function () {
+                            resolve(request.result);
+                        };
+                        request.onerror = function () {
+                            reject(request.error);
+                        };
+                        request.onblocked = function () {
+                            reject(new Error("ouverture bloquée"));
+                        };
+                    });
+                }
+
+                /** The bytes a stored value holds, whatever its shape. */
+                function bytesOf(value) {
+                    if (value instanceof Blob) {
+                        // `Blob.arrayBuffer()` is absent from old engines; FileReader is everywhere.
+                        return new Promise(function (resolve, reject) {
+                            var reader = new FileReader();
+                            reader.onload = function () {
+                                resolve(new Uint8Array(reader.result));
+                            };
+                            reader.onerror = function () {
+                                reject(reader.error);
+                            };
+                            reader.readAsArrayBuffer(value);
+                        });
+                    }
+                    if (value instanceof ArrayBuffer) return Promise.resolve(new Uint8Array(value));
+                    if (ArrayBuffer.isView(value)) {
+                        return Promise.resolve(
+                            new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+                        );
+                    }
+                    if (value && value.bytes instanceof ArrayBuffer) {
+                        return Promise.resolve(new Uint8Array(value.bytes));
+                    }
+                    return Promise.reject(new Error("forme relue inconnue"));
+                }
+
+                function sameBytes(read) {
+                    if (read.length !== BYTES.length) return false;
+                    for (var i = 0; i < read.length; i++) if (read[i] !== BYTES[i]) return false;
+                    return true;
+                }
+
+                /**
+                 * One `put`, in its own transaction. Resolves with what happened — the outcome,
+                 * and the events in the order they fired. Never rejects.
+                 */
+                function putOne(db, label, value) {
+                    return new Promise(function (resolve) {
+                        var events = [];
+                        var done = false;
+                        var finish = function (outcome, detail) {
+                            if (done) return;
+                            done = true;
+                            resolve({
+                                label: label,
+                                outcome: outcome,
+                                detail: detail,
+                                events: events,
+                            });
+                        };
+                        var requestError = null;
+                        var tx;
+                        try {
+                            tx = db.transaction("v", "readwrite");
+                            var request = tx.objectStore("v").put({ id: label, value: value });
+                            request.onsuccess = function () {
+                                events.push("request.success");
+                            };
+                            request.onerror = function () {
+                                events.push("request.error");
+                                requestError = request.error;
+                            };
+                        } catch (e) {
+                            events.push("exception");
+                            finish("exception levée par put()", describe(e));
+                            return;
+                        }
+                        tx.oncomplete = function () {
+                            events.push("transaction.complete");
+                            finish("stockée", "");
+                        };
+                        tx.onerror = function () {
+                            events.push("transaction.error");
+                        };
+                        tx.onabort = function () {
+                            events.push("transaction.abort");
+                            finish(
+                                requestError
+                                    ? "erreur de requête, puis abandon"
+                                    : "abandon de la transaction, sans erreur de requête",
+                                describe(requestError || tx.error)
+                            );
+                        };
+                        setTimeout(function () {
+                            finish("aucun événement en " + SETTLE_MS / 1000 + " s", "");
+                        }, SETTLE_MS);
+                    });
+                }
+
+                function readBack(db, label) {
+                    return new Promise(function (resolve) {
+                        try {
+                            var request = db
+                                .transaction("v", "readonly")
+                                .objectStore("v")
+                                .get(label);
+                            request.onsuccess = function () {
+                                var record = request.result;
+                                if (!record) return resolve("relecture : rien sous cette clé");
+                                bytesOf(record.value).then(
+                                    function (read) {
+                                        resolve(
+                                            "relecture : " +
+                                                read.length +
+                                                " octets, " +
+                                                (sameBytes(read) ? "identiques" : "DIFFÉRENTS")
+                                        );
+                                    },
+                                    function (e) {
+                                        resolve("relecture en échec — " + describe(e));
+                                    }
+                                );
+                            };
+                            request.onerror = function () {
+                                resolve("relecture en échec — " + describe(request.error));
+                            };
+                        } catch (e) {
+                            resolve("relecture en échec — " + describe(e));
+                        }
+                    });
+                }
+
+                function storageFacts() {
+                    var storage = navigator.storage;
+                    if (!storage) return Promise.resolve({ persisted: "API absente", quota: "—" });
+                    var persisted = storage.persisted
+                        ? storage.persisted().then(String, function () {
+                              return "illisible";
+                          })
+                        : Promise.resolve("API absente");
+                    var quota = storage.estimate
+                        ? storage.estimate().then(
+                              function (e) {
+                                  return Math.round((e.quota || 0) / 1048576) + " Mo";
+                              },
+                              function () {
+                                  return "illisible";
+                              }
+                          )
+                        : Promise.resolve("API absente");
+                    return Promise.all([persisted, quota]).then(function (r) {
+                        return { persisted: r[0], quota: r[1] };
+                    });
+                }
+
+                function render(report) {
+                    var rows = document.getElementById("rows");
+                    rows.textContent = "";
+                    report.results.forEach(function (r) {
+                        var tr = document.createElement("tr");
+                        var stored = r.outcome === "stockée";
+                        [
+                            [r.label, ""],
+                            [stored ? "oui" : "NON", stored ? "ok" : "no"],
+                            [
+                                (stored ? r.readBack : r.outcome + " — " + r.detail) +
+                                    "\n[" +
+                                    r.events.join(" → ") +
+                                    "]",
+                                "",
+                            ],
+                        ].forEach(function (cell) {
+                            var td = document.createElement("td");
+                            td.textContent = cell[0];
+                            if (cell[1]) td.className = cell[1];
+                            tr.appendChild(td);
+                        });
+                        rows.appendChild(tr);
+                    });
+
+                    var by = {};
+                    report.results.forEach(function (r) {
+                        by[r.label] = r.outcome === "stockée";
+                    });
+                    var verdict = document.getElementById("verdict");
+                    if (report.fatal) {
+                        verdict.className = "verdict unk";
+                        verdict.textContent = "Mesure impossible : " + report.fatal;
+                    } else if (by["Blob"]) {
+                        verdict.className = "verdict ok";
+                        verdict.textContent = "Un Blob est stocké ici.";
+                    } else if (by["ArrayBuffer"]) {
+                        verdict.className = "verdict no";
+                        verdict.textContent = "Blob REFUSÉ, ArrayBuffer accepté.";
+                    } else {
+                        verdict.className = "verdict no";
+                        verdict.textContent = "Ni Blob ni ArrayBuffer : le magasin ne stocke rien.";
+                    }
+
+                    var lines = [
+                        "GeoLeaf — sonde : un Blob dans IndexedDB",
+                        "date        : " + report.date,
+                        "userAgent   : " + report.userAgent,
+                        "persisted() : " + report.persisted,
+                        "quota       : " + report.quota,
+                        "",
+                    ];
+                    if (report.fatal) lines.push("ÉCHEC : " + report.fatal);
+                    report.results.forEach(function (r) {
+                        lines.push(
+                            (r.label + "                ").slice(0, 16) +
+                                " : " +
+                                r.outcome +
+                                (r.detail ? " — " + r.detail : "") +
+                                (r.readBack ? " — " + r.readBack : "")
+                        );
+                        lines.push("                   [" + r.events.join(" → ") + "]");
+                    });
+                    document.getElementById("verbatim").textContent = lines.join("\n");
+                }
+
+                function measure() {
+                    var report = {
+                        date: new Date().toISOString(),
+                        userAgent: navigator.userAgent,
+                        persisted: "…",
+                        quota: "…",
+                        results: [],
+                        fatal: "",
+                    };
+                    var name = "gl-probe-idb-blob-" + Date.now();
+                    var db = null;
+                    return storageFacts()
+                        .then(function (facts) {
+                            report.persisted = facts.persisted;
+                            report.quota = facts.quota;
+                            if (!window.indexedDB) throw new Error("IndexedDB absent");
+                            return openDb(name);
+                        })
+                        .then(function (opened) {
+                            db = opened;
+                            // One after the other: a refusal must not take a neighbour with it.
+                            return samples().reduce(function (chain, sample) {
+                                return chain.then(function () {
+                                    if (sample[1] === null) {
+                                        report.results.push({
+                                            label: sample[0],
+                                            outcome: "non construite",
+                                            detail: "le constructeur File est absent",
+                                            events: [],
+                                        });
+                                        return undefined;
+                                    }
+                                    return putOne(db, sample[0], sample[1]).then(function (r) {
+                                        report.results.push(r);
+                                        if (r.outcome !== "stockée") return undefined;
+                                        return readBack(db, r.label).then(function (text) {
+                                            r.readBack = text;
+                                        });
+                                    });
+                                });
+                            }, Promise.resolve());
+                        })
+                        .catch(function (e) {
+                            report.fatal = describe(e);
+                        })
+                        .then(function () {
+                            if (db) db.close();
+                            try {
+                                indexedDB.deleteDatabase(name);
+                            } catch (e) {
+                                /* a database that cannot be deleted is not this probe's subject */
+                            }
+                            render(report);
+                            // For a driver reading the page: the same report, as data.
+                            window.__glProbeReport = report;
+                            return report;
+                        });
+                }
+
+                document.getElementById("again").addEventListener("click", measure);
+                measure();
+            })();
+        </script>
+    </body>
+</html>

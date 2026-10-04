@@ -34,9 +34,10 @@
  * resolved against the outgoing style's glyph server, so the labels capability rebuilds it on
  * `style.load` instead of letting it travel.
  *
- * Runtime images added via `map.addImage()` (POI sprite icons) are **not** part
- * of the style spec and are still wiped by `setStyle()`; the adapter re-registers
- * them separately after the swap.
+ * Runtime images added via `map.addImage()` (hatch patterns, POI sprite icons) are **not**
+ * part of the style spec, and this transform does not carry them. The engine keeps them when
+ * it can diff the two styles and loses them when it rebuilds the style from scratch; the
+ * adapter puts back what is missing after the swap (`reregisterStyleImages`).
  */
 
 /** Set of MapLibre source + layer ids that GeoLeaf owns and must preserve. */

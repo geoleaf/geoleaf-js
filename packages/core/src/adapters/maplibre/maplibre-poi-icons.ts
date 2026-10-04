@@ -491,11 +491,11 @@ export async function registerSpriteIcons(mapArg: unknown): Promise<void> {
 
     // Pass 2 — the tinted variants the taxonomy config actually references.
     //
-    // This MUST live inside registerSpriteIcons, not at a call site. `setStyle()`
-    // (a basemap swap) empties MapLibre's image store, and the adapter recovers by
-    // calling this function again — anything registered elsewhere would be gone for
-    // good, and every tinted icon would vanish the first time the user changes the
-    // background map.
+    // This MUST live inside registerSpriteIcons, not at a call site. A `setStyle()`
+    // (a basemap swap) the engine cannot diff rebuilds the style with an empty image
+    // store, and the adapter recovers by calling this function again — anything
+    // registered elsewhere would be gone for good, and every tinted icon would vanish
+    // on such a change of background map.
     const variants = _getTaxonomyIconVariants();
     const prefix = _getSymbolPrefix();
     const tinted = variants.filter((v) =>

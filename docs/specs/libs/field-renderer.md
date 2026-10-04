@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1750a209b
-date: 1er octobre 2026
+verifie_contre: c5f0dc772
+date: 3 octobre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -140,6 +140,25 @@ défaut réparé : `endpoint` devient `string | null` — quatre couches livrée
 **sans** `uploadEndpoint`, cas que la bibliothèque traitait par une URL d'objet écrite dans
 l'attribut, morte au rechargement du document — et `fieldPath` est passé pour que l'hôte puisse
 rattacher le fichier gardé au champ qui le porte.
+
+✅ **Le 03/10/2026, la galerie a pris le même chemin, et l'aperçu d'un jeton s'affiche enfin**
+(1.4.2). Trois défauts, lus rouges dans un navigateur avant d'être corrigés
+(`e2e/74-gallery-photo-token.spec.js`, `e2e/39-editor-photo-token.spec.js`) :
+
+- le composant `gallery` appelait l'envoi **sans** `fieldPath` : l'hôte gardait le fichier sans
+  savoir à quel champ rendre son URL. Il le passe désormais, comme `image` ;
+- **sans** `uploadEndpoint`, il écrivait lui-même une URL d'objet dans la liste, sans consulter la
+  stratégie de l'hôte — le défaut que `image` avait fermé pour lui seul le 04/09. Les deux
+  composants passent maintenant par le même appel, qui remet `null` à la stratégie ; sans hôte, le
+  repli reste l'URL d'objet ;
+- **l'URL d'objet que rend `ImagePreviewResolver` était refusée par le contrôle de protocole**, qui
+  n'admet que `http:`, `https:` et les `data:` d'image : l'aperçu d'une capture gardée sous jeton
+  était une `<img>` au `src` vide, pour `image` comme pour `gallery` — le second seam n'avait jamais
+  affiché une photo. Une URL `blob:` **rendue par le résolveur** est désormais admise, et elle
+  seule : toute autre réponse du résolveur, et une valeur `blob:` lue des données, restent
+  contrôlées comme avant.
+
+⚠️ L'ajout d'une image à une galerie est donc **asynchrone** dans tous les cas, endpoint ou non.
 
 ### Les 23 composants
 

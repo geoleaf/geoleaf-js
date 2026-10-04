@@ -2,7 +2,9 @@
  * Unit tests for maplibre-hatch-patterns.
  *
  * Covers: buildHatchPatternId, generateHatchImage (all 6 types),
- * registerHatchPattern (skip / addImage paths), _createCanvas OffscreenCanvas branch.
+ * registerHatchPattern (skip / addImage paths), reregisterHatchPatterns and
+ * removeHatchPatterns (what a style rebuild loses, and what a removed layer must not
+ * get back), _createCanvas OffscreenCanvas branch.
  *
  * Coverage consolidation for adapters/maplibre.
  */
@@ -11,6 +13,8 @@ import {
     buildHatchPatternId,
     generateHatchImage,
     registerHatchPattern,
+    reregisterHatchPatterns,
+    removeHatchPatterns,
 } from "../../src/adapters/maplibre/maplibre-hatch-patterns.js";
 
 // ── Canvas mock ──────────────────────────────────────────────────────────────
@@ -254,5 +258,159 @@ describe("generateHatchImage — OffscreenCanvas present but unusable", () => {
         expect(() => generateHatchImage({ type: "diagonal" })).not.toThrow();
         // Proof the fallback actually ran, not merely that nothing threw.
         expect(HTMLCanvasElement.prototype.getContext).toHaveBeenCalled();
+    });
+});
+
+// ─── What a style rebuild loses, and gets back ───────────────────────────────
+// An image is not part of the style. When the engine rebuilds a style from scratch its image
+// store starts empty: the fill layers carried into the new style name patterns that are gone.
+// The double below keeps a real store, so "the engine lost its images" is `images.clear()`.
+
+/** A map double with a real image store. */
+function makeImageStore() {
+    const images = new Set();
+    return {
+        images,
+        hasImage: vi.fn((id) => images.has(id)),
+        addImage: vi.fn((id) => images.add(id)),
+        removeImage: vi.fn((id) => images.delete(id)),
+        listImages: vi.fn(() => [...images]),
+    };
+}
+
+const DIAGONAL = { type: "diagonal", angleDeg: 45, spacingPx: 10 };
+const DOTS = { type: "dot", spacingPx: 8 };
+
+describe("reregisterHatchPatterns", () => {
+    it("draws again every pattern the map lost, and says how many", () => {
+        const map = makeImageStore();
+        const a = registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        const b = registerHatchPattern(map, buildHatchPatternId("pluie", DOTS), DOTS);
+        expect([...map.images].sort()).toEqual([a, b].sort());
+
+        map.images.clear(); // the engine rebuilt the style
+        map.addImage.mockClear();
+
+        expect(reregisterHatchPatterns(map)).toBe(2);
+        expect([...map.images].sort()).toEqual([a, b].sort());
+        expect(map.addImage).toHaveBeenCalledTimes(2);
+    });
+
+    it("adds nothing when the map still holds its patterns (the engine diffed the style)", () => {
+        const map = makeImageStore();
+        registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        map.addImage.mockClear();
+
+        expect(reregisterHatchPatterns(map)).toBe(0);
+        expect(map.addImage).not.toHaveBeenCalled();
+    });
+
+    it("puts back only what is missing", () => {
+        const map = makeImageStore();
+        const kept = registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        const lost = registerHatchPattern(map, buildHatchPatternId("pluie", DOTS), DOTS);
+        map.images.delete(lost);
+        map.addImage.mockClear();
+
+        expect(reregisterHatchPatterns(map)).toBe(1);
+        expect(map.addImage).toHaveBeenCalledTimes(1);
+        expect(map.addImage.mock.calls[0][0]).toBe(lost);
+        expect(map.images.has(kept)).toBe(true);
+    });
+
+    it("remembers a pattern the map already held when it was registered", () => {
+        // The early return on `hasImage` must not skip the bookkeeping: the pattern is as
+        // lost as any other once the store is emptied.
+        const map = makeImageStore();
+        const id = buildHatchPatternId("zones", DIAGONAL);
+        map.images.add(id);
+        registerHatchPattern(map, id, DIAGONAL);
+        expect(map.addImage).not.toHaveBeenCalled();
+
+        map.images.clear();
+        expect(reregisterHatchPatterns(map)).toBe(1);
+        expect(map.images.has(id)).toBe(true);
+    });
+
+    it("redraws at the pixel ratio the pattern was registered with", () => {
+        const map = makeImageStore();
+        const id = registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL, 3);
+        map.images.clear();
+        map.addImage.mockClear();
+
+        reregisterHatchPatterns(map);
+        expect(map.addImage).toHaveBeenCalledWith(id, expect.any(Object), { pixelRatio: 3 });
+    });
+
+    it("returns 0 for a map nothing was registered on", () => {
+        const map = makeImageStore();
+        expect(reregisterHatchPatterns(map)).toBe(0);
+        expect(map.addImage).not.toHaveBeenCalled();
+    });
+
+    it("keeps each map's patterns to itself", () => {
+        const first = makeImageStore();
+        const second = makeImageStore();
+        registerHatchPattern(first, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+
+        expect(reregisterHatchPatterns(second)).toBe(0);
+        expect(second.images.size).toBe(0);
+    });
+});
+
+describe("removeHatchPatterns", () => {
+    it("takes the layer's patterns off the map, and leaves the others", () => {
+        const map = makeImageStore();
+        const gone = registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        const kept = registerHatchPattern(map, buildHatchPatternId("pluie", DOTS), DOTS);
+
+        removeHatchPatterns(map, "zones");
+
+        expect(map.removeImage).toHaveBeenCalledWith(gone);
+        expect(map.removeImage).not.toHaveBeenCalledWith(kept);
+        expect([...map.images]).toEqual([kept]);
+    });
+
+    it("forgets them: a later style rebuild does not bring a removed layer's pattern back", () => {
+        const map = makeImageStore();
+        registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        const kept = registerHatchPattern(map, buildHatchPatternId("pluie", DOTS), DOTS);
+
+        removeHatchPatterns(map, "zones");
+        map.images.clear(); // the engine rebuilt the style
+
+        expect(reregisterHatchPatterns(map)).toBe(1);
+        expect([...map.images]).toEqual([kept]);
+    });
+
+    it("forgets a pattern the map had ALREADY lost when the layer was removed", () => {
+        // Between a rebuild and the `style.load` that puts the patterns back, the image is not
+        // in `listImages()`. Forgetting must not depend on finding it there.
+        const map = makeImageStore();
+        registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        map.images.clear();
+
+        removeHatchPatterns(map, "zones");
+
+        expect(reregisterHatchPatterns(map)).toBe(0);
+        expect(map.images.size).toBe(0);
+    });
+
+    it("forgets even when the engine exposes no `listImages()`", () => {
+        const map = makeImageStore();
+        registerHatchPattern(map, buildHatchPatternId("zones", DIAGONAL), DIAGONAL);
+        map.listImages = undefined;
+
+        expect(() => removeHatchPatterns(map, "zones")).not.toThrow();
+        expect(map.removeImage).not.toHaveBeenCalled();
+
+        map.images.clear();
+        expect(reregisterHatchPatterns(map)).toBe(0);
+    });
+
+    it("does nothing for a map nothing was registered on", () => {
+        const map = makeImageStore();
+        expect(() => removeHatchPatterns(map, "zones")).not.toThrow();
+        expect(map.removeImage).not.toHaveBeenCalled();
     });
 });

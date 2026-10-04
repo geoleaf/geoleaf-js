@@ -113,6 +113,9 @@ export function generateHatchImage(
     return { imageData, width: size, height: size, pixelRatio };
 }
 
+/** Prefix of every hatch pattern id. */
+const HATCH_ID_PREFIX = "gl-hatch-";
+
 /**
  * Builds a unique pattern ID for a hatch configuration.
  * Deterministic — same config always produces the same ID.
@@ -124,11 +127,41 @@ export function buildHatchPatternId(layerId: string, hatchConfig: HatchConfig): 
     const color = (hatchConfig.stroke?.color ?? "#000000").replace("#", "");
     const sw = hatchConfig.stroke?.widthPx ?? 1;
     const op = hatchConfig.stroke?.opacity ?? 1;
-    return `gl-hatch-${layerId}-${type}-${angle}-${spacing}-${color}-${sw}-${op}`;
+    return `${HATCH_ID_PREFIX}${layerId}-${type}-${angle}-${spacing}-${color}-${sw}-${op}`;
+}
+
+// ─── Registered patterns ─────────────────────────────────────────────────────
+
+/** What it takes to draw a pattern again. */
+interface RegisteredHatch {
+    hatchConfig: HatchConfig;
+    pixelRatio: number;
 }
 
 /**
- * Registers a hatch pattern image on a MapLibre map instance.
+ * The patterns registered on each map, by pattern id — kept so that they can be drawn again.
+ *
+ * An image is not part of the style. A basemap switch the engine can DIFF keeps its image
+ * store, and the patterns with it. When the diff fails the engine rebuilds the style from
+ * scratch, with an empty store: the fill layers carried into the new style then name patterns
+ * that no longer exist, and a `pattern_only` fill draws nothing at all.
+ *
+ * Keyed weakly by the map, so a destroyed map takes its entries with it.
+ */
+const _registered = new WeakMap<object, Map<string, RegisteredHatch>>();
+
+/** Draws a pattern and hands it to the map. */
+function _addHatchImage(map: MaplibreMap, patternId: string, hatch: RegisteredHatch): void {
+    const { imageData, width, height, pixelRatio } = generateHatchImage(
+        hatch.hatchConfig,
+        hatch.pixelRatio
+    );
+    map.addImage(patternId, { data: imageData.data, width, height }, { pixelRatio });
+}
+
+/**
+ * Registers a hatch pattern image on a MapLibre map instance, and remembers it so that
+ * {@link reregisterHatchPatterns} can draw it again.
  *
  * @param mapArg - The map. Typed `unknown` and named `mapArg` because cross-module callers
  *   (geojson, vector-tiles) pass a permissive structural view; the runtime value is always the
@@ -147,17 +180,72 @@ export function registerHatchPattern(
     // Cross-module callers (geojson/vector-tiles) pass a permissive structural
     // map view; the runtime value is always the native MapLibre map.
     const map = mapArg as MaplibreMap;
+    const hatch: RegisteredHatch = { hatchConfig, pixelRatio };
+    // Remembered BEFORE the early return below: a pattern the map already holds must be
+    // re-drawable too, or the first layer to register it would be the only one that counts.
+    let patterns = _registered.get(map);
+    if (!patterns) {
+        patterns = new Map<string, RegisteredHatch>();
+        _registered.set(map, patterns);
+    }
+    patterns.set(patternId, hatch);
     // Skip if already registered
     if (map.hasImage(patternId)) return patternId;
 
-    const {
-        imageData,
-        width,
-        height,
-        pixelRatio: pr,
-    } = generateHatchImage(hatchConfig, pixelRatio);
-    map.addImage(patternId, { data: imageData.data, width, height }, { pixelRatio: pr });
+    _addHatchImage(map, patternId, hatch);
     return patternId;
+}
+
+/**
+ * Puts back the registered hatch patterns the map no longer holds.
+ *
+ * Meant for the moment a style has just been replaced. After a rebuild from scratch the image
+ * store is empty, and every pattern registered through {@link registerHatchPattern} is drawn
+ * again; after a diff the patterns are still there, and this does nothing.
+ *
+ * @param mapArg - The map (see {@link registerHatchPattern}).
+ * @returns How many patterns were put back.
+ */
+export function reregisterHatchPatterns(mapArg: unknown): number {
+    const map = mapArg as MaplibreMap;
+    const patterns = _registered.get(map);
+    if (!patterns) return 0;
+    let restored = 0;
+    for (const [patternId, hatch] of patterns) {
+        if (map.hasImage(patternId)) continue;
+        _addHatchImage(map, patternId, hatch);
+        restored += 1;
+    }
+    return restored;
+}
+
+/**
+ * Removes a layer's hatch patterns from the map, and forgets them.
+ *
+ * Both halves matter: a pattern taken off the map but still remembered would be drawn again
+ * by {@link reregisterHatchPatterns} at the next style change, for a layer that is gone.
+ *
+ * ⚠️ BY PREFIX (`gl-hatch-<layerId>-`), on both halves alike. The images are read off
+ * `listImages()`, the engine's PUBLIC enumeration — this once read `map.style._images`, an
+ * engine-private field: it worked, but nothing contractual guaranteed it across versions. An
+ * engine without `listImages()` keeps its images; the patterns are forgotten regardless.
+ *
+ * @param mapArg - The map (see {@link registerHatchPattern}).
+ * @param layerId - The GeoLeaf layer whose patterns go.
+ */
+export function removeHatchPatterns(mapArg: unknown, layerId: string): void {
+    const map = mapArg as MaplibreMap;
+    const prefix = `${HATCH_ID_PREFIX}${layerId}-`;
+    if (typeof map.listImages === "function") {
+        for (const imageId of map.listImages()) {
+            if (imageId.startsWith(prefix)) map.removeImage(imageId);
+        }
+    }
+    const patterns = _registered.get(map);
+    if (!patterns) return;
+    for (const patternId of [...patterns.keys()]) {
+        if (patternId.startsWith(prefix)) patterns.delete(patternId);
+    }
 }
 
 // ─── Canvas helpers ──────────────────────────────────────────────────────────

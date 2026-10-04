@@ -974,6 +974,70 @@ describe("MaplibreAdapter — removeLayer hatch cleanup", () => {
     });
 });
 
+describe("MaplibreAdapter — reregisterStyleImages puts the hatch patterns back", () => {
+    /** Gives the map double a real image store, so "the engine lost its images" is `clear()`. */
+    function withImageStore() {
+        const images = new Set();
+        mockMapInstance.hasImage = vi.fn((id) => images.has(id));
+        mockMapInstance.addImage = vi.fn((id) => images.add(id));
+        mockMapInstance.removeImage = vi.fn((id) => images.delete(id));
+        mockMapInstance.listImages = vi.fn(() => [...images]);
+        return images;
+    }
+
+    function addHatchedLayer(adapter, id) {
+        adapter.addGeoJSONLayer(id, {
+            type: "FeatureCollection",
+            features: [{ geometry: { type: "Polygon" } }],
+        });
+        adapter.setLayerStyle(id, {
+            hatch: { enabled: true, type: "diagonal", stroke: { color: "#00ff00" } },
+        });
+    }
+
+    it("draws a hatched layer's pattern again once the engine has rebuilt the style — with NO profile sprite", () => {
+        // The sprite step used to guard the whole method: a profile without a sprite put
+        // nothing back at all. No `<svg data-geoleaf-sprite>` is in this document.
+        const images = withImageStore();
+        const adapter = createInitedAdapter();
+        addHatchedLayer(adapter, "zones");
+        const pattern = [...images].find((id) => id.startsWith("gl-hatch-zones-"));
+        expect(
+            pattern,
+            "le style hachuré n'a posé aucun motif : le test ne mesure rien"
+        ).toBeTruthy();
+
+        images.clear(); // the engine rebuilt the style from scratch
+        adapter.reregisterStyleImages();
+
+        expect([...images]).toEqual([pattern]);
+    });
+
+    it("adds nothing when the engine kept its images", () => {
+        const images = withImageStore();
+        const adapter = createInitedAdapter();
+        addHatchedLayer(adapter, "zones");
+        mockMapInstance.addImage.mockClear();
+
+        adapter.reregisterStyleImages();
+
+        expect(mockMapInstance.addImage).not.toHaveBeenCalled();
+        expect(images.size).toBe(1);
+    });
+
+    it("does not bring back the pattern of a layer removed since", () => {
+        const images = withImageStore();
+        const adapter = createInitedAdapter();
+        addHatchedLayer(adapter, "zones");
+        adapter.removeLayer("zones");
+        expect(images.size).toBe(0);
+
+        adapter.reregisterStyleImages();
+
+        expect(images.size).toBe(0);
+    });
+});
+
 describe("MaplibreAdapter — setLayerFilter cluster branch", () => {
     it("routes filter through applyPoiFilter for registered cluster groups", async () => {
         const adapter = createInitedAdapter();

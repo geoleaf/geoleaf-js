@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import type { FieldConfig, RenderCtx } from "../contract.js";
 import { imageComponent } from "../types/image.js";
-import { setImageUploadStrategy } from "../types/field-media.js";
+import { setImagePreviewResolver, setImageUploadStrategy } from "../types/field-media.js";
 
 const CTX: RenderCtx = { lang: "fr" };
 const CTX_RO: RenderCtx = { lang: "fr", readOnly: true };
@@ -89,6 +89,66 @@ describe("image.formRender — aperçu", () => {
 
         el.querySelector(".gl-form-image__preview")!.dispatchEvent(new Event("click"));
         await vi.waitFor(() => expect(document.querySelector(".gl-lightbox")).not.toBeNull());
+    });
+
+    // 🛑 THE PREVIEW OF A CAPTURE THE HOST KEEPS. The host answers its token with an object URL
+    // on the stored file; that URL went through the protocol check like a value read from data,
+    // which does not admit `blob:`, and the preview came out with an empty `src`. Measured in
+    // the browser on 03/10/2026: a 2 px strip, which a "visible" assertion took for a photo.
+    describe("aperçu d'une valeur que seul l'hôte sait lire", () => {
+        const previewSrc = (el: HTMLElement) =>
+            el.querySelector<HTMLImageElement>(".gl-form-image__preview")?.getAttribute("src");
+
+        afterEach(() => setImagePreviewResolver(null));
+
+        it("🛑 l'URL d'objet rendue par le résolveur de l'hôte est affichée", async () => {
+            setImagePreviewResolver(async (value) =>
+                value === "gl-img:i1" ? "blob:https://app.example/7f1c" : null
+            );
+            const el = imageComponent.formRender!("gl-img:i1", field(), vi.fn(), CTX);
+
+            await vi.waitFor(() => expect(previewSrc(el)).toBe("blob:https://app.example/7f1c"));
+        });
+
+        it("la visionneuse s'ouvre sur cette même URL d'objet", async () => {
+            setImagePreviewResolver(async () => "blob:https://app.example/7f1c");
+            const el = imageComponent.formRender!("gl-img:i1", field(), vi.fn(), CTX);
+            document.body.appendChild(el);
+
+            el.querySelector(".gl-form-image__preview")!.dispatchEvent(new Event("click"));
+
+            await vi.waitFor(() => expect(document.querySelector(".gl-lightbox")).not.toBeNull());
+            expect(
+                document.querySelector<HTMLImageElement>(".gl-lightbox img")!.getAttribute("src")
+            ).toBe("blob:https://app.example/7f1c");
+        });
+
+        // The whitelist is not loosened: what the resolver answers is trusted for `blob:` only.
+        it("ce que le résolveur rend d'autre reste contrôlé : `javascript:` n'est pas affiché", async () => {
+            const resolver = vi.fn(async () => "javascript:alert(1)");
+            setImagePreviewResolver(resolver);
+            const el = imageComponent.formRender!("gl-img:i1", field(), vi.fn(), CTX);
+
+            await vi.waitFor(() => expect(resolver).toHaveBeenCalled());
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(previewSrc(el) ?? "").toBe("");
+        });
+
+        // …and a `blob:` that comes from the DATA, not from the resolver, is still refused.
+        it("une valeur `blob:` lue des données, que le résolveur ne reconnaît pas, n'est pas affichée", async () => {
+            const resolver = vi.fn(async () => null);
+            setImagePreviewResolver(resolver);
+            const el = imageComponent.formRender!(
+                "blob:https://elsewhere.example/1",
+                field(),
+                vi.fn(),
+                CTX
+            );
+
+            await vi.waitFor(() => expect(resolver).toHaveBeenCalled());
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(previewSrc(el) ?? "").toBe("");
+        });
     });
 
     it("marque le libellé requis", () => {

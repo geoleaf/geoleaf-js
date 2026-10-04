@@ -108,6 +108,8 @@
         "purge:dist": "node scripts/purge-dist.cjs",
         "check:doc-config-examples": "node scripts/check-doc-config-examples.cjs",
         "check:doc-config-examples:update-baseline": "node scripts/check-doc-config-examples.cjs --update-baseline",
+        "check:doc-config-defaults": "node scripts/check-doc-config-defaults.cjs",
+        "check:doc-config-defaults:update-baseline": "node scripts/check-doc-config-defaults.cjs --update-baseline",
         "check:tsdoc": "node scripts/check-tsdoc-conformity.cjs",
         "check:tsdoc:update-baseline": "node scripts/check-tsdoc-conformity.cjs --update-baseline",
         "check:tsdoc-paths": "node scripts/audit-report-freshness.cjs --source tsdoc --gate --quiet",

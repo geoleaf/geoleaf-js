@@ -3,7 +3,10 @@
  * © 2026 Mattieu Pottier
  * Released under the MIT License
  *
- * Stores string[] of URLs. Uploads via fetch to fieldConfig.uploadEndpoint.
+ * Stores string[] — one entry per image: the URL its upload returned, or whatever the host's
+ * upload strategy answered for a file it keeps (an opaque token, resolved for display by the
+ * host's preview resolver). Without a host strategy, uploads via fetch to
+ * fieldConfig.uploadEndpoint, and falls back to a local object URL when there is none.
  * fieldConfig extras:
  *   uploadEndpoint?: string   — POST endpoint; response must be JSON { url: string }
  *   maxCount?: number         — maximum number of images (default 20)
@@ -18,9 +21,8 @@ import { _el, _getLabel } from "../helpers.js";
 
 import {
     ACCEPTED_ACCEPT,
-    _createObjectUrl,
-    _openLightbox,
-    _safeImageSrc,
+    _openLightboxResolved,
+    _resolveImageSrc,
     _uploadFile,
     _validateFile,
 } from "./field-media.js";
@@ -57,13 +59,19 @@ function formRender(
             item.draggable = !ctx.readOnly;
 
             const img = _el("img");
-            // Protocol-checked like the side-panel path; the item itself stays
-            // in the grid either way, so `idx` keeps matching `urls`.
-            img.src = _safeImageSrc(url);
+            // Protocol-checked like the side-panel path, and resolved through the host first:
+            // a capture waiting for its upload is held as an opaque token, and only the host
+            // can read its store. The item itself stays in the grid either way, so `idx`
+            // keeps matching `urls`.
+            // ⚠️ The `src` is set asynchronously, on THIS element: a grid rebuilt while the
+            // read was in flight has dropped it, so a late answer cannot land on another photo.
+            void _resolveImageSrc(url).then((src) => {
+                img.src = src;
+            });
             img.className = "gl-form-gallery__thumb";
             img.alt = "";
             img.style.cursor = "zoom-in";
-            img.addEventListener("click", () => _openLightbox(url));
+            img.addEventListener("click", () => void _openLightboxResolved(url));
 
             const removeBtn = _el("button");
             removeBtn.type = "button";
@@ -166,20 +174,21 @@ function formRender(
                 }
                 toSend = outcome.file;
             }
-            if (endpoint) {
-                try {
-                    const url = await _uploadFile(toSend, endpoint);
-                    urls.push(url);
-                    onChange([...urls]);
-                    renderGrid();
-                } catch {
-                    errorEl.textContent = _getLabel("form.error.uploadFailed");
-                    errorEl.hidden = false;
-                }
-            } else {
-                urls.push(_createObjectUrl(toSend));
+            // 🛑 ONE ROAD, WITH OR WITHOUT AN ENDPOINT — the `image` component's. This used
+            // to call the upload without the field it came from, so a host that kept the file
+            // could not say which attribute to write its URL back to; and with no endpoint it
+            // wrote a `URL.createObjectURL` value straight into the list — an object URL dies
+            // with the document, so the photos were gone at the next reload. The host strategy
+            // is now handed the field, and `null` for an endpoint it then knows is absent;
+            // without a host, `_uploadFile` falls back to the object URL itself.
+            try {
+                const url = await _uploadFile(toSend, endpoint ?? null, fieldConfig.id);
+                urls.push(url);
                 onChange([...urls]);
                 renderGrid();
+            } catch {
+                errorEl.textContent = _getLabel("form.error.uploadFailed");
+                errorEl.hidden = false;
             }
         }
     }

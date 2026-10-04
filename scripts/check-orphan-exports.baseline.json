@@ -1,6 +1,6 @@
 {
     "_comment": "Angles morts STRUCTURELS de scripts/check-orphan-exports.cjs — PAS une dette à purger. Ce qui reste ici est ce que la recherche par token ne peut pas voir : usage intra-fichier (A — l'`export` est superflu, pas le symbole), consommation structurelle (C — duck-typing : le champ est lu, le type jamais nommé), et seams de test (D — le corpus exclut __tests__ par conception). CHAQUE entrée doit porter sa classe dans CLASSES (dans le script), sans quoi CLS-01 bloque ; une classe sans entrée correspondante bloque par CLS-02. Ce qui est INTENTIONNEL et permanent va dans ALLOWLIST (dans le script), pas ici. Régénérée via `--update-baseline`. Le gate ne bloque que sur un candidat absent d'ici.",
-    "generatedCount": 212,
+    "generatedCount": 215,
     "candidates": [
         "adapters/maplibre/maplibre-event-subscriptions.ts::trackedCleanupCount",
         "adapters/maplibre/maplibre-hatch-patterns.ts::generateHatchImage",
@@ -69,6 +69,9 @@
         "kernel/layer-manager/item-controls.ts::renderToggleControls",
         "packages/libs/field-renderer/src/lang/index.ts::builtinLangs",
         "packages/libs/field-renderer/src/types/field-media.ts::ACCEPTED_MIME",
+        "packages/libs/field-renderer/src/types/field-media.ts::_createObjectUrl",
+        "packages/libs/field-renderer/src/types/field-media.ts::_openLightbox",
+        "packages/libs/field-renderer/src/types/field-media.ts::_safeImageSrc",
         "packages/libs/field-renderer/src/types/image-compress.ts::BASE_QUALITY",
         "packages/libs/field-renderer/src/types/image-compress.ts::CompressionOutcome",
         "packages/libs/field-renderer/src/types/image-compress.ts::MAX_DIMENSION",

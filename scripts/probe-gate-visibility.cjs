@@ -1045,6 +1045,142 @@ try {
         };
     });
 
+    // ── DOC-CONFIG-DEFAULTS — the ways a documented default goes wrong, replayed ──
+    //
+    // The gate reads the integrator guide and the configuration inventory. Proving
+    // it on the real files would mean mutating them, so it would be done once, at
+    // wiring. Its two environment hooks exist for these lines and nothing else.
+    //
+    // ⚠️ The probe rows are APPENDED to a copy of the real documents, under a key
+    // of their own. Mutating an existing row would rot with the docs — and worse,
+    // a row the gate does not judge today would absorb the mutation and exit
+    // green, proving nothing while looking like a proof.
+    const dcdDocs = require("./lib/docs-paths.cjs");
+    // The bound file is derived, never spelled: a hard-coded package path would stop
+    // matching at the first move, and the probe would fail for the wrong reason.
+    const dcdBound = path
+        .relative(
+            ROOT,
+            path.join(
+                require("./lib/packages.cjs").byName("@geoleaf-plugins/flatgeobuf").absDir,
+                "src/internal.ts"
+            )
+        )
+        .split(path.sep)
+        .join("/");
+    const dcdProbe = (label, guideTail, inventoryRow, expectedCode) =>
+        assertThat(
+            `doc-config-defaults : ${label}${expectedCode ? ` (${expectedCode})` : ""}`,
+            () => {
+                const dir = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-dcd-"));
+                try {
+                    const guide = path.join(dir, "guide.md");
+                    const inventory = path.join(dir, "inventaire.md");
+                    const real = (name) => fs.readFileSync(dcdDocs.reference(name), "utf8");
+                    fs.writeFileSync(
+                        guide,
+                        `${real("GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md")}\n\n## 99. Sonde\n\n${guideTail}\n`
+                    );
+                    fs.writeFileSync(
+                        inventory,
+                        `${real("inventaire_config_parametres.md")}\n\n## Sonde\n\n` +
+                            "| Fichier | Clé (chemin pointé) | Défaut |\n| --- | --- | --- |\n" +
+                            `${inventoryRow}\n`
+                    );
+                    const res = spawnSync("node", ["scripts/check-doc-config-defaults.cjs"], {
+                        cwd: ROOT,
+                        encoding: "utf8",
+                        env: {
+                            ...process.env,
+                            GEOLEAF_DCD_GUIDE: guide,
+                            GEOLEAF_DCD_INVENTORY: inventory,
+                        },
+                    });
+                    const out = (res.stdout || "") + (res.stderr || "");
+                    if (!expectedCode) {
+                        return {
+                            ok: res.status === 0,
+                            detail:
+                                res.status === 0
+                                    ? "exit 0"
+                                    : `exit ${res.status} — rouge sur des lignes concordantes`,
+                        };
+                    }
+                    const named = out.includes(expectedCode) && out.includes("__probe__");
+                    return {
+                        ok: res.status !== 0 && named,
+                        detail:
+                            res.status === 0
+                                ? `SORTIE VERTE sur un défaut muté — la gate ne voit pas ${expectedCode}`
+                                : named
+                                  ? `rouge, et ${expectedCode} nommé`
+                                  : `rouge, mais ${expectedCode} jamais nommé sur la sonde (rougit pour une autre raison)`,
+                    };
+                } finally {
+                    fs.rmSync(dir, { recursive: true, force: true });
+                }
+            }
+        );
+    const dcdColumn = (value) =>
+        "| Paramètre | Type | Défaut | Description |\n| --- | --- | --- | --- |\n" +
+        `| \`__probe__.column\` | number | \`${value}\` | sonde |`;
+    const dcdInline = (value) =>
+        "| Option | Type | Description |\n| --- | --- | --- |\n" +
+        `| \`__probe__.inline\` | number | une sonde (défaut : ${value}) |`;
+
+    // 1. The shape every table of the guide has: a cell under a `Défaut` header.
+    dcdProbe(
+        "une cellule de colonne contredit l'inventaire",
+        dcdColumn(1),
+        "| sonde | `__probe__.column` | 2 |",
+        "DCD-01"
+    );
+
+    // 2. The shape that opened the class: the default lives in a description, in
+    //    a table with no `Défaut` column. A gate bounded to columns is blind here.
+    dcdProbe(
+        "une mention en ligne contredit l'inventaire",
+        dcdInline(1),
+        "| sonde | `__probe__.inline` | 2 |",
+        "DCD-01"
+    );
+
+    // 3. The blind spot cannot grow in silence: a key the inventory does not know
+    //    is not skipped, it is refused.
+    dcdProbe(
+        "une clé que l'inventaire ne connaît pas",
+        dcdColumn(1),
+        "| sonde | `__probe__.other` | 1 |",
+        "DCD-04"
+    );
+
+    // 4. The only place truth is reached: a row bound to a code constant. `-1` is
+    //    wrong whatever the constant is worth, so the probe carries no value to rot.
+    dcdProbe(
+        "une ligne liée contredit sa constante du code",
+        `<!-- geoleaf:docs:default __probe__.column ${dcdBound} DEFAULT_MAX_FEATURES -->\n\n` +
+            dcdColumn(-1),
+        "| sonde | `__probe__.column` | 1 |",
+        "DCD-05"
+    );
+
+    // 5. A binding that resolves nothing must REFUSE (exit 2), not skip green.
+    dcdProbe(
+        "une liaison vers une constante absente",
+        `<!-- geoleaf:docs:default __probe__.column ${dcdBound} __probe__ -->\n\n` + dcdColumn(1),
+        "| sonde | `__probe__.column` | 1 |",
+        "DCD-03"
+    );
+
+    // Counter-proof: the same appended rows, concordant, must be GREEN. Without
+    // it, five reds would prove only that appending a table turns the gate red.
+    dcdProbe(
+        "verte sur des lignes concordantes (contre-épreuve)",
+        `${dcdColumn(1)}\n\n${dcdInline(1)}`,
+        "| sonde | `__probe__.column` | 1 |\n| sonde | `__probe__.inline` | 1 |",
+        null
+    );
+
     // ── IMPL — "declared = executed" on what the repo loads WITHOUT importing ──
     //
     // 🛑 This gate guards a class no other sees, and it guards it on a repo

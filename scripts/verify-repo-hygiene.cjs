@@ -162,6 +162,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-nonnull-assertion-debt.cjs", // NONNULL-ASSERTION-DEBT — ratchet, CI + ci-local
     "check-js-test-debt.cjs", // JS-TEST-DEBT — `.js` test-debt ratchet, CI + ci-local
     "check-doc-config-examples.cjs", // DOC-CONFIG-EXAMPLES — ratchet, CI + ci-local
+    "check-doc-config-defaults.cjs", // DOC-CONFIG-DEFAULTS — ratchet, CI + ci-local
     "check-doc-cdn-pins.cjs", // CDN-PINS — pré-vol de `docs:deploy`, hors ci-local (motif dans son en-tête)
     "check-published-docs-parity.cjs", // DOCS-LIVE — dans `release:check`, hors ci-local (motif dans son en-tête)
     "check-dist-integrity.cjs", // DIST-INTEGRITY — 0 duplicate chunks, 0 orphans; CI + ci-local
@@ -569,6 +570,20 @@ const SCRIPTS_ALLOWLIST = new Set([
     // that hole is what made deleting the registration tempting instead of
     // conditioning it.
     "probe-slot-timing.mjs",
+    // Manual WebKit + Chromium probe — what IndexedDB accepts to store in a
+    // NON-PERSISTENT context, and what the editor's photo path does about it.
+    // No spec can stand in for it: the WebKit projects are bounded to named
+    // specs, and none compares an ephemeral context with a persistent one. It
+    // loads `probe-idb-blob-ephemeral.html` as it is — the page meant for a
+    // real device — so that what the page displays is what it measures.
+    "probe-idb-blob-ephemeral.mjs",
+    // Manual Chromium probe — what four plugins leave behind an `unmount()`,
+    // and whether they come back at the next `mount()`. `e2e/71` proves the
+    // remount for the core on `deploy-core`; pointed at `deploy-full` it is
+    // green and says nothing of these four, three of which are lazy: a page
+    // that merely boots holds nothing of them. Prints its readings, asserts
+    // nothing about the product.
+    "probe-remount-plugins.mjs",
     // Manual Chromium probe — does the cache-eviction notice reach the
     // screen, and on WHICH variant? Sole oracle of the eviction wiring:
     // `eviction-notice.ts`'s 10 unit tests exercise the listener's logic,

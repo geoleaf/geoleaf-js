@@ -179,6 +179,7 @@ qu'on cite, jamais le chiffre qu'il a rendu un jour.
 | API fantômes et noms de paquet périmés dans les exemples | `validate-docs-examples` — corpus `productDocsFiles()` |
 | Compilation des exemples `ts` et des `@example`          | `typecheck-docs-examples` — **même corpus**            |
 | Clés de config d'un exemple JSON absentes du schéma      | `check-doc-config-examples` — **même corpus**          |
+| Défaut annoncé par le guide intégrateur ↔ l'inventaire   | `check-doc-config-defaults` — **concordance** seule    |
 | Liens markdown morts                                     | `check-dead-links` — 10 scopes, 3 avec plancher        |
 | Chemins cités en backticks par `docs/specs/`             | `SPECS-PATHS`, baseline décroissante                   |
 | Chemins cités en backticks par `docs/guides/`            | `GUIDES-PATHS` (11/08/2026), baseline décroissante     |

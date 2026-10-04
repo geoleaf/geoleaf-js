@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "doc-config-defaults",
+    "scope": ["scripts/check-doc-config-defaults.cjs"],
+    "verdicts": {
+        "scripts/check-doc-config-defaults.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "DCD-01…05 — les défauts annoncés par le guide intégrateur sont confrontés à l'inventaire de configuration, et à une constante du code là où une ligne y est liée, sous cliquet",
+            "confidence": "haute",
+            "rationale": "Câblé dans ci:local et dans ci.yml à la pose. Ferme un trou que rien ne voyait : `check-config-coverage` ne lit que la colonne des clés de l'inventaire, `check-doc-config-examples` que les blocs JSON, donc une valeur par défaut fausse dans une cellule de tableau n'était lue par personne. Juge une CONCORDANCE entre deux textes et le dit dans son en-tête : deux documents faux ensemble sortent verts, la vérité n'étant atteinte que sur les lignes liées à une constante. Lit deux formes, la cellule sous colonne et la mention en ligne, parce que le cas qui a ouvert la classe était de la seconde. Vue rouge sur ses cinq règles, dont une fois sur données réelles ; ses mutations sont rejouées à chaque run par `probe-gate-visibility.cjs`. Paquet d'une liaison résolu par `lib/packages.cjs`, jamais par un chemin en dur"
+        }
+    }
+}

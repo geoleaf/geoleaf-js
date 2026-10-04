@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "sonde-idb-blob",
+    "scope": ["scripts/probe-idb-blob-ephemeral.mjs"],
+    "verdicts": {
+        "scripts/probe-idb-blob-ephemeral.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde WebKit et Chromium de ce qu'IndexedDB accepte de stocker en contexte non persistant, et de ce que le chemin photo de l'éditeur en fait",
+            "confidence": "haute",
+            "rationale": "N1 : basename `probe-<sujet>.mjs`, la forme des autres sondes de ce répertoire. Trois parts, contexte éphémère contre persistant : le magasin brut (Blob, File, ArrayBuffer, Uint8Array, `{ bytes, type }`, avec la forme de chaque refus), `GeoLeaf.Storage.DB.storeImageLocally()` remis d'un Blob, et la photo attachée dans le formulaire du déployé. Elle n'est redondante avec aucune spec : les projets WebKit de `playwright.config.js` sont bornés à des specs nommées, et aucune ne compare les deux contextes. Elle charge telle quelle `probe-idb-blob-ephemeral.html`, la page destinée à un appareil réel, si bien que ce que la page affiche est ce qu'elle mesure. C'est une mesure, pas une garde : elle imprime son tableau et n'asserte rien du produit."
+        }
+    }
+}

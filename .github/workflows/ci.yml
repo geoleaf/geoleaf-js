@@ -265,6 +265,14 @@ jobs:
             - name: Exemples de config JSON de la doc produit (DOC-CONFIG-EXAMPLES)
               run: npm run check:doc-config-examples
 
+            # DOC-CONFIG-DEFAULTS — le guide intégrateur annonce-t-il le même défaut que
+            # l'inventaire de configuration, et que la constante du code à laquelle une ligne
+            # est liée ? Une valeur par défaut fausse dans une cellule de tableau n'était lue
+            # par rien. Concordance, pas vérité : deux textes faux ensemble sortent verts.
+            # Baseline décroissante. Keep in sync with ci-local.cjs.
+            - name: Défauts annoncés par le guide intégrateur (DOC-CONFIG-DEFAULTS)
+              run: npm run check:doc-config-defaults
+
             # CINQ gates de documentation tournaient dans `ci:local` et n'étaient dans AUCUN
             # workflow : `check:docs-examples`, `check:tsdoc`, `gen:config-reference:check`,
             # `check:docs-typecheck` et `docs:build`. ⚠️ Leur absence était STRUCTURELLEMENT

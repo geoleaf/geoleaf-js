@@ -11,6 +11,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.14.1] - 2026-10-03
+
+### Fixed
+
+- **A hatched layer keeps its pattern when a basemap switch makes the engine rebuild the style**
+  (`@geoleaf/core` 3.14.1). A hatch is an image GeoLeaf draws and hands to the engine, and an
+  image is not part of the style. MapLibre first tries to diff the outgoing and incoming styles,
+  and keeps its images when it can; when it cannot — an incoming vector style that declares
+  `terrain` or `centerAltitude` — it rebuilds the style from scratch, with an empty image store.
+  The layers were carried into the new style, the patterns they name were not: a pattern-only
+  fill drew nothing until the page was reloaded. The patterns are now put back after every style
+  change, for a profile with or without an icon sprite. A switch the engine can diff was never
+  affected.
+
+- **A gallery's photos follow the same road as a single photo** (`@geoleaf/field-renderer`
+  1.4.2, `@geoleaf-plugins/editor` 1.5.6). The gallery field had been left out of it, on two
+  counts. With an upload endpoint, a photo taken off-network was stored without the field it
+  belongs to: once the network was back the file was uploaded, its local copy reclaimed, and
+  nothing wrote the returned URL onto the feature — the feature kept a `gl-img:` token that
+  designated nothing, and sent it to the server. With no endpoint, the gallery wrote a `blob:`
+  object URL into the attribute, a value that dies with the page. The gallery now hands the
+  host its field, with or without an endpoint, and the editor writes each URL back in place of
+  its token — in the list, found by value, so a gallery reordered or trimmed while a photo
+  waited is left as the user arranged it. A token the attribute no longer holds is not written
+  back at all, which also applies to a single photo replaced before its upload landed. Photos
+  already lost to this defect are not recovered: their tokens designate files no longer on the
+  device.
+- **The preview of a photo waiting for its upload is displayed** (`@geoleaf/field-renderer`
+  1.4.2). A host that keeps a capture answers its token with an object URL on the stored file;
+  the library ran that URL through the protocol check it applies to values read from data,
+  which does not admit `blob:`, and the preview came out empty — a blank strip in the form, for
+  the single photo and the gallery alike. An object URL answered by the host's preview resolver
+  is now displayed, in the form and in the lightbox. Nothing else is admitted: any other answer
+  of the resolver, and a `blob:` value read from the data, are checked as before.
+
 ## [3.14.0] - 2026-10-02
 
 ### Added

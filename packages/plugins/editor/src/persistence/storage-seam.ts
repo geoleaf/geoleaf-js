@@ -31,7 +31,11 @@
  * closure.
  */
 export interface OutboxAccess {
-    _ensureModule?: (name: string) => { list?: () => Promise<OutboxRow[]> } | null;
+    _ensureModule?: (name: string) => {
+        list?: () => Promise<OutboxRow[]>;
+        /** `Features` only: one stored entity, by the key the core holds it under. */
+        get?: (layerId: string, localId: string) => Promise<StoredEntity | null>;
+    } | null;
     /**
      * The never-pushed captures, all non-`synced` states together (`pending`,
      * `inFlight`, `failed`, `quarantined`).
@@ -44,6 +48,11 @@ export interface OutboxAccess {
      * diverge from one total to the other with no gate seeing it.
      */
     listPendingEdits?: () => Promise<PendingEdit[]>;
+}
+
+/** A stored entity, reduced to what the image reconciliation reads from it. */
+export interface StoredEntity {
+    feature?: { properties?: Record<string, unknown> | null } | null;
 }
 
 /** A pending capture, as `listPendingEdits` returns it. */
@@ -188,6 +197,27 @@ const _g = globalThis as unknown as {
 /** Resolves the Storage DB façade at call time, or null when unavailable. */
 export function storageDb(): OutboxAccess | null {
     return _g?.GeoLeaf?.Storage?.DB ?? null;
+}
+
+/**
+ * Reads the entity the device holds, by the key the core stores it under.
+ *
+ * ⚠️ Through the `Features` module and not `listPendingEdits`: that list only knows the
+ * entities an edit is still waiting on, and a photo can be uploaded long after its entity was
+ * pushed. The record keeps its key across the push — the server identity is written onto it,
+ * it is not moved — so the `localId` an image was bound with reads it before and after.
+ *
+ * @param layerId - Layer the entity belongs to.
+ * @param localId - The key the core minted or resolved for it (`loc:…`, `srv:…`).
+ * @returns the stored entity, or `null` when it is gone or the store cannot be read.
+ */
+export async function readStoredEntity(
+    layerId: string,
+    localId: string
+): Promise<StoredEntity | null> {
+    const features = storageDb()?._ensureModule?.("Features");
+    if (!features?.get) return null;
+    return (await features.get(layerId, localId)) ?? null;
 }
 
 /**

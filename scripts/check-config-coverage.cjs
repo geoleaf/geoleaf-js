@@ -332,6 +332,9 @@ const FAMILIES = {
             // 250 MB default set at cache-manager.ts — a key read yet undeclared
             // in the configSchema.
             "modules.offline.cache.maxCacheBytes",
+            // maxTileCacheEntries: read at lifecycle.ts (parseTileCacheBudget), declared
+            // in the configSchema, mirrored by the Service Worker's own fallback.
+            "modules.offline.cache.maxTileCacheEntries",
             // cluster (capabilities/cluster config.ts getClusterConfig — in-core
             // capability, native MapLibre clustering, opt-out; ex-poiConfig.cluster*).
             // The whole family was missing from the gate AND the inventory
@@ -343,6 +346,8 @@ const FAMILIES = {
             "modules.cluster.disableClusteringAtZoom",
             "modules.cluster.clusterStrategy",
             "modules.cluster.clusterStrategies",
+            'modules.cluster.clusterStrategies["by-source"].sources.geojson',
+            'modules.cluster.clusterStrategies["json-only"].geojsonClustering',
             // geocoding (plugin-geocoding config.ts getPluginConfig + GeocodingConfig defaults ;
             // migrated from features.json geocodingConfig — extraction roadmap geocoding S4)
             "modules.geocoding.enabled",
@@ -351,6 +356,10 @@ const FAMILIES = {
             "modules.geocoding.bbox",
             "modules.geocoding.debounceMs",
             "modules.geocoding.minChars",
+            "modules.geocoding.resultLimit",
+            "modules.geocoding.position",
+            "modules.geocoding.placeholder",
+            "modules.geocoding.flyToZoom",
             // table (plugin-table config.ts getPluginConfig + TableConfig DEFAULTS ; showButton = slot
             // profileKey in entry.ts read by the core registry ; pageSize/virtualScrolling orphans
             // ANO-038/039 ; migrated from ui.json tableConfig + ui.showTable — extraction roadmap table S4)
@@ -484,6 +493,13 @@ const FAMILIES = {
             // migrated from `ui.showThemeToggle` (code-only flag, never in a profile/schema).
             "modules.theme-toggle.enabled",
             "modules.theme-toggle.position",
+            "modules.profile-switcher.enabled",
+            "modules.language-switcher.enabled",
+            "modules.language-switcher.display",
+            "modules.language-switcher.languages",
+            "modules.theme-palette.enabled",
+            "modules.theme-palette.default",
+            "modules.theme-palette.palettes",
             // scale (capabilities/scale config.ts getScaleConfig).
             // Profile-level, opt-out; migrated from `ui.showScale` + `scaleConfig`. Defaults reproduce
             // the uniform real-profile scaleConfig (all on) → renders by default, no per-profile file.
@@ -510,6 +526,10 @@ const FAMILIES = {
             "modules.legend.collapsedByDefault",
             "modules.route.enabled",
             "modules.route.layers",
+            "modules.route.layers[].start",
+            "modules.route.layers[].end",
+            "modules.route.layers[].showStart",
+            "modules.route.layers[].showEnd",
             // permalink (capabilities/permalink config.ts getPermalinkConfig +
             // permalink-url `mode`; in-core capability, opt-out, gate alone migrated
             // from ui.permalink — cluster-model without a module, driven by 2 boot
@@ -530,6 +550,8 @@ const FAMILIES = {
             // `ui.showPoi*` flags were unreachable (strict schema, undeclared): their
             // buttons could neither be hidden nor shown.
             "modules.editor.showExport",
+            "modules.editor.showAddPoi",
+            "modules.editor.poiAddDefaultPosition",
             "modules.editor.menuPosition",
             "modules.editor.enabledTools",
             "modules.editor.snapPx",

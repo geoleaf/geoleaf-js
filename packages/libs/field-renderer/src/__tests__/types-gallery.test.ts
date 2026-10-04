@@ -20,6 +20,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 
 import type { FieldConfig, RenderCtx } from "../contract.js";
 import { galleryComponent } from "../types/gallery.js";
+import { setImagePreviewResolver, setImageUploadStrategy } from "../types/field-media.js";
 
 const CTX: RenderCtx = { lang: "fr" };
 const CTX_RO: RenderCtx = { lang: "fr", readOnly: true };
@@ -55,6 +56,67 @@ beforeEach(() => {
 
 afterEach(() => {
     vi.restoreAllMocks();
+    setImageUploadStrategy(null);
+    setImagePreviewResolver(null);
+});
+
+// ─── formRender — thumbnails ────────────────────────────────────────────────────
+// 🛑 A capture waiting for its upload is held as an opaque token, which no browser can load:
+// the thumbnail went through the protocol check alone and came out with an empty `src`.
+
+describe("gallery.formRender — vignettes", () => {
+    const thumbs = (el: HTMLElement) =>
+        [...el.querySelectorAll<HTMLImageElement>("img.gl-form-gallery__thumb")].map((img) =>
+            img.getAttribute("src")
+        );
+
+    it("🛑 une valeur que seul l'hôte sait lire est affichée par son résolveur", async () => {
+        setImagePreviewResolver(async (value) =>
+            value === "gl-img:i1" ? "blob:local/from-store" : null
+        );
+        const el = galleryComponent.formRender!(
+            ["gl-img:i1", "https://cdn.example.com/2.png"],
+            field(),
+            vi.fn(),
+            CTX
+        );
+
+        await vi.waitFor(() =>
+            expect(thumbs(el)).toEqual(["blob:local/from-store", "https://cdn.example.com/2.png"])
+        );
+    });
+
+    it("sans résolveur, une URL est affichée telle quelle", async () => {
+        const el = galleryComponent.formRender!(
+            ["https://cdn.example.com/1.png"],
+            field(),
+            vi.fn(),
+            CTX
+        );
+
+        await vi.waitFor(() => expect(thumbs(el)).toEqual(["https://cdn.example.com/1.png"]));
+    });
+
+    it("une valeur que rien ne sait afficher laisse la vignette vide, sans la retirer", async () => {
+        setImagePreviewResolver(async () => null);
+        const el = galleryComponent.formRender!(["gl-img:gone"], field(), vi.fn(), CTX);
+
+        await vi.waitFor(() => expect(thumbs(el)).toEqual([""]));
+        expect(el.querySelectorAll(".gl-form-gallery__item").length).toBe(1);
+    });
+
+    it("un clic ouvre la visionneuse sur la valeur RÉSOLUE", async () => {
+        setImagePreviewResolver(async () => "blob:local/from-store");
+        const el = galleryComponent.formRender!(["gl-img:i1"], field(), vi.fn(), CTX);
+        document.body.appendChild(el);
+
+        el.querySelector<HTMLImageElement>("img.gl-form-gallery__thumb")!.click();
+
+        await vi.waitFor(() => expect(document.querySelector(".gl-lightbox")).not.toBeNull());
+        expect(
+            document.querySelector<HTMLImageElement>(".gl-lightbox img")!.getAttribute("src")
+        ).toBe("blob:local/from-store");
+    });
 });
 
 // ─── formRender — grid and read-only ─────────────────────────────────────────────
@@ -260,14 +322,64 @@ describe("gallery.formRender — glisser-déposer", () => {
 // ─── formRender — adding files ───────────────────────────────────────────────────
 
 describe("gallery.formRender — ajout de fichiers", () => {
-    it("sans endpoint : crée une URL d'objet locale et notifie", () => {
+    // ⚠️ ASYNCHRONOUS since the gallery took the `image` component's road: with or without an
+    // endpoint the file goes through `_uploadFile`, which is what lets a host keep it. With no
+    // host and no endpoint, the fallback is still the local object URL.
+    it("sans endpoint ni hôte : crée une URL d'objet locale et notifie", async () => {
         const onChange = vi.fn();
         const el = galleryComponent.formRender!([], field(), onChange, CTX);
 
         dropFiles(el, [imageFile()]);
 
-        expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]);
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]));
         expect(el.querySelectorAll(".gl-form-gallery__item").length).toBe(1);
+    });
+
+    // 🛑 THE DEFECT. This branch wrote the object URL itself, without asking anyone: a host
+    // that CAN keep the file was never told, and the value written died with the document.
+    it("🛑 sans endpoint, la stratégie de l'hôte est appelée — avec `null` et le champ d'origine", async () => {
+        const strategy = vi.fn(async () => "gl-img:i1");
+        setImageUploadStrategy(strategy);
+        const onChange = vi.fn();
+        const el = galleryComponent.formRender!([], field(), onChange, CTX);
+
+        dropFiles(el, [imageFile()]);
+
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(["gl-img:i1"]));
+        expect(strategy).toHaveBeenCalledWith(expect.any(File), null, "photos");
+        expect(URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    // 🛑 THE OTHER HALF. Without the field it came from, a host that keeps the file for later
+    // cannot say which attribute to write the upload's URL back to.
+    it("🛑 avec endpoint, la stratégie de l'hôte reçoit le champ d'origine", async () => {
+        const strategy = vi.fn(async () => "gl-img:i2");
+        setImageUploadStrategy(strategy);
+        const onChange = vi.fn();
+        const el = galleryComponent.formRender!(
+            [],
+            field({ uploadEndpoint: "/upload" }),
+            onChange,
+            CTX
+        );
+
+        dropFiles(el, [imageFile()]);
+
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(["gl-img:i2"]));
+        expect(strategy).toHaveBeenCalledWith(expect.any(File), "/upload", "photos");
+    });
+
+    it("un envoi que l'hôte rejette affiche l'erreur d'upload sans notifier", async () => {
+        setImageUploadStrategy(vi.fn(async () => Promise.reject(new Error("store unreachable"))));
+        const onChange = vi.fn();
+        const el = galleryComponent.formRender!([], field(), onChange, CTX);
+
+        dropFiles(el, [imageFile()]);
+
+        await vi.waitFor(() =>
+            expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(false)
+        );
+        expect(onChange).not.toHaveBeenCalled();
     });
 
     it("refuse un type non image et affiche l'erreur sans notifier", () => {
@@ -304,22 +416,25 @@ describe("gallery.formRender — ajout de fichiers", () => {
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(true);
     });
 
-    it("un fichier rejeté n'empêche pas le suivant d'être accepté", () => {
+    it("un fichier rejeté n'empêche pas le suivant d'être accepté", async () => {
         const onChange = vi.fn();
         const el = galleryComponent.formRender!([], field(), onChange, CTX);
 
         dropFiles(el, [imageFile("doc.pdf", "application/pdf"), imageFile("ok.png")]);
 
         // `continue`, not `break`: the loop goes on after a validation rejection.
-        expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]);
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]));
     });
 
-    it("s'arrête net une fois maxCount atteint", () => {
+    it("s'arrête net une fois maxCount atteint", async () => {
         const onChange = vi.fn();
         const el = galleryComponent.formRender!([], field({ maxCount: 1 }), onChange, CTX);
 
         dropFiles(el, [imageFile("a.png"), imageFile("b.png")]);
 
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+        // The second file would land a tick later if the ceiling did not hold.
+        await new Promise((resolve) => setTimeout(resolve, 0));
         expect(onChange).toHaveBeenCalledTimes(1);
     });
 
@@ -376,7 +491,7 @@ describe("gallery.formRender — ajout de fichiers", () => {
         expect(el.querySelector<HTMLElement>(".gl-form-error")!.hidden).toBe(true);
     });
 
-    it("l'emplacement d'ajout accepte aussi un dépôt direct", () => {
+    it("l'emplacement d'ajout accepte aussi un dépôt direct", async () => {
         const onChange = vi.fn();
         const el = galleryComponent.formRender!([], field(), onChange, CTX);
         const slot = el.querySelector<HTMLElement>(".gl-form-gallery__add-slot")!;
@@ -387,7 +502,7 @@ describe("gallery.formRender — ajout de fichiers", () => {
         drop.dataTransfer = { files: [imageFile()] };
         slot.dispatchEvent(drop);
 
-        expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]);
+        await vi.waitFor(() => expect(onChange).toHaveBeenCalledWith(["blob:local/preview"]));
     });
 
     it("un dépôt sans dataTransfer ne fait rien", () => {

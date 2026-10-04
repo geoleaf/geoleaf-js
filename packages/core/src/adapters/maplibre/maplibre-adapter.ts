@@ -31,6 +31,7 @@ import type {
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
 import { MaplibreLayerRegistry, SENTINEL_POI } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
+import { reregisterHatchPatterns, removeHatchPatterns } from "./maplibre-hatch-patterns.js";
 import { applyPoiFilter, type ClusterLayerIds } from "./maplibre-poi-builders.js";
 import {
     registerSpriteIcons,
@@ -442,16 +443,9 @@ export class MaplibreAdapter implements IMapAdapter {
         if (map.getSource(entry.sourceId)) {
             map.removeSource(entry.sourceId);
         }
-        // Cleanup hatch pattern images (prefix-based: gl-hatch-{layerId}-*).
-        // `listImages()` is the PUBLIC enumeration API. This used to read
-        // `map.style._images`, an engine-private field: it worked, but nothing
-        // contractual guaranteed it across engine versions.
-        const hatchPrefix = `gl-hatch-${id}-`;
-        if (typeof map.listImages === "function") {
-            for (const imgId of map.listImages()) {
-                if (imgId.startsWith(hatchPrefix)) map.removeImage(imgId);
-            }
-        }
+        // The layer's hatch patterns go with it — off the map, and out of what a style
+        // change puts back.
+        removeHatchPatterns(map, id);
         this._layerRegistry.unregister(id);
         // A layer created again under this id starts with no filter.
         this._filterSlots.delete(id);
@@ -925,16 +919,24 @@ export class MaplibreAdapter implements IMapAdapter {
     }
 
     /**
-     * Re-registers runtime images wiped by `map.setStyle()`. The `transformStyle`
-     * merge (see {@link buildStyleChangeTransform}) preserves sources and layers,
-     * but images added via `map.addImage()` (POI sprite icons) are not part of the
-     * style spec and are always cleared. Skipped when no profile sprite is present,
-     * so sprite-less profiles pay nothing and log no warning.
+     * Puts back the runtime images a `map.setStyle()` may have left behind: the hatch
+     * patterns, then the POI sprite icons.
+     *
+     * The `transformStyle` merge (see {@link buildStyleChangeTransform}) carries sources and
+     * layers. Images added via `map.addImage()` are not part of the style spec, and what
+     * becomes of them depends on the engine: a style change it can DIFF keeps them, one it
+     * cannot — it then rebuilds the style from scratch — starts with an empty image store.
+     * Both steps only add what is missing, so they cost nothing on the first path.
+     *
+     * The sprite step is skipped when no profile sprite is present, so sprite-less profiles
+     * pay nothing and log no warning; the hatch step runs regardless.
      *
      * Called by the basemap registry inside the post-swap `style.load` handler.
      */
     reregisterStyleImages(): void {
-        if (!this._map || !hasProfileSprite()) return;
+        if (!this._map) return;
+        reregisterHatchPatterns(this._map);
+        if (!hasProfileSprite()) return;
         void registerSpriteIcons(this._map).catch((err) =>
             Log.warn("[POI] sprite re-registration failed:", err)
         );

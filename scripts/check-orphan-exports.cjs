@@ -377,6 +377,12 @@ const CLASS_D = [
     "utils/validators/style-validator-properties.ts::validateFont",
     "utils/validators/style-validator-properties.ts::validateLabelComponent",
     "utils/validators/style-validator-properties.ts::validateStroke",
+    // Lost their one production importer when the gallery took the resolved variants
+    // (`_resolveImageSrc`, `_openLightboxResolved`); still used inside the module, and unit-tested
+    // directly — `_safeImageSrc` is the protocol check, pinned by `shared-scaffolding.test.ts`.
+    "packages/libs/field-renderer/src/types/field-media.ts::_createObjectUrl",
+    "packages/libs/field-renderer/src/types/field-media.ts::_openLightbox",
+    "packages/libs/field-renderer/src/types/field-media.ts::_safeImageSrc",
 ];
 
 /**

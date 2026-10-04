@@ -128,6 +128,20 @@ async function captureAPhotoOffNetwork(page, context) {
 
     // The strategy runs asynchronously; the preview appearing is what says it settled.
     await expect(page.locator(".gl-form-image__preview").first()).toBeVisible({ timeout: 15000 });
+    // 🛑 AND IT MUST DISPLAY THE PHOTO — "visible" does not say so. Measured on 03/10/2026: the
+    // preview of a capture held under a token was an `<img>` with an empty `src`, a 2 px strip
+    // the assertion above took for a photo. The object URL the editor answers for its token was
+    // refused by the library's protocol check.
+    await expect
+        .poll(
+            () =>
+                page
+                    .locator("img.gl-form-image__preview")
+                    .first()
+                    .evaluate((img) => /** @type {HTMLImageElement} */ (img).naturalWidth),
+            { timeout: 15000, message: "l'aperçu de la photo en attente est vide" }
+        )
+        .toBeGreaterThan(0);
 
     await page.evaluate(() => {
         /** @type {any} */ (window).__edQueued = false;

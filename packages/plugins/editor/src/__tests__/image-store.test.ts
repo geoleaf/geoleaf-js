@@ -45,8 +45,12 @@ const _applyEdit = vi.fn(
         refused: null,
     })
 );
+/** The entities the device holds, by `<layerId>|<localId>` — what the reconciliation reads. */
+let _entities: Record<string, { feature: { properties: Record<string, unknown> } } | null> = {};
 vi.mock("../persistence/storage-seam.js", () => ({
     storageFacade: () => ({ applyEdit: _applyEdit }),
+    readStoredEntity: (layerId: string, localId: string) =>
+        Promise.resolve(_entities[`${layerId}|${localId}`] ?? null),
 }));
 const _log = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
 // ⚠️ Only `Log` is replaced: the upload's timeout is the real `fetchWithTimeout`, so the cases
@@ -136,6 +140,7 @@ beforeEach(() => {
     _statusCalls.length = 0;
     _bindCalls.length = 0;
     _localImages = {};
+    _entities = {};
     _setStrategy.mockClear();
     _setResolver.mockClear();
     _log.warn.mockClear();
@@ -421,6 +426,9 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
 
     it("🛑 RÉCONCILIE : une entrée `update` porte l'URL serveur sur le bon champ", async () => {
         mountCore();
+        _entities["candelabres|loc:abc"] = {
+            feature: { properties: { "properties.photo": "gl-img:i1", nom: "C-12" } },
+        };
         _pending = [
             {
                 id: "i1",
@@ -448,6 +456,113 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
                 properties: { "properties.photo": "https://srv/1.jpg" },
             },
         });
+    });
+
+    // --- reconciling a LIST --------------------------------------------------
+    //
+    // 🛑 A GALLERY HOLDS A LIST. Writing the URL onto the key would have replaced the list by
+    // a string; and the list is reordered and trimmed while a photo waits, so the token is
+    // found by VALUE. What the edit carries is the attribute's CURRENT value, one token turned.
+
+    /** Two photos of one gallery waiting, and the entity that holds their tokens. */
+    function galleryWaiting(held: unknown) {
+        _entities["sites|loc:g1"] = { feature: { properties: { galerie: held, nom: "S-1" } } };
+        _pending = ["a", "b"].map((id) => ({
+            id,
+            blob: new Blob([new Uint8Array(2)]),
+            endpoint: "/u",
+            layerId: "sites",
+            localId: "loc:g1",
+            fieldPath: "galerie",
+        }));
+        vi.mocked(fetch).mockImplementation(
+            () =>
+                Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve({
+                            url: `https://srv/${vi.mocked(fetch).mock.calls.length}`,
+                        }),
+                }) as unknown as Promise<Response>
+        );
+    }
+
+    /** The `galerie` each reconciling edit carried, in order. */
+    const galleriesWritten = () =>
+        _applyEdit.mock.calls.map(
+            (call) =>
+                (call[0] as { feature: { properties: Record<string, unknown> } }).feature.properties
+                    .galerie
+        );
+
+    it("🛑 dans une LISTE, le jeton est remplacé à sa place — le reste de la liste est gardé", async () => {
+        mountCore();
+        galleryWaiting(["https://srv/old.jpg", "gl-img:a", "gl-img:b"]);
+        // The store answers each read with what the previous edit left: the second photo is
+        // reconciled against a list where the first already holds its URL.
+        _applyEdit.mockImplementation((input: unknown) => {
+            const edit = input as { feature: { properties: Record<string, unknown> } };
+            _entities["sites|loc:g1"]!.feature.properties.galerie = edit.feature.properties.galerie;
+            return Promise.resolve({ entryId: "e", refused: null });
+        });
+
+        await retryPendingImages();
+
+        expect(galleriesWritten()).toEqual([
+            ["https://srv/old.jpg", "https://srv/1", "gl-img:b"],
+            ["https://srv/old.jpg", "https://srv/1", "https://srv/2"],
+        ]);
+    });
+
+    it("le jeton est trouvé par sa VALEUR : une galerie réordonnée depuis la capture", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:b", "gl-img:a"]);
+        _pending = _pending.slice(0, 1); // only `a` is uploaded
+
+        await retryPendingImages();
+
+        expect(galleriesWritten()).toEqual([["gl-img:b", "https://srv/1"]]);
+    });
+
+    it("n'écrit RIEN quand la liste ne porte plus le jeton — la photo a été retirée depuis", async () => {
+        mountCore();
+        galleryWaiting(["https://srv/kept.jpg"]);
+
+        await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 2 });
+        expect(_applyEdit).not.toHaveBeenCalled();
+    });
+
+    it("n'écrit RIEN quand le champ porte une AUTRE photo — elle a été remplacée depuis", async () => {
+        mountCore();
+        _entities["candelabres|loc:abc"] = {
+            feature: { properties: { photo: "gl-img:newer" } },
+        };
+        _pending = [
+            {
+                id: "i1",
+                blob: new Blob([new Uint8Array(2)]),
+                endpoint: "/u",
+                layerId: "candelabres",
+                localId: "loc:abc",
+                fieldPath: "photo",
+            },
+        ];
+        vi.mocked(fetch).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ url: "https://srv/1.jpg" }),
+        } as Response);
+
+        await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 1 });
+        expect(_applyEdit).not.toHaveBeenCalled();
+    });
+
+    it("n'écrit RIEN quand l'entité n'est plus sur l'appareil", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        _entities["sites|loc:g1"] = null;
+
+        await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 2 });
+        expect(_applyEdit).not.toHaveBeenCalled();
     });
 
     // A photo whose feature was never bound is uploaded and kept — patching a record we
