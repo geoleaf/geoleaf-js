@@ -38,6 +38,13 @@ function setup() {
     return { sel, overlay: container.querySelector(".gl-emprise-overlay") as HTMLElement };
 }
 
+/** Whether a key reaches the selector — its `keydown` listener is on `document`. */
+function escapeReachesSelector(): boolean {
+    onCancel.mockClear();
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    return onCancel.mock.calls.length > 0;
+}
+
 /** Reads the rectangle back from the DOM, in the same px frame the handlers use. */
 function readRect(): { x: number; y: number; w: number; h: number } {
     const el = container.querySelector(".gl-emprise-rect") as HTMLElement;
@@ -240,5 +247,31 @@ describe("emprise-selector — touch", () => {
         // The gesture is released: a later movement no longer resizes anything.
         mouse("mousemove", document, 350, 290);
         expect(readRect()).toEqual({ x: 50, y: 50, w: 200, h: 150 });
+    });
+});
+
+// `deactivate()` only HIDES the overlay: every print flow left one in the map container, and a
+// flow still open when the application was unmounted left it displayed, its listeners on
+// `document` — measured in a real browser.
+describe("destroy — the overlay leaves the map container", () => {
+    beforeEach(() => {
+        document.body.innerHTML = "";
+    });
+
+    it("🛑 removes the overlay, where deactivate() only hides it", () => {
+        const { sel } = setup();
+        sel.deactivate();
+        expect(container.querySelectorAll(".gl-emprise-overlay")).toHaveLength(1);
+
+        sel.destroy();
+        expect(container.querySelectorAll(".gl-emprise-overlay")).toHaveLength(0);
+    });
+
+    it("🛑 gives the document listeners back when called on an ACTIVE selector", () => {
+        const { sel } = setup();
+        expect(escapeReachesSelector()).toBe(true);
+
+        sel.destroy();
+        expect(escapeReachesSelector()).toBe(false);
     });
 });

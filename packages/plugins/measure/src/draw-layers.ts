@@ -248,6 +248,14 @@ export function clearAll(): void {
     for (const src of SOURCES) _setData(src, _emptyFC());
 }
 
+/**
+ * Forgets the map the layers were created on — called when the application is torn down. The
+ * layers and sources go with that map; the next `initLayers()` creates them on the next one.
+ */
+export function releaseLayers(): void {
+    _map = null;
+}
+
 /** Sets the map cursor style. */
 export function setCursor(cursor: string): void {
     const map = _map ?? _getNativeMap();

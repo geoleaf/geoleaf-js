@@ -171,6 +171,80 @@ describe("credential-button", () => {
             uninstallCredentialButton();
             expect(document.querySelectorAll(".gc-credential-btn").length).toBe(0);
         });
+
+        // The separator had no reference kept: it stayed in the tab strip, and a strip that
+        // outlives its button showed a rule under nothing.
+        it("🛑 removes the separator with the desktop button", () => {
+            createDesktopTabs();
+            installCredentialButton(BASE_CONFIG);
+            expect(document.querySelectorAll(".gc-credential-separator").length).toBe(1);
+
+            uninstallCredentialButton();
+            expect(document.querySelectorAll(".gc-credential-separator").length).toBe(0);
+        });
+
+        // The bars are the application's: unmounted, they leave the page with the buttons in
+        // them, and the next application builds new ones. The references kept by the module
+        // must not answer « already installed » on nodes that are gone.
+        it("🛑 a second install after an uninstall injects into the NEW bars", () => {
+            const tabs = createDesktopTabs();
+            const toolbar = createMobileToolbar();
+            installCredentialButton(BASE_CONFIG);
+            // The application is unmounted: its bars go, then the plugin's teardown runs.
+            tabs.remove();
+            toolbar.remove();
+            uninstallCredentialButton();
+
+            createDesktopTabs();
+            createMobileToolbar();
+            installCredentialButton(BASE_CONFIG);
+
+            expect(document.querySelectorAll(".gc-credential-btn").length).toBe(2);
+            expect(document.querySelectorAll(".gc-credential-separator").length).toBe(1);
+        });
+    });
+
+    // The bars are built by the core AFTER the events this plugin installs on: the install
+    // then waits for them, behind a mutation observer bounded by a ten-second timeout.
+    describe("waiting for bars that are not built yet", () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it("🛑 waits with ONE observer, however many times install is called", () => {
+            const observe = vi.spyOn(MutationObserver.prototype, "observe");
+            installCredentialButton(BASE_CONFIG);
+            installCredentialButton(BASE_CONFIG);
+            installCredentialButton(BASE_CONFIG);
+            expect(observe).toHaveBeenCalledTimes(1);
+        });
+
+        it("🛑 the timeout of an uninstalled wait does not end the next one", async () => {
+            installCredentialButton(BASE_CONFIG);
+            await vi.advanceTimersByTimeAsync(4_000);
+            // The application is unmounted, and mounted again within the ten seconds.
+            uninstallCredentialButton();
+            installCredentialButton(BASE_CONFIG);
+            // The first wait's timeout would fire here, 10 s after the FIRST install.
+            await vi.advanceTimersByTimeAsync(7_000);
+
+            createDesktopTabs();
+            createMobileToolbar();
+            await vi.advanceTimersByTimeAsync(0);
+            await Promise.resolve();
+
+            expect(document.querySelectorAll(".gc-credential-btn").length).toBe(2);
+        });
+
+        it("gives up after ten seconds: bars built later get no button", async () => {
+            const disconnect = vi.spyOn(MutationObserver.prototype, "disconnect");
+            installCredentialButton(BASE_CONFIG);
+            await vi.advanceTimersByTimeAsync(10_000);
+            expect(disconnect).toHaveBeenCalled();
+        });
     });
 
     describe("icon variants", () => {

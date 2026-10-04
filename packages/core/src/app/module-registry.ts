@@ -14,6 +14,8 @@
  * - Detects circular dependencies at `init()` time and throws a `GeoLeafError`
  *   with the full cycle path (e.g. `"A → B → A"`).
  * - Calls each module's `init()` in dependency order, `destroy()` in reverse.
+ * - Takes a lifecycle module registered AFTER `init()` down with the others: a plugin loaded on
+ *   demand unmounts with the application.
  * - With `onModuleError`, isolates a module whose `init()` throws: the modules that depend on
  *   it are skipped, and every other module still runs.
  */
@@ -61,8 +63,10 @@ export class ModuleRegistry implements IModuleRegistry {
     private _initRunning = false;
 
     /**
-     * The modules whose `init()` was called, in the order it was — what `destroy()` walks back.
-     * Not the resolved order: a loop stopped by `shouldContinue` never reached the rest.
+     * The modules that are running, in the order they started — what `destroy()` walks back:
+     * those whose `init()` was called, then the lifecycle modules registered while the
+     * application ran, which started by themselves. Not the resolved order: a loop stopped by
+     * `shouldContinue` never reached the rest.
      */
     private _started: string[] = [];
 
@@ -106,29 +110,39 @@ export class ModuleRegistry implements IModuleRegistry {
         if (this._modules.has(module.id)) return;
 
         if (this._initialized) {
-            // Post-boot registration. Stored so `getAll()` / `getUISlots()` can see it, but TWO
-            // things will never happen — and both used to happen in silence (socle-init 7.2):
+            // Registered while the application runs — a plugin whose bundle loaded on demand.
+            // Stored so `getAll()` / `getUISlots()` can see it. What happens to it, by shape:
             //
-            //   1. `init()` is not called. The init loop ran once, in `init()`, over the
-            //      topo-sorted order computed before this module existed.
-            //   2. **Its UI slot is never rendered either** — the corollary nothing documented.
-            //      `_appendRegistryIcons()` walks `registry.getAll()` exactly once, from
-            //      `createToolbarDom()`, which has a single caller (`mobile-toolbar.ts`) and is
-            //      never replayed. A `mobileIcon` declared here is stored and never drawn.
-            //
-            // It is (2) that made this look like an ordering problem: the module IS registered,
-            // introspection confirms it, and nothing appears on screen.
+            //   1. **A lifecycle module is torn down with the application.** Its `init()` is not
+            //      called for the application already running — the init loop ran once, over the
+            //      order computed before this module existed, and a bundle that loads late wires
+            //      itself. But it is recorded as started: `destroy()` walks `_started`, so the
+            //      teardown reaches it, last in and first out, while the map is still alive.
+            //      Without that, a plugin loaded after the boot outlived `GeoLeaf.mount()`'s
+            //      unmount — its panels stayed in the page, its timers kept running. From the next
+            //      `init()` on it is a module like any other: it is in `_modules`, which
+            //      `destroy()` does not clear.
+            //   2. **A UI slot is not drawn before the next mount.** `_appendRegistryIcons()`
+            //      walks `registry.getAll()` once per boot, from `createToolbarDom()`, and nothing
+            //      replays it. This is what used to happen in silence (socle-init 7.2), and what
+            //      made it look like an ordering problem: the module IS registered, introspection
+            //      confirms it, and nothing appears on screen.
             //
             // The supported path for a plugin that wants a button before its bundle loads is
             // `GeoLeaf.plugins.registerLazyForAction()` — it declares the slot BEFORE boot, so
-            // the toolbar draws it, and the bundle loads on first use.
-            Log.warn(
-                `[ModuleRegistry] module '${module.id}' registered AFTER init() — neither its ` +
-                    `init() nor its UI slot will run: the init loop and the toolbar are both ` +
-                    `built once, at boot. Use GeoLeaf.plugins.registerLazyForAction() to declare ` +
-                    `a slot before boot and load the bundle on demand.`
-            );
+            // the toolbar draws it at every boot, and the bundle loads on first use.
             this._modules.set(module.id, module);
+            if (hasDestroy) this._started.push(module.id);
+            if (m.ui !== undefined) {
+                Log.warn(
+                    `[ModuleRegistry] module '${module.id}' registered AFTER init() — its UI ` +
+                        `slot is not drawn before the next mount: the toolbar is built once per ` +
+                        `boot` +
+                        (hasInit ? `, and its init() runs from the next boot on` : ``) +
+                        `. Use GeoLeaf.plugins.registerLazyForAction() to declare a slot before ` +
+                        `boot and load the bundle on demand.`
+                );
+            }
             return;
         }
 
@@ -314,9 +328,9 @@ export class ModuleRegistry implements IModuleRegistry {
             );
             return;
         }
-        // Only the modules whose `init()` was called: a skipped module (a module it depends on
-        // failed) never ran, nor did one the loop never reached. The module that failed IS torn
-        // down — its `init()` may have run in part.
+        // Only the modules that started — `init()` called, or registered while the application
+        // ran: a skipped module (a module it depends on failed) never ran, nor did one the loop
+        // never reached. The module that failed IS torn down — its `init()` may have run in part.
         const reverseOrder = [...this._started].reverse();
         for (const id of reverseOrder) {
             const mod = this._modules.get(id);

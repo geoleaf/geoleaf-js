@@ -493,8 +493,13 @@ export interface IModuleRegistry {
      * Registers a module descriptor with the registry.
      *
      * Idempotent: a module already registered under the same `id` wins, and a second call is a
-     * no-op. Registering after `init()` stores the module but never runs it — neither its
-     * `init()` nor its UI slot, both built once at boot — and logs a warning that says so.
+     * no-op.
+     *
+     * Registering after `init()` — a plugin whose bundle loads on demand — stores the module.
+     * A lifecycle module is not initialised for the application already running, which it
+     * joined by itself, but `destroy()` reaches it: it is torn down with the others, and
+     * initialised like them from the next `init()` on. A UI slot is not drawn before the next
+     * mount, the toolbar being built once per boot, and a warning says so.
      *
      * Throws a `GeoLeafError` when the module is neither a lifecycle module (`init` and
      * `destroy`, both functions) nor a UI-only slot (`{ id, ui }`).

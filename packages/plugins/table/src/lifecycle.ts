@@ -10,6 +10,10 @@
  * `init()` builds the panel DOM and attaches the map event listeners only — the
  * highlight overlay (`addGeoJSONLayer`) is created later on user action, by which
  * point the map is fully loaded.
+ *
+ * `destroy()` is the other end: the application teardown (`GeoLeaf.mount()`'s `unmount()`)
+ * reaches it through the module the entry registers. The `geoleaf:map:ready` subscription
+ * stays for the life of the page — it is what brings an open-at-boot table back on the next map.
  * https://geoleaf.dev
  */
 
@@ -62,7 +66,7 @@ function _onMapReady(): void {
 }
 
 /**
- * Mount, refresh and teardown of the table panel.
+ * Mount and teardown of the table panel.
  *
  * Separated from the rendering so the panel can be rebuilt without re-registering its seams —
  * the same split the layer manager and the legend follow.
@@ -86,4 +90,12 @@ export const TableLifecycle = {
      * panel is created on the first click rather than at boot.
      */
     ensureInitialized,
+
+    /**
+     * Takes the table down with the application — see `Table.destroy()`. The next activation,
+     * or the next `geoleaf:map:ready` of an open-at-boot table, builds it again.
+     */
+    destroy(): void {
+        Table.destroy();
+    },
 };

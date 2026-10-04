@@ -63,6 +63,19 @@ export function ensureWatch(): boolean {
 }
 
 /**
+ * Forgets that a watch was requested — called when the application is torn down.
+ *
+ * The request was a click on the geolocation control of the application that goes away; the
+ * next one has a control of its own, and a watch that is not running. Left set, the latch made
+ * {@link ensureWatch} answer « requested » for ever, and `auto` never asked again.
+ *
+ * The refusal notice is left alone: it is said once per session, not once per application.
+ */
+export function resetWatchRequest(): void {
+    _requested = false;
+}
+
+/**
  * Reports a refused permission, at most once per session.
  *
  * Once, because the loop runs every `intervalMs`: a refusal repeated every 30 seconds turns a

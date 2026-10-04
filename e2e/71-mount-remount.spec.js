@@ -20,34 +20,15 @@
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { installListenerProbe, liveListeners } from "./helpers/listener-probe.js";
-
-const MAP_ID = "geoleaf-map";
-const TIMEOUT = 60_000;
+import {
+    BOOT_TIMEOUT as TIMEOUT,
+    MAP_ID,
+    bootPage,
+    installSignals,
+    mountAndWait,
+} from "./helpers/mount.js";
 
 test.use({ baseURL: baseURL("core") });
-
-/** Counts `geoleaf:app:ready` and records every `geoleaf:boot:aborted` reason. */
-async function installSignals(page) {
-    await page.addInitScript(() => {
-        Object.assign(window, { __glReady: 0, __glAborted: [] });
-        document.addEventListener("geoleaf:app:ready", () => {
-            /** @type {any} */ (window).__glReady++;
-        });
-        document.addEventListener("geoleaf:boot:aborted", (e) => {
-            /** @type {any} */ (window).__glAborted.push(
-                String(/** @type {CustomEvent} */ (e).detail?.reason)
-            );
-        });
-    });
-}
-
-/** Loads the page and waits for the application `init.js` booted. */
-async function bootPage(page) {
-    await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(() => /** @type {any} */ (window).__glReady >= 1, null, {
-        timeout: TIMEOUT,
-    });
-}
 
 /**
  * What « the application » is, as the page shows it. Counts and names only — every field must
@@ -90,29 +71,6 @@ async function settledSnapshot(page) {
         await page.waitForTimeout(500);
     }
     throw new Error("the application never settled");
-}
-
-/**
- * `GeoLeaf.mount()`, awaited to `ready`; the handle stays on `window.__glHandle`. A `ready` that
- * never settles is NAMED here rather than left to the test timeout: it is what a registry left
- * initialised by the previous unmount produces — the next boot starts no module.
- */
-async function mountAndWait(page) {
-    const outcome = await page.evaluate(async (id) => {
-        const handle = /** @type {any} */ (window).GeoLeaf.mount(id);
-        Object.assign(window, { __glHandle: handle });
-        const timeout = new Promise((resolve) =>
-            setTimeout(() => resolve("never settled"), 45_000)
-        );
-        return Promise.race([
-            handle.ready.then(
-                () => "ready",
-                (e) => `rejected: ${e.name} ${e.reason}`
-            ),
-            timeout,
-        ]);
-    }, MAP_ID);
-    expect(outcome, "the mounted application's `ready`").toBe("ready");
 }
 
 /** What the page must look like once the application is unmounted. */

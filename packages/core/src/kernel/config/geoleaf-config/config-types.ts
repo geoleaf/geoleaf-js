@@ -438,11 +438,12 @@ export interface ProfileConfig {
     [key: string]: unknown;
 }
 
-/** Security options. */
-export interface SecurityConfig {
-    /** When true, validateUrl() rejects http: and allows only https: and data: (images). Default false. */
-    httpsOnly?: boolean;
-}
+// `SecurityConfig` removed. It declared a root-level `security.httpsOnly` key that nothing
+// read: the JSON schemas had already dropped it as a 0-consumer key, and the type went on
+// offering it to autocompletion — a setting that read like a hardening and hardened nothing.
+// `httpsOnly` is a CALL-SITE option of `validateUrl()` (`kernel/security/validators.ts`) and
+// stays one; no internal caller passes it. Refusing `http:` for a whole deployment belongs to
+// the deployment layer (CSP `upgrade-insecure-requests`, HSTS) — `packages/core/docs/SECURITY.md`.
 
 /** Logging / verbosity configuration. */
 export interface LoggingConfig {
@@ -464,8 +465,6 @@ export interface GeoLeafConfig {
     map?: MapConfig;
     data?: DataConfig;
     ui?: UIConfig;
-    /** Security options (e.g. httpsOnly for production). */
-    security?: SecurityConfig;
     /** Logging verbosity. */
     logging?: LoggingConfig;
     /** Named basemap definitions, keyed by basemap ID. */

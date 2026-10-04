@@ -24,7 +24,7 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Same for namespace access: `getGeoLeaf()` replaces the
 // `interface GeoLeafHost` + `globalThis as unknown as …` pair the 13 plugins
 // each re-declared their own way.
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -66,40 +66,37 @@ const _ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
     ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
 
-// 5 — Register the mobile toolbar slot. Only a mobileIcon is declared: on desktop
-// (≥ 769px) the search bar is always visible, so the pill toolbar button is hidden
-// via CSS (geoleaf-geocoding.css @media min-width:769px) rather than registered as
+// 5 — Register the module: the teardown, and the mobile toolbar slot. Only a mobileIcon is
+// declared: on desktop (≥ 769px) the search bar is always visible, so the pill toolbar button is
+// hidden via CSS (geoleaf-geocoding.css @media min-width:769px) rather than registered as
 // a desktopTabButton. The button thus appears only on tablet/mobile (≤ 768px),
 // where it toggles the search bar — mirroring the historical core "search" button.
-// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
-// declaration (an integrator has no `init.js`). After `init()` the toolbar is already built:
-// the registration would be stored, never drawn, and would log a warning whose intended reader
-// has already done what it recommends elsewhere. `!== true` so a host without `isInitialized`
-// still gets its slot.
 //
-// The slot carries a lifecycle too: `GeoLeaf.mount()`'s unmount tears the registry down, and its
-// `destroy()` is what takes the search bar off the page — it stayed there after an unmount. The
-// control mounts again on the next `geoleaf:map:ready`, which `GeocodingRegistry.init()` hears
-// for good; `init()` has nothing to do. Loaded after the first boot, the plugin registers no slot,
-// and its control is not unmounted either.
-if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "geocoding",
-        dependencies: [],
-        init: () => undefined,
-        destroy: () => GeocodingRegistry.destroy(),
-        ui: {
-            mobileIcon: {
-                icon: _ICON,
-                labelKey: "geocoding.toolbar.button",
-                profileKey: "modules.geocoding.showButton",
-                legacyProfileKey: "ui.showGeocoding",
-                requiresPlugin: "geocoding",
-                action: "geocoding",
-            },
+// The TEARDOWN: `GeoLeaf.mount()`'s unmount tears the core's module registry down, and this
+// module's `destroy()` is what takes the search bar off the page — it stayed there after an
+// unmount. The control mounts again on the next `geoleaf:map:ready`, which
+// `GeocodingRegistry.init()` hears for good; the module's `init()` has nothing to do.
+//
+// ⚠️ Registered on BOTH loading paths since 1.1.3. It was registered before the boot only: a
+// plugin loaded once the application ran registered nothing, and its control stayed in the page
+// of an unmounted application (measured in a real browser). The SLOT alone is path-dependent:
+// it is declared on the EAGER path — before `boot()`, where this call is the ONLY declaration
+// (an integrator has no `init.js`) — and left to the lazy declaration after it, the toolbar being
+// built by then. `registerPluginModule` tells the two apart (`@geoleaf/host-runtime`).
+registerPluginModule({
+    id: "geocoding",
+    destroy: () => GeocodingRegistry.destroy(),
+    ui: {
+        mobileIcon: {
+            icon: _ICON,
+            labelKey: "geocoding.toolbar.button",
+            profileKey: "modules.geocoding.showButton",
+            legacyProfileKey: "ui.showGeocoding",
+            requiresPlugin: "geocoding",
+            action: "geocoding",
         },
-    });
-}
+    },
+});
 
 // 6 — Wire the action event listener: reveal the pill on the "geocoding" action.
 if (typeof document !== "undefined") {

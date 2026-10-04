@@ -6,7 +6,8 @@
 import "./css/geoleaf-print.css";
 import { buildPublicApi } from "./public-api.js";
 import { getPrintConfig } from "./config.js";
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { closePrintFlows } from "./flow.js";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 import langFr from "./lang/lang-fr.js";
 import langEn from "./lang/lang-en.js";
 import langEs from "./lang/lang-es.js";
@@ -63,42 +64,43 @@ const _PRINT_ICON =
     '<rect x="6" y="14" width="12" height="8"/>' +
     "</svg>";
 
-// 4 & 5 — Register toolbar slot + wire event listener (skipped if enabled === false).
-// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
+// 4 & 5 — Register the module + wire event listener (skipped if enabled === false).
+// The SLOT is declared only on the EAGER path — before `boot()`, where this call is the ONLY
 // declaration (no `init.js` at an integrator's). After `init()` the toolbar is already built:
-// the registration would be stored, never drawn, and would log a warning with no reachable
-// audience. `!== true` so a host without `isInitialized` still gets its slot.
+// a slot registered then would be stored, not drawn before the next mount, and would log a
+// warning with no reachable audience.
 if (getPrintConfig().enabled !== false) {
-    // ── The SLOT DECLARATIONS only — guarded since 21/08/2026 (eager path is their only
-    // reader: after init() the toolbar is built and a stored slot is never drawn). `!== true`
-    // so a host without `isInitialized` still gets its slots.
-    // ⚠️ Scope fixed on 25/08/2026: this guard once wrapped the WHOLE block below — listeners
-    // and map-ready wiring included — so on the LAZY path (isInitialized === true) the plugin
-    // mounted its API and never wired its UI: no root, no handler, no error. The guard must
-    // cover the registers alone; everything after it runs on BOTH paths.
-    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-        getGeoLeaf()?.registry?.register?.({
-            id: "print",
-            ui: {
-                mobileIcon: {
-                    icon: _PRINT_ICON,
-                    labelKey: "print.toolbar.button",
-                    profileKey: "modules.print.showButton",
-                    legacyProfileKey: "ui.showPrint",
-                    requiresPlugin: "print",
-                    action: "print",
-                },
-                desktopTabButton: {
-                    icon: _PRINT_ICON,
-                    labelKey: "print.toolbar.button",
-                    profileKey: "modules.print.showButton",
-                    legacyProfileKey: "ui.showPrint",
-                    requiresPlugin: "print",
-                    action: "print",
-                },
+    // ⚠️ Scope fixed on 25/08/2026: the eager-path guard once wrapped the WHOLE block below —
+    // listeners included — so on the LAZY path the plugin mounted its API and never wired its
+    // UI: no handler, no error. Only the slot is path-dependent; everything else, the teardown
+    // included, runs on BOTH paths.
+    //
+    // ── The module carries the TEARDOWN on BOTH paths (1.3.4): `GeoLeaf.mount()` unmounts the
+    // application by destroying the core's module registry, and this is how that reaches a print
+    // flow left open — see `closePrintFlows()`. The slot is joined on the eager path only
+    // (`registerPluginModule`, `@geoleaf/host-runtime`).
+    registerPluginModule({
+        id: "print",
+        destroy: () => closePrintFlows(),
+        ui: {
+            mobileIcon: {
+                icon: _PRINT_ICON,
+                labelKey: "print.toolbar.button",
+                profileKey: "modules.print.showButton",
+                legacyProfileKey: "ui.showPrint",
+                requiresPlugin: "print",
+                action: "print",
             },
-        });
-    }
+            desktopTabButton: {
+                icon: _PRINT_ICON,
+                labelKey: "print.toolbar.button",
+                profileKey: "modules.print.showButton",
+                legacyProfileKey: "ui.showPrint",
+                requiresPlugin: "print",
+                action: "print",
+            },
+        },
+    });
 
     if (typeof document !== "undefined") {
         document.addEventListener("geoleaf:toolbar:action", (e: Event) => {

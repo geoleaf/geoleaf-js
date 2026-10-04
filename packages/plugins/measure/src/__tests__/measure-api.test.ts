@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     getMeasureConfig: vi.fn(() => ({ maxFeatures: 10 })),
     // floating-menu
     initMenu: vi.fn(),
+    destroyMenu: vi.fn(),
     toggleMeasureMenu: vi.fn(),
     setActiveTool: vi.fn(),
     // Mimics the REAL selectTool: it notifies onToolSelect (that is the whole point of
@@ -41,6 +42,7 @@ const mocks = vi.hoisted(() => ({
     rerenderLabels: vi.fn(),
     // layers
     initLayers: vi.fn(),
+    releaseLayers: vi.fn(),
     // tools
     activateDistance: vi.fn(),
     deactivateDistance: vi.fn(),
@@ -58,6 +60,7 @@ const mocks = vi.hoisted(() => ({
     deactivateCustom: vi.fn(),
     // overlays
     initAnnotationOverlays: vi.fn(),
+    destroyAnnotationOverlays: vi.fn(),
     createOverlayFromFeature: vi.fn(),
     clearAllOverlays: vi.fn(),
     getPrintableAnnotations: vi.fn(() => [{ id: "a" }]),
@@ -65,6 +68,7 @@ const mocks = vi.hoisted(() => ({
     initPersistence: vi.fn<() => unknown[] | null>(() => null),
     scheduleSave: vi.fn(),
     clearStorage: vi.fn(),
+    flushPendingSave: vi.fn(),
     // export
     exportGeoJSON: vi.fn(async () => new Blob()),
 }));
@@ -76,6 +80,7 @@ vi.mock("../internal.js", () => ({
 vi.mock("../config.js", () => ({ getMeasureConfig: mocks.getMeasureConfig }));
 vi.mock("../floating-menu.js", () => ({
     initMenu: mocks.initMenu,
+    destroyMenu: mocks.destroyMenu,
     toggleMeasureMenu: mocks.toggleMeasureMenu,
     setActiveTool: mocks.setActiveTool,
     selectTool: mocks.selectTool,
@@ -93,7 +98,10 @@ vi.mock("../measure-engine.js", () => ({
     removeFeatureById: mocks.removeFeatureById,
     rerenderLabels: mocks.rerenderLabels,
 }));
-vi.mock("../draw-layers.js", () => ({ initLayers: mocks.initLayers }));
+vi.mock("../draw-layers.js", () => ({
+    initLayers: mocks.initLayers,
+    releaseLayers: mocks.releaseLayers,
+}));
 vi.mock("../tools/tool-distance.js", () => ({
     activateDistance: mocks.activateDistance,
     deactivateDistance: mocks.deactivateDistance,
@@ -124,6 +132,7 @@ vi.mock("../tools/tool-custom.js", () => ({
 }));
 vi.mock("../annotation-overlays.js", () => ({
     initAnnotationOverlays: mocks.initAnnotationOverlays,
+    destroyAnnotationOverlays: mocks.destroyAnnotationOverlays,
     createOverlayFromFeature: mocks.createOverlayFromFeature,
     clearAllOverlays: mocks.clearAllOverlays,
     getPrintableAnnotations: mocks.getPrintableAnnotations,
@@ -132,6 +141,7 @@ vi.mock("../persistence.js", () => ({
     initPersistence: mocks.initPersistence,
     scheduleSave: mocks.scheduleSave,
     clearStorage: mocks.clearStorage,
+    flushPendingSave: mocks.flushPendingSave,
 }));
 vi.mock("../geojson-export.js", () => ({ exportGeoJSON: mocks.exportGeoJSON }));
 
@@ -158,8 +168,10 @@ describe("measure-api", () => {
         mocks.getEngineCollection.mockReturnValue({ type: "FeatureCollection", features: [] });
         // Replay the real floating-menu contract: selectTool() notifies onToolSelect,
         // setActiveTool() does not. This is exactly the distinction finding #1 turned on.
+        // The callbacks are those of the LATEST initMenu(), as in the real menu: a menu
+        // destroyed and built again answers with the closures of its last build.
         mocks.selectTool.mockImplementation((type: unknown) => {
-            const cbs = mocks.initMenu.mock.calls[0]?.[1] as
+            const cbs = mocks.initMenu.mock.calls.at(-1)?.[1] as
                 { onToolSelect?: (t: unknown) => void } | undefined;
             cbs?.onToolSelect?.(type);
         });
@@ -563,6 +575,109 @@ describe("measure-api", () => {
             cbs.onToolSelect("dup");
 
             expect(mocks.activateCustom).toHaveBeenCalledWith(expect.anything(), "dup", second);
+        });
+    });
+    // ── teardown ─────────────────────────────────────────────────────────────
+    //
+    // `GeoLeaf.mount()` unmounts the application and boots it again on a NEW map. Everything
+    // `_ensureMenu()` builds closes over one map, behind a latch that was never released:
+    // measured in a real browser, a measure started after a remount created no layer on the new
+    // map, and the menu of the previous application was still in the page.
+    describe("destroyMeasure — the application is unmounted", () => {
+        /** The order in which the teardown called its collaborators. */
+        function order(...fns: Array<{ mock: { invocationCallOrder: number[] } }>): number[] {
+            return fns.map((fn) => fn.mock.invocationCallOrder[0] ?? -1);
+        }
+
+        it("does nothing when the tools were never built", async () => {
+            const api = await load();
+            api.destroyMeasure();
+            expect(mocks.destroyMenu).not.toHaveBeenCalled();
+            expect(mocks.clearEngineCollection).not.toHaveBeenCalled();
+            expect(mocks.flushPendingSave).not.toHaveBeenCalled();
+        });
+
+        it("🛑 disarms the tools, removes the overlays and the menu, forgets the map", async () => {
+            const api = await load();
+            api.startMeasure("distance");
+            vi.clearAllMocks();
+
+            api.destroyMeasure();
+
+            expect(mocks.deactivateDistance).toHaveBeenCalledTimes(1);
+            expect(mocks.deactivateCustom).toHaveBeenCalledTimes(1);
+            expect(mocks.destroyAnnotationOverlays).toHaveBeenCalledTimes(1);
+            expect(mocks.destroyMenu).toHaveBeenCalledTimes(1);
+            expect(mocks.releaseLayers).toHaveBeenCalledTimes(1);
+        });
+
+        it("🛑 flushes the pending save BEFORE emptying the collection — the measures are kept", async () => {
+            const api = await load();
+            api.startMeasure("distance");
+            vi.clearAllMocks();
+
+            api.destroyMeasure();
+
+            const [flushed, emptied] = order(mocks.flushPendingSave, mocks.clearEngineCollection);
+            expect(flushed).toBeGreaterThan(0);
+            expect(emptied).toBeGreaterThan(flushed!);
+            // Storage is the user's: only `clearAll()` empties it.
+            expect(mocks.clearStorage).not.toHaveBeenCalled();
+        });
+
+        it("🛑 the next activation builds everything again, on the map alive then", async () => {
+            const first = makeMap();
+            const second = makeMap();
+            mocks._getNativeMap.mockReturnValue(first);
+            const api = await load();
+            api.startMeasure("distance");
+            expect(mocks.initLayers).toHaveBeenLastCalledWith(first);
+
+            api.destroyMeasure();
+            mocks._getNativeMap.mockReturnValue(second);
+            api.startMeasure("distance");
+
+            expect(mocks.initLayers).toHaveBeenCalledTimes(2);
+            expect(mocks.initLayers).toHaveBeenLastCalledWith(second);
+            expect(mocks.initMenu).toHaveBeenCalledTimes(2);
+            // The tool is armed on the NEW map, not on the one the first menu closed over.
+            expect(mocks.activateDistance).toHaveBeenLastCalledWith(second);
+        });
+
+        it("🛑 positions the next menu again — the anchor belonged to the previous toolbar", async () => {
+            const api = await load();
+            api.openMeasureMenu(document.createElement("button"));
+            expect(mocks.positionMeasureMenuNear).toHaveBeenCalledTimes(1);
+
+            api.destroyMeasure();
+            const next = document.createElement("button");
+            api.openMeasureMenu(next);
+
+            expect(mocks.positionMeasureMenuNear).toHaveBeenCalledTimes(2);
+            expect(mocks.positionMeasureMenuNear.mock.calls[1]?.[0]).toBe(next);
+        });
+
+        it("🛑 releases the latch even when a step throws — the map already destroyed", async () => {
+            const api = await load();
+            api.startMeasure("distance");
+            mocks.clearEngineCollection.mockImplementationOnce(() => {
+                throw new Error("the map is gone");
+            });
+
+            expect(() => api.destroyMeasure()).toThrow("the map is gone");
+            expect(mocks.destroyMenu).toHaveBeenCalledTimes(1);
+
+            // A latch left set is what makes the next application's button arm nothing.
+            api.startMeasure("distance");
+            expect(mocks.initMenu).toHaveBeenCalledTimes(2);
+        });
+
+        it("is idempotent", async () => {
+            const api = await load();
+            api.startMeasure("distance");
+            api.destroyMeasure();
+            api.destroyMeasure();
+            expect(mocks.destroyMenu).toHaveBeenCalledTimes(1);
         });
     });
 });

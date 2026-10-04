@@ -6,6 +6,7 @@ import { installMockGeoLeaf, uninstallMockGeoLeaf, makeMockMaplibreMap } from ".
 import { getMeasureConfig } from "../config.js";
 import {
     initAnnotationOverlays,
+    destroyAnnotationOverlays,
     createOverlay,
     createOverlayFromFeature,
     removeOverlay,
@@ -432,5 +433,46 @@ describe("pointercancel", () => {
         el.dispatchEvent(new PointerEvent("pointercancel", { bubbles: true }));
 
         expect(el.querySelector("textarea")).toBeNull();
+    });
+});
+
+// The overlays are children of the map container, which outlives the map: an application
+// unmounted left them in the page, and the two listeners on the map that had gone.
+describe("destroyAnnotationOverlays — the application is torn down", () => {
+    it("🛑 removes every overlay from the page, without touching the collection", () => {
+        createOverlay(LNGLAT);
+        createOverlay(LNGLAT);
+        ON_CREATED.mockReset();
+        expect(container.querySelectorAll(".gl-measure-annot-tooltip").length).toBe(2);
+
+        destroyAnnotationOverlays();
+
+        expect(container.querySelectorAll(".gl-measure-annot-tooltip").length).toBe(0);
+        // No callback: the annotations stay in storage for the next application.
+        expect(ON_REMOVED).not.toHaveBeenCalled();
+        expect(ON_MUTATED).not.toHaveBeenCalled();
+    });
+
+    it("🛑 gives the two map listeners back", () => {
+        const subscribed = map.on.mock.calls.filter(
+            ([event]: [string]) => event === "move" || event === "resize"
+        );
+        expect(subscribed).toHaveLength(2);
+
+        destroyAnnotationOverlays();
+
+        for (const [event, handler] of subscribed) {
+            expect(map.off).toHaveBeenCalledWith(event, handler);
+        }
+    });
+
+    it("forgets the map: an overlay restored afterwards waits for the next init", () => {
+        destroyAnnotationOverlays();
+        createOverlayFromFeature({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: LNGLAT },
+            properties: { _id: "late", measureType: "annotation-tooltip", label: "x" },
+        } as unknown as MeasureFeature);
+        expect(container.querySelectorAll(".gl-measure-annot-tooltip").length).toBe(0);
     });
 });

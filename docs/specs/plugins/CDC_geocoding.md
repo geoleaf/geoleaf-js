@@ -4,8 +4,8 @@ title: geocoding — la recherche d'adresse sur la carte
 plugin_id: geocoding
 package: "@geoleaf-plugins/geocoding"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 6111290d1
-date: 28 septembre 2026
+verifie_contre: b366e3ee7
+date: 4 octobre 2026
 ---
 
 # geocoding — la recherche d'adresse sur la carte
@@ -87,21 +87,23 @@ ce que la table `## Manifeste d'enregistrement` de cette fiche garantit, c'est q
 
 ### Les six étapes d'`entry.ts`
 
-| Étape                              | Ce qu'elle fait ici                                                                                                                                                       |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1 — dictionnaires i18n **d'abord** | Six langues enregistrées **avant** tout rendu, sans quoi les libellés ne résoudraient pas                                                                                 |
-| 2 — montage du namespace           | `GeoLeaf.Geocoding = buildPublicApi()`                                                                                                                                    |
-| 3 — cycle de vie                   | `GeocodingRegistry.init()` — s'abonne à la disponibilité de la carte                                                                                                      |
-| 4 — auto-enregistrement            | Le manifeste ci-dessus                                                                                                                                                    |
-| 5 — créneau de barre d'outils      | `registry.register({ id, init, destroy, ui: { mobileIcon: … } })` — **mobile uniquement**, et sous `isInitialized() !== true` ; le `destroy()` retire le contrôle (1.1.2) |
-| 6 — écouteur d'action              | Sur `geoleaf:toolbar:action`, ouvre la pastille quand l'action est la sienne                                                                                              |
+| Étape                              | Ce qu'elle fait ici                                                                                                                                                                                                                     |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — dictionnaires i18n **d'abord** | Six langues enregistrées **avant** tout rendu, sans quoi les libellés ne résoudraient pas                                                                                                                                               |
+| 2 — montage du namespace           | `GeoLeaf.Geocoding = buildPublicApi()`                                                                                                                                                                                                  |
+| 3 — cycle de vie                   | `GeocodingRegistry.init()` — s'abonne à la disponibilité de la carte                                                                                                                                                                    |
+| 4 — auto-enregistrement            | Le manifeste ci-dessus                                                                                                                                                                                                                  |
+| 5 — module au registre du core     | `registerPluginModule({ id, destroy, ui: { mobileIcon: … } })` — le `destroy()` retire le contrôle, sur les **deux** chemins de chargement (1.1.3) ; le créneau, **mobile uniquement**, n'est joint que sous `isInitialized() !== true` |
+| 6 — écouteur d'action              | Sur `geoleaf:toolbar:action`, ouvre la pastille quand l'action est la sienne                                                                                                                                                            |
 
-⚠️ **Le créneau porte aussi le démontage** (1.1.2). `GeoLeaf.mount()` démonte l'application en
-détruisant le registre de modules du core : le `destroy()` du créneau appelle
+⚠️ **Le module porte le démontage** (1.1.2). `GeoLeaf.mount()` démonte l'application en
+détruisant le registre de modules du core : le `destroy()` du module appelle
 `GeocodingRegistry.destroy()`, et la barre de recherche quitte la page — elle y restait après
 `unmount()`. Elle revient au `geoleaf:map:ready` suivant, que `GeocodingRegistry.init()` écoute pour
-de bon ; l'`init()` du créneau n'a rien à faire. Chargé après le premier boot, le plugin n'inscrit
-pas de créneau, et son contrôle n'est pas démonté.
+de bon ; l'`init()` du module n'a rien à faire. **Depuis 1.1.3, sur les deux chemins de
+chargement** : chargé après le premier boot, le plugin n'inscrivait rien, et son contrôle restait
+dans la page d'une application démontée — mesuré dans un navigateur, le préchargement vidé et le
+bundle évalué une fois l'application montée. Seul le créneau reste propre au chemin eager.
 
 ⚠️ **Aucun bouton d'onglet de bureau n'est déclaré, et c'est un choix.** Au-delà d'un seuil de
 largeur, la barre de recherche est **toujours visible** ; la pastille de barre d'outils serait un
@@ -123,11 +125,11 @@ pour ne pas casser un profil déjà écrit.
 deux énoncés sont faux : la clé a migré sous `modules.geocoding`, et l'absence de clé n'a jamais
 masqué la pastille — seul un `false` explicite la masque.
 
-🛑 **Et l'enregistrement de l'étape 5 ne vaut que sur le chemin EAGER** (21/08/2026) : il est
-conditionné à `registry.isInitialized() !== true`. Chargé avant `boot()` — ce que prescrit le
+🛑 **Et le CRÉNEAU de l'étape 5 ne vaut que sur le chemin EAGER** (21/08/2026) : il n'est joint que
+tant que `registry.isInitialized() !== true` (`registerPluginModule`, `@geoleaf/host-runtime`). Chargé avant `boot()` — ce que prescrit le
 README publié —, cet appel est la **seule** déclaration du créneau et c'est lui qui dessine le
-bouton ; chargé après `init()`, la barre d'outils est déjà construite et la déclaration serait
-stockée sans jamais être dessinée. Sur le chemin paresseux, c'est `apps/geoleaf-app/init.js` qui
+bouton ; chargé après `init()`, la barre d'outils est déjà construite et un créneau inscrit alors
+serait stocké, non dessiné avant le montage suivant. Sur le chemin paresseux, c'est `apps/geoleaf-app/init.js` qui
 déclare le créneau (`registerLazyForAction`), avec la même paire de clés. ⚠️ La condition est
 `!== true` et non `=== false` : un hôte qui n'expose pas `isInitialized` garde son créneau — un
 avertissement de trop coûte une ligne de console, une déclaration manquante coûte le bouton.

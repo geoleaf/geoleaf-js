@@ -179,13 +179,27 @@ export const PluginRegistry = {
     },
 
     /**
-     * Returns the UI descriptors of all registered lazy plugins that are not yet loaded.
-     * Consumed by toolbar renderers to show buttons before the bundle downloads.
+     * Returns the UI descriptors of every plugin registered lazy — its bundle loaded or not.
+     *
+     * Consumed by the toolbar renderers, which run again at every boot: a slot declared with
+     * {@link PluginRegistry.registerLazyForAction} draws its button before the bundle
+     * downloads, and draws it AGAIN when the application is unmounted and mounted once the
+     * bundle is loaded.
+     *
+     * ⚠️ It used to leave the loaded plugins out, and that is what took their button away at
+     * the next `GeoLeaf.mount()`: a bundle that loads after `init()` keeps its slot out of the
+     * module registry — the toolbar is built by then — so the rebuilt toolbar found the plugin
+     * in neither list. A renderer does not read this list alone: a slot the module registry
+     * declares under the same id belongs to the plugin, which loaded before the boot — see
+     * `lazySlotsToDraw()` in `kernel/ui/ui-slot-builder.ts`.
+     *
+     * A click on the button of a loaded plugin emits its action at once:
+     * {@link PluginRegistry.isLazyAction} still answers for the plugins NOT loaded yet.
      */
     getLazyUISlots(): LazyUISlotEntry[] {
         const slots: LazyUISlotEntry[] = [];
         for (const [, entry] of _lazyUISlots) {
-            if (PluginRegistry.isLazyAvailable(entry.pluginName)) {
+            if (_lazyResolvers.has(entry.pluginName)) {
                 slots.push(entry);
             }
         }

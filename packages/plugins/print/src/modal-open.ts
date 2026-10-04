@@ -384,6 +384,20 @@ async function _bootSession(
 // Main export
 // ---------------------------------------------------------------------------
 
+/** Closes the modal now open, as its close button does; `null` while none is. */
+let _closeOpen: (() => void) | null = null;
+
+/**
+ * Closes the print preview modal if one is open — its promise resolves `null`, as on cancel.
+ *
+ * What the teardown of the application calls: the modal is a child of `<body>`, with three
+ * listeners on `document` and an off-screen render session behind it, and nothing else of an
+ * unmounted application reaches it.
+ */
+export function closeOpenModal(): void {
+    _closeOpen?.();
+}
+
 /**
  * Opens the print preview modal.
  * Returns the exported Blob, `null` on cancel/close, or `"redefine"` when the
@@ -448,8 +462,10 @@ export async function openModal(
             document.removeEventListener("geoleaf:print:render:end", _spinnerHide);
             document.getElementById(MODAL_ID)?.remove();
             document.body.classList.remove("gl-print-modal-open");
+            _closeOpen = null;
             resolve(result);
         }
+        _closeOpen = () => close(null);
 
         // Registered before the session is created — it emits geoleaf:print:render:start.
         document.addEventListener("geoleaf:print:render:start", _spinnerShow);

@@ -235,8 +235,10 @@ export const GeocodingRegistry = {
     },
 
     /**
-     * Unmounts the geocoding control and cleans up all listeners.
-     * The control can be re-mounted by calling `init()` and triggering `geoleaf:map:ready`.
+     * Unmounts the geocoding control and cleans up all its listeners.
+     *
+     * The control is mounted again by the next `geoleaf:map:ready`: the subscription `init()`
+     * made is kept for the life of the page, and calling `init()` again does nothing.
      */
     destroy(): void {
         _control?.destroy();

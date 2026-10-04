@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "remontage-greffons",
+    "scope": [
+        "packages/libs/host-runtime/src/lifecycle-seam.ts",
+        "packages/plugins/editor/src/map-wiring.ts"
+    ],
+    "verdicts": {
+        "packages/libs/host-runtime/src/lifecycle-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Seam du cycle de vie — `registerPluginModule` inscrit le démontage d'un greffon au registre de modules du core, sur ses deux chemins de chargement",
+            "confidence": "haute",
+            "rationale": "87 lignes, famille canonique `*-seam.ts` de ce répertoire (`map-seam`, `dom-seam`, `log-seam`…) : un accès gardé à un membre de l'hôte, résolu à l'appel, sans import du core. Sept greffons l'importent depuis leur `entry.ts` (connector, editor, geocoding, measure, position-share, print, table). Il remplace une garde que leurs entrées recopiaient — `registry.isInitialized?.() !== true` autour de l'inscription entière — et qui portait le défaut : un greffon chargé à la demande n'inscrivait ni créneau ni démontage. Sa place est ici et non dans un greffon (E4 : un helper dupliqué entre greffons appartient à `host-runtime`), ni dans `host.ts`, épinglé par `verify-seam-drift`."
+        },
+        "packages/plugins/editor/src/map-wiring.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Décide QUAND l'éditeur se câble : `wireOncePerMap` rend le gestionnaire de `geoleaf:map:ready`, qui câble une fois par carte du moteur",
+            "confidence": "haute",
+            "rationale": "60 lignes, un importeur (`entry.ts`), un fichier de test dédié (`__tests__/map-wiring.test.ts`, sept cas). L'extraction hors d'`entry.ts` a deux motifs mesurés : `entry.ts` est à 699 lignes pour un plafond de 700 (PC-08), et il n'est évalué par aucun test — une règle de décision à quatre cas (jamais câblé, même carte, autre carte, plus de carte) n'y serait pas éprouvée. Le nom dit le sujet (le câblage sur la carte), pas un rôle creux ; le fichier ne porte ni état de greffon ni dépendance, la carte et les deux gestes lui sont passés."
+        }
+    }
+}

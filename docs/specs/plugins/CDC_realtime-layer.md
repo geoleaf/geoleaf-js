@@ -106,8 +106,10 @@ et **ne démarre pas**, les autres couches continuant normalement.
 l'application en détruisant ce registre : le module que le plugin y inscrit arrête alors toutes les
 sources. Avant, rien ne les arrêtait — elles sondaient encore après `unmount()`, et le démarrage
 automatique en lançait un second jeu au montage suivant (mesuré par l'E2E `71-mount-remount`, un
-écouteur `visibilitychange` de plus par cycle). Le module ne s'inscrit qu'avant le premier boot, comme
-le registre le demande : chargé plus tard, le plugin n'est pas arrêté par un démontage.
+écouteur `visibilitychange` de plus par cycle). ⚠️ Le module ne s'inscrit qu'avant le premier boot :
+chargé plus tard, le plugin n'est pas arrêté par un démontage. Ce n'est plus une contrainte du
+registre — depuis le core 3.14.2 un module inscrit après `init()` y est démonté comme les autres —,
+c'est l'entrée de ce plugin qui s'abstient encore, sous `isInitialized() !== true`.
 
 ⚠️ **L'ordre de chargement des scripts est porteur** : le core, puis `websocket` s'il y a des
 couches qui en dépendent, puis ce plugin, puis les extensions qui enregistrent leurs décodeurs, puis

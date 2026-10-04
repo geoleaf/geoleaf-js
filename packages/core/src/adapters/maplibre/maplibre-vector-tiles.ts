@@ -37,6 +37,7 @@ import {
 import { setPaintAt, withGeometryGuard } from "./maplibre-primitives.js";
 import { registerHatchPattern } from "./maplibre-hatch-patterns.js";
 import { validateFillExtrusionStyle } from "./maplibre-extrusion-validator.js";
+import { geometryKindToGeoJSONTypes } from "../../kernel/config/layer-geometry.js";
 import { Log } from "../../utils/log/index.js";
 import type {
     MaplibreMap,
@@ -49,10 +50,32 @@ import type {
     VectorTileStyleInput,
 } from "../../contracts/map-adapter.contract.ts";
 
-// Geometry kinds (config vocabulary) → which sub-layers to build.
-const _VT_FILL_GEOM = ["polygon", "multipolygon", "mixed"];
-const _VT_LINE_GEOM = ["polygon", "multipolygon", "linestring", "multilinestring", "line", "mixed"];
-const _VT_CIRCLE_GEOM = ["point", "multipoint", "mixed"];
+/** The three geometry families, each by one name the core's family table knows. */
+const _VT_EVERY_FAMILY = ["point", "line", "polygon"];
+
+/**
+ * The GeoJSON geometry types a declared kind stands for on a vector-tile layer — what the
+ * `_addVt*Layer` builders decide on.
+ *
+ * 🛑 The NAMES are not written here. They are the ones `kernel/config/layer-geometry.ts` holds
+ * for the whole core, so a kind the layer schema admits is understood the same way on a tile
+ * and on a GeoJSON source. This builder once kept its own three lists, and they had drifted:
+ * `polyline` and `multiline`, both admitted by the schema, were in none of them, and a layer
+ * declared with either built no sub-layer — nothing drawn, nothing thrown, nothing logged.
+ *
+ * Two kinds are this builder's own:
+ * - `mixed` names no family in that table — it is the word for a source-layer holding all three;
+ * - `fill-extrusion` is a rendering, not a geometry: its dedicated builder draws it ALONE, with
+ *   neither the flat fill nor the outline a polygon gets. The table files it with the polygons,
+ *   hence the empty answer here.
+ *
+ * @param geomType - The declared kind, lowercased.
+ * @returns The GeoJSON type names, empty for `fill-extrusion` and for a kind nobody defined.
+ */
+function _vtGeometryTypes(geomType: string): Set<string> {
+    if (geomType === "fill-extrusion") return new Set();
+    return geometryKindToGeoJSONTypes(geomType === "mixed" ? _VT_EVERY_FAMILY : geomType);
+}
 
 /** Rendering context threaded through the per-geometry VT sub-layer builders. */
 interface VtBuildCtx {
@@ -66,6 +89,8 @@ interface VtBuildCtx {
     beforeId: string | undefined;
     createdSubIds: string[];
     createdTypes: SubLayerType[];
+    /** The GeoJSON geometry types the declared kind stands for — see {@link _vtGeometryTypes}. */
+    geometryTypes: Set<string>;
     /**
      * Whether the source-layer holds several geometry kinds (`geometryType: "mixed"`), so that
      * each sub-layer must be confined to the kinds it can draw. A homogeneous source-layer has
@@ -224,9 +249,14 @@ function _addVtSubLayer(ctx: VtBuildCtx, subType: SubLayerType, mlType: string):
     ctx.createdTypes.push(subType);
 }
 
+/** Whether the declared kind stands for at least one of the given GeoJSON geometry types. */
+function _vtHas(ctx: VtBuildCtx, ...types: string[]): boolean {
+    return types.some((t) => ctx.geometryTypes.has(t));
+}
+
 /** Polygon/mixed → fill sub-layer (registers hatch patterns first). */
-function _addVtFillLayer(ctx: VtBuildCtx, geomType: string): void {
-    if (!_VT_FILL_GEOM.includes(geomType)) return;
+function _addVtFillLayer(ctx: VtBuildCtx): void {
+    if (!_vtHas(ctx, "Polygon", "MultiPolygon")) return;
     // Register hatch patterns before creating the fill layer: `toFillPaint` emits a
     // `fill-pattern` referencing them by id.
     const hatchPatterns = collectHatchPatterns(ctx.mergedFlat, ctx.styleRules, ctx.layerId);
@@ -242,9 +272,9 @@ function _addVtFillExtrusionLayer(ctx: VtBuildCtx, geomType: string): void {
     _addVtSubLayer(ctx, "fill-extrusion", "fill-extrusion");
 }
 
-/** Polygon/line/mixed → optional casing + line sub-layer. */
-function _addVtLineLayers(ctx: VtBuildCtx, geomType: string): void {
-    if (!_VT_LINE_GEOM.includes(geomType)) return;
+/** Polygon/line/mixed → optional casing + line sub-layer. Lines also draw polygon outlines. */
+function _addVtLineLayers(ctx: VtBuildCtx): void {
+    if (!_vtHas(ctx, "LineString", "MultiLineString", "Polygon", "MultiPolygon")) return;
     // Casing first: a thicker line behind the main stroke, so it must be added below it.
     // Self-skipping when casing is disabled (null paint).
     _addVtSubLayer(ctx, "casing", "line");
@@ -252,8 +282,8 @@ function _addVtLineLayers(ctx: VtBuildCtx, geomType: string): void {
 }
 
 /** Point/mixed → circle sub-layer. */
-function _addVtCircleLayer(ctx: VtBuildCtx, geomType: string): void {
-    if (!_VT_CIRCLE_GEOM.includes(geomType)) return;
+function _addVtCircleLayer(ctx: VtBuildCtx): void {
+    if (!_vtHas(ctx, "Point", "MultiPoint")) return;
     _addVtSubLayer(ctx, "circle", "circle");
 }
 
@@ -299,13 +329,22 @@ export function buildVectorTileLayer(
         beforeId,
         createdSubIds,
         createdTypes,
+        geometryTypes: _vtGeometryTypes(geomType),
         confine: geomType === "mixed",
     };
-    // Each helper self-guards on geomType.
-    _addVtFillLayer(ctx, geomType);
+    // Each helper self-guards on the declared geometry.
+    _addVtFillLayer(ctx);
     _addVtFillExtrusionLayer(ctx, geomType);
-    _addVtLineLayers(ctx, geomType);
-    _addVtCircleLayer(ctx, geomType);
+    _addVtLineLayers(ctx);
+    _addVtCircleLayer(ctx);
+
+    // Only a kind nobody defined gets here empty-handed. Guessing a family would draw the layer
+    // as something it never said it was; saying nothing is how a layer vanished unnoticed.
+    if (createdSubIds.length === 0 && Log) {
+        Log.warn(
+            `[GeoLeaf.VectorTiles] Layer "${layerId}": geometry "${spec.geometryType}" names no known family — nothing is drawn.`
+        );
+    }
 
     // Register in the adapter's layer registry (mirrors buildGeoJSONLayer).
     registry.register(layerId, createdTypes, spec.zIndex ?? 0, {

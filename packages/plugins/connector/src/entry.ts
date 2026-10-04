@@ -8,9 +8,10 @@
  */
 
 import type { ConnectorConfig } from "./config.js";
-import { installCredentialButton } from "./credential-button.js";
-import { isConfigured } from "./connector-api.js";
+import { installCredentialButton, uninstallCredentialButton } from "./credential-button.js";
+import { isConfigured, reinstallCredentialButton } from "./connector-api.js";
 import { buildPublicApi } from "./public-api.js";
+import { registerPluginModule } from "@geoleaf/host-runtime";
 import type { GeoLeafHost } from "@geoleaf/host-runtime";
 
 // Public API review — `createConnector` and `ConnectorInstance` are
@@ -51,11 +52,24 @@ if (_g.GeoLeaf) {
     _g.GeoLeaf.Connector = buildPublicApi();
 }
 
-// ─── Auto-bootstrap UI-only from profile ui.showCredentialButton ─────────────
-// Mounts the credential button without requiring GeoLeaf.Connector.configure().
-// Triggered by geoleaf:config:loaded / geoleaf:map:ready. Idempotent.
-// If configure() runs later, uninstallCredentialButton() inside _configure
-// removes this standalone button and _configure re-installs it with real auth.
+// ─── The credential button, for each application of the page ────────────────
+//
+// UI-only bootstrap: mounts the credential button from the profile's
+// `ui.showCredentialButton`, without requiring GeoLeaf.Connector.configure(). If configure()
+// runs later, uninstallCredentialButton() inside _configure removes this standalone button and
+// _configure re-installs it with real auth.
+//
+// 🛑 THE BUTTON IS PUT BACK AT EVERY BOOT (1.3.5). It sits in the core's bars, which
+// `GeoLeaf.mount()` removes with the application and builds again at the next boot. The two
+// listeners below were `{ once: true }` behind a one-way latch: the second application had no
+// credential button, configured or not. They now stay for the life of the page, and the
+// teardown — registered with the core's module registry, further down — releases what must be
+// released for the next boot to install again.
+//
+// ⚠️ WHAT THE TEARDOWN DOES NOT TOUCH, deliberately: `window.fetch`, the worker headers hook,
+// the stored session. `configure()` is the HOST's call, made once for the page — it is not
+// part of the application the boot starts. Giving `fetch` back at `unmount()` would leave the
+// next application without its token until the host configured again.
 
 let _uiOnlyBooted = false;
 
@@ -73,9 +87,13 @@ function _readUiShowCredentialButtonFlag(): boolean {
 }
 
 function _autoBootstrapUiOnly(): void {
-    if (_uiOnlyBooted) return;
     // Read through the accessor, not the variable: the state lives in connector-api.ts.
-    if (isConfigured()) return; // explicit configure() already ran
+    // An explicit configure() ran: its button is the one to put back, with real auth.
+    if (isConfigured()) {
+        reinstallCredentialButton();
+        return;
+    }
+    if (_uiOnlyBooted) return;
     if (_readUiShowCredentialButtonFlag()) {
         _uiOnlyBooted = true;
 
@@ -94,6 +112,15 @@ function _autoBootstrapUiOnly(): void {
     }
 }
 
+/**
+ * Takes the credential button down with the application, and lets the next boot install it
+ * again. Nothing else: see the note above on what a teardown must leave alone.
+ */
+function _teardownUi(): void {
+    uninstallCredentialButton();
+    _uiOnlyBooted = false;
+}
+
 /** @internal — exposed for tests only, resets the auto-bootstrap latch. */
 export function _resetAutoBootstrapForTests(): void {
     _uiOnlyBooted = false;
@@ -105,11 +132,14 @@ if (typeof document !== "undefined") {
     // geoleaf:map:ready — safety net, fires later during boot.
     // geoleaf:config:loaded fires BEFORE profile load so the flag is not yet
     //   readable via getActiveProfile() — not used.
-    document.addEventListener("geoleaf:profile:loaded", _autoBootstrapUiOnly, { once: true });
-    document.addEventListener("geoleaf:map:ready", _autoBootstrapUiOnly, { once: true });
+    document.addEventListener("geoleaf:profile:loaded", _autoBootstrapUiOnly);
+    document.addEventListener("geoleaf:map:ready", _autoBootstrapUiOnly);
     // Fallback: plugin script loaded after events already fired
     if (_readUiShowCredentialButtonFlag()) _autoBootstrapUiOnly();
 }
+
+// The teardown, on both loading paths — the connector has no toolbar slot of its own.
+registerPluginModule({ id: "connector", destroy: _teardownUi });
 
 if (_g.GeoLeaf?.plugins?.register) {
     _g.GeoLeaf.plugins.register("connector", {

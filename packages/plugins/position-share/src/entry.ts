@@ -9,7 +9,7 @@
 import "./css/geoleaf-position-share.css";
 
 import { buildPublicApi } from "./public-api.js";
-import { initLifecycle } from "./lifecycle.js";
+import { destroyLifecycle, initLifecycle } from "./lifecycle.js";
 
 // `getGeoLeaf()` replaces the
 // `const _g = globalThis as any` accessor that the 13 plugins each re-declared their own
@@ -18,7 +18,7 @@ import { initLifecycle } from "./lifecycle.js";
 // (placeholder tokens are not valid TS) and outside the `workspaces` globs that
 // `count-any.cjs` walks. Every plugin ever scaffolded was therefore born with the two
 // `as any` that `@geoleaf/host-runtime` exists to remove. Do not reintroduce them.
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 
 import langFr from "./lang/lang-fr.js";
 import langEn from "./lang/lang-en.js";
@@ -67,7 +67,11 @@ const _ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
     ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
 
-// 5 — Register the toolbar slot (mobile icon + desktop tab button).
+// 5 — Register the module: the teardown, and the toolbar slot (mobile icon + desktop tab button).
+//
+// The TEARDOWN is registered on both loading paths. `GeoLeaf.mount()` unmounts the application by
+// destroying the core's module registry, and this module is how that reaches the emission loop —
+// an interval of this plugin, which nothing else stops. See `destroyLifecycle()`.
 //
 // `profileKey` MUST sit under `modules.<id>.*` — the SAME namespace `config.ts` reads.
 // This file wrote `ui.showPositionShare` until 08/08/2026, and the two tokens do not
@@ -77,48 +81,45 @@ const _ICON =
 // two branches of the profile. Filling the profile the way `config.ts` documents left the
 // button INVISIBLE, with nothing in the output to say why. `selfValidate()` now rejects any
 // `profileKey` outside `modules.<id>.`. Reference shape: `packages/plugins/table/src/entry.ts`.
-// This registration only counts on the EAGER path, and the condition is what tells the two
-// apart — nothing else in the page does, since the plugin cannot know who loaded it.
+//
+// The SLOT only counts on the EAGER path, and `registerPluginModule` is what tells the two apart
+// (`@geoleaf/host-runtime`, `lifecycle-seam.ts`) — nothing else in the page does, since the
+// plugin cannot know who loaded it.
 //
 // EAGER: the integrator loads this bundle before `GeoLeaf.boot()`, which is what this package's
 // README prescribes. There is no `init.js` on that path, so THIS call is the ONLY declaration of
 // the slot; it runs before `init()` and is honoured. Removing it would delete the button.
 //
 // LAZY: the deployable app declares the slot before boot with `registerLazyForAction()`, then
-// loads the bundle on demand. The call would then land after `init()`, which stores it, never
-// draws its slot — the toolbar is built once — and logs a warning whose intended reader has
-// already done what it recommends, in a file the message does not name.
-//
-// ⚠️ `!== true`, not `=== false`: a host without `isInitialized` yields `undefined`, and the slot
-// IS declared. Failing open is the right way round — a spurious warning costs a console line, a
-// missing declaration costs the button.
-if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "position-share",
-        ui: {
-            mobileIcon: {
-                icon: _ICON,
-                labelKey: "position-share.toolbar.button",
-                profileKey: "modules.position-share.showButton",
-                requiresPlugin: "position-share",
-                action: "position-share",
-            },
-            desktopTabButton: {
-                icon: _ICON,
-                labelKey: "position-share.toolbar.button",
-                profileKey: "modules.position-share.showButton",
-                requiresPlugin: "position-share",
-                action: "position-share",
-                // Must match the `variant: "tab"` the app's init.js declares for this same
-                // slot: the two declarations drifted for 4 slots out of 8 and
-                // the SLOT gate now holds them equal. The shipped rendering already comes
-                // from init.js (preloaded), so this line changes nothing on screen — it
-                // makes the plugin's own declaration stop contradicting it.
-                variant: "tab",
-            },
+// loads the bundle on demand. The slot would then land after `init()`, which stores it and does
+// not draw it — the toolbar is built once per boot. The module is registered without it: the
+// button belongs to the lazy declaration, which the core draws again at every boot.
+registerPluginModule({
+    id: "position-share",
+    destroy: () => destroyLifecycle(),
+    ui: {
+        mobileIcon: {
+            icon: _ICON,
+            labelKey: "position-share.toolbar.button",
+            profileKey: "modules.position-share.showButton",
+            requiresPlugin: "position-share",
+            action: "position-share",
         },
-    });
-}
+        desktopTabButton: {
+            icon: _ICON,
+            labelKey: "position-share.toolbar.button",
+            profileKey: "modules.position-share.showButton",
+            requiresPlugin: "position-share",
+            action: "position-share",
+            // Must match the `variant: "tab"` the app's init.js declares for this same
+            // slot: the two declarations drifted for 4 slots out of 8 and
+            // the SLOT gate now holds them equal. The shipped rendering already comes
+            // from init.js (preloaded), so this line changes nothing on screen — it
+            // makes the plugin's own declaration stop contradicting it.
+            variant: "tab",
+        },
+    },
+});
 
 // 6 — Toolbar action: the button toggles emission (PS-09).
 if (typeof document !== "undefined") {

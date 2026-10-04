@@ -104,6 +104,17 @@ export function scheduleSave(getCollection: () => GeoJSON.FeatureCollection): vo
 }
 
 /**
+ * Writes the pending debounced save now, if there is one.
+ *
+ * Called when the application is torn down: the collection the pending write would read is
+ * about to be emptied, and a write that ran after that would save NOTHING over the measures the
+ * user had just drawn. Flushed first, they are in storage for the next application to restore.
+ */
+export function flushPendingSave(): void {
+    _flush();
+}
+
+/**
  * Removes the saved FeatureCollection from localStorage immediately, and cancels any
  * pending save.
  */

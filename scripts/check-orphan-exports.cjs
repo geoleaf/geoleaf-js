@@ -415,7 +415,6 @@ const CLASS_C = [
     "kernel/basemaps/ui.ts::BasemapUIConfigInput",
     "kernel/config/geoleaf-config/config-types.ts::DataConfig",
     "kernel/config/geoleaf-config/config-types.ts::LoggingConfig",
-    "kernel/config/geoleaf-config/config-types.ts::SecurityConfig",
     "kernel/config/geoleaf-config/config-types.ts::UIConfig",
     "kernel/geojson/core-types.ts::GeoJSONStyleLabelConfig",
     "kernel/geojson/core-types.ts::LayerRegistryLike",

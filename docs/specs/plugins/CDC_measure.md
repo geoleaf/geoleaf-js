@@ -4,8 +4,8 @@ title: measure — la mesure éphémère, et ses annotations
 plugin_id: measure
 package: "@geoleaf-plugins/measure"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3cfa54b7f
-date: 1er octobre 2026
+verifie_contre: cc8a75d97
+date: 4 octobre 2026
 ---
 
 # measure — la mesure éphémère, et ses annotations
@@ -82,32 +82,58 @@ se constate désormais fiche par fiche, par sa propre garde
 
 ## Les étapes de `src/entry.ts`
 
-| Étape  | Ce qu'elle fait                                                             |
-| ------ | --------------------------------------------------------------------------- |
-| 1      | Enregistre les six dictionnaires sous l'espace `measure`, **en premier**    |
-| 2      | Monte `GeoLeaf.Measure`, **seulement si le core est présent**               |
-| 3      | S'enregistre au registre de plugins                                         |
-| 4 et 5 | Déclare le créneau de barre d'outils **et** câble l'action — sous condition |
+| Étape  | Ce qu'elle fait                                                                                                                    |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Enregistre les six dictionnaires sous l'espace `measure`, **en premier**                                                           |
+| 2      | Monte `GeoLeaf.Measure`, **seulement si le core est présent**                                                                      |
+| 3      | S'enregistre au registre de plugins                                                                                                |
+| 4 et 5 | Inscrit son module au registre du core (démontage, et créneau de barre sur le chemin eager) **et** câble l'action — sous condition |
 
 ⚠️ **Même patron que [`print`](CDC_print.md)** : les deux dernières étapes sont sous
 `if (getMeasureConfig().enabled !== false)`. Éteindre le plugin par la configuration ne cache pas
 seulement le bouton — le créneau n'est **jamais déclaré** et l'écouteur **jamais posé**. L'API
 programmatique reste vivante.
 
-⚠️ **Depuis le 21/08/2026 la déclaration du créneau porte une SECONDE garde, imbriquée dans la
-première** : `if (getGeoLeaf()?.registry?.isInitialized?.() !== true)`. Le créneau ne se déclare que
-sur le chemin **eager** — chargé avant `boot()`, où cet appel est sa seule déclaration et où il
-dessine le bouton ; après `init()` la barre est déjà construite, un créneau enregistré y serait
-stocké sans jamais être dessiné et n'aurait pour effet qu'un avertissement sans audience. La
-condition est `!== true` et non `=== false` **à dessein** : un hôte dépourvu d'`isInitialized`
-obtient quand même son créneau — un avertissement de trop coûte une ligne de console, un créneau
-manquant coûte le bouton.
+⚠️ **Depuis le 21/08/2026 le CRÉNEAU porte une seconde condition** : il n'est joint que tant que
+`registry.isInitialized() !== true`. Le créneau ne se déclare que sur le chemin **eager** — chargé
+avant `boot()`, où cet appel est sa seule déclaration et où il dessine le bouton ; après `init()` la
+barre est déjà construite, un créneau inscrit y serait stocké, non dessiné avant le montage suivant,
+et n'aurait pour effet qu'un avertissement sans audience. La condition est `!== true` et non
+`=== false` **à dessein** : un hôte dépourvu d'`isInitialized` obtient quand même son créneau — un
+avertissement de trop coûte une ligne de console, un créneau manquant coûte le bouton. Le tri des
+deux chemins est fait par `registerPluginModule` (`@geoleaf/host-runtime`).
 
-🛑 **Le PÉRIMÈTRE de cette garde est le sujet, pas la garde.** Du 21 au 25/08/2026 elle enveloppait
-**tout le bloc**, écouteurs compris : sur le chemin **paresseux** (`isInitialized === true`) le
-plugin montait son API et ne câblait **jamais** son interface — pas de racine, pas de gestionnaire,
-pas d'erreur. La garde doit couvrir les seuls `register` ; **tout ce qui suit court sur les deux
-chemins**, et c'est ce que le commentaire d'`entry.ts` daté du 25/08 verrouille.
+🛑 **Le PÉRIMÈTRE de cette condition est le sujet.** Du 21 au 25/08/2026 elle enveloppait **tout le
+bloc**, écouteurs compris : sur le chemin **paresseux** (`isInitialized === true`) le plugin montait
+son API et ne câblait **jamais** son interface — pas de racine, pas de gestionnaire, pas d'erreur.
+Seul le créneau dépend du chemin ; **tout le reste, démontage compris, court sur les deux**.
+
+### Le démontage — tout ce que le menu bâtit tient UNE carte (1.0.9)
+
+Le premier usage (`_ensureMenu()`) bâtit le moteur, les couches, les overlays d'annotation et le
+menu flottant, et tout cela ferme sur la carte du moment — derrière un verrou qui n'était jamais
+relâché. `GeoLeaf.mount()` démonte l'application et la reboote sur une carte neuve ; mesuré dans un
+navigateur, après ce remontage le menu de l'application précédente était encore dans la page, et
+une mesure commencée ne créait **aucune** couche sur la nouvelle carte : les couches n'y avaient
+jamais été créées, les gestionnaires étaient sur l'ancienne.
+
+Le module inscrit au registre porte désormais `destroyMeasure()`, sur les deux chemins de
+chargement, carte encore vivante :
+
+1. les outils sont désarmés — gestionnaires, curseur, mode exclusif, et l'observateur de mutation
+   qui tient le curseur ;
+2. **la sauvegarde en attente est écrite AVANT que la collection ne soit vidée** : une écriture
+   différée qui courrait après enregistrerait une collection vide par-dessus les mesures ;
+3. les overlays d'annotation quittent la page et rendent leurs deux écouteurs de carte ; aucun
+   rappel ne court, la collection n'est pas touchée par ce chemin ;
+4. la collection en mémoire est vidée, puis — dans un `finally` — le menu est retiré, la carte
+   oubliée, et les trois verrous relâchés (`_menuInitialized`, l'ancre, le premier placement).
+
+**Les mesures ne sont pas perdues quand le profil les persiste** (`persist`, vrai par défaut) :
+l'activation suivante rebâtit tout sur la carte alors vivante et les restaure du stockage. Le
+stockage lui-même n'est pas touché — `clearAll()` est le geste de l'utilisateur, pas celui d'un
+démontage. Sans persistance, elles partent avec l'application, comme à un rechargement de page.
+Gardé par `src/__tests__/measure-api.test.ts` et `e2e/75-remount-plugins.spec.js`.
 
 ### Le créneau, et deux singularités
 

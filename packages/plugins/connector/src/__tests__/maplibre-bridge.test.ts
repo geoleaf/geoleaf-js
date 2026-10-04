@@ -149,16 +149,69 @@ describe("deferred install — map not available at configure() time", () => {
         document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
         expect(mapMock.setTransformRequest).toHaveBeenCalledTimes(1);
     });
+});
 
-    it("installs only once on geoleaf:map:ready (once: true behaviour)", () => {
+// ─── A map that comes AFTER the install ──────────────────────────────────────
+//
+// `GeoLeaf.mount()` unmounts the application and boots it again on a NEW engine map. The
+// connector stays configured — `configure()` is the host's call, made once for the page — but
+// the hook was on the map that went away. Measured in a real browser: `window.fetch` still
+// carried the token, and the second map had no request hook at all. The `geoleaf:map:ready`
+// listener was one-shot, and was not even attached when `configure()` found a map.
+
+describe("a map that becomes ready after the install — the next application's", () => {
+    it("🛑 gets the hook, when configure() ran BEFORE any map existed", () => {
         delete (globalThis as any).GeoLeaf;
-        const mapMock = makeMapMock();
         installMapLibreBridge(VALID_CONFIG);
-        mockGeoLeafCore(mapMock);
+
+        const first = makeMapMock();
+        mockGeoLeafCore(first);
         document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
+        expect(first.setTransformRequest).toHaveBeenCalledTimes(1);
+
+        const second = makeMapMock();
+        mockGeoLeafCore(second);
         document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
-        // once:true → listener is auto-removed after first dispatch
-        expect(mapMock.setTransformRequest).toHaveBeenCalledTimes(1);
+        expect(second.setTransformRequest).toHaveBeenCalledTimes(1);
+        expect(second.callTransformRequest(`${BASE_URL}/tiles/1/2/3.pbf`)).toEqual({
+            url: `${BASE_URL}/tiles/1/2/3.pbf`,
+            headers: { Authorization: `Bearer ${TOKEN}` },
+        });
+    });
+
+    it("🛑 gets the hook, when configure() found a map — the case that attached no listener", () => {
+        const first = makeMapMock();
+        mockGeoLeafCore(first);
+        installMapLibreBridge(VALID_CONFIG);
+        expect(first.setTransformRequest).toHaveBeenCalledTimes(1);
+
+        const second = makeMapMock();
+        mockGeoLeafCore(second);
+        document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
+        expect(second.hasTransformRequest()).toBe(true);
+    });
+
+    it("a second configure() replaces what the listeners install — it does not stack them", () => {
+        const map = makeMapMock();
+        mockGeoLeafCore(map);
+        installMapLibreBridge(VALID_CONFIG);
+        installMapLibreBridge({ baseUrl: BASE_URL, getToken: () => "second-token" });
+        map.setTransformRequest.mockClear();
+
+        document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
+
+        // One install per signal, however many times configure() ran — with the latest token.
+        expect(map.setTransformRequest).toHaveBeenCalledTimes(1);
+        expect(map.callTransformRequest(`${BASE_URL}/tiles/1/2/3.pbf`)).toEqual({
+            url: `${BASE_URL}/tiles/1/2/3.pbf`,
+            headers: { Authorization: "Bearer second-token" },
+        });
+    });
+
+    it("a signal while no map exists installs nothing, and does not throw", () => {
+        delete (globalThis as any).GeoLeaf;
+        installMapLibreBridge(VALID_CONFIG);
+        expect(() => document.dispatchEvent(new CustomEvent("geoleaf:map:ready"))).not.toThrow();
     });
 });
 

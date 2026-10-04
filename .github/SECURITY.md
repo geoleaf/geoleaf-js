@@ -79,9 +79,9 @@ sat outside their perimeter until that date.
   `kernel/security/sanitizers.ts` — `sanitizeHTML()`, `sanitizeSvgContent()`
 - **DOM security**: `kernel/security/dom-security.ts` — replaces all direct `innerHTML` usage
 - **Input validation**: `kernel/security/validators.ts` — URL whitelist and the exact `data:`
-  MIME allow-list. `https:`, `http:` and image `data:` URLs pass by default; `isValidUrl()`
-  takes an `httpsOnly` option that rejects `http:`, but see Known Limitations — nothing
-  currently passes it
+  MIME allow-list. `https:`, `http:` and image `data:` URLs pass by default; `validateUrl()`
+  takes an `httpsOnly` option that rejects `http:`, but see Known Limitations — no call site
+  of the library passes it
 - **Fetch security**: `utils/general/fetch-helper.ts` — URL validation + rate limiting
   (`maxPerDomain: 50` / `windowMs: 10000`, i.e. 50 req/10 s/domain)
 - **Error sanitization**: `utils/errors/errors.ts` — `sanitizeErrorMessage()` escapes HTML in error messages
@@ -97,13 +97,17 @@ See [`packages/core/docs/SECURITY.md`](../packages/core/docs/SECURITY.md) and [`
   `kernel/security/validators.ts`; as of 31/07/2026 it holds six entries (`image/png`,
   `image/jpeg`, `image/jpg`, `image/gif`, `image/svg+xml`, `image/webp`). ⚠️ This line listed
   **five** and omitted `image/jpg` — read the constant rather than this copy.
-- The library accepts both `http:` and `https:` protocols, and **there is currently no profile
-  setting to change that**. ⚠️ This line promised a `security.httpsOnly` configuration option
-  until 31/07/2026; measured, it is not one. `httpsOnly` is a **call-site option** of
-  `isValidUrl()` (`kernel/security/validators.ts`), it was **removed from every JSON schema** on
-  26/06/2026 as a 0-consumer key, and **no call site passes it** — so an integrator cannot turn
-  it on. Enforce HTTPS at the deployment layer (CSP `upgrade-insecure-requests`, HSTS) until the
-  option is wired back; see [`packages/core/docs/SECURITY.md`](../packages/core/docs/SECURITY.md).
+- The library accepts both `http:` and `https:` protocols, and **there is no configuration
+  setting to change that — by decision, not by omission**. ⚠️ This line promised a
+  `security.httpsOnly` configuration option until 31/07/2026; measured, it never was one: the
+  key was **removed from every JSON schema** on 26/06/2026 as a 0-consumer key, and its
+  TypeScript type followed on 04/10/2026. `httpsOnly` is a **call-site option** of
+  `validateUrl()` (`kernel/security/validators.ts`): it hardens the call that passes it, and
+  **no call site of the library does** — so an integrator cannot turn it on, and it will not be
+  wired to a setting. ⚠️ Until 04/10/2026 this line and the one above named the function
+  `isValidUrl()`, which does not exist. Enforce HTTPS at the deployment layer (CSP
+  `upgrade-insecure-requests`, HSTS); see
+  [`packages/core/docs/SECURITY.md`](../packages/core/docs/SECURITY.md).
 - The Service Worker does not implement authentication checks — it handles only static/cacheable resources.
 
 ## Bug Bounty

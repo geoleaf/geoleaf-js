@@ -4,7 +4,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { installMockGeoLeaf, uninstallMockGeoLeaf } from "./setup.js";
 import { getMeasureConfig } from "../config.js";
-import { initPersistence, scheduleSave, clearStorage } from "../persistence.js";
+import { initPersistence, scheduleSave, clearStorage, flushPendingSave } from "../persistence.js";
 
 const KEY = "geoleaf.measure.fc";
 
@@ -220,6 +220,32 @@ describe("pending save flushed when the page goes away", () => {
 
         window.dispatchEvent(new Event("pagehide"));
 
+        expect(localStorage.getItem(KEY)).toBeNull();
+    });
+});
+
+// The application teardown empties the collection in memory. A debounced save still pending
+// would then run AFTER it, and write nothing over the measures just drawn.
+describe("flushPendingSave — the application is torn down", () => {
+    beforeEach(() => {
+        initPersistence(getMeasureConfig());
+    });
+
+    it("🛑 writes the pending save at once, with the collection as it is NOW", () => {
+        let current = makeCollection(2);
+        scheduleSave(() => current);
+
+        flushPendingSave();
+        // What the teardown does next: the collection is emptied.
+        current = makeCollection(0);
+        vi.advanceTimersByTime(1000);
+
+        const saved = JSON.parse(localStorage.getItem(KEY) ?? "null") as GeoJSON.FeatureCollection;
+        expect(saved.features).toHaveLength(2);
+    });
+
+    it("writes nothing when no save is pending", () => {
+        flushPendingSave();
         expect(localStorage.getItem(KEY)).toBeNull();
     });
 });

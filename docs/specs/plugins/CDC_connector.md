@@ -4,8 +4,8 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 90b8cd24c
-date: 1er octobre 2026
+verifie_contre: 688ef8c12
+date: 4 octobre 2026
 ---
 
 # connector — l'authentification et l'injection de jeton
@@ -134,15 +134,52 @@ plugins ont un **état**.
 
 ### Les étapes d'`entry.ts`
 
-Cinq gestes — plus qu'un plugin de transport, moins qu'un plugin d'interface complet :
+Six gestes — plus qu'un plugin de transport, moins qu'un plugin d'interface complet :
 
-| Étape                                | Ce qu'elle fait ici                                                                                                   |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| 1 — dictionnaires i18n **d'abord**   | Six langues, enregistrées **avant** tout rendu, sans quoi les libellés de la fenêtre de connexion ne résoudraient pas |
-| 2 — ré-exports de valeur             | `createConnector` et son type — l'API de l'intégrateur avancé, publiée et **délibérément conservée**                  |
-| 3 — montage du namespace             | `GeoLeaf.Connector = buildPublicApi()`                                                                                |
-| 4 — amorçage automatique d'interface | Sur `geoleaf:profile:loaded` **et** `geoleaf:map:ready`, plus un repli immédiat                                       |
-| 5 — auto-enregistrement              | Le manifeste ci-dessus                                                                                                |
+| Étape                                | Ce qu'elle fait ici                                                                                                                            |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 — dictionnaires i18n **d'abord**   | Six langues, enregistrées **avant** tout rendu, sans quoi les libellés de la fenêtre de connexion ne résoudraient pas                          |
+| 2 — ré-exports de valeur             | `createConnector` et son type — l'API de l'intégrateur avancé, publiée et **délibérément conservée**                                           |
+| 3 — montage du namespace             | `GeoLeaf.Connector = buildPublicApi()`                                                                                                         |
+| 4 — amorçage automatique d'interface | Sur `geoleaf:profile:loaded` **et** `geoleaf:map:ready`, plus un repli immédiat — écouteurs **permanents** : le bouton est remis à chaque boot |
+| 5 — module au registre du core       | Le **démontage** du bouton, sur les deux chemins de chargement ; aucun créneau de barre                                                        |
+| 6 — auto-enregistrement              | Le manifeste ci-dessus                                                                                                                         |
+
+### Le démontage — le bouton part, la session reste (1.3.5)
+
+`GeoLeaf.mount()` démonte l'application en détruisant le registre de modules du core, puis la
+reboote. Jusqu'à 1.3.4 ce plugin n'y inscrivait rien, et trois choses en découlaient, mesurées
+dans un navigateur :
+
+- **le bouton d'identification ne revenait pas.** Il vit dans les barres du core, retirées avec
+  l'application et rebâties au boot suivant ; les deux écouteurs d'amorçage étaient
+  `{ once: true }` derrière un verrou à sens unique, et les références gardées par le module
+  pointaient des nœuds détachés. Deux boutons après le premier boot, aucun après le montage
+  suivant — configuré ou non ;
+- **le séparateur n'était jamais retiré**, faute de référence gardée ;
+- **la carte suivante n'avait pas le crochet de requête** d'un connecteur configuré : l'écouteur
+  de `geoleaf:map:ready` était à usage unique, et n'était pas même posé quand `configure()`
+  trouvait une carte. `window.fetch` gardait son jeton, les tuiles de la seconde carte partaient
+  sans, jusqu'à ce qu'un changement de fond remette le crochet.
+
+Le module inscrit à l'étape 5 retire le bouton **et** son séparateur et relâche le verrou ; les
+écouteurs restent pour la vie de la page et réinstallent le bouton au boot suivant — celui d'un
+connecteur configuré par `reinstallCredentialButton()`, qui lit la configuration là où elle
+s'écrit. Le pont cartographique pose le crochet sur **toute** carte qui devient prête, avec la
+configuration du dernier `configure()` : ses deux écouteurs sont deux fonctions nommées, que le
+document ne tient donc qu'une fois, quel que soit le nombre de `configure()`.
+
+🛑 **Ce que le démontage ne touche PAS, et c'est une décision** (arbitrée le 04/10/2026) :
+`window.fetch`, le crochet d'ouvrier, la session stockée. `configure()` est l'appel de l'HÔTE,
+fait une fois pour la page — il n'appartient pas à l'application que le boot démarre. Rendre
+`fetch` à `unmount()` laisserait l'application suivante sans jeton tant que l'hôte n'aurait pas
+reconfiguré. Cohérent avec `logout()`, qui ne le restaure pas davantage. Asserté par
+`e2e/75-remount-plugins.spec.js`.
+
+⚠️ **L'attente des barres est UN observateur, borné, et son délai lui appartient.** Le délai de dix
+secondes relisait l'observateur dans la variable du module : il coupait celui d'une installation
+ULTÉRIEURE — une application remontée dans ces dix secondes perdait celui qui attendait ses
+barres. Il est annulé à la désinstallation, et une attente déjà en cours n'en crée pas une seconde.
 
 ⚠️ **Les clés i18n sont PLATES et pointées** (`"connector.modal.title"`). Le résolveur de libellés
 indexe la table fusionnée directement et **ne découpe jamais sur le point** : un dictionnaire
@@ -178,7 +215,7 @@ imbriqué ne résoudrait rien. Les entrées françaises reproduisent exactement 
 | CN-21 | L'observateur se déconnecte tout seul                                       | Cibles jamais construites                                                                                                                                      | Abandon après un délai — pas d'observateur qui vit jusqu'à la fin de la session                                                                                                                                                                                                                                                                                                                                                                                                               | `credential-button.ts`                                                                                |
 | CN-22 | Amorçage **interface seule**                                                | `ui.showCredentialButton: true` dans le profil                                                                                                                 | Le bouton apparaît **sans aucune authentification** ; le clic ne fait qu'émettre un événement                                                                                                                                                                                                                                                                                                                                                                                                 | `entry.ts` → `_autoBootstrapUiOnly`                                                                   |
 | CN-23 | La configuration explicite reprend la main                                  | `configure()` après un amorçage interface seule                                                                                                                | Le bouton autonome est retiré, puis réinstallé avec la vraie authentification derrière                                                                                                                                                                                                                                                                                                                                                                                                        | `connector-api.ts`, `credential-button.ts`                                                            |
-| CN-24 | Trois déclencheurs pour l'amorçage, un seul effet                           | Deux événements + un repli immédiat                                                                                                                            | Idempotent : un verrou garantit un seul amorçage, quel que soit l'ordre de chargement du script                                                                                                                                                                                                                                                                                                                                                                                               | `entry.ts`                                                                                            |
+| CN-24 | Trois déclencheurs pour l'amorçage, un seul effet                           | Deux événements + un repli immédiat                                                                                                                            | Idempotent : un verrou garantit un seul amorçage **par application**, quel que soit l'ordre de chargement du script — le démontage le relâche                                                                                                                                                                                                                                                                                                                                                 | `entry.ts`                                                                                            |
 | CN-25 | Jeton non conforme signalé                                                  | Jeton sans point (donc non JWT)                                                                                                                                | Avertissement console **non bloquant** — utile en démonstration, visible en production                                                                                                                                                                                                                                                                                                                                                                                                        | `fetch-interceptor.ts`                                                                                |
 | CN-26 | Instance isolée pour intégrateur avancé                                     | `createConnector(config)`                                                                                                                                      | Une instance **hors du singleton**, qui renouvelle ses lectures auprès de SON `auth.endpoint` ; son `destroy()` neutralise ses lectures de jeton et ne touche à rien d'autre — pas même au renouvellement de la page (§Export ESM nommé)                                                                                                                                                                                                                                                      | `connector-api.ts`                                                                                    |
 | CN-27 | Événements de cycle de vie                                                  | Authentification, renouvellement, fin de session, clic, erreur, liens                                                                                          | Émis sur le document ; **deux sont annulables** — les demandes d'inscription et de mot de passe oublié                                                                                                                                                                                                                                                                                                                                                                                        | `login-ui.ts`, `credential-button.ts`, `fetch-interceptor.ts`, `token-store.ts`, `connector-api.ts`   |
@@ -300,11 +337,11 @@ canonique imposé par le contrat de plugin —, plus `e2e/11-connector.spec.js` 
 C'est la section à lire avant de modifier quoi que ce soit dans ce plugin. Une carte authentifiée
 charge par **trois** voies distinctes, et couvrir une seule laisse deux trous silencieux.
 
-| Chemin                      | Ce qu'il couvre                                       | Comment le jeton y arrive                                                             | Contrainte                                                                          |
-| --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| **`window.fetch` remplacé** | Données GeoJSON, appels applicatifs, archives PMTiles | En-tête ajouté sur les URL retenues par `isSameOrigin`, les autres en-têtes conservés | Doit capturer le `fetch` d'origine **à l'import**                                   |
-| **Crochet d'ouvrier web**   | Analyse GeoJSON hors du fil principal                 | Une fonction posée sur l'objet global, que le core appelle avec ses capacités         | Synchrone, ou une promesse si le core l'annonce (`acceptsPromise`, core ≥ 3.4.0)    |
-| **`setTransformRequest`**   | Tuiles vectorielles                                   | Le moteur cartographique demande la requête de chaque tuile                           | Synchrone, ou une promesse si MapLibre ≥ 5.21 ; à réinstaller au changement de fond |
+| Chemin                      | Ce qu'il couvre                                       | Comment le jeton y arrive                                                             | Contrainte                                                                                                        |
+| --------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **`window.fetch` remplacé** | Données GeoJSON, appels applicatifs, archives PMTiles | En-tête ajouté sur les URL retenues par `isSameOrigin`, les autres en-têtes conservés | Doit capturer le `fetch` d'origine **à l'import**                                                                 |
+| **Crochet d'ouvrier web**   | Analyse GeoJSON hors du fil principal                 | Une fonction posée sur l'objet global, que le core appelle avec ses capacités         | Synchrone, ou une promesse si le core l'annonce (`acceptsPromise`, core ≥ 3.4.0)                                  |
+| **`setTransformRequest`**   | Tuiles vectorielles                                   | Le moteur cartographique demande la requête de chaque tuile                           | Synchrone, ou une promesse si MapLibre ≥ 5.21 ; à réinstaller au changement de fond **et sur chaque carte neuve** |
 
 ⚠️ **Les deux derniers ÉTAIENT synchrones, et c'est ce qui a imposé le cache mémoire.** La base
 indexée est asynchrone ; elle ne pouvait donc pas être lue depuis ces chemins — d'où le **cache
@@ -566,8 +603,9 @@ sa propre page d'inscription annule l'événement et empêche la navigation.
 
 ### Événements consommés
 
-`geoleaf:profile:loaded` (amorçage), `geoleaf:map:ready` (pont cartographique et repli d'amorçage),
-`geoleaf:basemap:change` (réinstallation du pont).
+`geoleaf:profile:loaded` (amorçage, à chaque boot), `geoleaf:map:ready` (pont cartographique sur
+toute carte qui devient prête, et repli d'amorçage), `geoleaf:basemap:change` (réinstallation du
+pont).
 
 ### Stockage écrit
 

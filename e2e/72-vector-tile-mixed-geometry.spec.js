@@ -22,6 +22,12 @@
  *
  * Seen RED by mutation of the SERVED bundle (the confinement switched off; bytes restored,
  * `sha256sum -c`, the precompressed variants set aside so nginx serves the mutation).
+ *
+ * THE SAME TILES CARRY A SECOND SUBJECT: the names a layer may give its geometry. The layer schema
+ * admits `polyline` and `multiline` beside `line`, and the builder once kept its own lists, which
+ * held neither — a layer declared with one of them built no sub-layer and said nothing. The last
+ * test creates one layer per name and reads what each one draws. Seen RED on the deployed build
+ * that preceded the fix: no sub-layer in the registry for either name.
  */
 
 import { GeoJSONVT } from "@maplibre/geojson-vt";
@@ -39,6 +45,9 @@ const SOURCE_LAYER = "mixed";
 /** Tiles are served under this path segment, on the page's own origin. */
 const TILE_SEGMENT = "__e2e_vt_mixed__";
 const WAIT_MS = 20_000;
+
+/** The names the layer schema gives a line layer, beside `line`. */
+const LINE_KINDS = ["polyline", "multiline"];
 
 /** The middle vertex of the `line` feature, and the middle of its first segment. */
 const LINE_VERTEX = [-62, -34.5];
@@ -116,31 +125,37 @@ async function serveVectorTiles(context) {
     });
 }
 
-/** Boots, creates the mixed layer over the served tiles, and frames the six features. */
-async function bootWithMixedLayer(page) {
+/**
+ * Boots, creates one layer per entry over the served tiles, and frames the six features.
+ * @param {import('@playwright/test').Page} page
+ * @param {{ id: string, geometry: string }[]} layers
+ */
+async function bootWithLayers(page, layers) {
     await page.goto("/");
     await page.waitForFunction(() => /** @type {any} */ (window).GeoLeaf?.Layers?.create, null, {
         timeout: WAIT_MS,
     });
     await awaitSettledCamera(page);
     await page.evaluate(
-        async ([id, tilesUrl, layerName]) => {
+        async ([defs, tilesUrl, layerName]) => {
             const G = /** @type {any} */ (window).GeoLeaf;
-            await G.Layers.create({
-                id,
-                label: "E2E — tuiles mixtes",
-                geometry: "mixed",
-                data: {
-                    vectorTiles: {
-                        enabled: true,
-                        tilesUrl,
-                        layerName,
-                        minZoom: 0,
-                        maxNativeZoom: 14,
-                        maxZoom: 18,
+            for (const { id, geometry } of defs) {
+                await G.Layers.create({
+                    id,
+                    label: `E2E — tuiles ${geometry}`,
+                    geometry,
+                    data: {
+                        vectorTiles: {
+                            enabled: true,
+                            tilesUrl,
+                            layerName,
+                            minZoom: 0,
+                            maxNativeZoom: 14,
+                            maxZoom: 18,
+                        },
                     },
-                },
-            });
+                });
+            }
             G.Core.getMap()
                 .getNativeMap()
                 .fitBounds(
@@ -151,15 +166,24 @@ async function bootWithMixedLayer(page) {
                     { animate: false, padding: 40 }
                 );
         },
-        [ID, `${new URL(page.url()).origin}/${TILE_SEGMENT}/{z}/{x}/{y}.pbf`, SOURCE_LAYER]
+        /** @type {[{ id: string, geometry: string }[], string, string]} */ ([
+            layers,
+            `${new URL(page.url()).origin}/${TILE_SEGMENT}/{z}/{x}/{y}.pbf`,
+            SOURCE_LAYER,
+        ])
     );
+}
+
+/** Boots with the one mixed layer the first two tests read. */
+function bootWithMixedLayer(page) {
+    return bootWithLayers(page, [{ id: ID, geometry: "mixed" }]);
 }
 
 /**
  * The kinds the engine draws on each sub-layer, deduplicated across tiles and sorted, keyed by
  * the sub-layer's type (`fill`, `line`, `circle`…).
  */
-function rendered(page) {
+function rendered(page, layerId = ID) {
     return page.evaluate((id) => {
         const adapter = /** @type {any} */ (window).GeoLeaf.Core.getMap();
         const map = adapter.getNativeMap();
@@ -174,7 +198,7 @@ function rendered(page) {
                 ].sort(),
             ])
         );
-    }, ID);
+    }, layerId);
 }
 
 test.beforeEach(async ({ context }) => {
@@ -242,4 +266,28 @@ test("[vector-tiles] sans sa garde, la sous-couche des points dessine un cercle 
     );
     expect(hits.vertex, "un cercle est dessiné sur le sommet de la ligne").toContain("line");
     expect(hits.middle, "aucun cercle n'est dessiné le long du segment").toEqual([]);
+});
+
+test("[vector-tiles] une couche déclarée « polyline » ou « multiline » dessine ses lignes", async ({
+    page,
+}) => {
+    const layers = LINE_KINDS.map((geometry) => ({ id: `e2e_vt_${geometry}`, geometry }));
+    await bootWithLayers(page, layers);
+
+    for (const { id, geometry } of layers) {
+        await expect
+            .poll(async () => Object.keys(await rendered(page, id)), {
+                timeout: WAIT_MS,
+                message: `« ${geometry} » bâtit une sous-couche de lignes, et elle seule`,
+            })
+            .toEqual(["line"]);
+        // The layer is not `mixed`, so its sub-layer is not confined: over this fixture it also
+        // draws the outlines of the polygons. The lines are the subject — both encodings of them.
+        await expect
+            .poll(async () => (await rendered(page, id)).line, {
+                timeout: WAIT_MS,
+                message: `« ${geometry} » dessine les lignes de la tuile`,
+            })
+            .toEqual(expect.arrayContaining(["line", "multiline"]));
+    }
 });

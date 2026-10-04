@@ -14,7 +14,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { makeMockMaplibreMap } from "./setup.js";
-import { initLayers } from "../draw-layers.js";
+import { clearAll, initLayers, releaseLayers } from "../draw-layers.js";
 
 const LAYERS = [
     "gl-measure-polygons-fill",
@@ -76,5 +76,34 @@ describe("measure — ses couches sont déclarées à l'adaptateur qui pilote la
 
         expect(() => initLayers(map)).not.toThrow();
         expect(map.getLayer("gl-measure-lines-layer")).toBeDefined();
+    });
+});
+
+// The layers are created on ONE map. `GeoLeaf.mount()` gives the application a new one: the
+// reference kept here must go with the previous map, or the next writes land on its sources.
+describe("releaseLayers — the application is torn down", () => {
+    it("🛑 forgets the map: nothing is written to its sources afterwards", () => {
+        const setData = vi.fn();
+        const map = makeMockMaplibreMap();
+        map.getSource = vi.fn(() => ({ setData }));
+        initLayers(map);
+        clearAll();
+        expect(setData).toHaveBeenCalled();
+        setData.mockClear();
+
+        releaseLayers();
+        clearAll();
+
+        expect(setData).not.toHaveBeenCalled();
+    });
+
+    it("the next initLayers creates the sources on the map it is given", () => {
+        const first = makeMockMaplibreMap();
+        const second = makeMockMaplibreMap();
+        initLayers(first);
+        releaseLayers();
+        initLayers(second);
+        expect(second.addSource).toHaveBeenCalledTimes(SOURCES.length);
+        expect(second.addLayer).toHaveBeenCalledTimes(LAYERS.length);
     });
 });

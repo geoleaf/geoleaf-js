@@ -146,16 +146,22 @@ export function getAvailableVisibleLayers(): TableAvailableLayer[] {
 
 /**
  * Attaches the map and DOM event listeners.
+ *
  * @param refreshCallback   - Called to refresh the table data
  * @param setLayerCallback  - Called to change the active layer
+ * @returns Removes every listener attached here and cancels the pending refreshes — what the
+ *   teardown of the application calls. Without it the listeners stayed on `document` and on the
+ *   map that went away, and refreshed a panel that no longer existed. A no-op without a map.
  */
 export function attachMapEvents(
     refreshCallback: () => void,
     setLayerCallback: (id: string) => void
-): void {
+): () => void {
     const map = tableState._map;
-    if (!map) return;
+    if (!map) return () => undefined;
 
+    /** Set by the returned function: a timer already armed must not act on a torn-down table. */
+    let detached = false;
     let refreshSelectorTimer: ReturnType<typeof setTimeout> | null = null;
     const debouncedRefreshSelector = () => {
         if (refreshSelectorTimer) clearTimeout(refreshSelectorTimer);
@@ -185,41 +191,46 @@ export function attachMapEvents(
     // `layers-loaded` (really `fire()`d on the map bus) and
     // `document.addEventListener()` for `theme:applied`. The defect was not
     // ignorance of the model, it was a copied name.
-    document.addEventListener("geoleaf:filters:applied", () => {
+    const onFiltersApplied = (): void => {
         if (tableState._isVisible && tableState._currentLayerId) {
             refreshCallback();
         }
-    });
+    };
+    document.addEventListener("geoleaf:filters:applied", onFiltersApplied);
 
     // 🛑 The layer's STORE changed — a creation, an edit, a deletion, a restore. The open table
     // kept its rows until the next filter or visibility change, and they contradicted the map
     // exactly as they did while the subscription above was dead. Only the layer on display
     // refreshes, and a burst (a restore, a merge) refreshes once.
     let refreshRowsTimer: ReturnType<typeof setTimeout> | null = null;
-    document.addEventListener("geoleaf:layer:updated", (e: Event) => {
+    const onLayerUpdated = (e: Event): void => {
         const layerId = (e as CustomEvent<{ layerId?: string }>).detail?.layerId;
         if (!tableState._isVisible || !layerId || tableState._currentLayerId !== layerId) return;
         if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
         refreshRowsTimer = setTimeout(refreshCallback, 150);
-    });
+    };
+    document.addEventListener("geoleaf:layer:updated", onLayerUpdated);
 
-    map.on("geoleaf:geojson:layers-loaded", () => {
+    const onLayersLoaded = (): void => {
         Log.debug("[Table] layers-loaded event received, refreshing selector");
         debouncedRefreshSelector();
-    });
+    };
+    map.on("geoleaf:geojson:layers-loaded", onLayersLoaded);
 
-    document.addEventListener("geoleaf:theme:applied", () => {
+    const onThemeApplied = (): void => {
         Log.debug("[Table] theme:applied event received, refreshing selector");
         debouncedRefreshSelector();
-    });
+    };
+    document.addEventListener("geoleaf:theme:applied", onThemeApplied);
 
-    map.on("geoleaf:geojson:visibility-changed", (e: TableMapEvent) => {
+    const onVisibilityChanged = (e: TableMapEvent): void => {
         debouncedRefreshSelector();
         if (tableState._currentLayerId === e.layerId) {
             if (e.visible) {
                 refreshCallback();
             } else {
                 setTimeout(() => {
+                    if (detached) return;
                     const [firstLayer] = getAvailableVisibleLayers();
                     if (firstLayer) {
                         setLayerCallback(firstLayer.id);
@@ -233,5 +244,19 @@ export function attachMapEvents(
                 }, 200);
             }
         }
-    });
+    };
+    map.on("geoleaf:geojson:visibility-changed", onVisibilityChanged);
+
+    return () => {
+        detached = true;
+        if (refreshSelectorTimer) clearTimeout(refreshSelectorTimer);
+        if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
+        refreshSelectorTimer = null;
+        refreshRowsTimer = null;
+        document.removeEventListener("geoleaf:filters:applied", onFiltersApplied);
+        document.removeEventListener("geoleaf:layer:updated", onLayerUpdated);
+        document.removeEventListener("geoleaf:theme:applied", onThemeApplied);
+        map.off?.("geoleaf:geojson:layers-loaded", onLayersLoaded);
+        map.off?.("geoleaf:geojson:visibility-changed", onVisibilityChanged);
+    };
 }

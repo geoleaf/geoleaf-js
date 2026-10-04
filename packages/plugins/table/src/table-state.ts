@@ -85,6 +85,27 @@ export const tableState = {
 };
 
 /**
+ * Puts {@link tableState} back to what a page that never opened the table holds.
+ *
+ * Called by the teardown of the application: the map it names is going away, and the rows,
+ * the selection and the highlight it caches describe layers the next application loads anew.
+ * Mutated in place — every module holds this very object.
+ */
+export function resetTableState(): void {
+    tableState._map = null;
+    tableState._config = null;
+    tableState._currentLayerId = null;
+    tableState._selectedIds.clear();
+    tableState._cachedData = [];
+    tableState._featureIdMap.clear();
+    tableState._highlightLayers = [];
+    tableState._highlightActive = false;
+    tableState._sortState = { field: null, direction: null };
+    tableState._container = null;
+    tableState._isVisible = false;
+}
+
+/**
  * The nine event names this plugin emits — **derived from `GeoLeafEventMap`, not listed here**.
  *
  * ⚠️ **Deriving is the point, and re-listing would undo it.** A hand-written union would be a

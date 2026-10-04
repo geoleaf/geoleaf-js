@@ -64,7 +64,11 @@ const _BTN_CSS = `
 // ─── Module state ─────────────────────────────────────────────────────────────
 
 let _observer: MutationObserver | null = null;
+/** The safety timeout that ends {@link _observer}, so an uninstall can cancel it. */
+let _observerTimeout: ReturnType<typeof setTimeout> | null = null;
 let _desktopBtn: HTMLButtonElement | null = null;
+/** The separator put before the desktop button — removed with it. */
+let _desktopSeparator: HTMLElement | null = null;
 let _mobileBtn: HTMLButtonElement | null = null;
 let _styleInjected = false;
 
@@ -201,6 +205,7 @@ function _injectDesktop(config: ConnectorConfig): void {
     tabs.appendChild(separator);
     tabs.appendChild(btn);
     _desktopBtn = btn;
+    _desktopSeparator = separator;
 }
 
 // ─── Mobile injection ─────────────────────────────────────────────────────────
@@ -227,9 +232,15 @@ function _injectMobile(config: ConnectorConfig): void {
 function _tryInjectAll(config: ConnectorConfig): void {
     if (!_desktopBtn) _injectDesktop(config);
     if (!_mobileBtn) _injectMobile(config);
-    if (_desktopBtn && _mobileBtn) {
-        _observer?.disconnect();
-    }
+    if (_desktopBtn && _mobileBtn) _stopObserving();
+}
+
+/** Ends the wait for the bars: the observer, and the timeout that would have ended it. */
+function _stopObserving(): void {
+    _observer?.disconnect();
+    _observer = null;
+    if (_observerTimeout) clearTimeout(_observerTimeout);
+    _observerTimeout = null;
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -247,25 +258,32 @@ export function installCredentialButton(config: ConnectorConfig): void {
     // Immediate attempt (DOM may already be ready)
     _tryInjectAll(config);
 
-    // Fallback: observe for late DOM creation
-    if (!_desktopBtn || !_mobileBtn) {
+    // Fallback: observe for late DOM creation — ONE observer at a time: this function is called
+    // at each signal of a boot, and a wait already under way is the same wait.
+    if ((!_desktopBtn || !_mobileBtn) && !_observer) {
         _observer = new MutationObserver(() => _tryInjectAll(config));
         _observer.observe(document.body, { childList: true, subtree: true });
-        // Safety timeout — disconnect after 10s to prevent memory leak
-        setTimeout(() => _observer?.disconnect(), 10_000);
+        // Safety timeout — stop after 10s to prevent a memory leak. Cancelled by an uninstall:
+        // left armed, it ended the observer of the NEXT install — an application mounted again
+        // within those ten seconds lost the one waiting for its bars.
+        _observerTimeout = setTimeout(_stopObserving, 10_000);
     }
 }
 
 /**
- * Removes injected credential buttons and disconnects the MutationObserver.
- * Called by `configure()` when it replaces the connector already installed.
+ * Removes the injected credential buttons, their separator, and the MutationObserver.
+ *
+ * Called by `configure()` when it replaces the connector already installed, and by the
+ * teardown of the application: the bars the buttons sit in are removed with it, and the next
+ * application builds new ones — the references kept here must not say « already installed ».
  */
 export function uninstallCredentialButton(): void {
-    _observer?.disconnect();
-    _observer = null;
+    _stopObserving();
     _desktopBtn?.remove();
+    _desktopSeparator?.remove();
     _mobileBtn?.remove();
     _desktopBtn = null;
+    _desktopSeparator = null;
     _mobileBtn = null;
     _styleInjected = false;
 }

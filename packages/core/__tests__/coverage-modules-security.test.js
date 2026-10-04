@@ -55,7 +55,7 @@ describe("Coverage — security", () => {
         it("httpsOnly: rejects http", () => {
             expect(() =>
                 validateUrl("http://example.com/", undefined, { httpsOnly: true })
-            ).toThrow(/security.httpsOnly|Only https/);
+            ).toThrow(/Only https/);
         });
     });
 });

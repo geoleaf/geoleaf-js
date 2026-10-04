@@ -41,8 +41,25 @@ export function toggleEditorMenu(anchorEl?: Element | null): void {
     }
 }
 
-/** Destroys the plugin DOM (menu + modals). */
+/**
+ * Takes the editor down: the menu, then everything the wiring built (form, drawing engine,
+ * listeners, persistence) through the hook the entry registered.
+ *
+ * Two callers, one teardown: `GeoLeaf.Editor.destroy()`, the host's, and the module the entry
+ * registers with the core's module registry, which `GeoLeaf.mount()`'s `unmount()` reaches.
+ * The second came later than the first, and its absence is why an application unmounted left
+ * the editor's menu in the page and its engine bound to the map that had gone.
+ *
+ * The hook runs ONCE per wiring: it is dropped as it runs, so a second call — the host's, then
+ * the unmount's — finds a menu already gone and nothing else to undo. The anchor and the
+ * first-open latch go with it: the next wiring is positioned against the toolbar of its own
+ * application.
+ */
 export function destroyEditor(): void {
     destroyEditorMenu();
-    _destroyHook?.();
+    const hook = _destroyHook;
+    _destroyHook = null;
+    _pillBtn = null;
+    _menuPositioned = false;
+    hook?.();
 }

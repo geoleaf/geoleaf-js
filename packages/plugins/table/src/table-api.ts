@@ -17,7 +17,7 @@
  */
 
 import { Log } from "@geoleaf/host-runtime";
-import { tableState, fireEvent, _g } from "./table-state.js";
+import { tableState, fireEvent, resetTableState, _g } from "./table-state.js";
 import {
     getLayerFeatures,
     getAvailableLayers,
@@ -89,6 +89,9 @@ function _syncTriggerButtons(active: boolean): void {
     document.body.classList.toggle("gl-table-open", active);
 }
 
+/** Gives back what `attachMapEvents` attached for the panel now built; `null` without one. */
+let _detachMapEvents: (() => void) | null = null;
+
 const TableModule = {
     init(options: TableInitOptions | null | undefined) {
         if (!options || !options.map) {
@@ -113,7 +116,8 @@ const TableModule = {
         if (tableState._config.defaultVisible) {
             this.show();
         }
-        attachMapEvents(
+        _detachMapEvents?.();
+        _detachMapEvents = attachMapEvents(
             () => this.refresh(),
             (layerId: string) => this.setLayer(layerId)
         );
@@ -154,6 +158,33 @@ const TableModule = {
             this.hide();
         } else {
             this.show();
+        }
+    },
+
+    /**
+     * Takes the table down with the application: closes the panel, releases every listener,
+     * removes the panel from the page and forgets the map.
+     *
+     * The panel is a child of `<body>`, outside everything the core removes with the map: left
+     * alone it stayed OPEN in a page whose application was unmounted, and the next application
+     * found it bound to the map that had gone. After this call the table is where a page that
+     * never opened it stands — the next activation builds it again, on the map alive then.
+     *
+     * Called while the map is still alive: the highlight overlay leaves it through `hide()`.
+     * Idempotent, and a no-op when the panel was never built.
+     */
+    destroy() {
+        try {
+            if (tableState._isVisible) this.hide();
+        } finally {
+            // Whatever `hide()` met — a host may have destroyed the map first —, the state is
+            // released: a teardown that throws before it does never lets the table mount again.
+            _detachMapEvents?.();
+            _detachMapEvents = null;
+            _TablePanel.destroy();
+            _TableRenderer.destroy();
+            tableState._container?.remove();
+            resetTableState();
         }
     },
 

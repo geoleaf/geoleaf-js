@@ -74,11 +74,11 @@ For the full inventory with source files and tests, see [security/SECURITY_CONTR
 
 ## 4. Known limitations
 
-| Limitation                                    | Reason                                     | Mitigation                                                       |
-| --------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------- |
-| `data:` URLs allowed for images               | POI profiles support base64 icons          | Strict MIME filtering (`image/*` only, via `_validateDataUrl()`) |
-| `http:` allowed by default in `validateUrl()` | Non-HTTPS contexts (development, intranet) | Pass `{ httpsOnly: true }` to force HTTPS                        |
-| Unauthenticated service worker                | Outside the scope of the library           | Implement service worker authentication in the application       |
+| Limitation                                    | Reason                                     | Mitigation                                                                                                                                                             |
+| --------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data:` URLs allowed for images               | POI profiles support base64 icons          | Exact MIME whitelist (`ALLOWED_DATA_URL_TYPES`, via `_validateDataUrl()`) — not an `image/*` prefix test                                                               |
+| `http:` allowed by default in `validateUrl()` | Non-HTTPS contexts (development, intranet) | Enforce HTTPS at the deployment layer (CSP `upgrade-insecure-requests`, HSTS). `{ httpsOnly: true }` hardens only a call you make yourself: there is no setting for it |
+| Unauthenticated service worker                | Outside the scope of the library           | Implement service worker authentication in the application                                                                                                             |
 
 ---
 

@@ -582,12 +582,21 @@ _TablePanel.refreshLayerSelector = function () {
 };
 
 /**
- * Cleanup all event listners
+ * Releases every event listener the panel registered.
+ *
+ * The panel element itself is left where it is: it belongs to whoever holds it
+ * (`tableState._container`), and the application teardown removes it.
  */
 _TablePanel.destroy = function () {
     // The view model outlives the panel, like `tableState` does: a stale search text and a
     // stale selection anchor would otherwise describe rows that no longer exist.
     viewModel.reset();
+    // The one listener that is on `document`, outside `_eventCleanups`: bound once, by the
+    // first export dropdown. Released here, and its latch with it — the next panel binds it again.
+    if (_docExportListenerBound) {
+        document.removeEventListener("click", _closeAllExportDropdowns);
+        _docExportListenerBound = false;
+    }
     if (_TablePanel._eventCleanups && _TablePanel._eventCleanups.length > 0) {
         _TablePanel._eventCleanups.forEach((cleanup: EventCleanup) => {
             if (typeof cleanup === "function") cleanup();

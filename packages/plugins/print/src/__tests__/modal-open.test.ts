@@ -65,7 +65,7 @@ vi.mock("../server-fallback.js", () => ({
 // Imports (after mocks)
 // ---------------------------------------------------------------------------
 
-import { openModal } from "../modal-open.js";
+import { closeOpenModal, openModal } from "../modal-open.js";
 import { OffscreenSession } from "../offscreen-render.js";
 import type { EmpriseResult } from "../emprise-selector.js";
 
@@ -187,6 +187,33 @@ describe("openModal", () => {
         link.click();
         const result = await promise;
         expect(result).toBe("redefine");
+    });
+
+    // The modal is a child of `<body>`: nothing of an unmounted application reaches it. The
+    // teardown closes it through this function, as the close button would.
+    it("🛑 closeOpenModal() closes the open modal: null, the DOM and the session released", async () => {
+        const promise = openModal(makeEmpriseResult(), {});
+        await flushMicrotasks();
+        expect(document.getElementById("gl-print-modal")).not.toBeNull();
+
+        closeOpenModal();
+
+        expect(await promise).toBeNull();
+        expect(document.getElementById("gl-print-modal")).toBeNull();
+        expect(document.body.classList.contains("gl-print-modal-open")).toBe(false);
+        expect(_mockSessionInstance.destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it("closeOpenModal() does nothing when no modal is open, and after one closed", async () => {
+        expect(() => closeOpenModal()).not.toThrow();
+        const promise = openModal(makeEmpriseResult(), {});
+        await flushMicrotasks();
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        await promise;
+        _mockSessionInstance.destroy.mockClear();
+
+        closeOpenModal();
+        expect(_mockSessionInstance.destroy).not.toHaveBeenCalled();
     });
 
     it("removes the modal and body class on close", async () => {

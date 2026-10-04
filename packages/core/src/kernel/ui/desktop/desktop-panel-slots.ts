@@ -16,25 +16,10 @@ import { DOMSecurity } from "../../security/dom-security.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { dispatchToolbarAction } from "../toolbar-dispatch.js";
-import { resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
+import { lazySlotsToDraw, resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
 import type { IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 
 type DesktopTabButtonDef = NonNullable<IModuleUISlot["desktopTabButton"]>;
-
-/** Lazy-plugin UI slot — an `IModuleUISlot` paired with its owning plugin id. */
-interface LazyUISlot extends IModuleUISlot {
-    id: string;
-    /** Owning plugin, i.e. the 2nd argument of `registerLazyForAction`. Gates on
-     *  `modules.<pluginName>.enabled` when `gateOnModuleEnabled` is set. */
-    pluginName: string;
-    /** Opt-in for the `modules.<pluginName>.enabled` guard — see `PluginLazyUI`. */
-    gateOnModuleEnabled?: boolean;
-}
-
-/** Subset of `GeoLeaf.plugins` consumed by the desktop-tab builders. */
-interface RegistryPluginsLike {
-    getLazyUISlots?: () => LazyUISlot[] | undefined;
-}
 
 /**
  * Inserts a registry desktop button into the tab strip.
@@ -167,10 +152,9 @@ export function appendRegistryTabButtons(tabs: HTMLElement): void {
         if (btn) _insertTabButton(tabs, btn, btnDef.variant);
     }
 
-    // Lazy plugins (S4): render desktop tab buttons for plugins registered lazy but not yet loaded.
-    const pluginReg = getGeoLeaf()?.plugins as RegistryPluginsLike | undefined;
-    const lazySlots = pluginReg?.getLazyUISlots?.() ?? [];
-    for (const slot of lazySlots) {
+    // Lazy plugins (S4): render the desktop tab buttons of the plugins registered lazy, their
+    // bundle loaded or not — the strip is rebuilt at every boot (`lazySlotsToDraw`).
+    for (const slot of lazySlotsToDraw()) {
         const btnDef = slot.desktopTabButton;
         if (!btnDef) continue;
         const btn = _buildDesktopTabButton(tabs, slot.id, btnDef, {

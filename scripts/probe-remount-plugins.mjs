@@ -10,16 +10,20 @@
  * left unmeasured: three of them are LAZY — a page that merely boots holds nothing of them — so
  * the same spec pointed at `deploy-full` is green and says nothing about them.
  *
- * WHAT IT MEASURES, in two runs:
- *   A. as shipped — the four plugins brought to their BUILT state on a mounted application (the
- *      credential button, the table panel open, the editor armed, position-share loaded), then
- *      three readings: built, after `unmount()`, after the next `mount()`. Each reading counts
- *      the plugins' DOM, the toolbar buttons, the drawing layers, the live listeners, timers and
- *      mutation observers. A fifth plugin, `measure`, is loaded as a WITNESS of the class: it is
- *      lazy too, and not one of the four.
+ * WHAT IT MEASURES, in three runs:
+ *   A. as shipped — the plugins brought to their BUILT state on a mounted application (the
+ *      credential button, the table panel open, the editor armed, position-share loaded, a
+ *      measure started, the print area selector open), then three readings: built, after
+ *      `unmount()`, after the next `mount()`. Each reading counts the plugins' DOM, the toolbar
+ *      buttons, the drawing layers, the live listeners, timers and mutation observers. Then what
+ *      each plugin still DOES on the new map.
  *   B. activated — what the shipped profile does not turn on: a configured connector (is
- *      `window.fetch` given back?) and position-share EMITTING (do positions still leave after
- *      the application is gone?).
+ *      `window.fetch` given back? does the NEW map get the request hook?) and position-share
+ *      EMITTING (do positions still leave after the application is gone?) — read twice, with
+ *      the geolocation seam the probe poses, then with the application's own.
+ *   C. loaded late — `geocoding`, which the shipped application always preloads at boot: its
+ *      preload is emptied, and the bundle is evaluated once the application runs, as a host
+ *      loading it on demand would. Is its control taken down by `unmount()`?
  *
  * 🖐 IT IS A MEASURE, NOT A GUARD: it prints its readings and asserts nothing about the product.
  * A part it could not measure is named and makes it exit 1 — a table must not look complete
@@ -28,7 +32,8 @@
  * ⚠️ RUN THE FOUR-STEP REGENERATION FIRST: it reads whatever nginx serves.
  *
  * Usage:  E2E_TARGET=nginx node scripts/probe-remount-plugins.mjs
- * Exit:   0 = both runs were measured · 1 = a part could not be measured (named in the output)
+ * Exit:   0 = the three runs were measured · 1 = a part could not be measured (named in the
+ *         output)
  *
  * ⚠️ `E2E_TARGET=nginx` is NOT optional: `baseURL()` defaults to the `ports` target, whose
  * servers this probe must never start.
@@ -78,7 +83,11 @@ async function instrument(page) {
         w.MutationObserver = class extends Native {
             /** @param {any[]} args */
             observe(...args) {
-                observers.add(this);
+                // ⚠️ Only an observer created by a script of the PAGE counts. Playwright's own
+                // injected script keeps one on `document` for the life of the page: counted, it
+                // read as an observer the product never gave back — one alive before any plugin
+                // was loaded, and still alive once the application was unmounted.
+                if (String(new Error().stack).includes(location.origin)) observers.add(this);
                 return super.observe(...args);
             }
             disconnect() {
@@ -118,6 +127,19 @@ function reading(page) {
             /* no map: the application is unmounted */
         }
         const counts = w.__probeCounts();
+        /** The request hook a configured connector puts on the engine map. */
+        let hook = "pas de carte";
+        try {
+            const native = G.Core.getMap().getNativeMap();
+            hook = String(typeof native._requestManager._transformRequestFn === "function");
+        } catch {
+            /* no map: the application is unmounted */
+        }
+        const panel = document.querySelector(".gl-table-panel");
+        const shown = (/** @type {string} */ sel) =>
+            [...document.querySelectorAll(sel)].filter(
+                (e) => getComputedStyle(e).display !== "none"
+            ).length;
         return {
             "cartes vivantes": (() => {
                 try {
@@ -131,12 +153,22 @@ function reading(page) {
             "table · panneau dans le document": count(".gl-table-panel"),
             "table · classe gl-table-open sur body":
                 document.body.classList.contains("gl-table-open"),
+            // `offsetParent` is null for a `position: fixed` element whatever it shows: the
+            // panel is read by the class that slides it in.
+            "table · panneau visible (gl-is-visible)": panel
+                ? panel.classList.contains("gl-is-visible")
+                : "pas de panneau",
             "editor · racine du menu": count(".gl-editor-root"),
             "editor · racine dans la carte courante": count(`#geoleaf-map .gl-editor-root`),
             "editor · couches de dessin (td-*)": layers.filter((id) => id.startsWith("td-")).length,
             "position-share · badge": count(".gl-position-share-badge"),
             "measure · couches (gl-measure-*)": layers.filter((id) => id.startsWith("gl-measure-"))
                 .length,
+            "measure · racine du menu": count(".gl-measure-root"),
+            "print · sélecteurs d'emprise": count(".gl-emprise-overlay"),
+            "print · sélecteurs d'emprise affichés": shown(".gl-emprise-overlay"),
+            "geocoding · contrôle": count(".gl-geocoding-ctrl"),
+            "connector · crochet de requête sur la carte courante": hook,
             "boutons · actions de barre": values("data-gl-toolbar-action").join(" "),
             "boutons · feuilles mobiles": values("data-gl-sheet").join(" "),
             "boutons · onglets de bureau": values("data-gl-desktop-tab").join(" "),
@@ -291,6 +323,18 @@ async function buildAsShipped(/** @type {import("@playwright/test").Page} */ pag
             /** @type {any} */ (window).GeoLeaf.Measure.startMeasure("distance")
         );
     });
+    await attempt("print : chargé, sélecteur d'emprise ouvert", async () => {
+        await load("print");
+        await page.evaluate(() =>
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:toolbar:action", { detail: { action: "print" } })
+            )
+        );
+        await page
+            .locator(".gl-emprise-overlay")
+            .first()
+            .waitFor({ state: "attached", timeout: 15_000 });
+    });
     await settle(page);
 }
 
@@ -299,21 +343,69 @@ async function functionAfterRemount(/** @type {import("@playwright/test").Page} 
     await attempt("table : l'action de barre après remontage", () =>
         page.evaluate(() => {
             const w = /** @type {any} */ (window);
-            const before = document.querySelectorAll(".gl-table-panel").length;
-            const wasOpen = w.GeoLeaf.Table.isOpen();
+            // ⚠️ The action TOGGLES: what it leaves is read against what it found, never alone.
+            const state = () => {
+                const panel = document.querySelector(".gl-table-panel");
+                return (
+                    `isOpen()=${w.GeoLeaf.Table.isOpen()}, ` +
+                    `panneaux=${document.querySelectorAll(".gl-table-panel").length}, ` +
+                    `visible=${panel ? panel.classList.contains("gl-is-visible") : "—"}`
+                );
+            };
+            const before = state();
             document.dispatchEvent(
                 new CustomEvent("geoleaf:toolbar:action", { detail: { action: "table" } })
             );
-            const panel = /** @type {HTMLElement | null} */ (
-                document.querySelector(".gl-table-panel")
+            const once = state();
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:toolbar:action", { detail: { action: "table" } })
             );
-            return (
-                `isOpen() avant l'action = ${wasOpen} ; panneaux ${before} → ` +
-                `${document.querySelectorAll(".gl-table-panel").length} ; le panneau est ` +
-                `${panel && panel.offsetParent !== null ? "affiché" : "non affiché"}`
-            );
+            return `avant [${before}] ; après une action [${once}] ; après deux [${state()}]`;
         })
     );
+    await attempt("measure : commencer une mesure après remontage", async () => {
+        await page.evaluate(() => {
+            const w = /** @type {any} */ (window);
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:toolbar:action", { detail: { action: "measure" } })
+            );
+            w.GeoLeaf.Measure.startMeasure("distance");
+        });
+        await page.waitForTimeout(1000);
+        return page.evaluate(() => {
+            const w = /** @type {any} */ (window);
+            const native = w.GeoLeaf.Core.getMap().getNativeMap();
+            const layers = native
+                .getStyle()
+                .layers.filter((/** @type {any} */ l) => l.id.startsWith("gl-measure-")).length;
+            const inMap = native.getContainer().querySelectorAll(".gl-measure-root").length;
+            return (
+                `couches gl-measure-* sur la NOUVELLE carte : ${layers} ; racine du menu dans ` +
+                `le conteneur de la carte : ${inMap}`
+            );
+        });
+    });
+    await attempt("print : ouvrir le flux après remontage", async () => {
+        const before = await page.evaluate(
+            () =>
+                [...document.querySelectorAll(".gl-emprise-overlay")].filter(
+                    (e) => getComputedStyle(e).display !== "none"
+                ).length
+        );
+        await page.evaluate(() =>
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:toolbar:action", { detail: { action: "print" } })
+            )
+        );
+        await page.waitForTimeout(1000);
+        const after = await page.evaluate(
+            () =>
+                [...document.querySelectorAll(".gl-emprise-overlay")].filter(
+                    (e) => getComputedStyle(e).display !== "none"
+                ).length
+        );
+        return `sélecteurs d'emprise affichés ${before} → ${after}`;
+    });
     await attempt("editor : armer un outil après remontage", async () => {
         const tool = page.locator('button.gl-editor-tool-btn[data-tool="select"]');
         for (let i = 0; i < 3 && !(await tool.isVisible()); i++) {
@@ -422,6 +514,7 @@ try {
                     await gl.plugins.load("position-share");
                     // The seam the emitter reads, made deterministic — as `probe-position-share`.
                     const geo = gl.Geolocation;
+                    /** @type {any} */ (window).__probeGeolocation = geo;
                     gl.Geolocation = {
                         ...geo,
                         getState: () => ({
@@ -468,6 +561,13 @@ try {
         await unmount(page);
         const gone = await reading(page);
         const afterUnmount = emitting ? await postsDuring(4000) : -1;
+        // ⚠️ The seam above answers « active » for ever: it measures the LOOP, not what leaves an
+        // application whose geolocation was torn down with it. Read again on the real seam.
+        await page.evaluate(() => {
+            const w = /** @type {any} */ (window);
+            if (w.__probeGeolocation) w.GeoLeaf.Geolocation = w.__probeGeolocation;
+        });
+        const afterUnmountReal = emitting ? await postsDuring(4000) : -1;
         const stillEmitting = await page.evaluate(() => {
             try {
                 return /** @type {any} */ (window).GeoLeaf.PositionShare.isEmitting();
@@ -485,6 +585,10 @@ try {
             console.log(
                 `\n  position-share · positions parties dans les 4 s APRÈS unmount() : ${afterUnmount}`
             );
+            console.log(
+                "  position-share · positions parties dans les 4 s suivantes, la couture de " +
+                    `géolocalisation de l'application remise : ${afterUnmountReal}`
+            );
             console.log(`  position-share · isEmitting() application démontée : ${stillEmitting}`);
             console.log(
                 `  position-share · positions parties dans les 4 s après le remontage : ${afterRemount}` +
@@ -496,6 +600,70 @@ try {
             console.log(
                 `  connector · window.fetch remplacé — configuré : ${active["window.fetch remplacé"]}, ` +
                     `démonté : ${gone["window.fetch remplacé"]}, remonté : ${back["window.fetch remplacé"]}`
+            );
+            const hookKey = "connector · crochet de requête sur la carte courante";
+            console.log(
+                `  connector · crochet de requête — configuré : ${active[hookKey]}, ` +
+                    `remonté (nouvelle carte) : ${back[hookKey]}`
+            );
+        }
+        await context.close();
+    }
+
+    // ── C — geocoding, loaded late ───────────────────────────────────────────────────────────
+    console.log("\n── C. `geocoding` chargé après le boot ──");
+    {
+        // The service worker is blocked: a request it serves is not seen by the route below.
+        const context = await browser.newContext({
+            ignoreHTTPSErrors: true,
+            serviceWorkers: "block",
+        });
+        // The application preloads the plugin at boot whenever its profile enables it — the
+        // late path does not exist as shipped. Its preload gets an EMPTY module, and the real
+        // bundle is evaluated below under another URL: a module is cached by its URL.
+        let emptied = 0;
+        await context.route(/\/dist\/geoleaf-geocoding\.plugin\.js$/, (route) => {
+            emptied += 1;
+            return route.fulfill({
+                status: 200,
+                contentType: "text/javascript",
+                body: "export {};",
+            });
+        });
+        const { page, booted } = await mountedPage(context);
+        const key = "geocoding · contrôle";
+        const late = await attempt("geocoding : évalué une fois l'application montée", async () => {
+            if (emptied === 0) throw new Error("le préchargement n'a pas été intercepté");
+            const before = await page.evaluate(
+                () => typeof (/** @type {any} */ (window).GeoLeaf.Geocoding)
+            );
+            if (before !== "undefined")
+                throw new Error("le greffon est déjà chargé : le chemin tardif n'est pas mesuré");
+            // Nothing is returned: a module namespace does not cross the evaluation boundary.
+            await page.evaluate(async (url) => {
+                await import(url);
+            }, `${ORIGIN}/dist/geoleaf-geocoding.plugin.js?late`);
+            await page
+                .locator(".gl-geocoding-ctrl")
+                .first()
+                .waitFor({ state: "attached", timeout: 15_000 });
+            return `${emptied} préchargement(s) vidé(s)`;
+        });
+        if (late) {
+            const built = await reading(page);
+            await unmount(page);
+            const gone = await reading(page);
+            await attempt("mount() après le démontage", () => mount(page));
+            const back = await reading(page);
+            console.log(
+                `  geocoding · contrôle — démarré par boot() : ${booted[key]}, chargé tard : ` +
+                    `${built[key]}, après unmount() : ${gone[key]}, après mount() : ${back[key]}`
+            );
+            console.log(
+                "  geocoding · module inscrit au registre : " +
+                    (await page.evaluate(() =>
+                        /** @type {any} */ (window).GeoLeaf.registry.has("geocoding")
+                    ))
             );
         }
         await context.close();
@@ -509,4 +677,4 @@ if (unmeasured.length > 0) {
     for (const line of unmeasured) console.log(`  - ${line}`);
     process.exit(1);
 }
-console.log("\n✓ Les deux parcours sont mesurés.");
+console.log("\n✓ Les trois parcours sont mesurés.");

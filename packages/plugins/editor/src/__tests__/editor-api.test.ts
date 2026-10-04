@@ -117,5 +117,45 @@ describe("editor-api", () => {
             expect(first).not.toHaveBeenCalled();
             expect(second).toHaveBeenCalledTimes(1);
         });
+
+        // Two callers reach the same teardown — the host (`GeoLeaf.Editor.destroy()`) and the
+        // application teardown (`GeoLeaf.mount()`'s `unmount()`). The second finds a hook that
+        // already ran: running it again would undo, on the wiring of the NEXT map, what only
+        // the previous one had built.
+        it("🛑 runs the hook once per wiring — a second teardown has nothing left to undo", () => {
+            const hook = vi.fn();
+            api.setDestroyHook(hook);
+            api.destroyEditor();
+            api.destroyEditor();
+            expect(hook).toHaveBeenCalledTimes(1);
+            expect(menuMocks.destroyEditorMenu).toHaveBeenCalledTimes(2);
+        });
+
+        it("🛑 forgets the anchor and the first-open latch: the next menu is positioned again", () => {
+            const anchor = document.createElement("button");
+            api.toggleEditorMenu(anchor);
+            expect(menuMocks.positionEditorMenuNear).toHaveBeenCalledTimes(1);
+
+            api.destroyEditor();
+
+            // The toolbar of the next application hands over a button of its own.
+            const next = document.createElement("button");
+            api.toggleEditorMenu(next);
+            expect(menuMocks.positionEditorMenuNear).toHaveBeenCalledTimes(2);
+            expect(menuMocks.positionEditorMenuNear).toHaveBeenLastCalledWith(
+                next,
+                nativeMap.getContainer()
+            );
+        });
+
+        it("a hook that throws is still dropped — the teardown is not replayed on the next call", () => {
+            const hook = vi.fn(() => {
+                throw new Error("the map is gone");
+            });
+            api.setDestroyHook(hook);
+            expect(() => api.destroyEditor()).toThrow("the map is gone");
+            expect(() => api.destroyEditor()).not.toThrow();
+            expect(hook).toHaveBeenCalledTimes(1);
+        });
     });
 });

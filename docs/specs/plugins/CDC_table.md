@@ -4,8 +4,8 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 9c094a6b0
-date: 1er octobre 2026
+verifie_contre: e027eef88
+date: 4 octobre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
@@ -92,23 +92,52 @@ C'est le plugin le plus complet du lot : il exerce les **six** étapes numérot�
 figé par [`PLUGIN_ARCHITECTURE_SPEC.md`](../contrats/PLUGIN_ARCHITECTURE_SPEC.md) §4 n'en impose que
 trois.
 
-| Étape | Ce qu'elle fait                                                                                                               |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------- |
-| 1     | Enregistre les six dictionnaires sous l'espace `table` — **en premier**, pour que les libellés résolvent pendant le démarrage |
-| 2     | Monte `GeoLeaf.Table`                                                                                                         |
-| 3     | Abonne le cycle de vie à `geoleaf:map:ready`                                                                                  |
-| 4     | S'enregistre au registre de plugins (le manifeste ci-dessus)                                                                  |
-| 5     | Déclare **deux** créneaux de barre d'outils — pastille mobile **et** onglet de bureau — **uniquement sur le chemin EAGER**    |
-| 6     | Câble l'action : construction paresseuse, puis bascule                                                                        |
+| Étape | Ce qu'elle fait                                                                                                                                                                               |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | Enregistre les six dictionnaires sous l'espace `table` — **en premier**, pour que les libellés résolvent pendant le démarrage                                                                 |
+| 2     | Monte `GeoLeaf.Table`                                                                                                                                                                         |
+| 3     | Abonne le cycle de vie à `geoleaf:map:ready`                                                                                                                                                  |
+| 4     | S'enregistre au registre de plugins (le manifeste ci-dessus)                                                                                                                                  |
+| 5     | Inscrit son module au registre du core : le **démontage** sur les deux chemins, les **deux** créneaux de barre — pastille mobile **et** onglet de bureau — **uniquement sur le chemin EAGER** |
+| 6     | Câble l'action : construction paresseuse, puis bascule                                                                                                                                        |
 
-⚠️ **L'étape 5 est CONDITIONNELLE depuis le 21/08/2026** — `if (registry.isInitialized() !== true)`.
-Avant `boot()`, cet appel est la **seule** déclaration du créneau : un intégrateur n'a pas d'`init.js`
-pour la poser à sa place, donc la retirer coûterait le bouton. Après `init()`, la barre d'outils est
-déjà construite : l'enregistrement serait mémorisé, jamais dessiné, et produirait un avertissement
-dont le lecteur visé a déjà fait ailleurs ce qu'il recommande. ⚠️ Le test est `!== true` et non
-`=== false` : un hôte sans `isInitialized` rend `undefined`, et le créneau **est** déclaré — échouer
-en ouvrant est le bon sens, un avertissement parasite coûte une ligne de console, une déclaration
-manquante coûte le bouton.
+⚠️ **Le CRÉNEAU de l'étape 5 est conditionnel depuis le 21/08/2026** — il n'est joint que tant que
+`registry.isInitialized() !== true`. Avant `boot()`, cet appel est la **seule** déclaration du
+créneau : un intégrateur n'a pas d'`init.js` pour la poser à sa place, donc la retirer coûterait le
+bouton. Après `init()`, la barre d'outils est déjà construite : un créneau inscrit alors serait
+mémorisé, non dessiné avant le montage suivant, et produirait un avertissement dont le lecteur visé
+a déjà fait ailleurs ce qu'il recommande. ⚠️ Le test est `!== true` et non `=== false` : un hôte
+sans `isInitialized` rend `undefined`, et le créneau **est** déclaré — échouer en ouvrant est le bon
+sens, un avertissement parasite coûte une ligne de console, une déclaration manquante coûte le
+bouton. Le tri des deux chemins est fait par `registerPluginModule` (`@geoleaf/host-runtime`).
+
+### Le démontage — le tableau part avec l'application (1.1.3)
+
+`GeoLeaf.mount()` démonte l'application en détruisant le registre de modules du core. Jusqu'à
+1.1.2, rien de cela n'atteignait le tableau : son panneau est un enfant de `<body>`, hors de tout
+ce que le core retire avec la carte, et l'entrée n'inscrivait qu'un créneau, sans démontage — et
+rien du tout, chargée à la demande. Mesuré dans un navigateur : après `unmount()` le panneau
+restait **ouvert** dans la page, `gl-table-open` sur `<body>`, `isOpen()` vrai ; l'application
+suivante le retrouvait lié à la carte disparue.
+
+Le module inscrit à l'étape 5 porte désormais un `destroy()` sur les deux chemins de chargement,
+qui appelle `TableLifecycle.destroy()` :
+
+| Ce qui est défait         | Par                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| Le panneau ouvert         | `hide()` — la surbrillance quitte la carte encore vivante, `geoleaf:table:closed` est émis       |
+| Les écouteurs de la carte | le nettoyeur que rend `attachMapEvents` : deux sur l'adaptateur, trois sur `document`, minuteurs |
+| Les écouteurs du panneau  | `TablePanel.destroy()` — dont celui de `document` qui ferme les menus d'export                   |
+| Le panneau lui-même       | retiré de `<body>`                                                                               |
+| L'état                    | `resetTableState()` : carte, configuration, sélection, cache, tri                                |
+
+Le relâchement est dans un `finally` : un hôte qui a détruit la carte avant le démontage fait jeter
+`hide()`, et un démontage qui s'arrête à mi-chemin laisserait un tableau qui ne se remonte plus.
+**Rien n'est à réarmer** : la construction est paresseuse, la prochaine action de barre rebâtit le
+panneau sur la carte alors vivante ; l'abonnement à `geoleaf:map:ready` reste, pour un tableau
+ouvert au démarrage (`defaultVisible`). `GeoLeaf.Table` ne gagne aucun membre.
+
+Gardé par `src/__tests__/remount.test.ts` et, dans un navigateur, `e2e/75-remount-plugins.spec.js`.
 
 ⚠️ **Aucune entrée `al` dans le dictionnaire, et c'est délibéré** : le core aliase `al` vers `de`, et
 la reconstruction du dictionnaire à plat résout le code actif vers `de` pour les deux.

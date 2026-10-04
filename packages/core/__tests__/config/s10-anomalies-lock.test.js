@@ -3,9 +3,11 @@
  * "home" feature file (security, performance). Decision (Mattieu, 2026-06-14):
  * lock the CURRENT behaviour so a future fix flips the test → registre exécutoire.
  *
- *   - @anomaly ANO-023: security.httpsOnly — validateUrl HAS the capability, but
- *     the config key is never wired to it (orphan). We lock the capability so a
- *     future wiring already has a tested contract.
+ *   - @anomaly ANO-023: `httpsOnly` — a CALL-SITE option of validateUrl(), and
+ *     nothing else. A `security.httpsOnly` config key was once typed and documented
+ *     with no reader; it is gone from the schemas, the type and the guides, and is
+ *     not to be wired back (HTTPS is enforced at the deployment layer). What stays
+ *     locked here is the option a caller passes itself.
  *   - ANO-028/029 (performance.maxConcurrentLayers / layerLoadDelay) and ANO-030
  *     (performance.fitBoundsOnThemeChange, hardcoded false in theme-applier) have
  *     NO runtime consumer to observe → no behavioural test is possible. They stay
@@ -16,7 +18,7 @@
 
 import { validateUrl } from "../../src/kernel/security/index.js";
 
-describe("@anomaly ANO-023 — security.httpsOnly (capability present, config unwired)", () => {
+describe("@anomaly ANO-023 — validateUrl httpsOnly (call-site option, no config key)", () => {
     it("httpsOnly:true rejects an http: URL", () => {
         expect(() =>
             validateUrl("http://example.com/data.json", undefined, { httpsOnly: true })
@@ -29,7 +31,7 @@ describe("@anomaly ANO-023 — security.httpsOnly (capability present, config un
         ).toContain("https://example.com/data.json");
     });
 
-    it("without httpsOnly, http: URLs are accepted (default — capability not enforced)", () => {
+    it("without httpsOnly, http: URLs are accepted (the default)", () => {
         expect(validateUrl("http://example.com/data.json")).toContain(
             "http://example.com/data.json"
         );

@@ -18,6 +18,7 @@ import { getMeasureConfig } from "./config.js";
 import { _warnNoCore, _getNativeMap } from "./internal.js";
 import {
     initMenu,
+    destroyMenu,
     toggleMeasureMenu,
     setActiveTool,
     selectTool,
@@ -35,7 +36,7 @@ import {
     removeFeatureById,
     rerenderLabels,
 } from "./measure-engine.js";
-import { initLayers } from "./draw-layers.js";
+import { initLayers, releaseLayers } from "./draw-layers.js";
 import { activateDistance, deactivateDistance } from "./tools/tool-distance.js";
 import { activateRect, deactivateRect } from "./tools/tool-rect.js";
 import { activateCircle, deactivateCircle } from "./tools/tool-circle.js";
@@ -43,13 +44,14 @@ import { activatePolygon, deactivatePolygon } from "./tools/tool-polygon.js";
 import { activateGps, deactivateGps } from "./tools/tool-gps.js";
 import {
     initAnnotationOverlays,
+    destroyAnnotationOverlays,
     createOverlayFromFeature,
     clearAllOverlays,
     getPrintableAnnotations as _getPrintableAnnotations,
 } from "./annotation-overlays.js";
 import { activateAnnotationTooltip, deactivateAnnotation } from "./tools/tool-annotation.js";
 import { activateCustom, deactivateCustom } from "./tools/tool-custom.js";
-import { initPersistence, scheduleSave, clearStorage } from "./persistence.js";
+import { initPersistence, scheduleSave, clearStorage, flushPendingSave } from "./persistence.js";
 import { exportGeoJSON as _exportGeoJSON } from "./geojson-export.js";
 
 // ---------------------------------------------------------------------------
@@ -212,6 +214,41 @@ export function startMeasure(type: MeasureToolId): void {
     if (_warnNoCore("startMeasure")) return;
     _ensureMenu();
     selectTool(type);
+}
+
+/**
+ * Takes the measure tools down with the application: the tool armed, the menu, the overlays,
+ * the collection held in memory, and the map they were all built on.
+ *
+ * 🛑 **Everything `_ensureMenu()` builds closes over ONE map**, and it was built once for ever:
+ * the latch below was never released. `GeoLeaf.mount()` unmounts the application and boots it
+ * again on a new map — the menu then stayed in the page of the unmounted application, and on
+ * the next one a tool armed drew nothing: its layers had never been created on the new map,
+ * its handlers were on the old one. Released here, the next activation builds it all again.
+ *
+ * The measures are NOT lost when the profile persists them: the pending save is flushed
+ * BEFORE the collection is emptied, and the next `_ensureMenu()` restores it from storage.
+ * Storage itself is left alone — `clearAll()` is the user's gesture, not a teardown's.
+ *
+ * Called while the map is still alive. Idempotent, and a no-op when nothing was built.
+ */
+export function destroyMeasure(): void {
+    if (!_menuInitialized) return;
+    try {
+        // The tools first: their handlers, the cursor and the exclusive mode are on the map.
+        _deactivateAll();
+        flushPendingSave();
+        destroyAnnotationOverlays();
+        clearEngineCollection();
+    } finally {
+        // Released whatever a step above met — a host may have destroyed the map first. A latch
+        // left set is what makes the next application's button arm nothing.
+        destroyMenu();
+        releaseLayers();
+        _menuInitialized = false;
+        _pillBtn = null;
+        _menuPositioned = false;
+    }
 }
 
 /** Terminates or cancels the currently active measure tool. */

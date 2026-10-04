@@ -175,6 +175,8 @@ export interface TableConfig {
 export interface TableMap {
     /** Subscribe to a map event (called unconditionally by `attachMapEvents`). */
     on(eventName: string, handler: (e: TableMapEvent) => void): void;
+    /** Unsubscribe — what the teardown gives back (guarded: a stub map may lack it). */
+    off?(eventName: string, handler: (e: TableMapEvent) => void): void;
     /** Emit an event (guarded by a `typeof === "function"` check before use). */
     fire?(eventName: string, detail?: unknown): void;
     removeLayer?(layerId: string): void;

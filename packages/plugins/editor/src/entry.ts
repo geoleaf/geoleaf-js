@@ -5,8 +5,10 @@
  */
 import "./css/geoleaf-editor.css";
 import { buildPublicApi, toggleEditorMenu, setDestroyHook } from "./public-api.js";
+import { destroyEditor } from "./editor-api.js";
+import { wireOncePerMap } from "./map-wiring.js";
 import { getEditorConfig } from "./config.js";
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 import type { EditorConfig, EditorMap } from "./types.js";
 import {
     initEditorMenu,
@@ -444,32 +446,41 @@ function _initTerraDraw(): void {
 
 function _registerDestroyHook(): void {
     setDestroyHook(() => {
-        // FIRST: an open form's cancel removes its shape through the drawing engine.
-        _formModal?.destroy();
-        if (typeof document !== "undefined") {
-            document.removeEventListener("geoleaf:editor:feature-sync-queued", _onQueueChanged);
-            document.removeEventListener("geoleaf:editor:feature-sync-flushed", _onQueueChanged);
-            document.removeEventListener("geoleaf:offline:outbox-drained", _onQueueChanged);
+        try {
+            // FIRST: an open form's cancel removes its shape through the drawing engine.
+            _formModal?.destroy();
+            if (typeof document !== "undefined") {
+                document.removeEventListener("geoleaf:editor:feature-sync-queued", _onQueueChanged);
+                document.removeEventListener(
+                    "geoleaf:editor:feature-sync-flushed",
+                    _onQueueChanged
+                );
+                document.removeEventListener("geoleaf:offline:outbox-drained", _onQueueChanged);
+            }
+            // Restore core popups/tooltips if the editor is destroyed while a tool is armed.
+            _setExclusiveMode(false);
+            detachShortcuts();
+            detachSelectionKeys();
+            registerBeforeDrainStep(null);
+            destroyImageUpload();
+            destroyOptionLists();
+            destroyAddForm();
+            resetSessionTracking();
+            clearHistory();
+            destroyLayerPicker();
+            resetHostReconcile();
+            _adapter?.destroy();
+        } finally {
+            // Released whatever a step above met — a host may have destroyed the map first. A
+            // teardown that stopped before forgetting the engine `_adapterLoader` caches handed
+            // the NEXT wiring the engine of the map that went away.
+            _adapter = null;
+            _adapterLoader.reset();
+            _formModal = null;
+            _persistence = null;
+            _reconcileDeps = null;
+            _cfg = null;
         }
-        // Restore core popups/tooltips if the editor is destroyed while a tool is armed.
-        _setExclusiveMode(false);
-        detachShortcuts();
-        detachSelectionKeys();
-        registerBeforeDrainStep(null);
-        destroyImageUpload();
-        destroyOptionLists();
-        destroyAddForm();
-        resetSessionTracking();
-        clearHistory();
-        destroyLayerPicker();
-        resetHostReconcile();
-        _adapter?.destroy();
-        _adapter = null;
-        _adapterLoader.reset();
-        _formModal = null;
-        _persistence = null;
-        _reconcileDeps = null;
-        _cfg = null;
     });
 }
 
@@ -531,12 +542,12 @@ const _POI_ADD_ICON =
     ' C 22 6.5 17.5 2 12 2 M12 8 L12 16 M8 12 L16 12"/>' +
     "</svg>";
 
-// 4 & 5 — Register toolbar slot + wire event listeners (skipped if enabled === false).
-// The three slots below are declared only on the EAGER path — before `boot()`, where these calls
+// 4 & 5 — Register the module, the slots + wire event listeners (skipped if enabled === false).
+// The three SLOTS below are declared only on the EAGER path — before `boot()`, where these calls
 // are the ONLY declaration (an integrator has no `init.js`). After `init()` the toolbar is already
-// built: they would be stored, never drawn, and each would log a warning whose intended reader has
-// already done what it recommends elsewhere. `!== true` so a host without `isInitialized` still
-// gets its slots.
+// built: they would be stored, not drawn before the next mount, and each would log a warning whose
+// intended reader has already done what it recommends elsewhere. `!== true` so a host without
+// `isInitialized` still gets its slots.
 if (getEditorConfig().enabled !== false) {
     // ── The SLOT DECLARATIONS only — guarded since 21/08/2026 (eager path is their only
     // reader: after init() the toolbar is built and a stored slot is never drawn). `!== true`
@@ -545,24 +556,28 @@ if (getEditorConfig().enabled !== false) {
     // and map-ready wiring included — so on the LAZY path (isInitialized === true) the plugin
     // mounted its API and never wired its UI: no root, no handler, no error. The guard must
     // cover the registers alone; everything after it runs on BOTH paths.
-    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-        getGeoLeaf()?.registry?.register?.({
-            id: "editor",
-            dependencies: [],
-            init: () => {},
-            destroy: () => {},
-            ui: {
-                mobileIcon: {
-                    icon: _EDITOR_ICON,
-                    labelKey: "editor.toolbar.button",
-                    profileKey: "modules.editor.showButton",
-                    legacyProfileKey: "ui.showEditor",
-                    requiresPlugin: "editor",
-                    action: "editor",
-                },
+    //
+    // ── The `editor` module carries the TEARDOWN, on BOTH paths (1.5.7). `GeoLeaf.mount()`
+    // unmounts the application by destroying the core's module registry: this `destroy()` is
+    // how that reaches the editor, and it is the teardown `GeoLeaf.Editor.destroy()` runs. It
+    // was a no-op, and the lazy path registered nothing. The slot is joined on the eager path
+    // only (`registerPluginModule`, `@geoleaf/host-runtime`).
+    registerPluginModule({
+        id: "editor",
+        destroy: () => destroyEditor(),
+        ui: {
+            mobileIcon: {
+                icon: _EDITOR_ICON,
+                labelKey: "editor.toolbar.button",
+                profileKey: "modules.editor.showButton",
+                legacyProfileKey: "ui.showEditor",
+                requiresPlugin: "editor",
+                action: "editor",
             },
-        });
+        },
+    });
 
+    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
         // Session export button. ⚠️ Its `profileKey` is under `modules.editor.*`
         // and not `ui.*`: `addpoi`'s two equivalent flags were declared in NO
         // schema, while `ui.schema.json` is `additionalProperties: false` — they
@@ -651,12 +666,10 @@ if (getEditorConfig().enabled !== false) {
             }
         });
 
-        // Extracted as a named function so it can also run as a lazy-load fallback
-        // (when the plugin loads after geoleaf:map:ready has already fired). The
-        // drawing engine is no longer started here — it loads on first tool use
-        // (_ensureAdapter) — so the eager/lazy boot timing no longer matters for
+        // The drawing engine is not started here — it loads on first tool use
+        // (_ensureAdapter) — so the eager/lazy boot timing does not matter for
         // Terra Draw; only the menu / persistence / queue wiring is set up.
-        function _initOnMapReady(): void {
+        function _wire(): void {
             _cfg = getEditorConfig();
             _formModal = createEditorFormModal(_buildModalOpts(_cfg));
             _initTerraDraw();
@@ -666,10 +679,17 @@ if (getEditorConfig().enabled !== false) {
             _registerDestroyHook();
         }
 
-        // Normal boot path: listen for map:ready (eager — app:ready not yet fired).
-        document.addEventListener("geoleaf:map:ready", () => _initOnMapReady(), {
-            once: true,
+        // 🛑 WIRED ONCE PER MAP, and the listener stays for the life of the page (1.5.7): an
+        // application mounted again boots on a second map. It was `{ once: true }` — see
+        // `map-wiring.ts` for the two defects that carried, and what tells the cases apart.
+        const _initOnMapReady = wireOncePerMap({
+            getMap: _getNativeMap,
+            wire: _wire,
+            unwire: destroyEditor,
         });
+
+        // Normal boot path: listen for map:ready (eager — app:ready not yet fired).
+        document.addEventListener("geoleaf:map:ready", _initOnMapReady);
         // Lazy-load fallback: if loaded after geoleaf:map:ready has already fired,
         // _getNativeMap() is non-null — set up the editor wiring immediately.
         if (_getNativeMap()) {

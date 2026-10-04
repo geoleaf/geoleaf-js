@@ -378,6 +378,23 @@ export function clearAllOverlays(): void {
 }
 
 /**
+ * Takes the overlay system down with the application: removes every overlay from the page,
+ * gives the two map listeners back, and forgets the map.
+ *
+ * The overlays are children of the map container, which outlives the map: left alone they
+ * stayed in the page of an unmounted application. Nothing is removed from the collection and
+ * no callback runs — the annotations are restored from storage by the next application.
+ */
+export function destroyAnnotationOverlays(): void {
+    clearAllOverlays();
+    _map?.off("move", _onMove);
+    _map?.off("resize", _onMove);
+    _map = null;
+    _cfg = null;
+    _cbs = null;
+}
+
+/**
  * Returns printable annotation descriptors for use by the print plugin canvas renderer.
  */
 export function getPrintableAnnotations(): PrintableAnnotation[] {

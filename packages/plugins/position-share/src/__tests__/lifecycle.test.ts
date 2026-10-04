@@ -49,9 +49,10 @@ afterEach(() => {
     // `initLifecycle` registers on `document`, which `vi.resetModules()` does NOT reset — the
     // listener of a previous test survives into this one and fires on the same event, so a
     // second module would click the control a second time and every exact count would drift.
-    // Draining them here is possible precisely because they are `{ once: true }`: the DOM is
-    // emptied and the namespace removed FIRST, so the drained handlers read a disabled config
-    // and find no control, and therefore do nothing on their way out.
+    // Draining them here is possible because each module runs its boot work ONCE per
+    // application — a guard only its own teardown releases — and no longer because the listener
+    // removes itself: the DOM is emptied and the namespace removed FIRST, so the drained
+    // handlers read a disabled config and find no control, do nothing, and never act again.
     delete (globalThis as Record<string, unknown>).GeoLeaf;
     document.body.innerHTML = "";
     document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
@@ -183,5 +184,134 @@ describe("initLifecycle", () => {
         document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
 
         expect(start).toHaveBeenCalledWith("fleet");
+    });
+});
+
+// `GeoLeaf.mount()` unmounts the application and boots it again. The emission loop is an
+// interval of this plugin: before `destroyLifecycle`, nothing stopped it — the map could be
+// destroyed and `isEmitting()` still answered `true` — and the `{ once: true }` listener left
+// the second application without `auto` nor reception.
+describe("destroyLifecycle — the application is unmounted", () => {
+    /** A namespace in `auto` mode, emitting over a transport that records what it sends. */
+    function setEmittingHost(watchActive: boolean): void {
+        (globalThis as Record<string, unknown>).GeoLeaf = {
+            Config: {
+                get: (key: string) =>
+                    key === "modules.position-share"
+                        ? {
+                              enabled: true,
+                              mode: "auto",
+                              transport: "teardown-test",
+                              endpoint: "https://example.test/positions",
+                              intervalMs: 1000,
+                              minDistanceM: 0,
+                              receive: { enabled: true, layerId: "fleet" },
+                          }
+                        : undefined,
+            },
+            Geolocation: {
+                getState: () => ({
+                    active: watchActive,
+                    userPosition: { lat: 48.85, lng: 2.35, timestamp: Date.now() },
+                }),
+            },
+            RealtimeLayer: { start: vi.fn(), stop: vi.fn() },
+            Log: { warn, info: vi.fn() },
+        };
+    }
+
+    it("🛑 stops the emission loop: no position leaves an unmounted application", async () => {
+        const m = await freshModule();
+        const { registerTransport } = await import("../transports/registry.js");
+        const { isEmitting } = await import("../emitter.js");
+        const send = vi.fn(async () => undefined);
+        registerTransport("teardown-test", () => ({ send: send as never }));
+        setEmittingHost(true);
+        installGeolocControl();
+
+        m.initLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+        await vi.advanceTimersByTimeAsync(9000);
+        expect(isEmitting()).toBe(true);
+        expect(send).toHaveBeenCalled();
+
+        m.destroyLifecycle();
+        send.mockClear();
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(isEmitting()).toBe(false);
+        expect(send).not.toHaveBeenCalled();
+    });
+
+    it("🛑 cancels the pending grace period: emission does not start after the unmount", async () => {
+        const m = await freshModule();
+        const { registerTransport } = await import("../transports/registry.js");
+        const { isEmitting } = await import("../emitter.js");
+        const send = vi.fn(async () => undefined);
+        registerTransport("teardown-test", () => ({ send: send as never }));
+        setEmittingHost(true);
+        installGeolocControl();
+
+        m.initLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+        // Unmounted inside the 8 s the permission prompt is given.
+        await vi.advanceTimersByTimeAsync(2000);
+        m.destroyLifecycle();
+        await vi.advanceTimersByTimeAsync(10000);
+
+        expect(isEmitting()).toBe(false);
+        expect(send).not.toHaveBeenCalled();
+    });
+
+    it("stops the reception it started", async () => {
+        const m = await freshModule();
+        setEmittingHost(false);
+        const rt = (
+            globalThis as unknown as { GeoLeaf: { RealtimeLayer: Record<string, unknown> } }
+        ).GeoLeaf.RealtimeLayer;
+
+        m.initLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+        expect(rt["start"]).toHaveBeenCalledWith("fleet");
+
+        m.destroyLifecycle();
+        expect(rt["stop"]).toHaveBeenCalledWith("fleet");
+    });
+
+    it("🛑 the next application's app:ready starts auto and the reception again", async () => {
+        const m = await freshModule();
+        setEmittingHost(false);
+        const click = installGeolocControl();
+        const rt = (
+            globalThis as unknown as { GeoLeaf: { RealtimeLayer: Record<string, unknown> } }
+        ).GeoLeaf.RealtimeLayer;
+
+        m.initLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+        expect(click).toHaveBeenCalledTimes(1);
+
+        m.destroyLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+
+        // The watch is requested again — on the control of the application now alive.
+        expect(click).toHaveBeenCalledTimes(2);
+        expect(rt["start"]).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not start the boot work twice for the same application", async () => {
+        const m = await freshModule();
+        setEmittingHost(false);
+        const click = installGeolocControl();
+
+        m.initLifecycle();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
+
+        expect(click).toHaveBeenCalledTimes(1);
+    });
+
+    it("tolerates being called when nothing was started", async () => {
+        const m = await freshModule();
+        expect(() => m.destroyLifecycle()).not.toThrow();
     });
 });

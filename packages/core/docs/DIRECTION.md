@@ -66,8 +66,12 @@ write profiles. The public API is what the versioning policy protects.
 - **One GeoLeaf application per page.** Configuration, state and events are shared by the whole
   page. The application can be unmounted and mounted again (`GeoLeaf.mount()`, since 3.13.0), not
   duplicated: a `mount()` while an application is alive unmounts it first.
-- **A plugin that wires itself once, when its script loads, does not come back after a remount.**
-  `realtime-layer` and `geocoding` unmount with the application; the other plugins do not yet.
+- **Not every plugin is proven across a remount.** `connector`, `editor`, `geocoding`, `measure`,
+  `position-share`, `print` and `table` are taken down by `unmount()` and work again on the next
+  application, whether they were loaded before the boot or on demand — with `@geoleaf/core`
+  3.14.2 and the plugin versions its changelog names. `realtime-layer` stops with the application
+  only when it was loaded before the boot. The other plugins have not been measured through a
+  remount.
 
 ## Versions
 

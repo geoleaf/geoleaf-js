@@ -102,9 +102,6 @@ geoleaf.config.json              (Root — optional, selects the profile)
         "enabled": false,
         "text": "My Application",
         "position": "bottom-left"
-    },
-    "security": {
-        "httpsOnly": false
     }
 }
 ```
@@ -140,12 +137,6 @@ Branding overlay displayed on the map.
 | `enabled`  | boolean | Enable the overlay. Defaults to `false`.    |
 | `text`     | string  | Text to display.                            |
 | `position` | string  | Position on the map (e.g. `"bottom-left"`). |
-
-#### `security` (object, optional)
-
-| Field       | Type    | Description                                                        |
-| ----------- | ------- | ------------------------------------------------------------------ |
-| `httpsOnly` | boolean | Rejects `http:` URLs (except `data:` images). Defaults to `false`. |
 
 #### `data` (object, required)
 

@@ -129,63 +129,62 @@ function _install(m: unknown, config: ConnectorConfig): boolean {
     return true;
 }
 
-// ─── Basemap change listener ──────────────────────────────────────────────────
+// ─── Re-install on the events that hand a map over ──────────────────────────
+
+/** The configuration the hook is installed with — the one of the latest `configure()`. */
+let _bridgeConfig: ConnectorConfig | null = null;
 
 /**
- * Re-installs setTransformRequest whenever the active basemap changes.
- * Defensive measure: map.setStyle() replaces the tile pipeline but not the
- * transformRequest hook in MapLibre GL JS 5.x. This listener is a safety net
- * for edge cases where the hook might be cleared by a basemap provider switch.
+ * A map became ready: put the hook on it.
  *
- * Uses detail.map from the geoleaf:basemap:change event (populated by
- * registry._dispatchBasemapChange, line 281) as a fast path. Falls back to
- * globalThis.GeoLeaf.Core.getMap().getNativeMap() when detail.map is absent.
+ * It covers `configure()` called before the map exists, AND every map that comes after: an
+ * application unmounted and mounted again (`GeoLeaf.mount()`) has a NEW engine map, and the
+ * hook of the previous one went with it. The listener was one-shot, and was not even attached
+ * when `configure()` found a map: the connector stayed configured, `window.fetch` kept its
+ * token, and the tiles of the second map left without one until a basemap switch happened to
+ * put the hook back.
  */
-function _registerBasemapChangeListener(config: ConnectorConfig): void {
-    if (typeof document === "undefined") return;
-
-    document.addEventListener("geoleaf:basemap:change", (e: Event) => {
-        const detail = (e as CustomEvent).detail as Record<string, unknown> | undefined;
-        // Fast path: detail.map is the native map instance from the registry event
-        const mapFromDetail = detail?.["map"];
-        const m = _isMaplibreMap(mapFromDetail) ? mapFromDetail : _resolveNativeMap();
-        _install(m, config);
-    });
+function _onMapReady(): void {
+    if (_bridgeConfig) _install(_resolveNativeMap(), _bridgeConfig);
 }
 
-// ─── Public API ───────────────────────────────────────────────────────────────
+/**
+ * The active basemap changed: put the hook back.
+ *
+ * Defensive: `map.setStyle()` replaces the tile pipeline but not the hook; this is a safety net
+ * for a provider switch that would clear it. Uses `detail.map` (the native map, set by the
+ * core's basemap registry) as a fast path, and falls back to
+ * `GeoLeaf.Core.getMap().getNativeMap()`.
+ */
+function _onBasemapChange(e: Event): void {
+    if (!_bridgeConfig) return;
+    const detail = (e as CustomEvent).detail as Record<string, unknown> | undefined;
+    // Fast path: detail.map is the native map instance from the registry event
+    const mapFromDetail = detail?.["map"];
+    const m = _isMaplibreMap(mapFromDetail) ? mapFromDetail : _resolveNativeMap();
+    _install(m, _bridgeConfig);
+}
+
+// ─── Public API ────────────────────────────────────────────────────────────────
 
 /**
  * Installs the MapLibre transformRequest hook to inject Authorization headers
  * into MVT and PMTiles tile requests.
  *
- * Handles two timing scenarios:
- * - Scenario A: configure() called AFTER geoleaf:map:ready → immediate install.
- * - Scenario B: configure() called BEFORE geoleaf:map:ready → deferred install
- *   via a one-shot document event listener.
+ * Installed at once when a map exists, and on every map that becomes ready afterwards —
+ * `configure()` called before the boot, and an application mounted again on a new map, are the
+ * same case. A basemap switch re-installs it too.
  *
- * In both cases, a geoleaf:basemap:change listener is registered to re-install
- * the hook on basemap switches.
+ * The two listeners stay for the life of the page and read the configuration of the LATEST
+ * call when they fire: a second `configure()` replaces what they install. They are the same two
+ * functions at every call, so the document holds each once however many times this runs.
  *
  * @param config - Connector configuration (baseUrl used for URL matching)
  */
 export function installMapLibreBridge(config: ConnectorConfig): void {
-    // Scenario A: map already available (configure() called post-init)
-    const map = _resolveNativeMap();
-    if (_install(map, config)) {
-        _registerBasemapChangeListener(config);
-        return;
-    }
-
-    // Scenario B: map not ready yet (common case — configure() called during boot)
-    if (typeof document !== "undefined") {
-        document.addEventListener(
-            "geoleaf:map:ready",
-            () => {
-                _install(_resolveNativeMap(), config);
-                _registerBasemapChangeListener(config);
-            },
-            { once: true }
-        );
-    }
+    _bridgeConfig = config;
+    _install(_resolveNativeMap(), config);
+    if (typeof document === "undefined") return;
+    document.addEventListener("geoleaf:map:ready", _onMapReady);
+    document.addEventListener("geoleaf:basemap:change", _onBasemapChange);
 }

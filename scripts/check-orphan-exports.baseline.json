@@ -54,7 +54,6 @@
         "kernel/basemaps/wmts-resolver.ts::parseWmtsCapabilities",
         "kernel/config/geoleaf-config/config-types.ts::DataConfig",
         "kernel/config/geoleaf-config/config-types.ts::LoggingConfig",
-        "kernel/config/geoleaf-config/config-types.ts::SecurityConfig",
         "kernel/config/geoleaf-config/config-types.ts::UIConfig",
         "kernel/config/profile-loader-helpers.ts::validateFilesModules",
         "kernel/geojson/core-types.ts::GeoJSONStyleLabelConfig",

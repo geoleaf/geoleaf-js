@@ -4,11 +4,20 @@
  * assembly (scheme), geometry → sub-layer mapping, registry registration, and the paint
  * update path — the logic that moved out of the VT capability.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 import {
     buildVectorTileLayer,
     updateVectorTileLayerStyle,
 } from "../../src/adapters/maplibre/maplibre-vector-tiles.js";
+import { Log } from "../../src/utils/log/index.js";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
+const layerSchema = JSON.parse(
+    readFileSync(resolve(ROOT, "profiles/schemas/layer-config.schema.json"), "utf8")
+);
 
 function makeMap() {
     const layers = new Set();
@@ -378,4 +387,79 @@ describe("adapters/maplibre-vector-tiles — stale sub-layer cleanup (B.44)", ()
             for (const id of created) expect(removed).toContain(id);
         }
     );
+});
+
+// A layer declares its geometry in the vocabulary of the layer schema, and the builder
+// used to keep its own three lists of names: `polyline` and `multiline`, both admitted by
+// the schema, were in none of them. Such a layer built no sub-layer at all — nothing drawn,
+// nothing thrown, nothing logged. The corpus is therefore READ from the schema, not written
+// here: a value admitted tomorrow that the builder cannot place fails without a test to add.
+describe("adapters/maplibre-vector-tiles — every geometry the layer schema admits is drawn", () => {
+    const ENUMS = {
+        geometry: layerSchema.properties.geometry.enum,
+        geometryType: layerSchema.properties.geometryType.enum,
+    };
+    const ADMITTED = [...new Set([...ENUMS.geometry, ...ENUMS.geometryType])];
+
+    const build = (geometryType) =>
+        buildVectorTileLayer(makeMap(), { register: vi.fn() }, vi.fn(), "rp", {
+            tileUrl: "https://x/{z}/{x}/{y}.pbf",
+            sourceLayer: "s",
+            geometryType,
+            zIndex: 0,
+            source: {},
+            // The extrusion validator throws without these two; the other kinds ignore them.
+            style: { defaultStyle: { fillExtrusionHeight: 12, fillExtrusionColor: "#abc" } },
+        });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    // `it.each([])` registers no test and reports green: the walk must prove it has a corpus.
+    it("reads both enumerations of the schema, and neither is empty", () => {
+        expect(ENUMS.geometry.length).toBeGreaterThan(0);
+        expect(ENUMS.geometryType.length).toBeGreaterThan(0);
+        expect(ADMITTED).toEqual(expect.arrayContaining(["point", "polygon", "polyline"]));
+    });
+
+    it.each(ADMITTED)("`%s` builds at least one sub-layer", (geometryType) => {
+        expect(build(geometryType).length).toBeGreaterThan(0);
+    });
+
+    it.each([
+        ["line", ["gl-rp-line"]],
+        ["polyline", ["gl-rp-line"]],
+        ["multiline", ["gl-rp-line"]],
+        ["linestring", ["gl-rp-line"]],
+        ["multilinestring", ["gl-rp-line"]],
+        ["point", ["gl-rp-circle"]],
+        ["multipoint", ["gl-rp-circle"]],
+        ["polygon", ["gl-rp-fill", "gl-rp-line"]],
+        ["multipolygon", ["gl-rp-fill", "gl-rp-line"]],
+        ["fill-extrusion", ["gl-rp-fill-extrusion"]],
+        ["mixed", ["gl-rp-fill", "gl-rp-line", "gl-rp-circle"]],
+    ])("`%s` builds exactly the sub-layers of its family", (geometryType, expected) => {
+        expect(build(geometryType)).toEqual(expected);
+    });
+
+    it("reads a GeoJSON name as the family it belongs to, whatever its case", () => {
+        expect(build("LineString")).toEqual(["gl-rp-line"]);
+        expect(build("MultiPolygon")).toEqual(["gl-rp-fill", "gl-rp-line"]);
+        expect(build("POINT")).toEqual(["gl-rp-circle"]);
+    });
+
+    it("says so when a geometry names no family, instead of drawing nothing in silence", () => {
+        const warn = vi.spyOn(Log, "warn").mockImplementation(() => {});
+        expect(build("hexagon")).toEqual([]);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('"rp"'));
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining('"hexagon"'));
+    });
+
+    it("stays quiet for a geometry it knows how to draw", () => {
+        const warn = vi.spyOn(Log, "warn").mockImplementation(() => {});
+        for (const geometryType of ADMITTED) build(geometryType);
+        expect(warn).not.toHaveBeenCalled();
+    });
 });

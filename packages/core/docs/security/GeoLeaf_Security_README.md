@@ -96,7 +96,7 @@ validateUrl(url: string, baseUrl?: string, options?: ValidateUrlOptions): string
 
 - `http:`
 - `https:`
-- `data:` — only for allowed image types (`image/png`, `image/jpeg`, `image/gif`, `image/svg+xml`, `image/webp`)
+- `data:` — only for allowed image types (`image/png`, `image/jpeg`, `image/jpg`, `image/gif`, `image/svg+xml`, `image/webp`)
 
 **Examples**:
 

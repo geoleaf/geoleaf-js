@@ -127,7 +127,7 @@ export function validateUrl(url: string, baseUrl?: string, options?: ValidateUrl
         if (!allowedProtocols.includes(parsed.protocol)) {
             throw new Error(
                 options?.httpsOnly
-                    ? "Only https: and data: (images) URLs are allowed when security.httpsOnly is enabled."
+                    ? "Only https: and data: (images) URLs are allowed when the httpsOnly option is set."
                     : `Protocol "${parsed.protocol}" not allowed. Allowed protocols: ${allowedProtocols.join(", ")}`
             );
         }

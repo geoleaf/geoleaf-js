@@ -4,8 +4,8 @@ title: print — la carte à l'échelle, composée puis exportée
 plugin_id: print
 package: "@geoleaf-plugins/print"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 817879f01
-date: 1er octobre 2026
+verifie_contre: 34ce127f8
+date: 4 octobre 2026
 ---
 
 # print — la carte à l'échelle, composée puis exportée
@@ -92,12 +92,12 @@ dans `requires` / `optional` désigne un plugin **réellement enregistré**, lis
 Cinq étapes, dont deux fusionnées sous un même commentaire — un écart au squelette qui est ici
 **porteur de sens**.
 
-| Étape  | Ce qu'elle fait                                                                                             |
-| ------ | ----------------------------------------------------------------------------------------------------------- |
-| 1      | Enregistre les six dictionnaires sous l'espace `print`, **en premier**                                      |
-| 2      | Monte `GeoLeaf.Print`, **seulement si le core est présent**                                                 |
-| 3      | S'enregistre au registre de plugins                                                                         |
-| 4 et 5 | Déclare les deux créneaux — **sur le chemin EAGER seulement** — **et** câble l'action, sur les DEUX chemins |
+| Étape  | Ce qu'elle fait                                                                                                                                                                   |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1      | Enregistre les six dictionnaires sous l'espace `print`, **en premier**                                                                                                            |
+| 2      | Monte `GeoLeaf.Print`, **seulement si le core est présent**                                                                                                                       |
+| 3      | S'enregistre au registre de plugins                                                                                                                                               |
+| 4 et 5 | Inscrit son module au registre du core — le **démontage** sur les deux chemins, les deux créneaux **sur le chemin EAGER seulement** — **et** câble l'action, sur les DEUX chemins |
 
 ⚠️ **Les étapes 4 et 5 sont dans un `if (getPrintConfig().enabled !== false)`.** Conséquence
 observable, et elle diffère de celle de `table` : éteindre `print` par la configuration ne cache pas
@@ -105,6 +105,25 @@ seulement le bouton — **le créneau n'est jamais déclaré et l'écouteur jama
 alors chargé, monté sur le namespace, et **muet**. L'API programmatique, elle, reste appelable :
 `GeoLeaf.Print.openPrintFlow()` fonctionne sur un plugin « éteint ». C'est délibéré — le gate
 commande la **surface d'interface**, pas la capacité.
+
+### Le démontage — un flux ouvert se ferme avec l'application (1.3.4)
+
+Un flux d'impression est un calque posé dans le conteneur de carte, avec des écouteurs sur
+`document`, puis une fenêtre dans `<body>`. `GeoLeaf.mount()` démonte l'application en détruisant
+le registre de modules du core, et rien de cela n'atteignait un flux laissé ouvert : mesuré dans un
+navigateur, le sélecteur d'emprise restait **affiché** au-dessus de l'emplacement de la carte,
+captait encore les clics, et était toujours là après le montage suivant.
+
+Le module inscrit au registre porte `closePrintFlows()`, sur les deux chemins de chargement : tout
+flux encore ouvert est fermé — fenêtre d'aperçu comprise, par `closeOpenModal()` — et sa promesse
+rend `null`, comme à une annulation. Le plugin ne tient rien d'autre d'une application : la carte
+est relue à chaque ouverture, et le flux s'ouvre normalement sur la carte suivante.
+
+⚠️ **Un flux terminé retire désormais son calque.** `deactivate()` ne faisait que le masquer :
+chaque flux en laissait un dans le conteneur de carte, pour la vie de la page. Le sélecteur gagne
+`destroy()`, appelé quand le flux se résout — annulation, export, ou démontage ; « Redéfinir
+l'emprise » le garde, puisqu'il le réactive. Gardé par `src/__tests__/flow.test.ts` et
+`e2e/75-remount-plugins.spec.js`.
 
 `measure` applique exactement le même patron ; `table`, non.
 

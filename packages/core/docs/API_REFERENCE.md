@@ -175,6 +175,13 @@ class MyModule implements ICoreModule {}
 `ICoreModule` remains the name of `register()`'s parameter. **Nothing changed at runtime** — the
 type moved to match the registry, not the other way round.
 
+**Registering after `init()`** — what a bundle loaded on demand does. A lifecycle module is not
+initialised for the application already running, which it joined by itself; since 3.14.2 its
+`destroy()` is called when the application is unmounted, and it is initialised like the others
+from the next boot on. A UI slot registered then is not drawn before the next mount — the
+toolbar is built once per boot — and a warning says so: a button that must exist before its
+bundle loads is declared with `GeoLeaf.plugins.registerLazyForAction()`, before the boot.
+
 ---
 
 ## Profile schemas and types
@@ -268,9 +275,20 @@ ordering from the host. `boot()` while an application is mounted is refused, as 
 after `unmount()`, it boots again.
 
 ⚠️ **`Core.destroy()` is not an unmount.** It removes the map alone: the modules, their controls
-and their state stay, and `Core.init()` then gives a bare map. A plugin that wires itself once,
-when its script loads, does not come back after a remount — `realtime-layer` and `geocoding`
-unmount with the application since their 1.0.6 and 1.1.2.
+and their state stay, and `Core.init()` then gives a bare map.
+
+**Plugins across a remount** (core ≥ 3.14.2). `unmount()` tears down every plugin that registered
+a lifecycle module with `GeoLeaf.registry`, whether its bundle was loaded before the boot or on
+demand, and the next mount draws every toolbar button again — those of the plugins loaded since
+the first boot included. `connector` 1.3.5, `editor` 1.5.7, `geocoding` 1.1.3, `measure` 1.0.9,
+`position-share` 1.0.2, `print` 1.3.4 and `table` 1.1.3 leave the page with the application and
+work again on the next map; `realtime-layer` (1.0.6) stops with it when it was loaded before the
+boot. The other plugins have not been measured through a remount.
+
+What `unmount()` leaves alone: `GeoLeaf.Connector.configure()`. The session is the host's, set
+once for the page — `window.fetch` keeps its token, and the next application is authenticated
+without configuring again. A position shared by hand (`GeoLeaf.PositionShare.start()`) is
+stopped, and is not resumed by the next mount.
 
 ```ts
 import * as maplibregl from "maplibre-gl";

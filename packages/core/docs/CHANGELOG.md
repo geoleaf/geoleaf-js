@@ -11,6 +11,65 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.14.2] - 2026-10-04
+
+### Removed
+
+- **The `security.httpsOnly` configuration key, which nothing read** (`@geoleaf/core` 3.14.2).
+  The key was typed (`SecurityConfig`, `GeoLeafConfig.security`) and shown by two configuration
+  guides as the way to refuse `http:` resources. No code ever read it, and the JSON schemas had
+  already dropped it: a configuration that set it changed nothing while reading like a
+  hardening. The type and the two passages are gone. `validateUrl(url, base, { httpsOnly: true })`
+  is unchanged — it is an option of the call, and hardens the call that passes it; its error
+  message no longer names a configuration key. To refuse `http:` for a whole deployment, use
+  the deployment layer: CSP `upgrade-insecure-requests`, HSTS.
+
+### Fixed
+
+- **A vector-tile layer declared `polyline` or `multiline` draws its lines** (`@geoleaf/core`
+  3.14.2). Both names are admitted by the layer schema, and `polyline` is the one the
+  configuration guide gives a line layer. The vector-tile path chose its rendering from lists
+  of its own, which held neither: such a layer was created without a single rendering layer —
+  nothing on the map, no error, no warning. The vector-tile path now reads the same geometry
+  vocabulary as a GeoJSON layer, so every value the schema admits is drawn. A geometry that
+  names no family at all — a typo handed to `GeoLeaf.Layers.create()`, which does not validate
+  against the schema — still draws nothing, and a warning now says so.
+
+- **An application mounted again gives its plugins back, and takes them down when it is
+  unmounted** (`@geoleaf/core` 3.14.2, `@geoleaf-plugins/connector` 1.3.5, `editor` 1.5.7,
+  `geocoding` 1.1.3, `measure` 1.0.9, `position-share` 1.0.2, `print` 1.3.4, `table` 1.1.3).
+  `GeoLeaf.mount()` unmounts the application and boots it again; a plugin was reached by
+  neither, unless it had been loaded before the first boot — and then for two plugins only.
+    - **The toolbar lost the button of every plugin loaded on demand.** Both toolbars are rebuilt
+      at each boot, and offered the slots declared with `registerLazyForAction()` only for the
+      plugins not loaded yet: once the user had opened the table, the editor, a measure or the
+      print flow, the next mount drew the toolbar without them. The slots are now drawn whether
+      the bundle is loaded or not; a plugin loaded before the boot still declares its own.
+    - **A plugin loaded after the boot was never torn down.** The module registry only tore
+      down the modules it had initialised itself. A lifecycle module registered after `init()`
+      is now torn down with the others, and initialised like them from the next boot on.
+    - **What stayed in the page after `unmount()`**: the table panel, open, with `gl-table-open`
+      on `<body>`; the menus of the editor and of the measure tools, in the map container; a
+      print area being selected, still catching clicks; the search bar of a geocoding plugin
+      loaded on demand. Each is now removed with the application.
+    - **What did not work on the next map**: the editor and the measure tools kept the map of
+      the previous application, and a tool armed drew nothing; the credential button of the
+      connector was not put back; a configured connector kept `window.fetch` but the tiles of
+      the new map left without their token until a basemap switch. All are wired again at each
+      boot. On the lazy path, the editor also wired itself a second time at the next
+      `geoleaf:map:ready` — it is now wired once per map.
+    - **A position being shared kept being sent.** The emission loop of `position-share` is a
+      timer of the plugin: `isEmitting()` still answered `true` once the application was
+      unmounted, and positions left again as soon as a location watch was active. `unmount()`
+      stops it; emission started by hand is not resumed on the next application.
+
+    One thing is left alone on purpose: `unmount()` does not undo `GeoLeaf.Connector.configure()`.
+    The session is the host's, set once for the page — `window.fetch` keeps its token, and the
+    next application is authenticated without configuring again.
+
+    On `@geoleaf/core` 3.13.0 to 3.14.1, a plugin of these versions loaded after the boot is not
+    torn down, as before, and the registry logs a warning when it registers.
+
 ## [3.14.1] - 2026-10-03
 
 ### Fixed

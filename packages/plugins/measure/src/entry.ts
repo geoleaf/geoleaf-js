@@ -4,8 +4,9 @@
  * https://geoleaf.dev
  */
 import "./css/geoleaf-measure.css";
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 import { buildPublicApi, openMeasureMenu } from "./public-api.js";
+import { destroyMeasure } from "./measure-api.js";
 import { getMeasureConfig } from "./config.js";
 import langFr from "./lang/lang-fr.js";
 import langEn from "./lang/lang-en.js";
@@ -56,34 +57,35 @@ const _MEASURE_ICON =
     '<line x1="14" y1="10" x2="17" y2="7"/>' +
     "</svg>";
 
-// 4 & 5 — Register toolbar slot + wire event listener (skipped if enabled === false).
-// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
+// 4 & 5 — Register the module + wire event listener (skipped if enabled === false).
+// The SLOT is declared only on the EAGER path — before `boot()`, where this call is the ONLY
 // declaration (no `init.js` at an integrator's). After `init()` the toolbar is already built:
-// the registration would be stored, never drawn, and would log a warning with no reachable
-// audience. `!== true` so a host without `isInitialized` still gets its slot.
+// a slot registered then would be stored, not drawn before the next mount, and would log a
+// warning with no reachable audience.
 if (getMeasureConfig().enabled !== false) {
-    // ── The SLOT DECLARATIONS only — guarded since 21/08/2026 (eager path is their only
-    // reader: after init() the toolbar is built and a stored slot is never drawn). `!== true`
-    // so a host without `isInitialized` still gets its slots.
-    // ⚠️ Scope fixed on 25/08/2026: this guard once wrapped the WHOLE block below — listeners
-    // and map-ready wiring included — so on the LAZY path (isInitialized === true) the plugin
-    // mounted its API and never wired its UI: no root, no handler, no error. The guard must
-    // cover the registers alone; everything after it runs on BOTH paths.
-    if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-        getGeoLeaf()?.registry?.register?.({
-            id: "measure",
-            ui: {
-                mobileIcon: {
-                    icon: _MEASURE_ICON,
-                    labelKey: "measure.toolbar.button",
-                    profileKey: "modules.measure.showButton",
-                    legacyProfileKey: "ui.showMeasure",
-                    requiresPlugin: "measure",
-                    action: "measure",
-                },
+    // ⚠️ Scope fixed on 25/08/2026: the eager-path guard once wrapped the WHOLE block below —
+    // listeners included — so on the LAZY path the plugin mounted its API and never wired its
+    // UI: no root, no handler, no error. Only the slot is path-dependent; everything else,
+    // the teardown included, runs on BOTH paths.
+    //
+    // ── The module carries the TEARDOWN on BOTH paths (1.0.9): `GeoLeaf.mount()` unmounts the
+    // application by destroying the core's module registry, and this is how that reaches the
+    // menu, the tool armed and the map they hold — see `destroyMeasure()`. The slot is joined
+    // on the eager path only (`registerPluginModule`, `@geoleaf/host-runtime`).
+    registerPluginModule({
+        id: "measure",
+        destroy: () => destroyMeasure(),
+        ui: {
+            mobileIcon: {
+                icon: _MEASURE_ICON,
+                labelKey: "measure.toolbar.button",
+                profileKey: "modules.measure.showButton",
+                legacyProfileKey: "ui.showMeasure",
+                requiresPlugin: "measure",
+                action: "measure",
             },
-        });
-    }
+        },
+    });
 
     if (typeof document !== "undefined") {
         document.addEventListener("geoleaf:toolbar:action", (e: Event) => {

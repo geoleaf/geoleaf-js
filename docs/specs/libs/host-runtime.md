@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: bcb57395c
-date: 27 septembre 2026
+verifie_contre: cd3343770
+date: 4 octobre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -78,6 +78,7 @@ Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 | **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                      |
 | **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                            |
 | **Seam carte**            | `getNativeMap()` · `warnNoCore(...)` · `declareOwnedStyleIds(...)`                                                                                                                                     |
+| **Seam cycle de vie**     | `registerPluginModule(...)` · type `PluginModule`                                                                                                                                                      |
 | **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                |
 | **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                    |
 | **Interface partagée**    | `adoptStylesheet(...)` · `wireDrag(...)` · `wireTouchDrag(...)` · `wireTooltips(...)` · `showTooltip(...)` · `hideTooltip(...)` · `positionMenuNear(...)` + type `MenuPositionOptions`                 |
@@ -91,6 +92,38 @@ sous-chemin »**, ce que cette ligne a affirmé : la carte `exports` du `package
 l'honore, et `rollup.config.mjs` n'émet qu'un seul fichier de sortie. Ce ne sont donc pas des exports
 en demi-état mais des helpers **internes au paquet** — leur seul consommateur est `src/ui/touch-drag.ts`,
 qui partage la géométrie avec le chemin souris pour qu'ils ne divergent pas.
+
+### `registerPluginModule` — le démontage d'un greffon, sur ses deux chemins de chargement (04/10/2026)
+
+`GeoLeaf.mount()` démonte l'application en détruisant le registre de modules du core
+(`GeoLeaf.registry`), et la remet par un nouveau boot. Un greffon qui ne se câble qu'au chargement
+de son script n'est atteint par aucune des deux moitiés : ce qu'il a bâti reste dans la page après
+`unmount()`. Le module inscrit par cette fonction est ce que le démontage appelle.
+
+Un greffon ne sait pas qui l'a chargé, et les deux chemins ne veulent pas la même inscription :
+
+| Chemin                                                             | Ce qui est inscrit                                                                                                                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Avant le boot** — balise `<script>`, préchargement               | `{ id, dependencies: [], init, destroy, ui }` — le créneau y est : c'est sa SEULE déclaration                                      |
+| **Après le boot** — `plugins.load()`, clic sur un bouton paresseux | `{ id, dependencies: [], init, destroy }` — sans créneau : la barre est bâtie, et le bouton appartient à `registerLazyForAction()` |
+| Après le boot d'un core **sans `GeoLeaf.mount()`** (< 3.13.0)      | Rien — rien n'y démonte une application                                                                                            |
+
+`init` est un no-op partout : un greffon démarre sur les évènements du boot (`geoleaf:map:ready`,
+`geoleaf:app:ready`), qu'il écoute pour la vie de la page. Le registre porte le démontage, et lui
+seul. `ui` est typé `object` : ce paquet n'importe rien du core, pas même un type.
+
+⚠️ **Les entrées des greffons recopiaient la même garde** (`registry.isInitialized?.() !== true`), et la
+recopier portait le défaut : elle enveloppait l'inscription ENTIÈRE, donc un greffon chargé à la
+demande n'inscrivait ni créneau ni démontage. Écrite une fois ici, la règle sépare ce qui dépend du
+chemin — le créneau — de ce qui n'en dépend pas.
+
+⚠️ **Ce que le core doit être pour que le chemin tardif fonctionne.** Un module inscrit après
+`init()` est démonté par `@geoleaf/core` ≥ 3.14.2. De 3.13.0 à 3.14.1 le registre le stocke,
+n'appelle jamais son `destroy()` et journalise un avertissement : c'est l'état d'avant, avec une
+ligne de console en plus. Les greffons gardent leur pair `^3.0.0`.
+
+`mount` se lit par la traîne de `GeoLeafHost`, délibérément : le nommer aurait rouvert l'épingle de
+`verify-seam-drift.cjs` sur `host.ts` pour un membre dont seule la PRÉSENCE est testée.
 
 ### `declareOwnedStyleIds` — l'adaptateur se TROUVE, il ne se suppose pas (24/09/2026)
 

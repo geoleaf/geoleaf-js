@@ -15,6 +15,7 @@
  */
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
+import type { IModuleUISlot } from "../../contracts/core-module.contract.ts";
 
 /**
  * SVG tags allowed in module-provided icon markup.
@@ -102,6 +103,53 @@ interface UISlotVisibilityOptions {
      * filling one.
      */
     moduleGateId?: string;
+}
+
+/** A lazy-plugin UI slot — an `IModuleUISlot` paired with the action and the plugin it belongs to. */
+interface LazyUISlot extends IModuleUISlot {
+    /** The toolbar action, i.e. the 1st argument of `registerLazyForAction`. */
+    id: string;
+    /**
+     * Owning plugin, i.e. the 2nd argument of `registerLazyForAction`. Gates on
+     * `modules.<pluginName>.enabled` when `gateOnModuleEnabled` is set.
+     */
+    pluginName: string;
+    /** Opt-in for the `modules.<pluginName>.enabled` guard — see `PluginLazyUI`. */
+    gateOnModuleEnabled?: boolean;
+}
+
+/** Subset of `GeoLeaf.plugins` read when listing the lazy slots. */
+interface LazySlotPluginsLike {
+    getLazyUISlots?: () => LazyUISlot[] | undefined;
+}
+
+/**
+ * The lazy-plugin slots a toolbar draws, in the order they were declared.
+ *
+ * Every slot declared with `GeoLeaf.plugins.registerLazyForAction()`, its bundle loaded or
+ * not — a toolbar is rebuilt at every boot, and a plugin loaded since the first one must find
+ * its button again after `GeoLeaf.mount()` — **except** a slot the module registry declares
+ * under the same id.
+ *
+ * 🛑 **That exception is what keeps the two paths from answering twice.** A plugin loaded
+ * BEFORE the boot registers its own slot with the module registry, and the registry loop of
+ * each toolbar judges it with the plugin's guards (`defaultVisible`, `requiresPlugin`). Offered
+ * here as well, the same button would be judged a second time with the lazy path's guards,
+ * which default to visible: a button the first verdict hid would come back. A plugin loaded
+ * AFTER the boot declares no slot there, and is drawn from this list — at the first boot and
+ * at every one after it, from the same declaration.
+ *
+ * @returns The slots to draw; empty without a plugin registry.
+ */
+export function lazySlotsToDraw(): LazyUISlot[] {
+    const gl = getGeoLeaf();
+    const slots = (gl?.plugins as LazySlotPluginsLike | undefined)?.getLazyUISlots?.() ?? [];
+    if (slots.length === 0) return slots;
+    const declared = new Set<string>();
+    for (const mod of gl?.registry?.getAll() ?? []) {
+        if (mod.ui !== undefined) declared.add(mod.id);
+    }
+    return slots.filter((slot) => !declared.has(slot.id));
 }
 
 /** Subset of `GeoLeaf.Config` read when resolving `profileKey` visibility. */

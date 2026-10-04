@@ -18,6 +18,12 @@ interface RealtimeLayerSurface {
 }
 
 /**
+ * The realtime layer this plugin started and has not stopped — what the teardown stops. Kept
+ * here rather than read back from the profile: the configuration is reset with the application.
+ */
+let _shownLayerId: string | null = null;
+
+/**
  * Shows or hides the other users' positions.
  *
  * The `realtime-layer` plugin is declared `optional`, so its absence is a NORMAL state, not a
@@ -54,7 +60,22 @@ export function showOthers(visible: boolean): boolean {
 
     if (visible) rt.start(layerId);
     else rt.stop(layerId);
+    _shownLayerId = visible ? layerId : null;
     return true;
+}
+
+/**
+ * Stops the reception this plugin started, if any — called when the application is torn down.
+ *
+ * `realtime-layer` stops its own sources when it unmounts with the application, but only when
+ * it was loaded before the boot. The layer started from here is stopped from here.
+ */
+export function stopReceive(): void {
+    const layerId = _shownLayerId;
+    _shownLayerId = null;
+    if (!layerId) return;
+    const rt = getGeoLeaf()?.RealtimeLayer as RealtimeLayerSurface | undefined;
+    rt?.stop?.(layerId);
 }
 
 /**

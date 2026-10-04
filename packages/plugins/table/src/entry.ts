@@ -24,7 +24,7 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Same for namespace access: `getGeoLeaf()` replaces the
 // `interface GeoLeafHost` + `globalThis as unknown as …` pair the 13 plugins
 // each re-declared their own way.
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -66,36 +66,39 @@ const _ICON =
     '<path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>' +
     "</svg>";
 
-// 5 — Register the toolbar slot (mobile icon + desktop tab button).
-// The slot is declared only on the EAGER path — before `boot()`, where this call is the ONLY
-// declaration (an integrator has no `init.js`). After `init()` the toolbar is already built:
-// the registration would be stored, never drawn, and would log a warning whose intended reader
-// has already done what it recommends elsewhere. `!== true` so a host without `isInitialized`
-// still gets its slot.
-if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "table",
-        ui: {
-            mobileIcon: {
-                icon: _ICON,
-                labelKey: "table.toolbar.button",
-                profileKey: "modules.table.showButton",
-                requiresPlugin: "table",
-                action: "table",
-            },
-            desktopTabButton: {
-                icon: _ICON,
-                labelKey: "table.toolbar.button",
-                profileKey: "modules.table.showButton",
-                requiresPlugin: "table",
-                action: "table",
-                // Render as a vertical-text tab "Tableau" (like Filtrer/Couches/Légende),
-                // since the table replaces a former built-in core tab — not a bottom icon.
-                variant: "tab",
-            },
+// 5 — Register the module: the teardown, and the toolbar slot (mobile icon + desktop tab button).
+//
+// The TEARDOWN is registered on both loading paths: `GeoLeaf.mount()` unmounts the application
+// by destroying the core's module registry, and this module is how that reaches the panel — a
+// child of `<body>`, which nothing else removes.
+//
+// The SLOT is declared only on the EAGER path — before `boot()`, where this call is the ONLY
+// declaration (an integrator has no `init.js`). After `init()` the toolbar is already built, and
+// the button belongs to the lazy declaration that drew it. `registerPluginModule` tells the two
+// paths apart (`@geoleaf/host-runtime`, `lifecycle-seam.ts`).
+registerPluginModule({
+    id: "table",
+    destroy: () => TableLifecycle.destroy(),
+    ui: {
+        mobileIcon: {
+            icon: _ICON,
+            labelKey: "table.toolbar.button",
+            profileKey: "modules.table.showButton",
+            requiresPlugin: "table",
+            action: "table",
         },
-    });
-}
+        desktopTabButton: {
+            icon: _ICON,
+            labelKey: "table.toolbar.button",
+            profileKey: "modules.table.showButton",
+            requiresPlugin: "table",
+            action: "table",
+            // Render as a vertical-text tab "Tableau" (like Filtrer/Couches/Légende),
+            // since the table replaces a former built-in core tab — not a bottom icon.
+            variant: "tab",
+        },
+    },
+});
 
 // 6 — Wire the toolbar action: lazily build then toggle the table on "table".
 //     ensureInitialized() builds the panel on the first activation (lazy); the

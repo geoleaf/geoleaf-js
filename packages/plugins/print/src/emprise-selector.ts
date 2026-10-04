@@ -31,6 +31,8 @@ export interface EmpriseResult {
 interface EmpriseSelector {
     activate(): void;
     deactivate(): void;
+    /** Deactivates the selector and removes its overlay from the map container, for good. */
+    destroy(): void;
 }
 
 type Phase = "idle" | "drawing" | "drawn";
@@ -420,7 +422,12 @@ export function createEmpriseSelector(
         _enableDrag();
     }
 
-    return { activate, deactivate };
+    function destroy() {
+        deactivate();
+        overlay.remove();
+    }
+
+    return { activate, deactivate, destroy };
 }
 
 // --- DOM factory helper ---

@@ -37,7 +37,12 @@ export interface VectorTileLayerSpec {
     tileUrl: string;
     /** MVT source-layer name to render. */
     sourceLayer: string;
-    /** Expected geometry: `"point"` | `"polygon"` | `"line"` | … | `"fill-extrusion"` | `"mixed"`. */
+    /**
+     * Declared geometry, case-insensitive: any kind the layer schema admits (`"point"`,
+     * `"polyline"`, `"multipolygon"`, `"fill-extrusion"`…), the GeoJSON name of a point, line
+     * or polygon type, or `"mixed"` for a source-layer holding several. A value that names no
+     * family draws nothing, and a warning says so.
+     */
     geometryType: string;
     /** Paint z-order hint (default 0). */
     zIndex?: number;

@@ -4,8 +4,8 @@ title: position-share — la position du terrain qui remonte, et celle des autre
 plugin_id: position-share
 package: "@geoleaf-plugins/position-share"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8bed714f2
-date: 31 août 2026
+verifie_contre: e027eef88
+date: 4 octobre 2026
 ---
 
 # position-share — la position du terrain qui remonte, et celle des autres qui s'affiche
@@ -91,15 +91,15 @@ de l'usage, et rend une erreur qui **nomme le plugin manquant** sans interrompre
 
 ## Les étapes d'`entry.ts`
 
-| Étape                     | Ce qu'elle fait ici                                                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Dictionnaires i18n        | `I18n.registerDict("position-share", …)` — **en premier**, sinon les libellés du boot ne résolvent pas                                |
-| Montage du namespace      | `GeoLeaf.PositionShare = buildPublicApi()`                                                                                            |
-| Auto-enregistrement       | Le manifeste ci-dessus, `healthCheck` sur la présence du namespace                                                                    |
-| Ré-exports de types       | `IPositionTransport`, `PositionPayload`, et `registerTransport` en valeur                                                             |
-| Créneau de barre d'outils | `profileKey: "modules.position-share.showButton"` — jamais `ui.showXxx`. **Déclaré seulement si `registry.isInitialized() !== true`** |
-| Écouteur d'action         | `geoleaf:toolbar:action` → `toggle()`                                                                                                 |
-| Câblage de boot           | `initLifecycle()` — diffère `auto` et la réception à `geoleaf:app:ready`, **avec repli tardif**                                       |
+| Étape                      | Ce qu'elle fait ici                                                                                                                                                                                       |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dictionnaires i18n         | `I18n.registerDict("position-share", …)` — **en premier**, sinon les libellés du boot ne résolvent pas                                                                                                    |
+| Montage du namespace       | `GeoLeaf.PositionShare = buildPublicApi()`                                                                                                                                                                |
+| Auto-enregistrement        | Le manifeste ci-dessus, `healthCheck` sur la présence du namespace                                                                                                                                        |
+| Ré-exports de types        | `IPositionTransport`, `PositionPayload`, et `registerTransport` en valeur                                                                                                                                 |
+| Module au registre du core | Le **démontage** sur les deux chemins de chargement ; le créneau de barre — `profileKey: "modules.position-share.showButton"`, jamais `ui.showXxx` — **seulement si `registry.isInitialized() !== true`** |
+| Écouteur d'action          | `geoleaf:toolbar:action` → `toggle()`                                                                                                                                                                     |
+| Câblage de boot            | `initLifecycle()` — diffère `auto` et la réception à `geoleaf:app:ready`, **avec repli tardif**                                                                                                           |
 
 ⚠️ **Le ré-export n'est pas cosmétique.** Un point d'extension que le consommateur ne peut pas
 typer est un point d'extension qu'il n'utilisera pas : l'omission rend un `TS2305` chez lui, et
@@ -244,14 +244,15 @@ Corollaire : la politique de file est **la sienne**, et son défaut `queueOnDisc
 plugin. C'est le même raisonnement que le « aucune file côté plugin » ci-dessus, appliqué à la
 couche que ce plugin ne possède pas.
 
-**3 bis — Le créneau de barre d'outils ne se déclare que sur le chemin EAGER.** L'appel
-`registry.register({ id, ui })` est honoré s'il court **avant** `GeoLeaf.boot()` — le cas de
+**3 bis — Le créneau de barre d'outils ne se déclare que sur le chemin EAGER.** Un créneau
+inscrit au registre du core est honoré s'il l'est **avant** `GeoLeaf.boot()` — le cas de
 l'intégrateur qui charge le bundle par une balise `<script>`, comme le README de ce paquet le
 prescrit. Là, il est la **seule** déclaration du créneau : il n'y a pas d'`init.js` chez lui.
 Après `init()` — le chemin paresseux de l'app, qui déclare le créneau elle-même avant le boot —
-la barre d'outils est déjà construite : l'enregistrement serait stocké, jamais dessiné, et
-journaliserait un avertissement dont le destinataire a déjà fait ailleurs ce qu'il recommande.
-D'où la condition `registry.isInitialized() !== true`.
+la barre d'outils est déjà construite : le créneau serait stocké, non dessiné avant le montage
+suivant, et journaliserait un avertissement dont le destinataire a déjà fait ailleurs ce qu'il
+recommande. D'où la condition `registry.isInitialized() !== true`, que porte
+`registerPluginModule` (`@geoleaf/host-runtime`) : le module y est inscrit **sans** créneau.
 ⚠️ **`!== true` et non `=== false`** : un hôte sans `isInitialized` rend `undefined`, et le
 créneau EST déclaré. Échouer dans ce sens est le bon — un avertissement de trop coûte une ligne
 de console, une déclaration manquante coûte le bouton.
@@ -268,6 +269,31 @@ troisième occurrence de la classe dans ce dépôt, après `realtime-layer` et `
 `getNativeMap()` et exécute le même travail immédiatement si la carte existe déjà — une garde
 interne empêchant que l'écouteur et le repli ne le fassent tous les deux. Le mécanisme est nommé
 dans `SURVIVANTS_TARDIFS`, comme l'exige cette garde.
+
+**5 — Le démontage : la boucle d'émission est un minuteur du plugin, pas de la carte (1.0.2).**
+`GeoLeaf.mount()` démonte l'application en détruisant le registre de modules du core. Jusqu'à
+1.0.1, rien de cela n'atteignait ce plugin : il n'inscrivait qu'un créneau, sans démontage — et
+rien du tout, chargé à la demande. Mesuré dans un navigateur, émission lancée puis `unmount()` :
+l'intervalle survivait, `isEmitting()` répondait vrai, le badge restait dans le conteneur d'une
+carte qui n'existait plus. ⚠️ **Ce que la mesure dit exactement** : avec une veille de
+géolocalisation tenue active, des positions partaient encore, application démontée ; la veille de
+l'application étant arrêtée avec elle, rien ne partait — jusqu'à ce qu'une veille redevienne
+active, et l'envoi reprenait alors sans que personne ait rappuyé sur le bouton.
+
+Le module inscrit au registre porte désormais `destroyLifecycle()`, sur les deux chemins :
+
+- la boucle et son transport sont arrêtés (`stopEmission()`), le badge retiré ;
+- le délai de grâce du mode `auto`, s'il court encore, est annulé — sans quoi l'émission
+  démarrait huit secondes **après** le démontage ;
+- la réception que ce plugin a lancée est arrêtée (`stopReceive()`), par l'identifiant de couche
+  qu'il a retenu, la configuration étant remise à zéro avec l'application ;
+- les deux verrous sont relâchés : la demande de veille (`_requested`), et le travail de boot
+  (`_ran`).
+
+L'écouteur de `geoleaf:app:ready` n'est plus `{ once: true }` : il reste pour la vie de la page,
+et le boot de l'application suivante relance `auto` et la réception. 🛑 **Une émission lancée à
+la main n'est PAS reprise** : c'est l'utilisateur qui l'allume, sur l'application qu'il a devant
+lui. Gardé par `src/__tests__/lifecycle.test.ts` et `e2e/75-remount-plugins.spec.js`.
 
 ---
 

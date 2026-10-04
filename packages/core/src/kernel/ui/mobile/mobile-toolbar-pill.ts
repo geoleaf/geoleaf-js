@@ -14,26 +14,10 @@ import { domState } from "./mobile-toolbar-state.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
-import { resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
+import { lazySlotsToDraw, resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
 import type { IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 
 type MobileIconDef = NonNullable<IModuleUISlot["mobileIcon"]>;
-
-/** Lazy-plugin UI slot — an `IModuleUISlot` paired with its owning plugin id. */
-interface LazyUISlot extends IModuleUISlot {
-    id: string;
-    /** Owning plugin, i.e. the 2nd argument of `registerLazyForAction`. Gates on
-     *  `modules.<pluginName>.enabled` when `gateOnModuleEnabled` is set — the doc comment said "paired with its owning plugin id"
-     *  while the type declared no such field, so nothing could read it. */
-    pluginName: string;
-    /** Opt-in for the `modules.<pluginName>.enabled` guard — see `PluginLazyUI`. */
-    gateOnModuleEnabled?: boolean;
-}
-
-/** Subset of `GeoLeaf.plugins` consumed by the pill / registry-icon builders. */
-interface PillPluginsLike {
-    getLazyUISlots?: () => LazyUISlot[] | undefined;
-}
 
 /**
  * Builds an SVG icon element from path data.
@@ -374,11 +358,10 @@ function _appendRegistryIcons(scroll: HTMLElement): void {
         if (btn) scroll.appendChild(btn);
     }
 
-    // Lazy plugins (S4): render toolbar buttons for plugins registered lazy but not yet loaded.
-    // Buttons are added here so they appear immediately at boot without loading the bundle.
-    const pluginReg = getGeoLeaf()?.plugins as PillPluginsLike | undefined;
-    const lazySlots = pluginReg?.getLazyUISlots?.() ?? [];
-    for (const slot of lazySlots) {
+    // Lazy plugins (S4): render the toolbar buttons of the plugins registered lazy, their bundle
+    // loaded or not (`lazySlotsToDraw`). Buttons are added here so they appear at boot without
+    // loading the bundle — and at the next one, once it is loaded.
+    for (const slot of lazySlotsToDraw()) {
         const icon = slot.mobileIcon;
         if (!icon) continue;
         const btn = _buildMobileIconButton(scroll, slot.id, icon, {

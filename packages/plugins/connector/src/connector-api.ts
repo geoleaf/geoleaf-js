@@ -392,6 +392,17 @@ export async function logout(): Promise<void> {
 }
 
 /**
+ * Puts the credential button of a configured connector back in the bars of the application
+ * now starting — the one `configure()` installed left with the bars of the previous one.
+ *
+ * Reads `_currentConfig` here, with its writer (see the header): a no-op while no
+ * `configure()` succeeded, and when the configuration asks for no button. Idempotent.
+ */
+export function reinstallCredentialButton(): void {
+    if (_currentInstance && _currentConfig) installCredentialButton(_currentConfig);
+}
+
+/**
  * `true` as soon as a `configure()` succeeded. Read by the plugin registry's `healthCheck`.
  *
  * ⚠️ Exported as a FUNCTION and not a value: the registry stores the closure

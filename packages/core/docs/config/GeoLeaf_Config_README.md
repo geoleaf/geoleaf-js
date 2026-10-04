@@ -218,9 +218,6 @@ The full structure is shown below (every block is optional except `map`):
     "layers": [],
     "logging": {
         "level": "info"
-    },
-    "security": {
-        "httpsOnly": false
     }
 }
 ```
