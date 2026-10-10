@@ -224,7 +224,14 @@ for (const rel of publicFiles) {
         continue;
     }
     read++;
-    const found = src.match(TOKEN) ?? [];
+    // The port APPENDS the internal-apparatus block to the public clone's `.gitignore`
+    // (`port-to-public.cjs`), and that block names the workshop directory once. The working
+    // repo's own file does not carry it, so the same file counts one more token on the
+    // clone — and a baseline that refuses both growth and shrink cannot hold the two. The
+    // block IS the boundary: it is removed before counting, by identity with what the
+    // partition module emits, so any other token added to the file still reddens.
+    const counted = rel === ".gitignore" ? src.replace(partition.gitignoreFragment(), "") : src;
+    const found = counted.match(TOKEN) ?? [];
     if (found.length > 0) {
         observed.set(rel, found.length);
         tokensOf.set(rel, [...new Set(found.map((t) => t.replace(/\.$/, "")))].sort());
