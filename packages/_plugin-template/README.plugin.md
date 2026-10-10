@@ -39,9 +39,9 @@ integrator cannot find.
 
 ## Public API (`GeoLeaf.__PLUGIN_NAMESPACE__`)
 
-| Member    | Description                  |
-| --------- | ---------------------------- |
-| `version` | The plugin's version string. |
+| Member   | Description                                                                    |
+| -------- | ------------------------------------------------------------------------------ |
+| `open()` | Opens the plugin. Returns `false` when `enabled` is `false`, `true` otherwise. |
 
 TODO: document what `src/public-api.ts` exposes, one row per member.
 

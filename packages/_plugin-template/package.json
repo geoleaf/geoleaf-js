@@ -4,6 +4,24 @@
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf __PLUGIN_NAME__ plugin",
+    "geoleaf": {
+        "bundle": "geoleaf-__PLUGIN_NAME__.plugin.js",
+        "lazyChunks": false,
+        "includeFlag": null
+    },
+    "homepage": "https://geoleaf.dev",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/geoleaf/geoleaf-js.git",
+        "directory": "packages/plugins/__PLUGIN_NAME__"
+    },
+    "bugs": {
+        "url": "https://github.com/geoleaf/geoleaf-js/issues"
+    },
+    "author": "Mattieu Pottier",
+    "engines": {
+        "node": ">=22"
+    },
     "main": "dist/geoleaf-__PLUGIN_NAME__.plugin.js",
     "module": "dist/geoleaf-__PLUGIN_NAME__.plugin.js",
     "types": "dist/types/entry.d.ts",

@@ -278,6 +278,17 @@ function main() {
     log.info(`  4. node scripts/verify-plugin-contract.cjs --plugin=${name} --fail`);
     log.info(`  5. Set a size budget for "${name}" in BUDGETS (scripts/check-bundle-size.cjs) —`);
     log.info(`     the plugin list is derived, but its threshold is measured data.`);
+    // Steps 6 to 9 were missing until 10/10/2026. Each is a gate that reddens on ANY new
+    // plugin until its author enrols it — measured by submitting two throwaway plugins to
+    // every gate of `ci:local`. None can be done by the template: they are entries in files
+    // the plugin does not own. Unannounced, each was rediscovered one red run at a time.
+    log.info(`  6. Give "${ctx.pkg}" its entry in BY_NAME (knip.js) — the dead-code`);
+    log.info(`     instrument reads one per package, and says so when it is missing.`);
+    log.info(`  7. List \`${ctx.namespace}Api\` (src/entry.ts) among the mounted API types of`);
+    log.info(`     scripts/check-orphan-exports.cjs — its consumer is the integrator.`);
+    log.info(`  8. Import the bundle from the app's init.js, or the app contract (APP-12)`);
+    log.info(`     reports a shipped bundle no boot reaches.`);
+    log.info(`  9. npm run docs:tree && npm run gen:api-surface  (generated references)`);
 }
 
 main();

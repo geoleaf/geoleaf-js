@@ -367,6 +367,7 @@ packages/plugins/<nom>/
 └── src/
     ├── entry.ts           # SEUL point d'entrée : i18n → façade → register()  (INV-REG)
     ├── public-api.ts      # buildPublicApi() — façade publique  (INV-FACADE)
+    ├── <nom>-api.ts       # ce que la façade délègue — le squelette en émet un, lecteur de config.ts
     ├── types.ts           # types publics réexportés
     ├── <feature>/         # logique métier (zone libre §3, fichiers ≤ 700 l)
     ├── lang/              # i18n lang_fr…lang_de (si libellés)

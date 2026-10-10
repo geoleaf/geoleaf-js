@@ -40,6 +40,21 @@
  *   SCAF-04  flag gating emits the right file set — the anti-vacuity assertion: without it
  *            a scaffold producing an EMPTY `src/` would satisfy SCAF-01…03 by having
  *            nothing to fault
+ *   SCAF-12  the generated package is DISCOVERABLE — its `package.json` carries the
+ *            descriptor the deploy build reads
+ *   SCAF-13  the generated package meets its OWN coverage threshold
+ *
+ * SCAF-05…11 are the repo's own gates, run against the output — see `REPO_GATES`.
+ *
+ * ## What the scaffold cannot be born passing, and is therefore NOT checked here
+ *
+ * Four gates redden on any new plugin until its author ENROLS it, and no template can do
+ * that for them: the dead-code instrument reads a per-package entry in `knip.js`, the
+ * orphan-export net reads a hand-kept list of the API types plugins mount, the app
+ * contract wants the bundle imported by the app's `init.js`, and the generated references
+ * (qualified tree, API surface) are regenerated. Measured on 10/10/2026 by submitting two
+ * throwaway plugins to every gate of `ci:local`. `create-plugin.cjs` prints those steps;
+ * holding the throwaway to them here would make this gate red by construction.
  *
  * Both scaffold shapes are exercised (`--ui --i18n`, and bare), because the flags select
  * different files and different gated blocks — a template correct in one shape and broken
@@ -126,6 +141,18 @@ const REPO_GATES = [
         code: "SCAF-09",
         label: "README ↔ declared config (PRC-01)",
         script: "scripts/check-plugin-readme-config.cjs",
+    },
+    // Added 10/10/2026, both seen red on the template as it stood: its façade carried a
+    // method with an empty body, and its `config.ts` was imported by nothing.
+    {
+        code: "SCAF-10",
+        label: "façade purity (INV-FACADE)",
+        script: "scripts/check-facade-purity.cjs",
+    },
+    {
+        code: "SCAF-11",
+        label: "module graph (MG)",
+        script: "scripts/check-module-graph.cjs",
     },
 ];
 
@@ -233,7 +260,45 @@ try {
                 `SCAF-03 "${shape.id}" violates Plugin Contract v1 —\n${indent(contract.out)}`
             );
 
-        // SCAF-05…08 — the repo's OWN gates, run against the throwaway output.
+        // SCAF-12 — the deploy build can describe the generated package.
+        //
+        // `discoverPlugins()` THROWS on a plugin without a `geoleaf` descriptor, and it is
+        // read by the deploy build and by the app contract: a scaffold born without one
+        // stopped both, for the whole fleet, the moment it landed in `packages/plugins/`.
+        // The template carried none until 10/10/2026. Only a failure NAMING the throwaway
+        // is attributed here — same rule as the repo gates below.
+        //
+        // ⚠️ In a CHILD process, not by `require`: the workspace registry memoises its
+        // listing, so an in-process call made for the first shape would answer for the
+        // second with a fleet that predates it — seen on the first run of this check.
+        const discovery = run("node", [
+            "-e",
+            "for (const p of require('./scripts/lib/discover-plugins.cjs').discoverPlugins()) console.log(p.id)",
+        ]);
+        if (discovery.code !== 0 && discovery.out.includes(shape.id))
+            errors.push(
+                `SCAF-12 "${shape.id}" cannot be discovered —\n${indent(discovery.out)}\n` +
+                    `  Fix the "geoleaf" descriptor of packages/_plugin-template/package.json.`
+            );
+        else if (discovery.code === 0 && !discovery.out.split("\n").includes(shape.id))
+            errors.push(
+                `SCAF-12 "${shape.id}" is absent from the discovered fleet — the discovery ` +
+                    `ran and did not see the scaffold it was asked about.`
+            );
+
+        // SCAF-13 — the generated package meets its own coverage threshold.
+        //
+        // The scaffold excludes `entry.ts` and `public-api.ts` from the measure, and until
+        // 10/10/2026 those were the only two files its starter test reached: every new
+        // plugin was born at 0 % against a 75 % threshold.
+        const cov = run("npx", ["vitest", "run", "--coverage"], destDir);
+        if (cov.code !== 0)
+            errors.push(
+                `SCAF-13 "${shape.id}" fails its own tests or coverage threshold —\n` +
+                    `${indent(cov.out.split("\n").slice(-30).join("\n"))}`
+            );
+
+        // SCAF-05…11 — the repo's OWN gates, run against the throwaway output.
         //
         // ## What this closes, and why the count was the whole problem
         //
@@ -291,6 +356,8 @@ const CHECKS = [
     "typecheck",
     "Plugin Contract v1",
     "sélection par drapeau",
+    "descripteur découvrable",
+    "seuil de couverture",
     ...REPO_GATES.map((g) => g.label),
 ];
 console.log(
