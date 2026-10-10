@@ -5,7 +5,7 @@
  * `subCategoryField: "subcategoryId"` over thirty features that carry `subCategoryId`. The
  * resolver read `undefined`, fell back to the category's icon, and nothing said so.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const warn = vi.hoisted(() => vi.fn());
 const debug = vi.hoisted(() => vi.fn());
@@ -162,6 +162,128 @@ describe("reconcileStyleFields", () => {
 
     it("does nothing for a layer the map does not hold", () => {
         expect(() => reconcileStyleFields("absent", { id: "x" })).not.toThrow();
+        expect(warn).not.toHaveBeenCalled();
+    });
+});
+
+describe("a layer written after its first load", () => {
+    // 🛑 The diagnostic spoke at the first load and at a style switch, never again: an OGC
+    // refresh, a realtime tick, `GeoLeaf.Layers.setData` or `mergeFeatures` could bring data that
+    // no longer carried a declared field, and its reader fell back without a word — the very
+    // silence this module exists against. Every such write is announced
+    // (`geoleaf:layer:updated`); the diagnostic now listens.
+    const GOOD: TaxonomyConfig = {
+        ...TAXONOMY,
+        taxonomies: {
+            "poi-cat": { ...TAXONOMY.taxonomies!["poi-cat"]!, subCategoryField: "subCategoryId" },
+        },
+    } as TaxonomyConfig;
+
+    /** Features that lost the sub-category on the way — what a refresh may bring. */
+    const stripped = (count = 30) =>
+        features(count).map((f) => ({
+            ...f,
+            properties: { id: f.properties.id, categoryId: f.properties.categoryId },
+        }));
+
+    /** The layer as its first load leaves it: judged, healthy, silent. */
+    function loaded(style: unknown = null): void {
+        taxonomy = GOOD;
+        state.layers.set("candelabres", { config: DEF, currentStyle: style, features: features() });
+        reconcileLayerFields("candelabres", DEF, style, features());
+        expect(warn).not.toHaveBeenCalled();
+    }
+
+    const written = (layerId = "candelabres"): void => {
+        document.dispatchEvent(new CustomEvent("geoleaf:layer:updated", { detail: { layerId } }));
+    };
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+    });
+
+    it("🛑 names a field the data no longer carries — the first load could not have seen it", () => {
+        loaded();
+        state.layers.get("candelabres").features = stripped();
+
+        written();
+        vi.runOnlyPendingTimers();
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0]![0])).toContain('"subCategoryId"');
+    });
+
+    it("stays silent when the write keeps every declared field", () => {
+        loaded();
+
+        written();
+        vi.runOnlyPendingTimers();
+
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    it("🛑 judges a burst of writes ONCE — a realtime layer ticks, an editor writes unit by unit", () => {
+        loaded();
+        const reader = vi.fn(({ layerId }: { layerId: string }) =>
+            taxonomyDeclaredFields(taxonomy, layerId)
+        );
+        provideDeclaredFields("taxonomy", reader);
+        state.layers.get("candelabres").features = stripped();
+
+        for (let i = 0; i < 25; i++) written();
+        expect(reader).not.toHaveBeenCalled();
+        vi.runOnlyPendingTimers();
+
+        expect(reader).toHaveBeenCalledTimes(1);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it("judges under the style the layer WEARS", () => {
+        const style = {
+            styleRules: [{ when: { field: "properties.puissance", operator: ">", value: 100 } }],
+        };
+        loaded(null);
+        state.layers.get("candelabres").currentStyle = style;
+
+        written();
+        vi.runOnlyPendingTimers();
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        const message = String(warn.mock.calls[0]![0]);
+        expect(message).toContain("styleRules[0].when.field");
+        expect(message).toContain("puissance");
+    });
+
+    it("skips a layer the map no longer holds when the judgment runs", () => {
+        loaded();
+        state.layers.get("candelabres").features = stripped();
+
+        written();
+        state.layers.delete("candelabres");
+        vi.runOnlyPendingTimers();
+
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    it("🛑 an unmount drops what was waiting — nothing is judged for an application that is gone", () => {
+        loaded();
+        state.layers.get("candelabres").features = stripped();
+
+        written();
+        runLifecycleTeardowns();
+        vi.runOnlyPendingTimers();
+
+        expect(warn).not.toHaveBeenCalled();
+    });
+
+    it("ignores an announcement that names no layer", () => {
+        loaded();
+        document.dispatchEvent(new CustomEvent("geoleaf:layer:updated"));
+        vi.runOnlyPendingTimers();
         expect(warn).not.toHaveBeenCalled();
     });
 });

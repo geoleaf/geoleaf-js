@@ -379,6 +379,79 @@ test("[editor] discardDraft closes the open form, and leaves nothing to discard"
     expect(second).toBe(false);
 });
 
+/**
+ * How many features the drawing engine holds, per geometry — read from its own sources.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<{ point: number, linestring: number, polygon: number }>}
+ */
+function drawnFeatures(page) {
+    return page.evaluate(() => {
+        const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+        const count = (/** @type {string} */ id) =>
+            native.getSource(id)?.serialize?.().data?.features?.length ?? 0;
+        return {
+            point: count("td-point"),
+            linestring: count("td-linestring"),
+            polygon: count("td-polygon"),
+        };
+    });
+}
+
+// A shape still being TRACED had no public way out. `setActiveTool(null)` only clears the
+// menu's highlight — measured: the engine keeps drawing, a click adds a vertex — and
+// `discardDraft` knows a finished shape, not one in progress.
+test("[editor] cancelDrawing abandons the shape being traced, and disarms the tool", async ({
+    page,
+}) => {
+    await armEditor(page);
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.toggleMenu());
+    const tool = page.locator('button.gl-editor-tool-btn[data-tool="polyline"]');
+    await expect(tool).toBeVisible({ timeout: 5000 });
+    await tool.click();
+    await page.waitForFunction(
+        () => {
+            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            try {
+                return !!native?.getLayer?.("td-linestring");
+            } catch {
+                return false;
+            }
+        },
+        null,
+        { timeout: 15000 }
+    );
+    await page.waitForTimeout(300);
+
+    // Two vertices of a polyline: a shape in progress, not a finished one — no form opens.
+    const canvas = page.locator(".maplibregl-canvas");
+    await canvas.click({ position: { x: 220, y: 200 } });
+    await canvas.click({ position: { x: 340, y: 240 } });
+    await expect.poll(async () => (await drawnFeatures(page)).linestring).toBe(1);
+    await expect(page.locator(".gl-form-modal-panel")).toHaveCount(0);
+
+    const first = await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Editor.cancelDrawing()
+    );
+    expect(first).toBe(true);
+    await expect.poll(() => drawnFeatures(page)).toEqual({ point: 0, linestring: 0, polygon: 0 });
+    expect(
+        await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.getActiveTool())
+    ).toBeNull();
+
+    // The engine is disarmed, not merely the button: one more click draws nothing.
+    await canvas.click({ position: { x: 280, y: 300 } });
+    await page.waitForTimeout(400);
+    expect(await drawnFeatures(page)).toEqual({ point: 0, linestring: 0, polygon: 0 });
+
+    // Nothing left to abandon, and no draft was ever made.
+    const second = await page.evaluate(() => {
+        const E = /** @type {any} */ (window).GeoLeaf.Editor;
+        return { cancel: E.cancelDrawing(), discard: E.discardDraft() };
+    });
+    expect(second).toEqual({ cancel: false, discard: false });
+});
+
 test("[editor] discardDraft from the feature-created listener: the form never opens", async ({
     page,
 }) => {

@@ -147,11 +147,17 @@ function declaredMethods(body) {
     return names;
 }
 
-/** Methods the facade's `IndexedDB` object defines (`async name(` and `name(` forms). */
+/**
+ * Methods the facade's `IndexedDB` object defines — `async name(`, `name(`, and the generic
+ * form `name<K extends X>(`.
+ *
+ * ⚠️ The generic form was added when `_ensureModule` became one: the pattern stopped at the
+ * `<`, so the guard no longer saw a member two plugin seams declare, and reported it missing.
+ */
 function facadeMethods() {
     const src = fs.readFileSync(FACADE, "utf8");
     const names = new Set();
-    for (const m of src.matchAll(/^ {4}(?:async\s+)?([A-Za-z_$][\w$]*)\s*\(/gm)) {
+    for (const m of src.matchAll(/^ {4}(?:async\s+)?([A-Za-z_$][\w$]*)\s*(?:<[^>(]*>)?\s*\(/gm)) {
         names.add(m[1]);
     }
     if (names.size === 0) {

@@ -18,7 +18,8 @@ export default {
         sourcemapExcludeSources: true,
         inlineDynamicImports: true,
     },
-    // Pure DOM library — no external dependencies.
+    // Nothing is left external: `@geoleaf/host-runtime`, the one workspace dependency, is
+    // private and bundled in.
     external: [],
     plugins: pluginStack({
         resolve: { preferBuiltins: false },

@@ -154,8 +154,8 @@ not shipped inside the npm tarball, which carries only `dist/`, this README, the
 | get started in 5 minutes                   | [Getting Started](https://www.geoleaf.dev/docs/GETTING_STARTED.html)                                  |
 | follow a step-by-step tutorial             | [Quickstart Tutorial](https://www.geoleaf.dev/docs/QUICKSTART_TUTORIAL.html)                          |
 | learn the full usage                       | [User Guide](https://www.geoleaf.dev/docs/USER_GUIDE.html)                                            |
-| configure a profile                        | [Profiles Guide](https://www.geoleaf.dev/docs/PROFILES_GUIDE.html)                                    |
-| look up the JSON files                     | [Configuration Guide](https://www.geoleaf.dev/docs/CONFIGURATION_GUIDE.html)                          |
+| configure a profile                        | [Profile JSON Reference](https://www.geoleaf.dev/docs/PROFILE_JSON_REFERENCE.html)                    |
+| configure a plugin                         | [Plugin Configuration](https://www.geoleaf.dev/docs/PLUGIN_CONFIGURATION_GUIDE.html)                  |
 | look up the API                            | [API Reference](https://www.geoleaf.dev/docs/API_REFERENCE.html)                                      |
 | look up the events                         | [Events API](https://www.geoleaf.dev/docs/EVENTS_API.html)                                            |
 | understand the architecture and boot order | [Architecture Guide](https://www.geoleaf.dev/docs/ARCHITECTURE_GUIDE.html)                            |

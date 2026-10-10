@@ -157,6 +157,12 @@ export function setupReveal({
 
         // After removing the loader, tell the engine to recalculate its container
         // size and re-fit the profile bounds (unless permalink state overrides).
+        //
+        // 🛑 BEFORE THE ANNOUNCEMENTS, AND SYNCHRONOUSLY. The re-fit used to wait 120 ms in a
+        // timer — a delay no line ever justified — and so landed AFTER `geoleaf:app:ready`: a
+        // host setting its view at the event that says "ready" saw it undone. `resize()` has
+        // just given the engine its container's size, the fit is not animated, and whoever
+        // listens below receives a camera nothing of the boot will move again.
         if (map) {
             // Trigger MapLibre resize() to recalculate the container dimensions.
             // Both methods are called BOUND to their source object (a detached call
@@ -175,17 +181,11 @@ export function setupReveal({
                 !!getState &&
                 getState.call(permalink) !== null;
             if (profileBounds && !_hasPermalink && typeof map.fitBounds === "function") {
-                const boundsToFit = profileBounds;
-                const fitOptions = buildFitBoundsOptions(profilePadding);
-                timers.push(
-                    setTimeout(function () {
-                        try {
-                            map.fitBounds(boundsToFit, fitOptions);
-                        } catch (e) {
-                            AppLog.warn("[GeoLeaf] fitBounds correction at reveal:", e);
-                        }
-                    }, 120)
-                );
+                try {
+                    map.fitBounds(profileBounds, buildFitBoundsOptions(profilePadding));
+                } catch (e) {
+                    AppLog.warn("[GeoLeaf] fitBounds correction at reveal:", e);
+                }
             }
         }
 

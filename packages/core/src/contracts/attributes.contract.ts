@@ -21,7 +21,7 @@
  * CONTROLS; `modules.permalink.fields` is posed by no profile) — an arbitrated
  * boundary, dated A3‴.
  *
- * ✅ **Two lists, not three, since task 7.2** — `formSchema` is gone, key and all, absorbed
+ * ✅ **Two lists, not three** — `formSchema` is gone, key and all, absorbed
  * into the `edit` projection below. That is what A3‴ said the model was FOR, and it is the
  * measure of the difference: `uses` proposed a fourth declaration, `edit` removed one.
  *
@@ -537,7 +537,7 @@ export interface AttributeFieldBase {
  * `action` is one: `field-renderer` registers no `action` component, and a button is
  * a gesture, not a value to type in. Q6 named it as such.
  *
- * ✅ **The `reviews` contradiction is SETTLED — task 7.2, 07/08/2026.** Q6 had named
+ * ✅ **The `reviews` contradiction is SETTLED — 07/08/2026.** The model had named
  * `reviews` display-only while `field-renderer` registers a `reviews` capture component,
  * and the note here parked the arbitration for « the sprint that migrates the capture
  * projection ». That is this one. Verdict: **the code was right, Q6 was wrong** —
@@ -601,7 +601,10 @@ export type AttributeField = {
  * JSON Schema, and so an entry can never outlive the layer it describes.
  */
 export interface LayerAttributes {
-    /** Field whose value titles the popup and the side panel. */
+    /**
+     * Names one entry of `fields`, by its `field` path. That field is the title of each surface
+     * it is displayed on; a surface that does not list it opens without a title.
+     */
     readonly titleField?: string;
     /** The fields, in declaration order. */
     readonly fields: readonly AttributeField[];

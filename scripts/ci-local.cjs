@@ -1077,7 +1077,18 @@ const STEPS = [
     // only bites on a new regression.
     { name: "Dead links (public docs)", run: ["npm", "run", "check:links"] },
     { name: "Dead CSS (purgecss)", run: ["npm", "run", "verify:purgecss"] },
-    { name: "CSS token vars defined (plugins/libs)", run: ["npm", "run", "verify:css-tokens"] },
+    {
+        name: "CSS token vars defined (core/plugins/libs)",
+        run: ["npm", "run", "verify:css-tokens"],
+    },
+    // The token gate judges that a colour EXISTS; this one that it can be READ on the
+    // accent it is written on, in every theme and palette. Seen red on 138 pairs before
+    // the sheets were realigned ⇒ no baseline, the floor is zero.
+    // Keep in sync with ci.yml.
+    {
+        name: "CSS text on accent reaches 4.5:1 (core/plugins/libs)",
+        run: ["npm", "run", "verify:css-accent-contrast"],
+    },
     { name: "No Leaflet references", run: ["node", "scripts/verify-no-leaflet.cjs"] },
     // Archi roadmap S0 — `packages/core/src/` must never import `@geoleaf-plugins/*`.
     // Architecture boundary (the core stays autonomous and tree-shakeable), NOT a

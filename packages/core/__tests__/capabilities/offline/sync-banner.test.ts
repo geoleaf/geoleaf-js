@@ -178,6 +178,14 @@ describe("bandeau de synchronisation", () => {
         expect(text("last")).toContain("3 min");
     });
 
+    test("au-delà d'un jour, l'unité vient du catalogue — pas d'une lettre écrite dans le code", async () => {
+        mountSyncBanner();
+        prefs[LAST_SYNC_PREFERENCE] = Date.now() - 4 * 24 * 3_600_000;
+        await repaint();
+        // The French catalogue is the one this suite runs under: "{0} j".
+        expect(text("last")).toBe("synchro 4 j");
+    });
+
     test("🛑 se rafraîchit sur les DEUX événements du core", async () => {
         mountSyncBanner();
         await repaint();
@@ -391,6 +399,101 @@ describe("bandeau de synchronisation", () => {
             await repaint();
 
             expect(shown()).toBe(true);
+        });
+    });
+
+    describe("une saisie retenue faute de session", () => {
+        /** A pass ended, and said what it held for want of a session, or what stopped it. */
+        const drained = async (heldForSession: number, haltedBy: string | null = null) => {
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:offline:outbox-drained", {
+                    detail: { haltedBy, heldForSession },
+                })
+            );
+            await settle();
+            await settle();
+        };
+        const session = () => banner()!.querySelector<HTMLElement>(".gl-sync-banner__session")!;
+
+        test("🛑 la passe a retenu une saisie faute de session : le bandeau dit qu'une connexion est requise", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drained(1);
+
+            expect(session().hidden).toBe(false);
+            expect(session().textContent).not.toBe("");
+            // Still counted: the capture IS owed, the mention says why it does not leave.
+            expect(text("pending")).not.toBe("");
+            expect(shown()).toBe(true);
+        });
+
+        test("muet tant qu'aucune passe ne s'y est arrêtée — un 401 n'est pas ce motif", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await repaint();
+            expect(session().hidden).toBe(true);
+
+            await drained(0, "authRequired");
+            expect(session().hidden).toBe(true);
+            expect(session().textContent).toBe("");
+        });
+
+        test("🛑 la passe suivante qui n'y bute pas fait tomber la mention", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drained(1);
+            expect(session().hidden).toBe(false);
+
+            entries = [];
+            await drained(0);
+
+            expect(session().hidden).toBe(true);
+        });
+
+        test("rien n'est dû : la mention ne s'affiche pas, même après cet arrêt", async () => {
+            entries = [];
+            mountSyncBanner();
+            await drained(1);
+
+            expect(session().hidden).toBe(true);
+            expect(banner()!.dataset["idle"]).toBe("true");
+        });
+
+        test("🛑 le bandeau acquitté revient quand il apprend qu'une connexion est requise", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await repaint();
+            await dismiss();
+            expect(shown()).toBe(false);
+
+            await drained(1);
+
+            expect(shown()).toBe(true);
+        });
+
+        test("acquitté AVEC la mention, il ne revient pas à la passe suivante qui y bute", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drained(1);
+            await dismiss();
+            expect(shown()).toBe(false);
+
+            await drained(1);
+
+            expect(shown()).toBe(false);
+        });
+
+        test("le démontage oublie le motif", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drained(1);
+            unmountSyncBanner();
+
+            mountSyncBanner();
+            await settle();
+            await settle();
+
+            expect(session().hidden).toBe(true);
         });
     });
 

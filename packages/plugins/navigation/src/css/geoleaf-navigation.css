@@ -153,7 +153,7 @@
    La rotation passe par `setMarkerRotation` + `rotationAlignment: "map"`, donc par le moteur,
    qui la recalcule à chaque frame — c'est ce qui évite qu'elle se fige pendant un virage. */
 .gl-nav-arrow-marker {
-    color: var(--gl-color-accent, #2b6cb0);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2b6cb0));
     /* La couture pose `cursor: pointer` sur tout marqueur ; celui-ci ne se clique pas. */
     cursor: default;
     pointer-events: none;

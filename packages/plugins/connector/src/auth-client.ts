@@ -9,11 +9,39 @@
 
 import { jsonHeaders, bearer, fetchWithTimeout, HttpFetchError } from "@geoleaf/host-runtime";
 
-/** Thrown when authentication or refresh fails. */
+/**
+ * What a server said of a refusal, when it said it as RFC 9457 problem details
+ * (`application/problem+json`).
+ *
+ * The three members a client can show or branch on are kept only when they are non-empty
+ * strings; `body` is the parsed answer as it came, for a host that reads its own extension
+ * members. Nothing here is trusted: it is the server's text, to be rendered as text.
+ */
+interface AuthProblem {
+    /** URI naming the kind of problem — what a host translates from. */
+    readonly type?: string;
+    /** Short summary of the kind of problem. */
+    readonly title?: string;
+    /** Explanation of this occurrence — what the login window shows first. */
+    readonly detail?: string;
+    /** The whole parsed body. */
+    readonly body: Record<string, unknown>;
+}
+
+/** Thrown when a sign-in fails. */
 export class AuthError extends Error {
-    constructor(message: string) {
+    /** HTTP status of the server's answer; absent when the exchange never got one. */
+    readonly status?: number;
+    /** The problem the answer declared, when it declared one. */
+    readonly problem?: AuthProblem;
+
+    constructor(message: string, answer?: { status: number; problem?: AuthProblem }) {
         super(message);
         this.name = "AuthError";
+        if (answer) {
+            this.status = answer.status;
+            if (answer.problem) this.problem = answer.problem;
+        }
     }
 }
 
@@ -75,17 +103,15 @@ type RefreshResult =
  * string, or a lifetime that is not a positive number, would be stored already expired.
  */
 async function _parseAuthResponse(response: Response, deadline: number): Promise<AuthResponse> {
-    if (response.status === 401) {
-        throw new AuthError("Invalid credentials");
-    }
-    if (response.status === 404) {
-        throw new AuthError("Endpoint not found (404)");
-    }
-    if (response.status >= 500) {
-        throw new AuthError("Server error (" + response.status + ")");
-    }
     if (!response.ok) {
-        throw new AuthError("Authentication failed (" + response.status + ")");
+        const problem = await _problemOf(response, deadline);
+        const answer = { status: response.status, ...(problem && { problem }) };
+        if (response.status === 401) throw new AuthError("Invalid credentials", answer);
+        if (response.status === 404) throw new AuthError("Endpoint not found (404)", answer);
+        if (response.status >= 500) {
+            throw new AuthError("Server error (" + response.status + ")", answer);
+        }
+        throw new AuthError("Authentication failed (" + response.status + ")", answer);
     }
     let text: string;
     try {
@@ -99,6 +125,44 @@ async function _parseAuthResponse(response: Response, deadline: number): Promise
         throw new AuthError("Invalid server response: missing token or expiresIn");
     }
     return session;
+}
+
+/** Past this many characters a problem body is not read as one: a refusal names a motive. */
+const PROBLEM_MAX_CHARS = 16_384;
+
+/**
+ * The problem a refusal declared — `undefined` unless the answer says it is
+ * `application/problem+json` and its body is a JSON object.
+ *
+ * Optional for the server and harmless when absent: a refusal without it fails exactly as
+ * before. The read shares the exchange's time budget, so a problem body that stalls delays
+ * the refusal by what is left of it and no more, and is then dropped.
+ */
+async function _problemOf(response: Response, deadline: number): Promise<AuthProblem | undefined> {
+    // `?.`: a host or a test may hand `fetch` a double whose answers carry no headers.
+    const declared = response.headers?.get("content-type") ?? "";
+    if (!/^\s*application\/problem\+json\s*(;|$)/i.test(declared)) return undefined;
+    let data: unknown;
+    try {
+        const text = await _readWithin(response, deadline);
+        if (text.length > PROBLEM_MAX_CHARS) return undefined;
+        data = JSON.parse(text);
+    } catch {
+        return undefined;
+    }
+    if (typeof data !== "object" || data === null || Array.isArray(data)) return undefined;
+    const body = data as Record<string, unknown>;
+    const text = (value: unknown): string | undefined =>
+        typeof value === "string" && value !== "" ? value : undefined;
+    const type = text(body["type"]);
+    const title = text(body["title"]);
+    const detail = text(body["detail"]);
+    return {
+        ...(type !== undefined && { type }),
+        ...(title !== undefined && { title }),
+        ...(detail !== undefined && { detail }),
+        body,
+    };
 }
 
 /**
@@ -161,7 +225,9 @@ export const AuthClient = {
      * a positive number, is refused rather than stored.
      *
      * @throws AuthError `"Invalid credentials"` on a 401, `"Network unavailable"` when the
-     *   exchange does not conclude in time or in transit, another message otherwise.
+     *   exchange does not conclude in time or in transit, another message otherwise. A refusal
+     *   — any non-2xx answer — carries its `status`, and the `problem` it declared as
+     *   `application/problem+json` when it declared one.
      *
      * Security: password string is overwritten before the function returns.
      */

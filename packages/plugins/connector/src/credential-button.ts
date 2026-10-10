@@ -53,7 +53,7 @@ const _BTN_CSS = `
 }
 .gc-credential-btn:hover {
   background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
-  color: var(--gl-color-accent, #f97316);
+  color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
 }
 .gc-credential-btn:focus-visible {
   outline: 2px solid var(--gl-color-focus-ring, #2684FF);

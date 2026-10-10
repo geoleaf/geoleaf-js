@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "quarantine-block",
+    "scope": [
+        "packages/plugins/offline-ui/src/cache/quarantine-block.ts",
+        "packages/plugins/offline-ui/src/css/cache-quarantine.css"
+    ],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/cache/quarantine-block.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bloc de la fenêtre hors-ligne qui liste par motif les saisies mises de côté et offre leurs deux sorties — relancer un motif, abandonner sur confirmation",
+            "confidence": "haute",
+            "rationale": "Un appelant mesuré : `packages/plugins/offline-ui/src/cache/cache-control-dom.ts`, qui le monte sous le bloc d'état de synchronisation. Module à part de ce bloc d'état parce qu'il répond à une autre question — celui-là COMPTE par la lecture unique du core, celui-ci LISTE la file et agit dessus — et qu'un seul fichier aurait mêlé une lecture sans effet et deux gestes dont l'un détruit. Il ne décide rien : les motifs relançables et le compte d'une relance sont ceux du core, par sa façade publique. Suite `quarantine-block.test.ts`, vue rouge sur quatre mutations ; chaîne prouvée par `e2e/46`. Place canonique : `cache/`, à côté des deux autres blocs de la fenêtre."
+        },
+        "packages/plugins/offline-ui/src/css/cache-quarantine.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille du bloc des saisies mises de côté de la fenêtre hors-ligne — ses lignes par motif et leurs deux boutons",
+            "confidence": "haute",
+            "rationale": "Un importeur mesuré : `packages/plugins/offline-ui/src/entry.ts`, à la suite des trois autres feuilles du greffon. Fichier à part pour une raison et une seule : `cache-control.css` est au plafond de taille du contrat de plugin (PC-08), et le hook a refusé le commit qui y ajoutait ces règles — le même motif que `cache-preflight.css`, écrit dans son en-tête. Les classes sont celles que `cache/quarantine-block.ts` écrit en toutes lettres."
+        }
+    }
+}

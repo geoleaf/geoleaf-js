@@ -5,15 +5,11 @@
         "visibleByDefault": true,
         "field": "id",
         "font": {
-            "family": "Open Sans",
-            "sizePt": 7,
-            "weight": 50,
-            "bold": false,
-            "italic": false
+            "sizePt": 7
         },
         "color": "#1f2937",
         "opacity": 1,
-        "buffer": { "enabled": true, "color": "#ffffff", "opacity": 1, "sizePx": 2 },
+        "buffer": { "enabled": true, "color": "#ffffff", "sizePx": 2 },
         "offset": { "placement": "right", "distancePx": 14 }
     },
     "description": "",

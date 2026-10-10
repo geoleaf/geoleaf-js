@@ -86,8 +86,10 @@ function row(id, updatedAt = T1, title = `Site 54-${id}`) {
  *
  * @param {import("@playwright/test").Page} page
  * @param {Record<string, unknown>} [delta] - The `offline.source.delta` block, if any.
+ * @param {{ displayed?: boolean }} [options] - `displayed` puts the layer in the default theme:
+ *   no theme of the shipped profile names it, so it is pulled without being drawn.
  */
-async function armPullSource(page, delta) {
+async function armPullSource(page, delta, { displayed = false } = {}) {
     // On the CONTEXT: the service worker fetches the bundle too, and a page route never sees
     // what it fetches — measured by the witness of `helpers/test.js` (27/09/2026).
     await page.context().route("**/profiles/tourism/profile-bundle.json**", async (route) => {
@@ -105,6 +107,13 @@ async function armPullSource(page, delta) {
             maxFeatures: 5000,
             source: { url: OGC, ...(delta ? { delta } : {}) },
         };
+        if (displayed) {
+            const theme = (bundle.themes?.themes ?? []).find(
+                (/** @type {any} */ t) => t.id === bundle.themes.defaultTheme
+            );
+            if (!theme) throw new Error("le bundle ne nomme plus son thème par défaut");
+            theme.layers.push({ id: "sites_rosario", visible: true, style: "defaut" });
+        }
         await route.fulfill({ response, json: bundle });
     });
 }
@@ -194,6 +203,33 @@ async function stored(page) {
     );
 }
 
+/**
+ * What the map DRAWS of `sites_rosario`, beside what its layer holds in memory — the titles, sorted.
+ *
+ * Read off the engine's own source through `getData()`, not `._data`: under MapLibre 6 `setData`
+ * lands in a worker, and the member the page can read synchronously is not what is painted.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<{ drawn: string[] | null, held: string[] }>} `drawn` is `null` while the
+ *   layer has no source on the map.
+ */
+function shown(page) {
+    return page.evaluate(async () => {
+        const gl = /** @type {any} */ (window).GeoLeaf;
+        const titles = (/** @type {any[]} */ features) =>
+            features.map((f) => String(f.properties?.title)).sort();
+        // The container shows before the map exists, and the map before its style.
+        const map = gl?.Core?.getMap?.()?.getNativeMap?.();
+        const sources = map?.getStyle?.()?.sources ?? {};
+        const id = Object.keys(sources).find((s) => s.includes("sites_rosario"));
+        const data = id ? await map.getSource(id).getData() : null;
+        return {
+            drawn: data ? titles(data.features) : null,
+            held: titles(gl?.Layers?.getFeatures?.("sites_rosario") ?? []),
+        };
+    });
+}
+
 test("[offline] le second téléchargement ne réécrit que la modifiée, et la supprimée quitte l'appareil", async ({
     page,
     context,
@@ -252,6 +288,60 @@ test("[offline] le second téléchargement ne réécrit que la modifiée, et la 
         .toBe(first.get("1")?.updatedAt);
     expect.soft(second.get("2")?.feature?.properties?.title).toBe("Renommée côté serveur");
     expect.soft(second.get("2")?.version?.value).toBe(T2);
+});
+
+test("[offline] la carte montre ce que le rapatriement vient d'écrire, sans rechargement", async ({
+    page,
+    context,
+}) => {
+    // 🛑 THE DEFECT: a layer declaring `offline.enabled` is drawn from the local store — read ONCE,
+    // when it loads. A download rewrote the store and nothing told the layer: an entity the
+    // server had deleted left the device and stayed on the map, an edited one kept its old
+    // drawing, until the page was reloaded.
+    test.setTimeout(150000);
+    await armPullSource(page, undefined, { displayed: true });
+    const source = await serveCollection(context, [row(1), row(2), row(3)]);
+
+    await page.goto("/");
+    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+    // The witness: the layer IS drawn before any download, from its shipped display file — the
+    // store is empty, so it fell back. Without it, an empty map would « follow » an empty store.
+    await expect
+        .poll(async () => (await shown(page)).drawn?.length ?? 0, {
+            timeout: 30000,
+            message: "la couche n'est pas dessinée : rien ne sera relu",
+        })
+        .toBeGreaterThan(0);
+    expect((await shown(page)).drawn, "la carte montre déjà la source du test").not.toContain(
+        "Site 54-1"
+    );
+
+    // --- first download: the store now holds the three served entities ------------------------
+    await downloadWithProfileZone(page, () => source.asked.length);
+    await expect.poll(async () => (await stored(page)).size, { timeout: 30000 }).toBe(3);
+    const pulled = ["Site 54-1", "Site 54-2", "Site 54-3"];
+    await expect
+        .poll(() => shown(page), {
+            timeout: 15000,
+            message: "la carte n'a pas été relue après le premier rapatriement",
+        })
+        .toEqual({ drawn: pulled, held: pulled });
+
+    // --- the server moves on: one entity edited, one deleted ----------------------------------
+    source.rows.set(2, row(2, T2, "Renommée côté serveur"));
+    source.rows.delete(3);
+    await downloadWithProfileZone(page, () => source.asked.length);
+    await expect
+        .poll(async () => [...(await stored(page)).keys()].sort(), { timeout: 30000 })
+        .toEqual(["1", "2"]);
+
+    const converged = ["Renommée côté serveur", "Site 54-1"];
+    await expect
+        .poll(() => shown(page), {
+            timeout: 15000,
+            message: "la supprimée est restée dessinée, ou la modifiée a gardé son ancien dessin",
+        })
+        .toEqual({ drawn: converged, held: converged });
 });
 
 test("[offline] une couche qui DÉCLARE fraîcheur et suppressions ne demande que ce qui a changé", async ({

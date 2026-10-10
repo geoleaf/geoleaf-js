@@ -12,13 +12,17 @@
  *
  * ## Why this file exists
  *
- * The ambient `Storage` ends with a `[key: string]: unknown` tail. A member the declaration
- * does not name falls into it and becomes `unknown` — not callable — and the documentation
- * gate cannot tell: it defers the "is of type 'unknown'" diagnostic, because the tail absorbs
- * real members and invented ones alike. The write-cycle members were all in that tail, so an
+ * The ambient `Storage` ended with a `[key: string]: unknown` tail. A member the declaration
+ * did not name fell into it and became `unknown` — not callable — and the documentation gate
+ * could not tell: it defers the "is of type 'unknown'" diagnostic, because a tail absorbs real
+ * members and invented ones alike. The write-cycle members were all in that tail, so an
  * integrator's compiler refused `GeoLeaf.Storage.pushOutbox()` while every gate stayed green.
- * Here the compiler answers instead: a member that falls back into the tail stops this file
+ * Here the compiler answers instead: a member that is no longer named stops this file
  * compiling, and so does a result field that is misspelled or no longer returned.
+ *
+ * Since 3.15.0 the tail is GONE: every member of the façade is named. `misspelled()` below is
+ * what holds that — a name the façade does not carry must be an error, and the day a tail
+ * comes back the `@ts-expect-error` above it has nothing left to expect, which is an error too.
  *
  * Compiled, never run: nothing imports it, so `rollup.consumer.mjs` (input = `entry.ts` alone)
  * does not bundle it and the `size:consumer` measure is untouched.
@@ -68,7 +72,28 @@ export async function setAside(storage: StorageNs): Promise<void> {
     const one = await storage?.requeueQuarantined?.(entry.entryId);
     const gone = await storage?.discardQuarantined?.(entry.entryId, entry.localId);
     const ok: boolean | undefined = one?.ok ?? gone?.ok;
-    void [liftable, requeued, ok];
+    // An entry set aside says why — the motive, and the status of the refusal when a server
+    // answer caused it.
+    const why: string | undefined = entry.quarantine;
+    const status: number | undefined = entry.quarantineStatus;
+    void [liftable, requeued, ok, why, status];
+}
+
+/**
+ * A member the façade does not carry is refused by the compiler — the tail used to turn it into
+ * `unknown`, and a misspelled call into a diagnostic every documentation gate defers.
+ */
+export function misspelled(storage: StorageNs): void {
+    // @ts-expect-error — `pushOutBox` is not `pushOutbox`: no tail absorbs it any more.
+    void storage?.pushOutBox;
+}
+
+/** The origin rule of the offline preparation, asked before a download. */
+export function preparation(storage: StorageNs): void {
+    const verdict = storage?.prefetchVerdict?.("https://tiles.example.test/{z}/{x}/{y}.png");
+    const allowed: boolean | undefined = verdict?.allowed;
+    const reason: string | undefined = verdict?.reason;
+    void [allowed, reason];
 }
 
 /** Conflicts settled by the last write. */

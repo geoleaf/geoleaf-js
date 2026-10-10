@@ -533,7 +533,7 @@
             "severity": null,
             "description": "Vue du modèle : identité de ligne fixée au chargement, ensemble que la recherche laisse visible, ancre de sélection — le rendu en est une projection",
             "confidence": "haute",
-            "rationale": "328 LOC, 5 importeurs (panel.ts, renderer.ts, selection-actions.ts, table-api.ts, table-renderer-virtual-scroll.ts) ; né à la tâche 2.7 (sprint 6 du lot 2). Nom SANS préfixe `table-`, norme STRUCT S4 de ce lot en dossier déjà nommé (cf. types.ts, config.ts, lifecycle.ts). Son existence se justifie par la contrainte PC-08 autant que par l'architecture : la logique de vue ne pouvait pas grossir panel.ts, à 591 lignes sur un plafond de 700. Et elle tient une frontière — les données restent à table-state.ts, ce module décrit une VUE d'elles, `rebuild()` étant le seul point de synchronisation."
+            "rationale": "328 LOC, 5 importeurs (panel.ts, renderer.ts, selection-actions.ts, table-api.ts, table-renderer-virtual-scroll.ts). Nom SANS préfixe `table-`, norme STRUCT S4 de ce lot en dossier déjà nommé (cf. types.ts, config.ts, lifecycle.ts). Son existence se justifie par la contrainte PC-08 autant que par l'architecture : la logique de vue ne pouvait pas grossir panel.ts, à 591 lignes sur un plafond de 700. Et elle tient une frontière — les données restent à table-state.ts, ce module décrit une VUE d'elles, `rebuild()` étant le seul point de synchronisation."
         }
     }
 }

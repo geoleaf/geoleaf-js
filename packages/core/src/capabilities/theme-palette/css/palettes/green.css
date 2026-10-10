@@ -70,7 +70,8 @@
         --gl-poi-title-border: #1f2937;
 
         /* Focus ring (accessibilité) – Vert */
-        --gl-color-focus-ring: #16a34a;
+        /* #16a34a reached 2.86:1 on this surface; a ring is held to 3:1. */
+        --gl-color-focus-ring: #15803d;
 
         /* Ombres */
 
@@ -87,7 +88,10 @@
      * a theme-level defect.
      */
         --gl-color-accent-contrast: #020617;
-        --gl-color-accent-hover: #15803d;
+        /* Lighter than the accent, not darker: the text on it is the dark one above, and
+           the former `#15803d` left it at 4.02:1. `#020617` gives 8.9:1 on `#22c55e`. */
+        --gl-color-accent-hover: #22c55e;
+        --gl-color-accent-text: #166534;
 
         /* Aliases utilitaires pour harmoniser toutes les couches UI */
 
@@ -161,6 +165,12 @@
         /* Accent vert adouci pour le dark */
         --gl-color-accent: #4ade80;
         --gl-color-accent-soft: rgba(74, 222, 128, 0.22);
+        /* Redeclared HERE, not left to the palette root: a custom property declared on the
+           body by the base dark theme wins over one inherited from the root element, so the
+           base theme's white text and orange hover would land on this light green. */
+        --gl-color-accent-contrast: #020617;
+        --gl-color-accent-hover: #86efac;
+        --gl-color-accent-text: #4ade80;
 
         --gl-color-route-line: #4ade80;
 

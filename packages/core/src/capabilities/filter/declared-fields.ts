@@ -21,6 +21,14 @@
  *
  * PURE — the installer's closure reads the running config and calls it; the guard over the
  * repository's profiles calls it on a profile's own config.
+ *
+ * ## The other half: a verdict over the whole scope
+ *
+ * What is set aside above is not unjudgeable, it is unjudgeable ONE LAYER AT A TIME. A field no
+ * layer in scope carries is dead — a search that never matches, a slider that filters everything
+ * out. {@link filterScopedFields} names those fields with their scope; the verdict needs every
+ * layer of that scope at once, which the repository guard has
+ * (`__tests__/guards/profile-field-reconciliation.guard.test.ts`) and a running page has not.
  */
 
 import type { DeclaredField, DeclaredFieldFeature } from "../../kernel/shared/index.js";
@@ -68,6 +76,60 @@ export function filterDeclaredFields(config: FilterConfig, layerId: string): Dec
                 present: (feature: DeclaredFieldFeature) => _carries(feature, field),
             });
         }
+    });
+    return out;
+}
+
+/**
+ * A field the filter reads over a SET of layers — carried by one of them is enough. A declared
+ * field, plus its scope: `layers` lists the layers, `null` means every layer of the profile.
+ *
+ * Not exported: the one caller reads the fields, it never names the type.
+ */
+type ScopedFilterField = DeclaredField & { layers: readonly string[] | null };
+
+/**
+ * The fields {@link filterDeclaredFields} sets aside, each with the scope its verdict is over:
+ * every `searchFields` entry of a `text` descriptor — it ORs them, so one is dead only when no
+ * layer in scope carries it —, and the `field` (and `subField`) of a descriptor that lists no
+ * layer. `proximity` names no field.
+ *
+ * ⚠️ Not a runtime diagnostic: a page holds the layers of its active theme only, and « carried by
+ * none » is a verdict over ALL of them. A caller that cannot read every layer in scope must say
+ * the verdict is undecided, never that the field is missing.
+ *
+ * @param config - The `modules.filter` block — a profile's own.
+ * @returns The scoped fields, in declaration order; none when the filter is disabled.
+ * @example
+ * filterScopedFields({ enabled: true, fields: [{ id: "q", kind: "text",
+ *     searchFields: ["properties.name", "properties.adresse"] }] });
+ * // → two fields, each over every layer of the profile (`layers: null`)
+ */
+export function filterScopedFields(config: FilterConfig): ScopedFilterField[] {
+    if (config.enabled === false || !Array.isArray(config.fields)) return [];
+    const out: ScopedFilterField[] = [];
+    config.fields.forEach((descriptor, i) => {
+        if (!descriptor || descriptor.kind === "proximity") return;
+        const layers = Array.isArray(descriptor.layers) ? descriptor.layers : null;
+        const push = (name: string, field: unknown): void => {
+            if (typeof field !== "string" || field.length === 0) return;
+            out.push({
+                key: `modules.filter.fields[${i}].${name}`,
+                field,
+                layers,
+                present: (feature: DeclaredFieldFeature) => _carries(feature, field),
+            });
+        };
+        if (descriptor.kind === "text") {
+            (descriptor.searchFields ?? []).forEach((field, j) =>
+                push(`searchFields[${j}]`, field)
+            );
+            return;
+        }
+        // Listing its layers, it is judged on each of them — `filterDeclaredFields`.
+        if (layers) return;
+        push("field", descriptor.field);
+        if (descriptor.kind === "taxonomy") push("subField", descriptor.subField);
     });
     return out;
 }

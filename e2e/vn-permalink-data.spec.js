@@ -106,7 +106,15 @@ test.describe("VN — permalink et données (E.1, E.2, E.4)", () => {
         const hash = await page.evaluate(() => window.location.hash);
         expect(hash, "le chemin compact n'a pas été pris").toMatch(/[#&]gl=/);
         const decoded = decodeCompactHash(hash);
-        expect(decoded.filter, "le filtre CJK a été perdu à l'encodage").toContain("東京");
+        // The page opened on a by-kind link (`gl_filter`), restored it, and WROTE it back per
+        // field: since 3.15.0 the text lives under the id of its filter field.
+        expect(
+            decoded.fieldFilters?.searchText,
+            "le filtre CJK a été perdu à l'encodage"
+        ).toContain("東京");
+        expect(decoded.filter, "le lien réécrit porte encore l'emplacement par genre").toBe(
+            undefined
+        );
 
         expect(
             console_.errors,

@@ -67,10 +67,14 @@
  *
  * ## What this gate does NOT check
  *
- * Member TYPES. It compares names. A member whose declared shape drifts on both sides stays
- * invisible here — that half is the compiler's, and it is asserted by
+ * Member TYPES, and member names below the first level. It compares the names of the
+ * namespace members. A member whose declared shape drifts on one side, or a member the host
+ * names UNDER a namespace member that the core does not, stays invisible here — that half is
+ * the compiler's, and it is asserted by
  * `packages/core/examples/consumer/extension-contract.ts`, which is type-checked through the
- * published `exports` map by `npm run typecheck:consumer`. Two instruments, same reason as
+ * published `exports` map by `npm run typecheck:consumer`. ⚠️ This paragraph claimed that
+ * assertion for two months before it existed for anything but the registration metadata;
+ * the day it was written for the namespace, it refused seven members. Two instruments, same reason as
  * `verify-published-types.cjs` (structural, runs on a clean checkout) and
  * `published-types.ts` (compiler, cannot be fooled by a rule that turns out to be folklore).
  *

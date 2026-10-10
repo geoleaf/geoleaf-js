@@ -101,7 +101,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const docsPaths = require("./lib/docs-paths.cjs");
-const { createFenceTracker } = require("./lib/md-fences.cjs");
+const lib = require("./lib/config-defaults-read.cjs");
+
+const { DEFAULT_HEADER, hasUnit, parseStated, render, canonicalKey } = lib;
 
 const ROOT = path.resolve(__dirname, "..");
 const GUIDE = process.env.GEOLEAF_DCD_GUIDE
@@ -115,10 +117,7 @@ const UPDATE = process.argv.includes("--update-baseline");
 const REPORT = process.argv.includes("--report");
 
 const KEY_HEADER = /^(param[èe]tre|cl[ée]|option|propri[ée]t[ée]|r[ée]glage)$/i;
-const DEFAULT_HEADER = /^d[ée]faut$/i;
 const SECTION_HEADER = /^section$/i;
-const BINDING = /<!--\s*geoleaf:docs:default\s+(\S+)\s+(\S+)\s+(\S+)\s*-->/;
-const KEY_PREFIX = /<!--\s*geoleaf:docs:key-prefix\s+(\S+)\s*-->/;
 // `défaut`, an optional colon, then a TOKEN: bold, backticked, a bare number, or an
 // upper-case word (`ON`). Ordinary prose (`par défaut du serveur`) carries no token.
 // A bare number is matched GREEDILY with its separators and trailing punctuation, which
@@ -129,9 +128,9 @@ const MENTION =
 const MENTION_AFTER = /(`[^`]+`)\s*\(défaut\)/g;
 
 /**
- * @typedef {{ kind: "none" } | { kind: "prose" } | { kind: "lit", value: unknown }} Stated
- * @typedef {{ key: string, file: string, constant: string, line: number, used: boolean }} Binding
- * @typedef {{ line: number, section: string, headers: string[], rows: { line: number, cells: string[] }[], bindings: Binding[], prefix: string }} Table
+ * @typedef {import("./lib/config-defaults-read.cjs").Stated} Stated
+ * @typedef {import("./lib/config-defaults-read.cjs").Binding} Binding
+ * @typedef {import("./lib/config-defaults-read.cjs").Table} Table
  */
 
 /**
@@ -147,230 +146,18 @@ function refuse(message) {
 }
 
 /**
- * Splits a Markdown table row on UNescaped pipes.
+ * Runs a read of the shared library, and turns what it could not read into a refusal.
  *
- * @param {string} line
- * @returns {string[]}
+ * @template T
+ * @param {() => T} read
+ * @returns {T}
  */
-function splitRow(line) {
-    const cells = line.split(/(?<!\\)\|/).map((c) => c.trim());
-    if (cells.length && cells[0] === "") cells.shift();
-    if (cells.length && cells[cells.length - 1] === "") cells.pop();
-    return cells.map((c) => c.replace(/\\\|/g, "|"));
-}
-
-/**
- * @param {string} line
- * @returns {boolean}
- */
-function isSeparatorRow(line) {
-    return /^\s*\|?[\s:|-]+\|?\s*$/.test(line) && line.includes("-");
-}
-
-/**
- * Reads every table of a Markdown document, outside code fences.
- *
- * @param {string} md
- * @param {(heading: string) => string} sectionOf turns a heading line into a section id
- * @returns {Table[]}
- */
-function readTables(md, sectionOf) {
-    const lines = md.split(/\r?\n/);
-    const fences = createFenceTracker();
-    /** @type {Table[]} */
-    const tables = [];
-    /** @type {Table | null} */
-    let current = null;
-    /** @type {Binding[]} */
-    let pending = [];
-    let prefix = "";
-    let section = "";
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (fences.consume(line) || fences.inCode) {
-            current = null;
-            continue;
-        }
-        if (/^#{2,4}\s/.test(line)) section = sectionOf(line) ?? section;
-
-        const marker = BINDING.exec(line);
-        if (marker) {
-            const [, key, file, constant] = marker;
-            pending.push({ key, file, constant, line: i + 1, used: false });
-            continue;
-        }
-        const mounted = KEY_PREFIX.exec(line);
-        if (mounted) {
-            prefix = mounted[1];
-            continue;
-        }
-
-        if (!/^\s*\|/.test(line)) {
-            current = null;
-            continue;
-        }
-        if (current) {
-            current.rows.push({ line: i + 1, cells: splitRow(line) });
-            continue;
-        }
-        if (!isSeparatorRow(lines[i + 1] || "")) continue;
-        current = {
-            line: i + 1,
-            section,
-            headers: splitRow(line),
-            rows: [],
-            bindings: pending,
-            prefix,
-        };
-        tables.push(current);
-        pending = [];
-        prefix = "";
-        i++; // skip the separator row
-    }
-    if (pending.length > 0) {
-        refuse(`liaison sans tableau à sa suite (ligne ${pending[0].line} du guide).`);
-    }
-    return tables;
-}
-
-/**
- * Parses a numeric token, digit separators removed.
- *
- * @param {string} raw
- * @returns {number | undefined}
- */
-function parseNumber(raw) {
-    const compact = raw.replace(/(?<=\d)[\s_](?=\d)/g, "").replace(",", ".");
-    if (!/^-?\d[\d.]*$/.test(compact)) return undefined;
-    // `1.3.0` passes the pattern and is a version string, not a number.
-    const value = Number(compact);
-    return Number.isFinite(value) ? value : undefined;
-}
-
-/**
- * Reads the content of a backticked token as a literal.
- *
- * @param {string} inner
- * @returns {Stated}
- */
-function parseLiteral(inner) {
-    const text = inner.replace(/[\s,_]+$/, "").trim();
-    const num = parseNumber(text.replace(/\.$/, ""));
-    if (num !== undefined) return { kind: "lit", value: num };
+function reading(read) {
     try {
-        return { kind: "lit", value: JSON.parse(text) };
-    } catch {
-        // A single unquoted token (`top-left`, `image/png`) is a string written without
-        // its quotes; anything carrying a space is prose.
-        return /^[^\s"{}[\]]+$/.test(text) ? { kind: "lit", value: text } : { kind: "prose" };
+        return read();
+    } catch (err) {
+        return refuse(/** @type {Error} */ (err).message);
     }
-}
-
-/**
- * A bare token followed by a word is a quantity with its unit (`250 Mo`), not a literal.
- * Punctuation in between (`5, puis…`) ends the token instead.
- *
- * @param {string} token the bare match, trailing separators included
- * @param {string} after what follows it
- * @returns {boolean}
- */
-function hasUnit(token, after) {
-    return /[\dA-Za-z]\s*$/.test(token) && /^[\p{L}%°]/u.test(after);
-}
-
-/**
- * Reads what a cell states as a default — see "Cell grammar" in the header.
- *
- * @param {string} raw
- * @returns {Stated}
- */
-function parseStated(raw) {
-    const cell = raw
-        .trim()
-        .replace(/^\*\*(.*)\*\*$/, "$1")
-        .replace(/^code\s+/i, "")
-        .trim();
-    if (cell === "" || /^[—–-](\s|$)/.test(cell)) return { kind: "none" };
-
-    const ticked = /^`([^`]+)`/.exec(cell);
-    if (ticked) return parseLiteral(ticked[1]);
-
-    const quoted = /^"[^"]*"/.exec(cell);
-    if (quoted) return parseLiteral(quoted[0]);
-
-    const bare = /^(true|false|null|-?\d[\d\s_.,]*)/.exec(cell);
-    if (!bare) return { kind: "prose" };
-    if (hasUnit(bare[1], cell.slice(bare[1].length))) return { kind: "prose" };
-    return parseLiteral(bare[1]);
-}
-
-/**
- * Canonical JSON, keys sorted, so two equal values always render the same string.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function canon(value) {
-    if (Array.isArray(value)) return `[${value.map(canon).join(",")}]`;
-    if (value && typeof value === "object") {
-        const obj = /** @type {Record<string, unknown>} */ (value);
-        return `{${Object.keys(obj)
-            .sort()
-            .map((k) => `${JSON.stringify(k)}:${canon(obj[k])}`)
-            .join(",")}}`;
-    }
-    return JSON.stringify(value);
-}
-
-/**
- * @param {Stated} stated
- * @returns {string}
- */
-function render(stated) {
-    if (stated.kind === "lit") return canon(stated.value);
-    return stated.kind === "none" ? "—" : "(prose)";
-}
-
-/**
- * Instance placeholders are equivalent — see "Cell grammar" in the header.
- *
- * @param {string} key
- * @returns {string}
- */
-function canonicalKey(key) {
-    return key
-        .replace(/^…/, "")
-        .replace(/\.\{[^}]+\}/g, "[]")
-        .replace(/\.<[^>]+>/g, "[]");
-}
-
-/**
- * Indexes the inventory's `Défaut` column by canonical key. Rows under a struck-through
- * heading are migration archives, skipped as `check-config-coverage.cjs` skips them.
- *
- * @returns {Map<string, { stated: Stated, line: number }[]>}
- */
-function readInventory() {
-    const md = fs.readFileSync(INVENTORY, "utf8");
-    /** @type {Map<string, { stated: Stated, line: number }[]>} */
-    const index = new Map();
-    const tables = readTables(md, (heading) => (heading.includes("~~") ? "archive" : "live"));
-    for (const table of tables) {
-        const keyCol = table.headers.findIndex((h) => /^cl[ée]/i.test(h));
-        const defCol = table.headers.findIndex((h) => DEFAULT_HEADER.test(h));
-        if (keyCol < 0 || defCol < 0 || table.section === "archive") continue;
-        for (const row of table.rows) {
-            const key = /^`([^`]+)`$/.exec(row.cells[keyCol] || "");
-            if (!key) continue;
-            const id = canonicalKey(key[1]);
-            const entry = { stated: parseStated(row.cells[defCol] || ""), line: row.line };
-            const known = index.get(id);
-            if (known) known.push(entry);
-            else index.set(id, [entry]);
-        }
-    }
-    return index;
 }
 
 /**
@@ -455,11 +242,13 @@ function rowStatements(cells, keyCol, defCol) {
  * @returns {{ entries: string[], bound: string[], report: string[], stats: Record<string, number> }}
  */
 function scan() {
-    const inventory = readInventory();
-    const tables = readTables(fs.readFileSync(GUIDE, "utf8"), (heading) => {
-        const numbered = /^##\s+(\S+?)\.\s/.exec(heading);
-        return numbered ? `§${numbered[1]}` : undefined;
-    });
+    const inventory = reading(() => lib.readInventory(INVENTORY));
+    const tables = reading(() =>
+        lib.readTables(fs.readFileSync(GUIDE, "utf8"), (heading) => {
+            const numbered = /^##\s+(\S+?)\.\s/.exec(heading);
+            return numbered ? `§${numbered[1]}` : undefined;
+        })
+    );
 
     /** @type {Set<string>} */
     const entries = new Set();

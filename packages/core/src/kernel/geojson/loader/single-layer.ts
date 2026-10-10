@@ -144,9 +144,9 @@ async function _readFromOfflineStore(layerId: string): Promise<unknown | null> {
         if (!(await _awaitOfflineEngine(layerId))) return null;
         // `StorageContract.DB` is a getter: it returns `null` until `wireModules()`
         // has happened, hence the wait above.
-        const db = StorageContract.DB as {
+        const db: {
             getLayerFeatureCollection?: (id: string) => Promise<unknown | null>;
-        } | null;
+        } | null = StorageContract.DB;
         if (!db?.getLayerFeatureCollection) return null;
         return (await db.getLayerFeatureCollection(layerId)) ?? null;
     } catch (err) {
@@ -246,6 +246,34 @@ function _mapRawData(
         Log,
         mappingConfig
     );
+}
+
+/**
+ * Prepares raw layer data for the map: the per-source mapping, the conversion to GeoJSON, then
+ * the symbol ids — the three steps of a first load, in its order.
+ *
+ * Shared with {@link rereadOfflineLayer} and with the OGC automatic refresh on purpose: a
+ * collection re-read from the store, or fetched again when the map moves, must reach the source
+ * in the shape the first load gave it. Fed raw, a layer drawing icons would lose them — no
+ * feature would carry a `symbolId` any more.
+ */
+function _prepareLayerData(
+    rawData: unknown,
+    def: DefLike,
+    layerId: string,
+    Log: GeoJSONLoaderLog
+): { type?: string; features?: unknown[] } {
+    // B.6 — normalize raw external-source data via mapping.json when the layer declares
+    // `data.mapping` (per-source block id); otherwise passes the data through unchanged.
+    const mappedData = _mapRawData(rawData, def, layerId, Log);
+    const geojsonData = _convertRawData(mappedData, _deps?.getDataConverter());
+
+    // Inject symbolId into Point features for SVG icon rendering via the taxonomy
+    // capability (resolvePoiIcon, per-layer `modules.taxonomy` binding); the
+    // resolver getter is absent in the Lite bundle → no icons injected.
+    if (def.showIconsOnMap)
+        injectSymbolIds(geojsonData, layerId, _deps?.getTaxonomyResolvePoiIcon?.());
+    return geojsonData;
 }
 
 function _notifyStyleFail(layerLabel: string): void {
@@ -481,17 +509,7 @@ async function _doLoadSingleLayerMapLibre(
     const _perf = _isPerfEnabled();
     const _mark = () => (_perf ? performance.now() : 0);
     const _tConvert = _mark();
-    const DataConverter = _deps?.getDataConverter();
-    // B.6 — normalize raw external-source data via mapping.json when the layer declares
-    // `data.mapping` (per-source block id); otherwise passes the data through unchanged.
-    const mappedData = _mapRawData(rawData, def, layerId, Log);
-    const geojsonData = _convertRawData(mappedData, DataConverter);
-
-    // Inject symbolId into Point features for SVG icon rendering via the taxonomy
-    // capability (resolvePoiIcon, per-layer `modules.taxonomy` binding); the
-    // resolver getter is absent in the Lite bundle → no icons injected.
-    if (def.showIconsOnMap)
-        injectSymbolIds(geojsonData, layerId, _deps?.getTaxonomyResolvePoiIcon?.());
+    const geojsonData = _prepareLayerData(rawData, def, layerId, Log);
 
     const features = Array.isArray(geojsonData.features) ? geojsonData.features : [];
     const _convertMs = _perf ? performance.now() - _tConvert : 0;
@@ -628,6 +646,83 @@ export function applyOgcRefreshedData(state: GeoJSONState, layerId: string, fc: 
     GeoJSONShared.setLayerCollection(layerId, fc);
 }
 
+/** The property the pending-sync badge is baked on (`contracts/layer-data.contract.ts`). */
+const SYNC_STATUS_PROPERTY = "_syncStatus";
+
+/** A feature, reduced to what naming it and reading its badge take. */
+type BadgedFeature = { id?: unknown; properties?: Record<string, unknown> | null };
+
+/** The key the layer store itself upserts by: the feature's `id`, else `properties.id`. */
+function _featureKey(feature: BadgedFeature): string | null {
+    const raw = feature.id ?? feature.properties?.["id"];
+    return raw == null ? null : String(raw);
+}
+
+/**
+ * Carries the pending-sync badge from the features a layer holds over to those just re-read.
+ *
+ * The badge is baked on the LAYER's copy of an entity, by whoever knows the write queue; the
+ * store keeps none. A collection read back from it would therefore say, of every entity still
+ * owed to the server, that it is not — until the next page load put the badge back. Carried by
+ * identity: an entity the store no longer returns takes its badge with it.
+ */
+function _carrySyncBadges(
+    held: readonly unknown[] | undefined,
+    reread: { features?: unknown[] }
+): void {
+    if (!held?.length || !Array.isArray(reread.features)) return;
+    const owed = new Map<string, unknown>();
+    for (const feature of held as readonly BadgedFeature[]) {
+        const status = feature?.properties?.[SYNC_STATUS_PROPERTY];
+        const key = status == null ? null : _featureKey(feature);
+        if (key !== null) owed.set(key, status);
+    }
+    if (owed.size === 0) return;
+    for (const feature of reread.features as BadgedFeature[]) {
+        const key = feature ? _featureKey(feature) : null;
+        if (key === null || !owed.has(key)) continue;
+        feature.properties = { ...feature.properties, [SYNC_STATUS_PROPERTY]: owed.get(key) };
+    }
+}
+
+/**
+ * Gives a DISPLAYED layer what its offline store holds now.
+ *
+ * 🛑 A LAYER DECLARING `offline.enabled` READ ITS STORE ONCE, WHEN IT LOADED. A pull rewrote
+ * the store afterwards and nothing told the layer: an entity the server had deleted left the
+ * device and stayed drawn, an edited one kept its old drawing, until the next page load. The
+ * pull calls this when it ends.
+ *
+ * The collection goes the way a first load takes ({@link _prepareLayerData}), then through
+ * {@link applyOgcRefreshedData}: the source AND the layer state, announced once
+ * (`geoleaf:layer:updated`) — an open table and an active filter follow. The pending-sync
+ * badge of an entity the layer still holds is kept ({@link _carrySyncBadges}).
+ *
+ * Nothing is written, and `false` is returned, for a layer that is not loaded — it will read
+ * the store when it loads —, for one that does not declare the local read, and when the store
+ * answers nothing: no pull ever concluded, what is drawn came from the network, and it stays.
+ * An EMPTY collection is an answer — a complete pull that returned nothing — and empties the
+ * layer.
+ *
+ * @param layerId - The layer a pull has just written.
+ * @returns Whether the layer was given the store's collection.
+ * @example
+ * const geojson = await import("../index.js");
+ * if (await geojson.rereadOfflineLayer("sites")) console.info("la couche suit son magasin");
+ */
+export async function rereadOfflineLayer(layerId: string): Promise<boolean> {
+    const entry = GeoJSONShared.getLayerById(layerId);
+    if (!entry || !_readsOffline(entry.config as DefLike)) return false;
+    const local = await _readFromOfflineStore(layerId);
+    if (!local) return false;
+    // The read is asynchronous: the layer may have left the map, or been loaded again, since.
+    if (GeoJSONShared.getLayerById(layerId) !== entry) return false;
+    const prepared = _prepareLayerData(local, entry.config as DefLike, layerId, getLog());
+    _carrySyncBadges(entry.features, prepared);
+    applyOgcRefreshedData(getState() as GeoJSONState, layerId, prepared);
+    return true;
+}
+
 async function _loadFromOgcApi(
     layerId: string,
     layerLabel: string,
@@ -706,8 +801,13 @@ async function _loadFromOgcApi(
                             Log.debug(
                                 `[OgcApiLoader] autoRefresh: ${fc.features.length} features for layer "${layerId}"`
                             );
-                            // Update layer data in-place via adapter.
-                            applyOgcRefreshedData(state, layerId, fc);
+                            // The way a first load takes: fed raw, a layer drawing icons
+                            // lost them at the first map move, and a mapped one its attributes.
+                            applyOgcRefreshedData(
+                                state,
+                                layerId,
+                                _prepareLayerData(fc, def, layerId, Log)
+                            );
                         })
                         .catch((err: Error) =>
                             Log.warn(

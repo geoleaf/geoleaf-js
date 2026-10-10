@@ -5,18 +5,13 @@
         "visibleByDefault": false,
         "field": "step",
         "font": {
-            "family": "Open Sans",
-            "sizePt": 8,
-            "weight": 50,
-            "bold": true,
-            "italic": false
+            "sizePt": 8
         },
         "color": "#7c2d92",
         "opacity": 1,
         "buffer": {
             "enabled": true,
             "color": "#fafafa",
-            "opacity": 1,
             "sizePx": 3.78
         }
     },

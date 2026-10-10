@@ -68,6 +68,23 @@ export interface ModalShellOptions {
 }
 
 /**
+ * Adopts the rules of the two classes a modal shell is made of — the overlay and the panel.
+ *
+ * {@link createModalShell} calls it; it is exported for the one caller that writes those
+ * classes WITHOUT going through the shell — the form's responsive modal, which builds its
+ * own overlay and panel. The rules live here and nowhere else: a second copy in the form's
+ * sheet had to be kept equal by hand, and it was the copy adopted last that won.
+ *
+ * Idempotent per bundle — see `adoptStylesheet`.
+ *
+ * @example
+ * adoptModalShellSheet();
+ */
+export function adoptModalShellSheet(): void {
+    adoptStylesheet(css, "gl-host-modal-shell");
+}
+
+/**
  * Builds an accessible modal shell: overlay, panel, ARIA attributes, focus trap, teardown.
  *
  * ## Why this exists
@@ -98,7 +115,7 @@ export function createModalShell(opts: ModalShellOptions): ModalShell {
     // 🛑 Adopted at CALL time, not at module scope. A module-scope injection is a side effect
     // rollup cannot remove, so the sheet reached nine bundles whose JS had been shaken away —
     // a dialog that was not there, styled on every page load.
-    adoptStylesheet(css, "gl-host-modal-shell");
+    adoptModalShellSheet();
     const overlay = createEl("div", "gl-form-modal-overlay");
     const panel = createEl(
         "div",

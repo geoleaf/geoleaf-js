@@ -9,7 +9,7 @@
  *   uploadEndpoint?: string   — POST endpoint; response must be JSON { url: string }
  *   maxSizeMb?: number        — TARGET size in MB after compression (default 5). Larger
  *                               images are resized+recompressed to fit; rejected only past 5× that
- *                               value before compression. See `image-compress.ts` (task 5.1-d).
+ *                               value before compression. See `image-compress.ts`.
  * https://geoleaf.dev
  */
 import type { ComponentDefinition, FieldConfig, RenderCtx } from "../contract.js";

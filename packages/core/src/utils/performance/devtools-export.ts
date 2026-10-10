@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf Performance Profiler – DevTools Export
- * Pure DevTools trace builder extracted from performance-profiler.js (Phase 8.2.5)
+ * Pure DevTools trace builder extracted from performance-profiler.js
  */
 
 /** A single Chrome DevTools trace event (subset of the full schema we emit). */

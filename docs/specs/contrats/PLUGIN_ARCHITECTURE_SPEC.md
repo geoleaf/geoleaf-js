@@ -396,7 +396,7 @@ packages/plugins/<nom>/
 >   dans le fichier d'état du dépôt de travail (ligne du registre de dette, soldée le
 >   29/07/2026 « pour moitié par disparition »).
 >
-> 🛑 **Corrigé DANS la liste le 11/08/2026 (tâche 6.11).** L'annotation avait rectifié les deux
+> 🛑 **Corrigé DANS la liste le 11/08/2026.** L'annotation avait rectifié les deux
 > adresses **sans toucher aux consignes**, onze lignes plus haut : un lecteur qui suit la liste
 > sans lire l'encart créait donc encore un fichier dans un répertoire supprimé. Le diagnostic
 > était juste et complet — il n'avait simplement pas été appliqué à son objet. **Une annotation

@@ -159,14 +159,19 @@ export function setEditorActiveTool(tool: EditorTool | null): void {
 
 /**
  * Disarms the currently active tool (if any), syncs the button state, and
- * notifies via `onToolSelect(null)`. No-op when no tool is armed. Used by the
- * menu close flow and by the "Enter exits select mode" keyboard shortcut.
+ * notifies via `onToolSelect(null)` — which stops the drawing engine's mode, so a shape
+ * still being traced goes with its vertices. No-op when no tool is armed. Used by the
+ * menu close flow, by the "Enter exits select mode" keyboard shortcut, and published as
+ * `GeoLeaf.Editor.cancelDrawing()`.
+ *
+ * @returns `true` when a tool was armed and has been disarmed, `false` when none was.
  */
-export function deactivateActiveTool(): void {
-    if (_activeTool === null) return;
+export function deactivateActiveTool(): boolean {
+    if (_activeTool === null) return false;
     _activeTool = null;
     _syncActiveButton();
     _onToolSelect?.(null);
+    return true;
 }
 
 /** Returns the currently armed tool, or null. */

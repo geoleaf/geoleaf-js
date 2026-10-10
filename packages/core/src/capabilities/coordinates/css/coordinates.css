@@ -16,12 +16,7 @@
 
     .gl-coordinates-display {
         /* MapLibre inserts the control into the bottom-left container. */
-        font-family:
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
+        font-family: var(--gl-font-family);
         font-size: 0.85rem;
         color: var(--gl-color-text-main);
         pointer-events: none;

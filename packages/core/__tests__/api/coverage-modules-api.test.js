@@ -260,10 +260,10 @@ describe("Coverage — APIFactoryManager", () => {
     });
 });
 
-// ── APIController (T10.3.11) ──────────────────────────────────────────────────
+// ── APIController ──────────────────────────────────────────────────
 import { APIController } from "../../src/kernel/api/controller.ts";
 
-describe("Coverage — APIController (T10.3.11)", () => {
+describe("Coverage — APIController", () => {
     let controller;
 
     // Minimal mock manager classes that APIController can instantiate

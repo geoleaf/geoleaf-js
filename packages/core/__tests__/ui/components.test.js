@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.1 — modules/ui/components.ts */
+/* modules/ui/components.ts */
 
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
@@ -8,7 +8,7 @@ vi.mock("../../src/utils/log/index.js", () => ({
 
 import { _UIComponents } from "../../src/kernel/ui/components.js";
 
-describe("ui/components (Phase 5.1)", () => {
+describe("ui/components", () => {
     let container;
 
     beforeEach(() => {

@@ -400,6 +400,114 @@ describe("showLoginModal", () => {
             expect(getError().textContent).toContain("Erreur : Account locked");
         });
 
+        // ── The server's own motive (RFC 9457), and the event that carries it ───────────────
+
+        /** Submits the form against a sign-in that rejects with `error`. */
+        async function submitRefused(error: unknown): Promise<void> {
+            const { AuthClient } = await import("../auth-client.js");
+            (AuthClient.login as ReturnType<typeof vi.fn>).mockRejectedValue(error);
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+            getLoginInput().value = "user@example.com";
+            getPasswordInput().value = "pwd";
+            getForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+            await vi.waitFor(() => expect(getError().hidden).toBe(false));
+        }
+
+        /** An `AuthError` as `auth-client` throws it for a refusal that declared a problem. */
+        async function refused(status: number, problem?: Record<string, unknown>) {
+            const { AuthError } = await import("../auth-client.js");
+            return Object.assign(new AuthError(`Authentication failed (${status})`), {
+                status,
+                ...(problem && { problem: { ...problem, body: problem } }),
+            });
+        }
+
+        it("shows the server's `detail` under the generic label", async () => {
+            await submitRefused(
+                await refused(403, { title: "Refusé", detail: "Un second facteur est exigé." })
+            );
+            expect(getError().textContent).toContain("Authentication failed (403)");
+            expect(getError().querySelector(".gc-error-reason")?.textContent).toBe(
+                "Un second facteur est exigé."
+            );
+        });
+
+        it("shows the `title` when the problem carries no `detail`", async () => {
+            await submitRefused(await refused(403, { title: "Compte verrouillé" }));
+            expect(getError().querySelector(".gc-error-reason")?.textContent).toBe(
+                "Compte verrouillé"
+            );
+        });
+
+        it("shows nothing more when the refusal declared no problem", async () => {
+            await submitRefused(await refused(403));
+            expect(getError().querySelector(".gc-error-reason")).toBeNull();
+        });
+
+        it("renders the motive as text, never as markup", async () => {
+            const hostile = '<img src=x onerror="window.__pwned = true"><b>bold</b>';
+            await submitRefused(await refused(403, { detail: hostile }));
+            expect(getError().querySelector("img, b")).toBeNull();
+            expect(getError().querySelector(".gc-error-reason")?.textContent).toBe(hostile);
+        });
+
+        it("bounds what it shows of a long motive", async () => {
+            await submitRefused(await refused(403, { detail: "x".repeat(2000) }));
+            const shown = getError().querySelector(".gc-error-reason")?.textContent ?? "";
+            expect(shown.length).toBeLessThanOrEqual(301);
+            expect(shown.endsWith("…")).toBe(true);
+        });
+
+        it("a second attempt does not keep the motive of the first", async () => {
+            const { AuthClient, AuthError } = await import("../auth-client.js");
+            await submitRefused(await refused(403, { detail: "Un second facteur est exigé." }));
+            (AuthClient.login as ReturnType<typeof vi.fn>).mockRejectedValue(
+                new AuthError("Invalid credentials")
+            );
+            getPasswordInput().value = "other";
+            getForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+            await vi.waitFor(() =>
+                expect(getError().textContent).toContain("Identifiant ou mot de passe incorrect")
+            );
+            expect(getError().querySelector(".gc-error-reason")).toBeNull();
+        });
+
+        it("dispatches geoleaf:connector:login-failed with the status and the problem", async () => {
+            const seen: unknown[] = [];
+            const listener = (e: Event) => seen.push((e as CustomEvent).detail);
+            document.addEventListener("geoleaf:connector:login-failed", listener);
+            try {
+                const problem = { type: "about:blank", title: "Refusé", detail: "2FA", code: 7 };
+                await submitRefused(await refused(403, problem));
+                expect(seen).toEqual([
+                    {
+                        baseUrl: BASE_CONFIG.baseUrl,
+                        error: "Authentication failed (403)",
+                        status: 403,
+                        problem: { ...problem, body: problem },
+                    },
+                ]);
+            } finally {
+                document.removeEventListener("geoleaf:connector:login-failed", listener);
+            }
+        });
+
+        it("dispatches it for a failure that never reached the server, without a status", async () => {
+            const { AuthError } = await import("../auth-client.js");
+            const seen: unknown[] = [];
+            const listener = (e: Event) => seen.push((e as CustomEvent).detail);
+            document.addEventListener("geoleaf:connector:login-failed", listener);
+            try {
+                await submitRefused(new AuthError("Network unavailable"));
+                expect(seen).toEqual([
+                    { baseUrl: BASE_CONFIG.baseUrl, error: "Network unavailable" },
+                ]);
+            } finally {
+                document.removeEventListener("geoleaf:connector:login-failed", listener);
+            }
+        });
+
         it("shows unexpected error message for non-AuthError exceptions", async () => {
             const { AuthClient } = await import("../auth-client.js");
             (AuthClient.login as ReturnType<typeof vi.fn>).mockRejectedValue(

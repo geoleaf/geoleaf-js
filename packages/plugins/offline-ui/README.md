@@ -13,12 +13,21 @@ panel. The engine (IndexedDB, cache, download, sync) lives in `@geoleaf/core`, a
 
 - **Cache button** — a control in the core's toolbar that opens the offline window
 - **Layer picker** — choose which layers of the profile to take offline, then start and follow
-  the download (`GeoLeaf.Storage.CacheManager.cacheProfile`)
+  the download (`GeoLeaf.Storage.CacheManager.cacheProfile`). A basemap whose origin is not
+  declared for offline preparation is greyed and says why (core ≥ 3.15.0), and the closing notice
+  names what a download left out
 - **Synchronisation panel** — the state of the write queue the core holds, and a button to send
   it now
+- **Captures set aside** — one row per motive, with a retry where the core says a retry can work
+  and a confirmed discard
 - **"Can I leave?"** — the core's pre-departure check (`GeoLeaf.Storage.preflight()`, core ≥ 3.10.0)
   shown next to the download: storage persistence, each layer's offline state, what the
   preparation left out, the write session (core ≥ 3.11.0), and the core's verdict
+- **« Export the log »** — the application's recent journal (`GeoLeaf.Log.exportDiagnostic()`),
+  downloaded as a JSON file
+- **« A new version is ready »** — a banner, outside the window, when an update of the
+  application waits (core ≥ 3.15.0): **Reload** applies it (`GeoLeaf.PWA.applyUpdate()`),
+  **Later** leaves it waiting
 
 What this plugin does **not** contain: the storage itself, the cache, the pull of a layer's
 entities, the write queue and its replay, the connectivity detection. They are the core's offline
@@ -51,12 +60,12 @@ GeoLeaf.boot({
     config: { data: { activeProfile: "tourism", profilesBasePath: "./profiles/" } },
 });
 
-// Check offline status
-const isOffline = GeoLeaf.Storage.isOffline();
+// Check offline status — the facade's members are optional: it is inert until the engine loads
+const isOffline = GeoLeaf.Storage?.isOffline?.() ?? false;
 
 // Storage statistics
-const stats = await GeoLeaf.Storage.getStats();
-console.log(stats.storage.used, stats.features.count, stats.outbox.count);
+const stats = await GeoLeaf.Storage?.getStats?.();
+console.log(stats?.storage.used, stats?.features.count, stats?.outbox.count);
 ```
 
 ### ESM (CDN / script tag)
@@ -148,10 +157,10 @@ Removes the whole cache and empties the `preferences` and `metadata` tables.
 | ------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `geoleaf:online`                | `{ timestamp }`                                         | Connectivity returns                                                                                                                                     |
 | `geoleaf:offline`               | `{ timestamp }`                                         | Connectivity is lost                                                                                                                                     |
-| `geoleaf:cache:progress`        | `{ profileId, downloaded, total, percentage }`          | Caching progresses                                                                                                                                       |
+| `geoleaf:cache:progress`        | `{ current, total, percentage, … }`                     | Caching progresses                                                                                                                                       |
 | `geoleaf:offline:pull-progress` | `{ layerId, current, total, totalIsKnown, percentage }` | One page of a layer's entities landed. `totalIsKnown` is `false` when the source served no `numberMatched`: `total` is then a running count, not a whole |
-| `geoleaf:cache:completed`       | `{ profileId }`                                         | A download finishes                                                                                                                                      |
-| `geoleaf:cache:cleared`         | `{ profileId }`                                         | A profile's cache is removed                                                                                                                             |
+| `geoleaf:cache:completed`       | `{ profileId, cached, … }`                              | A download finishes                                                                                                                                      |
+| `geoleaf:cache:cleared`         | `{ profileId, deleted }`                                | A profile's cache is removed                                                                                                                             |
 | `geoleaf:poi:synced`            | the push tally itself — `{ synced, failed, … }`         | The sync queue has been sent                                                                                                                             |
 | `geoleaf:storage:initialized`   | —                                                       | Storage is initialised                                                                                                                                   |
 | `geoleaf:storage:cleared`       | —                                                       | All storage has been removed                                                                                                                             |

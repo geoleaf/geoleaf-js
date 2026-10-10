@@ -20,11 +20,11 @@
  * (Plugin Contract v1, INV-CONFIG).
  */
 
-import type { GeocodingConfig, GeocodingResult } from "./types.js";
+import type { GeocodingResult } from "./types.js";
 import type { IGeocodingProvider } from "./provider.js";
 import { createProvider } from "./provider-registry.js";
 import { mountGeocodingControl, type GeocodingControlHandle } from "./control.js";
-import { getPluginConfig } from "./config.js";
+import { DEFAULTS, getPluginConfig, type ResolvedGeocodingConfig } from "./config.js";
 
 /**
  * Minimal map-adapter surface this registry drives. Kept local (a structural
@@ -65,11 +65,11 @@ let _control: GeocodingControlHandle | null = null;
  * Returns defaults (disabled) when config is unavailable.
  * @internal
  */
-function _getConfig(): GeocodingConfig {
+function _getConfig(): ResolvedGeocodingConfig {
     try {
         return getPluginConfig();
     } catch {
-        return {};
+        return DEFAULTS;
     }
 }
 
@@ -149,7 +149,7 @@ function _onMapReady(): void {
     const provider: IGeocodingProvider = {
         search: (query, limit) => createProvider(_getConfig()).search(query, limit),
     };
-    const flyToZoom = config.flyToZoom ?? 15;
+    const flyToZoom = config.flyToZoom;
 
     _control = mountGeocodingControl(container, provider, config, (result) => {
         _onSelect(result, flyToZoom);
@@ -202,14 +202,14 @@ export const GeocodingRegistry = {
      * Useful for scripts or integration tests.
      *
      * @param query - Text to search: an address, a place name, a feature reference.
-     * @param limit - Maximum number of results. Defaults to `resultLimit` or 5.
+     * @param limit - Maximum number of results. Defaults to `resultLimit`.
      */
     async search(query: string, limit?: number): Promise<GeocodingResult[]> {
         const trimmed = query.trim();
         if (trimmed.length === 0) return [];
         const config = _getConfig();
         const provider = createProvider(config);
-        return provider.search(trimmed, limit ?? config.resultLimit ?? 5);
+        return provider.search(trimmed, limit ?? config.resultLimit);
     },
 
     /**
@@ -220,7 +220,7 @@ export const GeocodingRegistry = {
      */
     selectResult(result: GeocodingResult): void {
         const config = _getConfig();
-        _onSelect(result, config.flyToZoom ?? 15);
+        _onSelect(result, config.flyToZoom);
     },
 
     /**

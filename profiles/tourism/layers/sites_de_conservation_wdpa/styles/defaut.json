@@ -5,18 +5,13 @@
         "visibleByDefault": false,
         "field": "NAME_ENG",
         "font": {
-            "family": "Segoe UI",
-            "sizePt": 7,
-            "weight": 50,
-            "bold": false,
-            "italic": true
+            "sizePt": 7
         },
         "color": "#323232",
         "opacity": 1,
         "buffer": {
             "enabled": true,
             "color": "#fafafa",
-            "opacity": 1,
             "sizePx": 3.78
         }
     },

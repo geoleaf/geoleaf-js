@@ -73,8 +73,6 @@ export default defineConfig({
             {
                 text: "Configuration",
                 items: [
-                    { text: "Configuration Guide", link: "/CONFIGURATION_GUIDE" },
-                    { text: "Profiles Guide", link: "/PROFILES_GUIDE" },
                     { text: "Profile JSON Reference", link: "/PROFILE_JSON_REFERENCE" },
                     { text: "Plugin Configuration", link: "/PLUGIN_CONFIGURATION_GUIDE" },
                 ],

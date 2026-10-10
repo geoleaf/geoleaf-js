@@ -1110,6 +1110,7 @@ describe("4.5 — push et réconciliation d'identité", () => {
             deferred: 0,
             conflicts: 0,
             haltedBy: null,
+            heldForSession: 0,
         });
     });
 
@@ -1146,7 +1147,15 @@ describe("4.5 — push et réconciliation d'identité", () => {
 
         expect(fetchSpy).not.toHaveBeenCalled();
         expect(heard).toEqual([
-            { attempted: 0, pushed: 0, failed: 0, deferred: 0, conflicts: 0, haltedBy: null },
+            {
+                attempted: 0,
+                pushed: 0,
+                failed: 0,
+                deferred: 0,
+                conflicts: 0,
+                haltedBy: null,
+                heldForSession: 0,
+            },
         ]);
     });
 });

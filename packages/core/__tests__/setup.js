@@ -497,7 +497,7 @@ global.testHelpers = {
     },
 };
 
-// ── WorkerMock — opt-in Web Worker stub (T9.3.2) ──────────────────────────────
+// ── WorkerMock — opt-in Web Worker stub ──────────────────────────────
 // Tests that need a Worker global can set:  global.Worker = global.WorkerMock
 // (or use vi.stubGlobal("Worker", global.WorkerMock) before importing the module)
 // This class is NOT set as global.Worker by default to avoid breaking tests

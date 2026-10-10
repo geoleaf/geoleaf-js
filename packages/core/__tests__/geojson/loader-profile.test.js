@@ -850,14 +850,14 @@ describe("geojson/loader/profile — plugin dispatch (S10)", () => {
 });
 
 /**
- * R.40 (backlog résiduel S5) — the clustering normalisation this loader applies used to
+ * The clustering normalisation this loader applies used to
  * be duplicated verbatim in `themes/theme-applier/deferred.ts`. It is now shared through
  * `resolveClusteringNormalization()`. A mutation run over the whole core suite (8 576
  * tests) showed that ONLY the `deferred.ts` side was covered: neutralising the logic
  * broke exactly one test, and none of them was here. These cases close that hole, so the
  * shared helper is provable from both call sites rather than from one.
  */
-describe("geojson/loader/profile — clustering normalisation (R.40)", () => {
+describe("geojson/loader/profile — clustering normalisation", () => {
     const baseDeps = () => ({
         getConfig: () => globalThis.GeoLeaf.Config,
         getLoader: () => globalThis.GeoLeaf._GeoJSONLoader,

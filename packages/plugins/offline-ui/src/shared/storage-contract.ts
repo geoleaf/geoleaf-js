@@ -177,9 +177,27 @@ export interface StorageContractShape {
      * verdict is the core's: this package shows it, it never re-judges it.
      */
     preflight(): Promise<PreflightReport | null>;
+    /**
+     * The origin rule's verdict for one URL (core ≥ 3.15.0) — `null` when the core has no
+     * such member. Asked, never re-judged here.
+     */
+    prefetchVerdict(url: string): OriginVerdict | null;
     readonly DB: StorageContractDB;
     readonly CacheManager: StorageContractCacheManager;
     readonly Cache: StorageContractCache;
+}
+
+/**
+ * The origin rule's answer for one URL, as `GeoLeaf.Storage.prefetchVerdict` gives it.
+ * Structural: the core declares the shape on its facade, not in a contract module.
+ */
+interface OriginVerdict {
+    /** Whether the preparation may download this URL ahead of use. */
+    allowed: boolean;
+    /** The origin judged. */
+    origin: string;
+    /** Why not, on a refusal — a string, so a motive the core adds later is still shown. */
+    reason?: string;
 }
 
 /**
@@ -226,6 +244,24 @@ export const StorageContract = {
                   quarantined: 0,
                   lastSyncAt: null,
               });
+    },
+    /**
+     * What the core's origin rule answers for one URL — may the preparation download it ahead
+     * of use? `null` when the core cannot say: an older core (the member is 3.15.0) has no
+     * verdict to give, and the caller then shows what it always showed.
+     *
+     * 🛑 **ASKED, NEVER RE-JUDGED.** The rule reads `modules.offline.dataOrigins` and the
+     * page's origin; a copy of it bundled here would be a second rule, free to drift.
+     *
+     * @param url - A resource URL, a tile URL template, or a style URL.
+     * @returns the verdict, or `null` without the member.
+     * @example
+     * const verdict = StorageContract.prefetchVerdict("https://{s}.tiles.example/{z}/{x}/{y}.png");
+     * if (verdict && !verdict.allowed) console.warn(verdict.origin, verdict.reason);
+     */
+    prefetchVerdict(url: string): OriginVerdict | null {
+        const fn = _storage()?.["prefetchVerdict"] as ((url: string) => OriginVerdict) | undefined;
+        return fn ? fn.call(_storage(), url) : null;
     },
     preflight(): Promise<PreflightReport | null> {
         const fn = _storage()?.["preflight"] as (() => Promise<PreflightReport | null>) | undefined;

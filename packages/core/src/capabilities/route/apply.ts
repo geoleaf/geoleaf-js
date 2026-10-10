@@ -28,7 +28,7 @@ const LINE_TYPES = new Set(["LineString", "MultiLineString"]);
  *
  * Start and end markers share ONE layer — and therefore one MapLibre source. They
  * used to be two (`gl-route-<id>-start` / `-end`), which meant two sources and two
- * sub-layers per itinerary where one of each suffices (R.38, backlog résiduel S5).
+ * sub-layers per itinerary where one of each suffices.
  * The merge is possible because `deriveEndpoints()` already tags every derived
  * feature with `properties.role`, so the two visual styles are expressible as
  * data-driven `styleRules` on a single layer rather than as two layers.

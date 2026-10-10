@@ -1,5 +1,5 @@
 /**
- * Phase 4.11 — table/panel.ts unit tests.
+ * table/panel.ts unit tests.
  *
  * Ported from the core suite (`__tests__/table/table-panel.test.js`).
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /
@@ -75,7 +75,7 @@ function installSeams() {
 
 let visibilitySeam = { isVisible: vi.fn(() => true) };
 
-describe("modules/table/panel (Phase 4.11)", () => {
+describe("modules/table/panel", () => {
     beforeEach(() => {
         document.body.innerHTML = "";
         getLayers.mockReturnValue(new Map());

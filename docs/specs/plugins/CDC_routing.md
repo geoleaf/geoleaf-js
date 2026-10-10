@@ -4,8 +4,8 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ed53df0bd
-date: 27 août 2026
+verifie_contre: 45c7c0eb2
+date: 7 octobre 2026
 ---
 
 # routing — le calcul d'itinéraire, utilisable sans le guidage
@@ -297,6 +297,13 @@ refusé ici tant qu'il n'est pas écrit dans les DEUX déclarations locales — 
 survit. `destroy()` détache. Perdre son point de départ en repliant un onglet serait la même faute
 que le bouton du POI qui l'écrasait — prise par l'autre bout.
 
+⚠️ **Détaché au démontage, le volet REVENAIT — par son hôte, pas par ce greffon.** Mesuré le
+04/10/2026 dans Chromium, sous la feuille mobile comme sous le panneau de bureau : ce module retire
+bien son volet (`destroyPanel`), puis l'hôte qui l'avait adopté, démonté après lui, le rendait à
+`<body>` ; l'ouverture suivante en bâtissait un second. Corrigé dans le core 3.15.0 (`bf284c46e`),
+sans retouche ici : voir « Le registre de panes » de [`CDC_kernel.md`](../CDC_kernel.md). Gardé par
+`e2e/75-remount-plugins.spec.js`, sur ce volet.
+
 ---
 
 ## 🛑 Un pane HÉRITE de son hôte — et ce qu'il n'hérite pas, il doit le poser — 27/08/2026
@@ -546,7 +553,7 @@ compris entre backticks, qui ne protègent de rien. Le défaut est déjà arriv�
 
 ## `NavProgress.rerouteFailure` — le motif que le guidage rapporte
 
-Ajouté le 22/08/2026 (tâche 5.6 du sprint navigation). Le champ est **optionnel** et porte l'une
+Ajouté le 22/08/2026. Le champ est **optionnel** et porte l'une
 des six causes de `RouteFailure`.
 
 ⚠️ Il vit ici, dans le modèle de ce paquet, pour la même raison que `NavProgress` lui-même :
@@ -561,7 +568,7 @@ rapporte ce qu'une tentative de recalcul a répondu, et cette tentative appartie
 
 ## Le passage au guidage
 
-Ajouté le 21/08/2026 (tâche 4.15 du sprint navigation). Le panneau porte un bouton
+Ajouté le 21/08/2026. Le panneau porte un bouton
 « Démarrer le guidage » qui charge `@geoleaf-plugins/navigation` puis lui remet l'itinéraire.
 
 🛑 **Le bouton n'existe que si le guidage est joignable, et le garde est l'ABSENCE du handler** :
@@ -701,7 +708,7 @@ s'affiche, **sans erreur**, ce qui est le pire des deux échecs. Vu rouge sur le
 
 `src/fit-route.ts`, appelé par `show()` après une publication **réussie**.
 
-🛑 **Il n'y a pas de clé de configuration, et c'est le résultat d'un arbitrage** (tâche 3.3), pas un
+🛑 **Il n'y a pas de clé de configuration, et c'est le résultat d'un arbitrage**, pas un
 oubli. Trois autres règles étaient sur la table :
 
 | Règle                       | Ce qu'elle coûte                                                                                                |

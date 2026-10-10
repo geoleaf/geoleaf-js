@@ -490,11 +490,11 @@ test.describe("[print] a11y", () => {
         await openEmprise(page);
         await drawEmpriseAndOpenModal(page);
         const results = await scanComponent(page, ".gl-print-modal");
-        // The former SYSTEMIC theme-token contrast issue is fixed: components sitting
-        // on an --gl-color-accent background (here .gl-print-btn--pdf) now use
-        // --gl-color-accent-contrast (dark on the light-theme peach accent) instead of
-        // --gl-color-text-inverse (near-white). The scan is strict again — any
-        // color-contrast regression on the print surface must fail.
+        // `.gl-print-btn--pdf` sits on an --gl-color-accent background and reads
+        // --gl-color-accent-contrast (dark on the light-theme peach accent). This scan
+        // judges the MODAL only: the footprint overlay that precedes it, and its
+        // `.gl-emprise-ok` button, are outside it — the pairing is held for every sheet
+        // by `scripts/verify-css-accent-contrast.cjs`, not by this test.
         expect(results.violations).toEqual([]);
         expect(errors.filter((e) => !/favicon|chrome-extension/.test(e))).toHaveLength(0);
     });

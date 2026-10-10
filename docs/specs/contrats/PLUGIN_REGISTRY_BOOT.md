@@ -62,7 +62,7 @@ flowchart TD
 ```
 
 > ⚠️ **Ce graphe listait HUIT modules noyau et cinq optionnels — corrigé le 11/08/2026.**
-> Il y a **six** modules noyau (`app/boot-install.ts:110` : _« S6 Lot 6: 6 kernel modules, not
+> Il y a **six** modules noyau (`app/boot-install.ts:110` : _« 6 kernel modules, not
 > 8 »_) ; `SecurityModule` et `APIModule` étaient des enveloppes vidées, `POIModule` est dissous
 > au S9, et `TableModule` / `SearchModule` n'ont **jamais eu de classe** dans ce dépôt. Les
 > capacités (route, labels, legend…) ne sont plus des nœuds nommés : elles sont enregistrées par

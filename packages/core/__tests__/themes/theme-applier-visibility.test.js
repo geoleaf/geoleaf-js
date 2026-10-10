@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.34 - theme-applier/visibility */
+/* theme-applier/visibility */
 
 const mockResetAllUserOverrides = vi.hoisted(() => vi.fn());
 const mockSetVisibility = vi.hoisted(() => vi.fn());
@@ -68,7 +68,7 @@ import { ThemeApplierVisibility as TA } from "../../src/kernel/themes/theme-appl
 import { StyleLoader } from "../../src/utils/loaders/style-loader.js";
 import { LayerManagerStyle } from "../../src/kernel/geojson/layers/style.js";
 
-describe("theme-applier/visibility (Phase 5.34)", () => {
+describe("theme-applier/visibility", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockLayersMap.clear();

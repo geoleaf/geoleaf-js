@@ -341,16 +341,16 @@
 
     .gl-legend__accordion--inactive .gl-legend__accordion-header {
         cursor: not-allowed;
-        background: var(--gl-color-legend-header-inactive-bg, rgba(0, 0, 0, 0.02));
+        background: var(--gl-color-bg-surface-muted, rgba(0, 0, 0, 0.02));
     }
 
     .gl-legend__accordion--inactive .gl-legend__accordion-header:hover {
-        background: var(--gl-color-legend-header-inactive-bg, rgba(0, 0, 0, 0.02));
+        background: var(--gl-color-bg-surface-muted, rgba(0, 0, 0, 0.02));
     }
 
     .gl-legend__accordion--inactive .gl-legend__accordion-title {
         font-style: italic;
-        color: var(--gl-color-legend-text-inactive, rgba(0, 0, 0, 0.5));
+        color: var(--gl-color-text-muted, rgba(0, 0, 0, 0.5));
     }
 
     /* ------------------------------------------------------------

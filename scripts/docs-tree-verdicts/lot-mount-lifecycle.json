@@ -15,7 +15,7 @@
             "severity": null,
             "description": "Cycle de vie de l'application derrière `GeoLeaf.mount()` et `GeoLeaf.boot()` : poignée synchrone (`ready`, `unmount`, `on`, `getMap`), chaîne sérialisée, démontage en un seul ordre — annuler le boot, l'attendre, détruire le registre carte vivante, puis la carte, puis l'état possédé par le boot",
             "confidence": "haute",
-            "rationale": "Vit dans `app/` : il pilote `startApp` et le registre de modules, que `kernel/` n'a pas le droit d'importer (KERNEL_APP_BOUNDARY), et `installBoot` est son seul importeur. Né de la tâche 4.1 du rapport d'avis : avant lui, `Core.destroy()` puis `Core.init()` rendait une carte nue et un second `boot()` était ignoré. Tenu par `__tests__/app/mount-remount.test.ts`, vu rougir sur trois mutations (sans `registry.destroy()`, sans remise à zéro de `_appStarted`, sans point d'arrêt après la configuration)"
+            "rationale": "Vit dans `app/` : il pilote `startApp` et le registre de modules, que `kernel/` n'a pas le droit d'importer (KERNEL_APP_BOUNDARY), et `installBoot` est son seul importeur. Avant lui, `Core.destroy()` puis `Core.init()` rendait une carte nue et un second `boot()` était ignoré. Tenu par `__tests__/app/mount-remount.test.ts`, vu rougir sur trois mutations (sans `registry.destroy()`, sans remise à zéro de `_appStarted`, sans point d'arrêt après la configuration)"
         }
     }
 }

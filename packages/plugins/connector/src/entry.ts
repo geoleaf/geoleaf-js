@@ -48,6 +48,17 @@ _g.GeoLeaf?.I18n?.registerDict?.("connector", {
     de: langDe,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Connector`. */
+export type ConnectorApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Connector` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Connector: ConnectorApi;
+    }
+}
+
 if (_g.GeoLeaf) {
     _g.GeoLeaf.Connector = buildPublicApi();
 }

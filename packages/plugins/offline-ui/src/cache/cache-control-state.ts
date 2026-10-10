@@ -48,8 +48,9 @@ export async function updateStatus(self: CacheControlState): Promise<void> {
 
         if (status && status.resourcesCount > 0) {
             if (stateEl) {
-                stateEl.textContent = " \u2705 Downloaded";
-                stateEl.style.color = "#22c55e";
+                stateEl.textContent = ` \u2705 ${t("storage.layers.cached")}`;
+                stateEl.classList.add("gl-cache-state--ok");
+                stateEl.classList.remove("gl-cache-state--missing");
             }
             if (sizeEl) {
                 const sizeMB = ((status.size || 0) / 1024 / 1024).toFixed(2);
@@ -58,8 +59,9 @@ export async function updateStatus(self: CacheControlState): Promise<void> {
             if (self._clearBtn) self._clearBtn.disabled = false;
         } else {
             if (stateEl) {
-                stateEl.textContent = " \u274C Not downloaded";
-                stateEl.style.color = "#ef4444";
+                stateEl.textContent = ` \u274C ${t("storage.layers.notCached")}`;
+                stateEl.classList.add("gl-cache-state--missing");
+                stateEl.classList.remove("gl-cache-state--ok");
             }
             if (sizeEl) sizeEl.textContent = "0 MB";
             if (self._clearBtn) self._clearBtn.disabled = true;
@@ -98,7 +100,7 @@ export function updateProgress(self: CacheControlState, progress: CacheProgressD
     }
     self._progressFill.style.width = percent + "%";
 
-    let text = `${cur} / ${tot} files`;
+    let text = `${cur} / ${tot} ${t("storage.download.resources")}`;
 
     // Append downloaded / total size
     if (progress.downloadedSize && progress.totalSize) {
@@ -163,11 +165,11 @@ export function updateClearProgress(self: CacheControlState, progress: CacheProg
     const percentage = (cur / tot) * 100;
     self._progressFill.style.width = percentage.toFixed(1) + "%";
 
-    let text = `Deleting: ${cur} / ${tot} files`;
+    let text = `${t("storage.download.deleting")} ${cur} / ${tot} ${t("storage.download.resources")}`;
     if (percentage < 100) {
         text += ` (${percentage.toFixed(0)}%)`;
     } else {
-        text = "\u2705 Deletion complete";
+        text = `\u2705 ${t("storage.notif.clear.success")}`;
     }
 
     self._progressText.textContent = text;
@@ -191,7 +193,8 @@ export function handleStop(self: CacheControlState): void {
         if (!ok) return;
         try {
             StorageContract.CacheManager.cancelDownload();
-            if (self._progressText) self._progressText.textContent = "\u23F9\uFE0F Stopping...";
+            if (self._progressText)
+                self._progressText.textContent = `\u23F9\uFE0F ${t("storage.download.stopping")}`;
         } catch (error) {
             if (Log)
                 Log.error(`[CacheControl] Failed to stop download: ${(error as Error).message}`);
@@ -201,13 +204,14 @@ export function handleStop(self: CacheControlState): void {
 
 /** Handles the download cancelled event. */
 export function handleCancelled(self: CacheControlState): void {
-    if (self._progressText) self._progressText.textContent = "\u23F9\uFE0F Download stopped";
+    if (self._progressText)
+        self._progressText.textContent = `\u23F9\uFE0F ${t("storage.download.stopped")}`;
     if (self._progressFill) self._progressFill.style.backgroundColor = "#ef4444";
 
     if (self._downloadBtn) {
         self._downloadBtn.disabled = false;
         const textEl = self._downloadBtn.querySelector(".gl-btn__text");
-        if (textEl) textEl.textContent = "Download profile";
+        if (textEl) textEl.textContent = t("storage.download.btn");
     }
 
     setTimeout(() => {
@@ -221,7 +225,7 @@ export function handleCancelled(self: CacheControlState): void {
     self._updateStatus().catch((e: unknown) =>
         Log?.error("[CacheControl] Error updating status after stop:", e)
     );
-    getUINotifications()?.warning?.("Download stopped", 3000);
+    getUINotifications()?.warning?.(t("storage.download.stopped"), 3000);
 }
 
 // Select-all handling lives in the layer-selector itself (row-rendering →

@@ -31,7 +31,12 @@ export interface MapConfig {
     positionFixed?: boolean;
     /** Degree by which bounds are padded when positionFixed is true. Default 0.3. */
     boundsMargin?: number;
-    /** Raw MapLibre GL map options forwarded to the MapLibre Map constructor. */
+    /**
+     * Not read. The profile key is the ROOT `mapOptions` block (the profile's core features file),
+     * whose one key, `preserveDrawingBuffer`, the boot forwards to the engine; the profile
+     * schema refuses `map.mapOptions`. To pass options yourself, use `mapOptions` of
+     * `GeoLeaf.init()`.
+     */
     mapOptions?: Record<string, unknown>;
 }
 
@@ -198,6 +203,11 @@ export interface PermalinkConfig {
     /**
      * Optional facets to include in the serialized state. Default: all of them
      * (layers, taxonomy/tag/rating facets, text filter, theme).
+     *
+     * Four of the names gate the filter, by the KIND of its fields: `filter` the `text`
+     * fields, `categories` the `taxonomy` ones, `tags` the `tag` ones, `rating` the `range`
+     * ones. Since 3.15.0 a link carries one parameter per filter field (`gl_f.<id>`), and
+     * each is written — and restored — only when the name of its field's kind is listed.
      *
      * ⚠️ The **view state is mandatory** and is not listable here: `lat` / `lng` / `zoom`
      * are always written by `buildUrl` and always required by the parser (a permalink

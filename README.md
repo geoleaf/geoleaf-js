@@ -178,7 +178,7 @@ advertised a version the registry had never seen.
 > [!NOTE]
 > **Adding points.** A POI is a feature of an ordinary GeoJSON layer, written with
 > `GeoLeaf.Layers.addFeature(layerId, feature)` — which assumes a declared layer, and therefore a
-> profile. See [PROFILES_GUIDE](packages/core/docs/PROFILES_GUIDE.md) then
+> profile. See the [Quickstart Tutorial](packages/core/docs/QUICKSTART_TUTORIAL.md) then
 > [GEOJSON_LAYERS_GUIDE](packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md). For interactive
 > creation, use the [`@geoleaf-plugins/editor`](packages/plugins/editor/README.md) plugin:
 > `GeoLeaf.Editor.AddForm.openAddForm({ lat, lng })`.
@@ -288,8 +288,8 @@ Usage documentation lives in `packages/core/docs/`; the technical contracts live
 
 - **[Getting Started Guide](packages/core/docs/GETTING_STARTED.md)** - Your first map in 5 minutes
 - **[User Guide](packages/core/docs/USER_GUIDE.md)** - Complete user documentation (10 sections)
-- **[Configuration Guide](packages/core/docs/CONFIGURATION_GUIDE.md)** - JSON configuration reference (9 types)
-- **[Profiles Guide](packages/core/docs/PROFILES_GUIDE.md)** - Create custom business profiles
+- **[Quickstart Tutorial](packages/core/docs/QUICKSTART_TUTORIAL.md)** - A profile built step by step
+- **[Profile JSON Reference](packages/core/docs/PROFILE_JSON_REFERENCE.md)** - Reading guide of a profile's files
 
 ### Development
 
@@ -300,7 +300,6 @@ Usage documentation lives in `packages/core/docs/`; the technical contracts live
 
 ### Guides & References
 
-- **[Profiles Guide](packages/core/docs/PROFILES_GUIDE.md)** - Create custom business profiles
 - **[JSON Schemas](packages/core/docs/schema/)** - Validation schemas for profiles
 - **[Cookbook](packages/core/docs/COOKBOOK.md)** - Practical recipes and solutions
 - **[FAQ](packages/core/docs/FAQ.md)** - Frequently asked questions
@@ -454,8 +453,8 @@ Which profile to load, and the app-wide capabilities (`modules.*`):
 
 **The exhaustive key inventory is generated, not written** — see
 [`PROFILE_SCHEMA_REFERENCE.md`](docs/reference/PROFILE_SCHEMA_REFERENCE.md), produced by
-`npm run gen:profile-schema` from the schemas in `profiles/schemas/`. Introductory guide:
-[Configuration Guide](packages/core/docs/CONFIGURATION_GUIDE.md).
+`npm run gen:profile-schema` from the schemas in `profiles/schemas/`. Reading guide:
+[Profile JSON Reference](packages/core/docs/PROFILE_JSON_REFERENCE.md).
 
 ---
 

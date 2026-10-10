@@ -221,5 +221,5 @@ When neither `dataMapping` nor `mappingFile` is configured:
 ## See also
 
 - [GeoJSON layer configuration](../geojson/GEOJSON_LAYERS_GUIDE.md) — full layer configuration format
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — structure of the profile files
+- [PROFILE_JSON_REFERENCE.md](../PROFILE_JSON_REFERENCE.md) — structure of the profile files
 - [GeoLeaf_Config_README.md](GeoLeaf_Config_README.md) — loading the profile and its companion files

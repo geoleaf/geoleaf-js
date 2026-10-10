@@ -39,7 +39,7 @@ vi.mock("../../src/kernel/poi/renderers/field-renderers.js", () => ({
 vi.mock("../../src/kernel/poi/renderers/media-renderers.js", () => ({
     MediaRenderers: {},
 }));
-// geoleaf.permalink (Lot 6) and geoleaf.pwa / geoleaf.sync (Lot 7) are no longer imported
+// geoleaf.permalink and geoleaf.pwa / geoleaf.sync are no longer imported
 // by globals.api.ts.
 vi.mock("../../src/api/geoleaf.events.js", () => ({ Events: {} }));
 
@@ -170,9 +170,9 @@ describe("globals.api — T22 branch coverage", () => {
 
     // ── B11 — new namespace assignments ────────────────────────────────────────
 
-    // GeoLeaf.PWA + GeoLeaf.Sync migrated to capabilities/{pwa,offline}/install.ts (S2 Lot 7)
+    // GeoLeaf.PWA + GeoLeaf.Sync migrated to capabilities/{pwa,offline}/install.ts
     // — asserted in __tests__/capabilities/pwa-offline-installers.test.js.
-    // GeoLeaf.Permalink migrated to capabilities/permalink/install.ts (S2 Lot 6) —
+    // GeoLeaf.Permalink migrated to capabilities/permalink/install.ts —
     // asserted in __tests__/capabilities/permalink-share-installer.test.js.
 
     it("GeoLeaf.events is assigned from Events module", () => {

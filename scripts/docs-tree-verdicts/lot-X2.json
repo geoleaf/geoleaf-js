@@ -26,7 +26,7 @@
             "severity": null,
             "description": "Validation de forme des JSON de profil et de configuration : les six fichiers du validateur de style, les validateurs génériques et le baril de surface publique",
             "confidence": "haute",
-            "rationale": "8 fichiers / 1 434 LOC. La Charte de `utils/` (CDC_technique.md §Charte, R.13, 24/07/2026) lui donne un critère d'entrée explicite — « validation de donnée de profil / configuration, retourne un verdict, ne jette pas, ne transforme pas » — que les 8 satisfont. Le critère de sortie (« entrée non fiable pour la sûreté → built-in/security/ ») est déjà appliqué : general-validators.ts délègue les 4 primitives sensibles à kernel/security/index.js"
+            "rationale": "8 fichiers / 1 434 LOC. La Charte de `utils/` (CDC_technique.md §Charte, 24/07/2026) lui donne un critère d'entrée explicite — « validation de donnée de profil / configuration, retourne un verdict, ne jette pas, ne transforme pas » — que les 8 satisfont. Le critère de sortie (« entrée non fiable pour la sûreté → built-in/security/ ») est déjà appliqué : general-validators.ts délègue les 4 primitives sensibles à kernel/security/index.js"
         },
         "packages/core/src/utils/validators/index.ts": {
             "kind": "file",
@@ -502,7 +502,7 @@
             "severity": null,
             "description": "Lecture et écriture de la baseline du profileur dans `localStorage` ou `sessionStorage`, silencieuses en cas d'indisponibilité",
             "confidence": "haute",
-            "rationale": "48 LOC, 1 importeur (performance-profiler.ts) ; extraction actée en en-tête (« Pure storage helpers extracted from performance-profiler.js, Phase 8.2.5 ») et rendue nécessaire par INV-700. Son `@module utils/performance/baseline-storage` désigne un dossier absent : le déplacement porté sur le dossier parent le rend vrai, plutôt que de réécrire le tag pour entériner un mauvais rangement ⟶ STRUCT S6 : déplacé dans utils/performance/ (bac neuf, aplati). La profondeur relative est PRÉSERVÉE — ses imports ../log/index.js et ../../kernel/config/debug-flag.js résolvent sans réécriture. Épinglages reprIs au même commit : package.json#sideEffects, scripts/.baselines/module-headers.json et check-dynamic-key-writes.baseline.json."
+            "rationale": "48 LOC, 1 importeur (performance-profiler.ts) ; extraction actée en en-tête (« Pure storage helpers extracted from performance-profiler.js ») et rendue nécessaire par INV-700. Son `@module utils/performance/baseline-storage` désigne un dossier absent : le déplacement porté sur le dossier parent le rend vrai, plutôt que de réécrire le tag pour entériner un mauvais rangement ⟶ STRUCT S6 : déplacé dans utils/performance/ (bac neuf, aplati). La profondeur relative est PRÉSERVÉE — ses imports ../log/index.js et ../../kernel/config/debug-flag.js résolvent sans réécriture. Épinglages reprIs au même commit : package.json#sideEffects, scripts/.baselines/module-headers.json et check-dynamic-key-writes.baseline.json."
         },
         "packages/core/src/utils/performance/devtools-export.ts": {
             "kind": "file",
@@ -516,7 +516,7 @@
             "severity": null,
             "description": "Construit un objet de trace Chrome DevTools chargeable dans l'onglet Performance, à partir des marques et mesures collectées par le profileur",
             "confidence": "haute",
-            "rationale": "85 LOC, 1 importeur (performance-profiler.ts), même extraction Phase 8.2.5 que son voisin. Même situation de tag : `@module utils/performance/devtools-export` pour un dossier inexistant, corrigé par le déplacement porté sur le dossier parent ⟶ STRUCT S6 : déplacé dans utils/performance/ (bac neuf, aplati). La profondeur relative est PRÉSERVÉE — ses imports ../log/index.js et ../../kernel/config/debug-flag.js résolvent sans réécriture. Épinglages reprIs au même commit : package.json#sideEffects, scripts/.baselines/module-headers.json et check-dynamic-key-writes.baseline.json."
+            "rationale": "85 LOC, 1 importeur (performance-profiler.ts), même extraction que son voisin. Même situation de tag : `@module utils/performance/devtools-export` pour un dossier inexistant, corrigé par le déplacement porté sur le dossier parent ⟶ STRUCT S6 : déplacé dans utils/performance/ (bac neuf, aplati). La profondeur relative est PRÉSERVÉE — ses imports ../log/index.js et ../../kernel/config/debug-flag.js résolvent sans réécriture. Épinglages reprIs au même commit : package.json#sideEffects, scripts/.baselines/module-headers.json et check-dynamic-key-writes.baseline.json."
         },
         "packages/core/src/utils/geo/wkt-parser.ts": {
             "kind": "file",

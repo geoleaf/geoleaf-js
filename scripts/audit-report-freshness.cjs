@@ -1662,13 +1662,38 @@ function collectCitedPaths(files, basesFor) {
         // judging all the code examples' import paths, which
         // `typecheck-docs-examples` already does, and better. The hole is
         // real, it is named, and it closes by rereading — not by this regex.
+        // A heading whose section gives a block DECLARED a file of the reader's project —
+        // `<!-- geoleaf:docs:schema … -->` or `<!-- geoleaf:docs:module … -->`, the two
+        // markers `check-doc-config-examples.cjs` verifies — NAMES that file: a step
+        // heading of the quickstart tutorial carries the path the reader creates, in a
+        // project that is not this repository. Judged as a reference it is a dead path by
+        // construction, and it was frozen as one. Narrow on purpose: an undeclared block
+        // under a heading leaves the heading judged, so a heading naming a source file
+        // before an excerpt of it is still held to the file's existence.
+        const lines = text.split("\n");
+        const namingHeadings = new Set();
+        {
+            let heading = -1;
+            let fenced = false;
+            for (let i = 0; i < lines.length; i++) {
+                if (/^\s*(```|~~~)/.test(lines[i])) fenced = !fenced;
+                else if (fenced) continue;
+                else if (/^#{1,6}\s/.test(lines[i])) heading = i;
+                else if (heading >= 0 && /<!--\s*geoleaf:docs:(?:schema|module)\b/.test(lines[i])) {
+                    namingHeadings.add(heading);
+                }
+            }
+        }
+
         let inFence = false;
-        for (const raw of text.split("\n")) {
+        for (let i = 0; i < lines.length; i++) {
+            const raw = lines[i];
             if (/^\s*(```|~~~)/.test(raw)) {
                 inFence = !inFence;
                 continue;
             }
             if (inFence) continue;
+            if (namingHeadings.has(i)) continue;
 
             const line = raw.replace(/[a-z][a-z0-9+.-]*:\/\/\S+/gi, " ");
             let m;
@@ -1932,7 +1957,7 @@ const GATES = {
             "    un renvoi faux y devient définitif. ⚠️ Avant de « corriger », LIRE LA PHRASE —\n" +
             "    une fiche nomme souvent un chemin PARCE QU'IL EST MORT (« ce répertoire n'existe\n" +
             "    plus », « supprimé depuis »). Ceux-là entrent en baseline, ils ne se\n" +
-            "    réécrivent pas : mesuré 15 sur 20 à la classe A de la tâche 6.11.\n",
+            "    réécrivent pas : mesuré 15 sur 20 à la classe A, à la pose de la règle.\n",
     },
     guides: {
         code: "GUIDES-PATHS",

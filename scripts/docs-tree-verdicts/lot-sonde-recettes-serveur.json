@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "sonde-recettes-serveur",
+    "scope": ["scripts/probe-server-recipes.cjs"],
+    "verdicts": {
+        "scripts/probe-server-recipes.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Sert un livrable derrière sa recette nginx puis sa recette Apache, en conteneurs sans réseau, et lit sur le fil le `Cache-Control` et le `Content-Type` de chaque fichier, avec et sans `Accept-Encoding: gzip`.",
+            "confidence": "haute",
+            "rationale": "Sonde manuelle, déclarée par `npm run probe:server-recipes` et listée dans SCRIPTS_ALLOWLIST de `verify-repo-hygiene.cjs`. VERSIONNÉE parce que la mesure qu'elle rejoue avait été faite à la main et se périmait : la gate du contrat serveur juge un MODÈLE de la préséance de chaque serveur, et ne modélise que le cache. Jouée le 07/10/2026 sur `deploy-full`, elle a trouvé à son premier passage quarante-deux `.geojson` servis par Apache sans `Content-Type`, gate verte. Hors `ci:local` et hors runner par construction : elle demande un démon Docker et deux images. Verdict « justifié » : instrument vivant, seul à lire ce que le modèle ne regarde pas."
+        }
+    }
+}

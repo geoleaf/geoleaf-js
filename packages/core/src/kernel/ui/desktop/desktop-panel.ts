@@ -62,6 +62,8 @@ interface RestoreEntry {
     node: HTMLElement;
     parent: Element;
     nextSibling: ChildNode | null;
+    /** The pane body the node was moved INTO — what tells whether this panel still holds it. */
+    host: HTMLElement;
 }
 
 const BREAKPOINT = "(min-width: 1440px)";
@@ -441,6 +443,7 @@ function storeAndMove(node: HTMLElement, targetBody: HTMLElement): void {
         node,
         parent: node.parentElement as Element,
         nextSibling: node.nextSibling,
+        host: targetBody,
     });
     targetBody.appendChild(node);
 }
@@ -521,7 +524,11 @@ function deactivatePanel(): void {
     _paneObservers = [];
     // Reversed copy rather than a descending index: the restore order is what matters, and a
     // copy is immune to the mutation of `_restoreEntries` that follows (qualite Q5).
-    for (const { node, parent, nextSibling } of [..._restoreEntries].reverse()) {
+    for (const { node, parent, nextSibling, host } of [..._restoreEntries].reverse()) {
+        // 🛑 ONLY WHAT THIS PANEL STILL HOLDS. A plugin's teardown runs before this one at an
+        // unmount and removes its own pane: given back anyway, the removed element returned
+        // to the document, orphaned — and the plugin built a second one at the next opening.
+        if (!host.contains(node)) continue;
         try {
             if (nextSibling && nextSibling.parentNode === parent) {
                 parent.insertBefore(node, nextSibling);

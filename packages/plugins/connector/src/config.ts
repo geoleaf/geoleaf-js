@@ -13,10 +13,12 @@
 export interface ConnectorConfig {
     /**
      * URL prefix. All requests starting with this URL will have the token injected.
-     * Must start with https:// in production: `configure()` and `createConnector()` refuse any
-     * other value with a `ConfigError`.
-     * http:// is tolerated, with a console.warn, only when the PAGE is served from a development
-     * host — `localhost`, `*.localhost`, the loopback `127.0.0.0/8` or `::1`, or `*.test`.
+     * Must start with https://: `configure()` and `createConnector()` refuse any other value
+     * with a `ConfigError`.
+     * http:// is tolerated, with a console.warn, only when the URL itself TARGETS a development
+     * host — `localhost`, `*.localhost`, the loopback `127.0.0.0/8` or `::1`, or `*.test`. The
+     * page it is served from does not matter: a page on `localhost` may not send its token
+     * over http:// to a remote host. A relative URL targets the page's own host.
      */
     baseUrl: string;
 
@@ -87,6 +89,9 @@ export interface ConnectorConfig {
         /**
          * Full URL of the auth endpoint.
          * POST { login, password } → { token: string, expiresIn: number }
+         *
+         * It receives the password, so it is held to the rule of `baseUrl`: `https://`, or
+         * `http://` toward a development host — any other value is a `ConfigError`.
          */
         endpoint: string;
         /**
@@ -127,7 +132,11 @@ export function validateConfig(config: ConnectorConfig): void {
     _validateBaseUrl(config);
     _validateAuthMode(config);
 
-    // Validate external URLs (HTTPS in production, http tolerated on a development host)
+    // `auth.endpoint` receives the password: held to the same rule as `baseUrl`, which
+    // receives the token. `_validateAuthMode` has already refused an empty one.
+    if (config.auth) _requireSecureUrl(config.auth.endpoint, "auth.endpoint");
+
+    // Validate external URLs (HTTPS, http tolerated toward a development host)
     _validateExternalUrl(config.auth?.signupUrl, "auth.signupUrl");
     _validateExternalUrl(config.auth?.forgotPasswordUrl, "auth.forgotPasswordUrl");
 
@@ -168,9 +177,43 @@ function _isLoopbackIPv4(host: string): boolean {
     return parts.length === 4 && parts[0] === "127" && parts.every((p) => /^\d{1,3}$/.test(p));
 }
 
-/** True when the page runs on a development host (see `_isDevHostname`), where http:// is tolerated. */
-function _isDevHost(): boolean {
-    return typeof location !== "undefined" && _isDevHostname(location.hostname);
+/**
+ * Whether `url` targets a development host (see `_isDevHostname`), where http:// is tolerated.
+ *
+ * 🛑 It judges the DESTINATION, not the page. The rule keeps a credential out of cleartext,
+ * and what decides that is where the credential goes: judged on the page, a page served
+ * locally could send its token over http:// to any host, remote ones included.
+ *
+ * A relative URL has no host of its own: it targets the page's. An absolute one that cannot
+ * be parsed targets nothing this rule can vouch for.
+ */
+function _targetsDevHost(url: string): boolean {
+    let hostname: string;
+    try {
+        hostname = new URL(url).hostname;
+    } catch {
+        if (/^[a-z][a-z0-9+.-]*:/i.test(url) || typeof location === "undefined") return false;
+        hostname = location.hostname;
+    }
+    return _isDevHostname(hostname);
+}
+
+/**
+ * Holds a URL that carries a credential to HTTPS (OWASP A05): `https://`, or `http://`
+ * toward a development host — tolerated with a warning.
+ *
+ * @throws ConfigError for any other value.
+ */
+function _requireSecureUrl(url: string, fieldName: string): void {
+    if (url.startsWith("https://")) return;
+    if (!_targetsDevHost(url)) {
+        throw new ConfigError(
+            `[GeoLeaf Connector] ${fieldName} must use HTTPS in production. Received: ${url}`
+        );
+    }
+    console.warn(
+        `[GeoLeaf Connector] ${fieldName} should use HTTPS in production. Current value: ${url}`
+    );
 }
 
 /** Validates `baseUrl`: non-empty string + HTTPS enforcement (OWASP A05). */
@@ -178,21 +221,7 @@ function _validateBaseUrl(config: ConnectorConfig): void {
     if (!config || typeof config.baseUrl !== "string" || !config.baseUrl.trim()) {
         throw new ConfigError("[GeoLeaf Connector] baseUrl must be a non-empty string.");
     }
-    if (!config.baseUrl.startsWith("https://")) {
-        if (_isDevHost()) {
-            console.warn(
-                "[GeoLeaf Connector] baseUrl should use HTTPS in production. " +
-                    "Current value: " +
-                    config.baseUrl
-            );
-        } else {
-            throw new ConfigError(
-                "[GeoLeaf Connector] baseUrl must use HTTPS in production. " +
-                    "Received: " +
-                    config.baseUrl
-            );
-        }
-    }
+    _requireSecureUrl(config.baseUrl, "baseUrl");
 }
 
 /** Validates the auth mode: getToken/auth are mutually exclusive and one is required. */
@@ -228,7 +257,7 @@ function _normalizeIconVariant(config: ConnectorConfig): void {
 
 /**
  * Validates an optional external URL field.
- * Must start with https:// in production; http:// is tolerated on a development host.
+ * Must start with https://; http:// is tolerated toward a development host.
  */
 function _validateExternalUrl(url: string | undefined, fieldName: string): void {
     if (url === undefined || url === null) return;
@@ -237,15 +266,5 @@ function _validateExternalUrl(url: string | undefined, fieldName: string): void 
             `[GeoLeaf Connector] ${fieldName} must be a non-empty string when provided.`
         );
     }
-    if (!url.startsWith("https://")) {
-        if (_isDevHost()) {
-            console.warn(
-                `[GeoLeaf Connector] ${fieldName} should use HTTPS in production. Current value: ${url}`
-            );
-        } else {
-            throw new ConfigError(
-                `[GeoLeaf Connector] ${fieldName} must use HTTPS in production. Received: ${url}`
-            );
-        }
-    }
+    _requireSecureUrl(url, fieldName);
 }

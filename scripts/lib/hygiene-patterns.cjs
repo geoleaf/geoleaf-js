@@ -75,7 +75,7 @@ const THROWAWAY_WITNESSES = [
     {
         path: "scripts/fix-deferred-paths.js",
         throwaway: true,
-        why: "tiret + .js — la forme supprimée au T3.2",
+        why: "tiret + .js — la forme supprimée",
     },
     {
         path: "tools/fix_deferred_paths.cjs",
@@ -96,7 +96,7 @@ const THROWAWAY_WITNESSES = [
     {
         path: "scripts/suffix_map.cjs",
         throwaway: false,
-        why: "idem, et le motif d'AVANT T5.7 le prenait",
+        why: "idem, et le motif d'avant l'extraction des tables le prenait",
     },
     { path: "e2e/hotfix-runner.js", throwaway: false, why: "idem" },
 ];
@@ -114,7 +114,7 @@ const THROWAWAY_WITNESSES = [
  * @type {{path: string, artifact: boolean, why: string}[]}
  */
 const ARTIFACT_WITNESSES = [
-    { path: "artifacts/coverage/index.html", artifact: true, why: "rapport vitest racine (T6.2)" },
+    { path: "artifacts/coverage/index.html", artifact: true, why: "rapport vitest racine" },
     {
         path: "artifacts/playwright/report/index.html",
         artifact: true,

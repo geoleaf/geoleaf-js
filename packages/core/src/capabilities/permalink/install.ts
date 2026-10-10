@@ -6,7 +6,7 @@
  */
 
 /**
- * Capability installer for the in-core `permalink` capability — presets build (S2 Lot 6).
+ * Capability installer for the in-core `permalink` capability — presets build.
  *
  * Single self-sufficient anchor for permalink **and its `share` sub-feature** (S13 F7:
  * share is deliberately not a capability of its own — it is declared under
@@ -24,7 +24,7 @@
  *     permalink keeps its share module, exactly as the legacy boot block did.
  *
  * `ShareLifecycle.init()` is NOT called here: an installer assigns, it does not behave.
- * It is called by `ShareModule.init()` — and only there since S2 Lot 6 (the eager call in
+ * It is called by `ShareModule.init()` — and only there since the presets build (the eager call in
  * `setupUI` is gone, which removes the last static kernel → share import).
  */
 
@@ -36,7 +36,7 @@ import "./css/share.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { PERMALINK_CAPABILITY } from "./permalink-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { ShareModule } from "./share/module.js";
 import { Permalink } from "../../api/geoleaf.permalink.js";

@@ -19,7 +19,7 @@
  * on both `zoomend` and `moveend` — and a handler-only key made the second
  * `on()` overwrite the first wrapper: the first listener became unreachable, and
  * `off()`'s entry deletion then stranded the second one too. Both leaked past
- * `destroy()` (LOW-30, tâche 4.3).
+ * `destroy()`.
  *
  * Sibling of {@link module:adapters/maplibre/maplibre-event-subscriptions},
  * which tracks the *delegated* (3-arg, layer-scoped) listeners instead — those

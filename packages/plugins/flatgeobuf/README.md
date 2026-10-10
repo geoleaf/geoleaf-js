@@ -133,6 +133,25 @@ the current view, which no GeoJSON can do.
 
 ---
 
+## What a FlatGeobuf layer is not
+
+A layer drawn by this plugin is a **drawing, not a data layer**. It reaches the map through the
+adapter and is not entered in the core's layer store, so nothing that reads that store sees it:
+
+- `GeoLeaf.Layers.hasLayer(id)` answers `false`, `getFeatureCount(id)` answers `0`, and the layer
+  is absent from `listLayerIds()`;
+- it is not listed in the layer manager panel, and cannot be switched off from the interface;
+- the table, the filter and the legend ignore it;
+- a refresh on map move emits no `geoleaf:layer:updated`.
+
+This holds for a layer declared in a profile as well as for one loaded through the API below. Use
+a GeoJSON source when the layer must be filtered, tabulated or edited.
+
+Removing such a layer is done on the adapter that drew it —
+`GeoLeaf.Core.getMap().removeLayer(id)`. A layer loaded with `autoRefresh` stops refreshing
+with it: at the next map move the plugin finds the layer gone and removes its listener, without
+fetching. When two refreshes overlap, only the answer to the latest one is drawn.
+
 ## Programmatic API
 
 Four lower-level functions are also available for direct use:

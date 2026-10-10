@@ -420,7 +420,7 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
     // net for a map that settles without either. The listener re-tests the predicate on each
     // emission and detaches from all three as soon as it applies.
     //
-    // ⚠️ The ticket check is what makes the deferral safe (R.7b). Without it, this closure
+    // ⚠️ The ticket check is what makes the deferral safe. Without it, this closure
     // re-applies the key it captured whenever it finally wakes — including LONG after the
     // user picked a different basemap, which it then silently overwrites. Measured on the
     // `tourism` profile: `positron` applied, then ~500 ms later the map snapped back to the

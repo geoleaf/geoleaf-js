@@ -52,6 +52,22 @@ import css from "../css/confirm-dialog.lazy.css";
 
 import { createModalShell } from "./modal-shell.js";
 
+/**
+ * Adopts the rules of the dialog's own classes — its compact panel, its texts, its footer and
+ * its buttons, with their finger-sized minimum under a coarse pointer.
+ *
+ * {@link chooseDialog} calls it; it is exported for the form's responsive modal, whose footer
+ * and buttons are these same classes. One sheet for both: the form no longer carries a copy.
+ *
+ * Idempotent per bundle — see `adoptStylesheet`.
+ *
+ * @example
+ * adoptConfirmDialogSheet();
+ */
+export function adoptConfirmDialogSheet(): void {
+    adoptStylesheet(css, "gl-host-confirm-dialog");
+}
+
 /** One action offered by {@link chooseDialog}. */
 export interface DialogChoice {
     /** Value {@link chooseDialog} resolves with when this action is activated. */
@@ -115,7 +131,7 @@ export function chooseDialog(opts: ChooseDialogOptions): Promise<string | null> 
     }
     // Adopted at CALL time — see `modal-shell.ts` and `csp-style-inject.mjs` for the defect
     // this closes.
-    adoptStylesheet(css, "gl-host-confirm-dialog");
+    adoptConfirmDialogSheet();
     const onDismiss = opts.dismissValue ?? null;
     return new Promise<string | null>((resolve) => {
         let settled = false;

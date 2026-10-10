@@ -6,7 +6,7 @@
  */
 
 /**
- * Capability installer for the in-core `theme-selector` capability — presets build (S2 Lot 8).
+ * Capability installer for the in-core `theme-selector` capability — presets build.
  *
  * 🖐 **No `public-api.ts` — and the motive written here was FALSE until
  * 20/08/2026.** It said "this capability mounts no namespace". It mounts one:
@@ -28,9 +28,9 @@
  * of `geoleaf:themes:ready`, which the permalink awaits **with no fallback** — a
  * distinct fact, independent of this arbitration.
  *
- * The **last** of the 17 in-core capabilities to migrate: it was pulled out of Lot 2 because
+ * The **last** of the 17 in-core capabilities to migrate: it was pulled out of the batch of simple UI capabilities because
  * its DOM facade spans 6 files and its coverage came from a fragile, incidental full-boot
- * path. `__tests__/capabilities/theme-selector/mount.test.js` (S2 Lot 8) now mounts the bar
+ * path. `__tests__/capabilities/theme-selector/mount.test.js` now mounts the bar
  * for real — that deterministic mount coverage was the precondition for this move.
  *
  * ⚠ **The theme ENGINE stays kernel.** Only `GeoLeaf.ThemeSelector` (the switch bar UI)
@@ -51,7 +51,7 @@ import "./css/theme-selector.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { THEME_SELECTOR_CAPABILITY } from "./theme-selector-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { ThemeSelectorModule } from "./module.js";
 import { ThemeSelector } from "./theme-selector.js";

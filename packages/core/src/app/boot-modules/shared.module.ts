@@ -49,7 +49,7 @@ import { asGeoLeafConfig, type AppNamespace } from "../app-types.js";
  */
 export class SharedModule implements ILifecycleModule {
     readonly id = "shared" as const;
-    // S6 Lot 6: `security` pruned with SecurityModule (facade-only, ordered by the ESM chain).
+    // `security` pruned with SecurityModule (facade-only, ordered by the ESM chain).
     readonly dependencies = ["config"] as const;
 
     /** The active entry's capability installers — the only source of app-global lifecycles. */

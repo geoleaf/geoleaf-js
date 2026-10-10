@@ -1,5 +1,5 @@
 /**
- * T3.3 — layer-manager/attach-toggle.ts branch coverage
+ * layer-manager/attach-toggle.ts branch coverage
  */
 
 vi.mock("../../src/utils/log/index.ts", () => ({
@@ -41,7 +41,7 @@ function cleanup(btn) {
     if (btn.parentNode) btn.parentNode.removeChild(btn);
 }
 
-describe("layer-manager/attach-toggle — T3.3 branch coverage", () => {
+describe("layer-manager/attach-toggle — branch coverage", () => {
     beforeEach(() => {
         mockGetLayerById.mockReset();
         mockShowLayer.mockReset();

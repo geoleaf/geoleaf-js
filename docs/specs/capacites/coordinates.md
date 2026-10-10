@@ -4,8 +4,8 @@ title: coordinates — le relevé en temps réel des coordonnées du curseur
 capability_id: coordinates
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 07a582e2b
-date: 1er octobre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # coordinates — le relevé en temps réel des coordonnées du curseur

@@ -228,7 +228,12 @@ const CacheManager = {
             }
 
             // What the enumeration leaves out is RECORDED, not only logged — see `_saveManifest`.
-            const trace: TilePreparationTrace = { zone: null, skippedZooms: [], capped: false };
+            const trace: TilePreparationTrace = {
+                zone: null,
+                skippedZooms: [],
+                capped: false,
+                refusedOrigins: [],
+            };
             const resources = await ResourceEnumerator.enumerateAll(
                 profile,
                 profileId,

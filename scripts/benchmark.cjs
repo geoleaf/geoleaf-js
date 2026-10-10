@@ -9,7 +9,7 @@
  * Usage:
  *   node scripts/benchmark.cjs
  *
- * ## What T6.3 removed, and why (2026-07-25)
+ * ## What was removed on 2026-07-25, and why
  *
  * This file used to carry four devices. All four were measured inert, three of
  * them silently:
@@ -279,7 +279,7 @@ ${colors.reset}`);
     // 3. File-read time — SIZE INDICATOR, NOT a runtime metric (audit F-TOOL-5).
     // This times a Node `fs.readFileSync` of geoleaf.esm.js from disk: it scales
     // with bundle *size*, it is NOT representative of browser parse/exec cost.
-    // Kept as a cheap size proxy only — it was never gated, and since T6.3 there
+    // Kept as a cheap size proxy only — it was never gated, and since 2026-07-25 there
     // is no gate here at all.
     console.log(
         `\n${colors.bright}📦 File-read time (size indicator — Node I/O, not browser parse):${colors.reset}`

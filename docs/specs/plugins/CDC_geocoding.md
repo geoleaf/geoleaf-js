@@ -4,8 +4,8 @@ title: geocoding — la recherche d'adresse sur la carte
 plugin_id: geocoding
 package: "@geoleaf-plugins/geocoding"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: b366e3ee7
-date: 4 octobre 2026
+verifie_contre: e6fa30ea4
+date: 6 octobre 2026
 ---
 
 # geocoding — la recherche d'adresse sur la carte
@@ -203,24 +203,27 @@ registre de fournisseurs (`provider-registry.test.ts`). Preuve sur le bundle liv
 Bloc `modules.geocoding` d'un profil, lu par `config.ts` → `getPluginConfig()` **via
 `coreConfigGet` de `@geoleaf/host-runtime`** — la forme figée du contrat (§5).
 
-| Clé            | Type                                             | Défaut                           | Rôle                                                                                                                                                                      |
-| -------------- | ------------------------------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`      | `boolean`                                        | `false` — **strictement opt-in** | Monte le contrôle de recherche                                                                                                                                            |
-| `provider`     | nom connu, URL HTTPS, ou leur **liste ordonnée** | la base d'adresses française     | Service(s) interrogé(s). `layers` = les entités de la carte, sans réseau. Liste : interrogée dans l'ordre, les services réseau sautés hors ligne. Valeur inconnue : GC-11 |
-| `debounceMs`   | `number`                                         | défaut du code                   | Anti-rebond de la frappe                                                                                                                                                  |
-| `minChars`     | `number`                                         | défaut du code                   | Longueur minimale avant requête                                                                                                                                           |
-| `resultLimit`  | `number`                                         | défaut du code                   | Nombre de résultats proposés                                                                                                                                              |
-| `position`     | l'un des quatre coins                            | défaut du code                   | Position du contrôle                                                                                                                                                      |
-| `placeholder`  | `string`                                         | libellé i18n                     | Texte d'invite du champ                                                                                                                                                   |
-| `flyToZoom`    | `number`                                         | défaut du code                   | Zoom appliqué en volant vers un point                                                                                                                                     |
-| `bbox`         | `[O, S, E, N]`                                   | —                                | Restriction géographique — **traduction dépendante du fournisseur**                                                                                                       |
-| `countrycodes` | codes pays ISO, séparés par des virgules         | —                                | Restriction par pays — **un seul fournisseur l'applique**                                                                                                                 |
+| Clé            | Type                                             | Défaut                                   | Rôle                                                                                                                                                                      |
+| -------------- | ------------------------------------------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `boolean`                                        | `false` — **strictement opt-in**         | Monte le contrôle de recherche                                                                                                                                            |
+| `provider`     | nom connu, URL HTTPS, ou leur **liste ordonnée** | `"addok"` — la base d'adresses française | Service(s) interrogé(s). `layers` = les entités de la carte, sans réseau. Liste : interrogée dans l'ordre, les services réseau sautés hors ligne. Valeur inconnue : GC-11 |
+| `debounceMs`   | `number`                                         | `300`                                    | Anti-rebond de la frappe                                                                                                                                                  |
+| `minChars`     | `number`                                         | `3`                                      | Longueur minimale avant requête                                                                                                                                           |
+| `resultLimit`  | `number`                                         | `5`                                      | Nombre de résultats proposés                                                                                                                                              |
+| `position`     | l'un des quatre coins                            | `"top-left"`                             | Position du contrôle                                                                                                                                                      |
+| `placeholder`  | `string`                                         | libellé i18n                             | Texte d'invite du champ                                                                                                                                                   |
+| `flyToZoom`    | `number`                                         | `15`                                     | Zoom appliqué en volant vers un point                                                                                                                                     |
+| `bbox`         | `[O, S, E, N]`                                   | —                                        | Restriction géographique — **traduction dépendante du fournisseur**                                                                                                       |
+| `countrycodes` | codes pays ISO, séparés par des virgules         | —                                        | Restriction par pays — **un seul fournisseur l'applique**                                                                                                                 |
 
-⚠️ **Les valeurs par défaut ne sont pas recopiées ici**, sauf `enabled`. Elles vivent dans le code du
-plugin et sont documentées dans le TSDoc de son type de configuration ; les recopier créerait une
-troisième source après le type et le lecteur — exactement la divergence que
-[`branding`](../capacites/branding.md) et [`cluster`](../capacites/cluster.md) ont dû réparer côté
-capacités.
+Chaque défaut est écrit **une fois**, dans la table `DEFAULTS` de `config.ts`, et cette colonne
+est confrontée à elle par `doc-capability-config.guard.test.js` — comme le README du paquet et
+l'inventaire. Cinq de ces défauts étaient des replis `??` au point de lecture, dont deux écrits à
+deux sites ; ils sont entrés à la table, et `withDefaults()` est le seul lecteur.
+
+⚠️ **Une clé écrite `null` au profil garde son défaut.** La fusion de ce greffon saute les valeurs
+nulles, là où ses voisins étalent le bloc tel quel : c'est le sens qu'avaient ces replis, et
+`"minChars": null` doit continuer de dire « le défaut », pas « dès la première frappe ».
 
 ⚠️ **`enabled: false` reproduit le comportement historique du core** : le composant ne se monte que
 si le profil le demande.
@@ -261,9 +264,10 @@ La façade porte des `@example` — une recherche par programme, l'écoute de l'
 et l'enregistrement d'un fournisseur. ⚠️ Ces exemples sont **compilés** depuis le 27/07/2026 : les `@example` du TSDoc de
 toutes les sources entrent dans `typecheck-docs-examples`.
 
-Typage publié : `global.d.ts` déclare `Geocoding?: unknown`. Le namespace **existe donc au niveau des
-types** — une faute de frappe sur son nom ne compile pas — mais **la forme des appels n'est pas
-vérifiée**. C'est la traîne de membre encore ouverte.
+Typage publié : `global.d.ts` déclare `Geocoding`, et `src/entry.ts` ajoute `Geocoding: GeocodingApi`
+au registre `GeoLeafPluginApis` que cette déclaration lit. Le namespace **existe au niveau des
+types** — une faute de frappe sur son nom ne compile pas — et **la forme des appels est vérifiée**
+pour qui installe le paquet. Sans le greffon, le membre est `unknown`.
 
 ### Événements
 

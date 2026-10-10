@@ -89,13 +89,13 @@
 
 .gl-map-toolbar__nav:hover {
     background: var(--gl-color-bg-surface-muted);
-    box-shadow: var(--gl-shadow-strong, 0 4px 16px rgba(0, 0, 0, 0.28));
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
     transform: scale(1.08);
 }
 
 .gl-map-toolbar__nav:active {
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
     transform: scale(0.92);
 }
 
@@ -160,7 +160,7 @@
     background: var(--gl-color-bg-surface-muted);
     transform: scale(1.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, #2563eb);
 }
 
 .gl-map-toolbar__btn:focus-visible {
@@ -170,18 +170,18 @@
 
 .gl-map-toolbar__btn[aria-expanded="true"] {
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
 }
 
 /* État actif (ex. filtre avec filtres appliqués) */
 .gl-map-toolbar__btn--active {
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
 }
 
 .gl-map-toolbar__btn--active:hover {
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
     transform: scale(1.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
@@ -189,13 +189,13 @@
 /* État actif atténué — recherche appliquée mais barre fermée */
 .gl-map-toolbar__btn--active-muted {
     background: transparent;
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, #2563eb);
     opacity: 0.55;
 }
 
 .gl-map-toolbar__btn--active-muted:hover {
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
     opacity: 1;
     transform: scale(1.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
@@ -259,7 +259,7 @@
 
 .gl-map-toolbar__reset:hover {
     background: var(--gl-color-bg-surface-muted);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, #2563eb);
     transform: scale(1.12);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
 }

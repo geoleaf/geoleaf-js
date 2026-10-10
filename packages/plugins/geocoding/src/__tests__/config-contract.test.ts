@@ -19,6 +19,7 @@ import { AddokProvider, NominatimProvider, PhotonProvider, CustomProvider } from
 import { createProvider } from "../provider-registry.js";
 import { mountGeocodingControl } from "../control.js";
 import { GeocodingRegistry } from "../registry.js";
+import { DEFAULTS, withDefaults } from "../config.js";
 
 function mockFetch() {
     const fn = vi.fn().mockResolvedValue({
@@ -171,5 +172,43 @@ describe("@anomaly ANO-032 — modules.geocoding.debounceMs / minChars (capabili
         type(input, "a");
         vi.advanceTimersByTime(50);
         expect(provider.search).toHaveBeenCalledWith("a", 8);
+    });
+
+    // A profile is JSON: `null` is what "no value" looks like there. These defaults were
+    // `??` fallbacks before they entered the table, and a plain spread over the table would
+    // let the `null` through — `minChars: null` then searches from the first keystroke.
+    it("a key written null keeps its default (minChars, debounceMs, resultLimit)", () => {
+        vi.useFakeTimers();
+        const { provider, input } = mount({ minChars: null, debounceMs: null, resultLimit: null });
+        type(input, "ab");
+        vi.advanceTimersByTime(1000);
+        expect(provider.search).not.toHaveBeenCalled();
+        type(input, "abc");
+        vi.advanceTimersByTime(299);
+        expect(provider.search).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(1);
+        expect(provider.search).toHaveBeenCalledWith("abc", 5);
+    });
+});
+
+describe("config B2 — the table of defaults (withDefaults)", () => {
+    it("sets every defaulted key on an empty block", () => {
+        expect(withDefaults({})).toEqual(DEFAULTS);
+    });
+    it("keeps the default of a key written null or undefined, and a written value otherwise", () => {
+        const merged = withDefaults({
+            provider: null,
+            position: undefined,
+            flyToZoom: 12,
+            placeholder: "Find",
+        } as never);
+        expect(merged.provider).toBe("addok");
+        expect(merged.position).toBe("top-left");
+        expect(merged.flyToZoom).toBe(12);
+        expect(merged.placeholder).toBe("Find");
+    });
+    it("leaves the table untouched", () => {
+        withDefaults({ flyToZoom: 9 });
+        expect(DEFAULTS.flyToZoom).toBe(15);
     });
 });

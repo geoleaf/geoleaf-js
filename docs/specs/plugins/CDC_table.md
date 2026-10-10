@@ -4,8 +4,8 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e027eef88
-date: 4 octobre 2026
+verifie_contre: 45c7c0eb2
+date: 7 octobre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
@@ -50,7 +50,7 @@ autrefois interne au core.
   `VIRTUAL_THRESHOLD`** (`table-renderer-virtual-scroll.ts`, lu par `renderer.ts`) le rendu bascule
   en **défilement virtuel** et seules les lignes visibles sont dans le DOM ; **en deçà, elles y sont
   toutes**. C'est un seuil, pas un régime permanent — et la clé `virtualScrolling` ne le commande
-  pas : elle est **dépréciée** depuis la tâche 2.7, sortie des défauts et des profils livrés. Voir
+  pas : elle est **dépréciée**, sortie des défauts et des profils livrés. Voir
   l'avertissement sur `pageSize`, qui est son jumeau exact.
 - **Il ne modifie pas les données.** Lecture seule ; l'édition est le domaine du plugin `editor`.
 - **Il ne se construit pas au démarrage**, sauf demande explicite — voir §Cycle de vie.
@@ -110,6 +110,15 @@ a déjà fait ailleurs ce qu'il recommande. ⚠️ Le test est `!== true` et non
 sans `isInitialized` rend `undefined`, et le créneau **est** déclaré — échouer en ouvrant est le bon
 sens, un avertissement parasite coûte une ligne de console, une déclaration manquante coûte le
 bouton. Le tri des deux chemins est fait par `registerPluginModule` (`@geoleaf/host-runtime`).
+
+### La police — le panneau est hors de la racine de l'application
+
+Le panneau est un enfant de `<body>` : il n'hérite pas de la police que la racine de l'application
+porte. Mesuré le 07/10/2026 en l'ouvrant dans Chromium : boutons, champ de recherche et listes en
+Arial — un contrôle de formulaire n'hérite pas de sa police —, et le texte dans la police par
+défaut de la page hôte. Sa racine lit `--gl-font-family`, le jeton que le cœur déclare sur `:root`,
+et ses contrôles en héritent. Le focus du champ de recherche et de la liste de couches, qui
+retirent leur contour, se marque par une bordure qui lit `--gl-color-focus-ring`.
 
 ### Le démontage — le tableau part avec l'application (1.1.3)
 
@@ -178,25 +187,31 @@ navigateur dédié sous `e2e/`.
 ## Configuration
 
 Bloc `modules.table` d'un profil, lu par `coreConfigGet("modules.table", {})` et fusionné sur les
-défauts. ⚠️ **Cette table n'est PAS gatée** — le garde de cette fiche ne lit que le manifeste. La
-couverture de ces clés relève de `scripts/check-config-coverage.cjs` et de l'inventaire.
+défauts. Sa colonne « Défaut » est confrontée à la table `DEFAULTS` de `config.ts` par
+`doc-capability-config.guard.test.js` ; la couverture des clés relève de
+`scripts/check-config-coverage.cjs` et de l'inventaire.
 
-| Clé                  | Type      | Défaut  | Rôle                                                                                                                                      |
-| -------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`            | `boolean` | `true`  | Éteint le plugin — ni panneau, ni construction, même à l'activation                                                                       |
-| `showButton`         | `boolean` | `true`  | La `profileKey` des deux créneaux de barre d'outils                                                                                       |
-| `defaultVisible`     | `boolean` | `false` | `true` → construction **et** ouverture au démarrage ; `false` → construction paresseuse                                                   |
-| `pageSize`           | `number`  | —       | ⚠️ **Déprécié, sans défaut, lu nulle part** — voir ci-dessous                                                                             |
-| `maxRowsPerLayer`    | `number`  | `30000` | Borne le nombre de lignes retenues par couche. La coupe **avertit l'utilisateur**, une fois par couche et par session ; `0` signifie zéro |
-| `enableExportButton` | `boolean` | `true`  | Affiche les boutons d'export                                                                                                              |
-| `virtualScrolling`   | `boolean` | —       | ⚠️ **Déprécié, sans défaut, lu nulle part** — jumeau de `pageSize`, voir ci-dessous                                                       |
-| `defaultHeight`      | `string`  | `"40%"` | Hauteur initiale du tiroir                                                                                                                |
-| `minHeight`          | `string`  | `"20%"` | Borne basse du redimensionnement                                                                                                          |
-| `maxHeight`          | `string`  | `"60%"` | Borne haute du redimensionnement                                                                                                          |
-| `resizable`          | `boolean` | `true`  | Autorise la poignée                                                                                                                       |
+| Clé                  | Type           | Défaut                                      | Rôle                                                                                                                                      |
+| -------------------- | -------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`      | `true`                                      | Éteint le plugin — ni panneau, ni construction, même à l'activation                                                                       |
+| `showButton`         | `boolean`      | `true`                                      | La `profileKey` des deux créneaux de barre d'outils                                                                                       |
+| `defaultVisible`     | `boolean`      | `false`                                     | `true` → construction **et** ouverture au démarrage ; `false` → construction paresseuse                                                   |
+| `pageSize`           | `number`       | —                                           | ⚠️ **Déprécié, sans défaut, lu nulle part** — voir ci-dessous                                                                             |
+| `maxRowsPerLayer`    | `number`       | `30000`                                     | Borne le nombre de lignes retenues par couche. La coupe **avertit l'utilisateur**, une fois par couche et par session ; `0` signifie zéro |
+| `enableExportButton` | `boolean`      | `true`                                      | Affiche les boutons d'export                                                                                                              |
+| `virtualScrolling`   | `boolean`      | —                                           | ⚠️ **Déprécié, sans défaut, lu nulle part** — jumeau de `pageSize`, voir ci-dessous                                                       |
+| `defaultHeight`      | `string`       | `"40%"`                                     | Hauteur initiale du tiroir                                                                                                                |
+| `minHeight`          | `string`       | `"20%"`                                     | Borne basse du redimensionnement                                                                                                          |
+| `maxHeight`          | `string`       | `"60%"`                                     | Borne haute du redimensionnement                                                                                                          |
+| `resizable`          | `boolean`      | `true`                                      | Autorise la poignée                                                                                                                       |
+| `exportFormats`      | `string[]`     | `["geojson", "csv", "kml", "gpx", "excel"]` | Formats proposés par les menus d'export, dans cet ordre                                                                                   |
+| `csvSeparator`       | `","` ou `";"` | `","`                                       | Séparateur de colonnes de l'export CSV                                                                                                    |
+| `csvIncludeGeometry` | `boolean`      | `false`                                     | Ajoute une colonne `__geometry` à l'export CSV                                                                                            |
 
-Trois clés supplémentaires sont **tolérées et transmises aux options d'export**, sans défaut :
-`exportFormats`, `csvSeparator`, `csvIncludeGeometry`.
+Les trois dernières lignes étaient des replis `??` au point de lecture ; elles sont entrées à la
+table `DEFAULTS` de `config.ts`. ⚠️ Elles gardent le sens de ces replis : écrites `null` au profil,
+elles conservent leur défaut, là où un `null` sur l'une des neuf premières le remplace.
+`buildCSV()` appelé sans options et une surcharge passée à `init()` retombent sur la même table.
 
 ⚠️ **`pageSize` n'a plus de défaut, il est `@deprecated`, et il n'est toujours lu nulle part.**
 
@@ -239,7 +254,7 @@ réintroduire ce que le seuil règle déjà.
 Lu par le seam `GeoLeaf.GeoJSON`. Le schéma de référence est `profiles/schemas/layer-config.schema.json`, et il **ne recouvre pas ce que le plugin lit** — il ferme le bloc (`additionalProperties: false`) dans les deux sens :
 
 - `columns[].type` est **lu par `renderer.ts`** (il pilote `formatValue` et l'alignement des nombres) et **refusé par le schéma**, qui n'admet que `field`, `label`, `sortable`, `width` ;
-- `searchFields` **est lu depuis la tâche 2.7** — il était admis par le schéma et lu par personne, pendant que le guide d'intégration promettait que « seules ces propriétés sont interrogées ». Deux formes circulent dans les docs publiées de ce dépôt, `["properties.nom"]` et `["nom"]` ; **les deux sont acceptées**, un chemin non résolu étant réessayé sous `properties.` — sans quoi il aurait fallu rendre l'une des deux docs fausse ;
+- `searchFields` **est lu** — il était admis par le schéma et lu par personne, pendant que le guide d'intégration promettait que « seules ces propriétés sont interrogées ». Deux formes circulent dans les docs publiées de ce dépôt, `["properties.nom"]` et `["nom"]` ; **les deux sont acceptées**, un chemin non résolu étant réessayé sous `properties.` — sans quoi il aurait fallu rendre l'une des deux docs fausse ;
 - le libellé du sélecteur ne vient pas d'ici mais de `layer.label`, puis de `layer.config.title` — **hors du bloc `table`**.
 
 L'écart se re-mesure, il ne se recopie pas :
@@ -317,7 +332,7 @@ complet n'existait en source** et les gates d'événements du dépôt — qui re
 l'AST — étaient structurellement aveugles aux neuf. Ce n'était donc pas un « régime normal » mais un
 angle mort, et il a coûté : `geoleaf:table:opened` et `:closed` ont été classés « cassés » dans le
 manifeste du consommateur aval jusqu'à sa v1.4.0, **alors qu'ils étaient émis ET écoutés**. Le
-précédent inverse existait déjà — les neuf `geoleaf:editor:*` sont typés depuis la tâche 7.3.
+précédent inverse existait déjà — les neuf `geoleaf:editor:*` sont typés.
 
 ### Écoutés
 
@@ -328,15 +343,15 @@ posé sur le mauvais bus est indiscernable d'un abonnement absent. La liste se r
 grep -rn 'addEventListener("geoleaf:\|\.on("geoleaf:' packages/plugins/table/src/ | grep -v __tests__
 ```
 
-| Événement                            | Bus        | Où               | Effet                                                                                                                                                                        |
-| ------------------------------------ | ---------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `geoleaf:map:ready`                  | `document` | `lifecycle.ts`   | Construit **seulement** si `defaultVisible`                                                                                                                                  |
-| `geoleaf:toolbar:action`             | `document` | `entry.ts`       | Filtré sur `table` — construit puis bascule                                                                                                                                  |
-| `geoleaf:filters:applied`            | `document` | `table-layer.ts` | Recharge les lignes de la couche active                                                                                                                                      |
-| `geoleaf:layer:updated`              | `document` | `table-layer.ts` | Recharge les lignes si c'est la couche affichée, une fois par rafale (1.1.1 ; core 3.12.0) — une création, une édition ou une suppression n'atteignait pas le tableau ouvert |
-| `geoleaf:theme:applied`              | `document` | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                           |
-| `geoleaf:geojson:layers-loaded`      | carte      | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                           |
-| `geoleaf:geojson:visibility-changed` | carte      | `table-layer.ts` | Recharge, ou retombe sur une autre couche visible                                                                                                                            |
+| Événement                            | Bus        | Où               | Effet                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | ---------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:map:ready`                  | `document` | `lifecycle.ts`   | Construit **seulement** si `defaultVisible`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `geoleaf:toolbar:action`             | `document` | `entry.ts`       | Filtré sur `table` — construit puis bascule                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `geoleaf:filters:applied`            | `document` | `table-layer.ts` | Recharge les lignes de la couche active                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `geoleaf:layer:updated`              | `document` | `table-layer.ts` | Recharge les lignes si c'est la couche affichée, après 150 ms de silence **et au plus tard 500 ms après la première écriture d'une rafale** — un flux écrivant plus vite que la temporisation laissait le tableau figé tant qu'il durait (1.1.1 ; core 3.12.0) — une création, une édition ou une suppression n'atteignait pas le tableau ouvert. Depuis le core 3.15.0 l'événement part aussi d'une collection réécrite hors de `GeoLeaf.Layers` (tic temps réel, rafraîchissement OGC), sans changement dans ce greffon |
+| `geoleaf:theme:applied`              | `document` | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `geoleaf:geojson:layers-loaded`      | carte      | `table-layer.ts` | Rafraîchit le sélecteur (débouncé)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `geoleaf:geojson:visibility-changed` | carte      | `table-layer.ts` | Recharge, ou retombe sur une autre couche visible                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 🛑 **Le troisième était mort DEUX FOIS jusqu'au 25/08/2026, et une seule des deux corrections
 n'aurait rien réparé.** Il s'abonnait à `geoleaf:filters:changed` — un nom qu'aucun émetteur ne

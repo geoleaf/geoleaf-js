@@ -8,7 +8,7 @@
 /**
  * GeoLeaf GeoJSON Module - Aggregator — main module delegating to sub-modules.
  *
- * Architecture Phase 3.5:
+ * Architecture:
  * - geojson/shared.js        : Shared state, constants, STYLE_OPERATORS
  * - geojson/style-resolver.js: styleRules evaluation
  * - geojson/layers/   : Layer management (show/hide/toggle/remove)
@@ -337,9 +337,9 @@ const GeoJSONModule = {
      * Updates both the MapLibre source (`source.setData()`) and the in-memory
      * state so that subsequent `getLayerData()` calls return the fresh data.
      *
-     * ⚠️ Announces nothing: `geoleaf:layer:updated` is emitted by the writes of
-     * `GeoLeaf.Layers` alone, so an open table or an active filter does not follow this
-     * one — prefer `GeoLeaf.Layers.setData` when they must.
+     * Announces `geoleaf:layer:updated`, once per call, for a layer the store holds: an open
+     * table and an active filter follow it, as they follow `GeoLeaf.Layers.setData`. Since
+     * 3.15.0 — the write was silent before.
      *
      * @param {string} layerId - ID of the layer to update.
      * @param {unknown} data - GeoJSON FeatureCollection (or any valid GeoJSON) to set.
@@ -354,11 +354,9 @@ const GeoJSONModule = {
         }
         // Keep in-memory state consistent so getLayerData() returns fresh data.
         // Delegated to the shared state's own writer — see its header for why every
-        // whole-collection write must pass through exactly one place.
+        // whole-collection write must pass through exactly one place. It also invalidates
+        // the diff verdict and announces the write.
         SharedModule.setLayerCollection(layerId, data);
-        // Invalidate, never recompute: see `_isDiffable`.
-        const written = state.layers?.get(layerId);
-        if (written) written._diffable = undefined;
     },
 
     getAllLayers(): unknown[] {

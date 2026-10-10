@@ -1,5 +1,5 @@
 /**
- * T10.4.3 — geoleaf-facades-contracts.test.js
+ * geoleaf-facades-contracts.test.js
  * Verifies the API contracts of the 5 most critical public facades:
  *   Config, Core, POI, Events, Notifications
  *
@@ -105,7 +105,7 @@ _g.GeoLeaf.Utils = { createElement: vi.fn((tag) => document.createElement(tag)) 
 
 // ── Test suites ───────────────────────────────────────────────────────────────
 
-describe("T10.4.3 — Config facade contract", () => {
+describe("Config facade contract", () => {
     let Config;
 
     beforeAll(async () => {
@@ -160,7 +160,7 @@ describe("T10.4.3 — Config facade contract", () => {
     });
 });
 
-describe("T10.4.3 — Core facade contract", () => {
+describe("Core facade contract", () => {
     let Core;
 
     beforeAll(async () => {
@@ -193,7 +193,7 @@ describe("T10.4.3 — Core facade contract", () => {
     });
 });
 
-describe("T10.4.3 — Events facade contract (behavioral)", () => {
+describe("Events facade contract (behavioral)", () => {
     let Events;
 
     beforeAll(async () => {
@@ -249,7 +249,7 @@ describe("T10.4.3 — Events facade contract (behavioral)", () => {
     });
 });
 
-describe("T10.4.3 — Notifications facade contract", () => {
+describe("Notifications facade contract", () => {
     let Notifications;
 
     beforeAll(async () => {

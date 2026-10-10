@@ -11,7 +11,7 @@
     "showIconsOnMap": true,
     "edition": { "create": true, "update": true, "delete": false },
     "editableGeometryTypes": ["Point"],
-    "_comment_write": "Posé à la tâche 7.2, et EXIGÉ par la règle A14 dès que `attributes.fields[].edit` apparaît ci-dessous — vu rougir dans cet ordre : `edit` seul rend `must have required property 'write'`. Cette fixture n'est jamais déployée et cet endpoint n'est jamais appelé ; son rôle est de porter toutes les formes légales, donc elle porte aussi celle-ci. `properties` liste le seul champ capturable, et reste la liste blanche d'expédition : ce qui n'y figure pas n'est jamais envoyé.",
+    "_comment_write": "EXIGÉ par la règle A14 dès que `attributes.fields[].edit` apparaît ci-dessous — vu rougir dans cet ordre : `edit` seul rend `must have required property 'write'`. Cette fixture n'est jamais déployée et cet endpoint n'est jamais appelé ; son rôle est de porter toutes les formes légales, donc elle porte aussi celle-ci. `properties` liste le seul champ capturable, et reste la liste blanche d'expédition : ce qui n'y figure pas n'est jamais envoyé.",
     "write": {
         "enabled": true,
         "endpoint": "https://example.test/collections/reference-points",

@@ -19,7 +19,7 @@
  *
  * ⚠ `LegendModule` here is the `ICoreModule` class from `./module.ts` — NOT the same-named
  * internal API object inside `./legend.ts` (re-exported by `./public-api.ts`). The two have
- * always been distinct; since R.10 they are at least neighbours rather than a cross-tree pair.
+ * always been distinct; they are now at least neighbours rather than a cross-tree pair.
  */
 
 // ── Stylesheet (S6) ─────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ import "./css/legend.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { LEGEND_CAPABILITY } from "./legend-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { LegendModule } from "./module.js";
 // Direct file imports (never through ./index.js — that barrel also re-exports

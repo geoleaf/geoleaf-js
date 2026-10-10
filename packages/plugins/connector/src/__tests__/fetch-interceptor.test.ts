@@ -72,6 +72,78 @@ describe("install / uninstall", () => {
 
 // ─── URL matching and header injection ───────────────────────────────────────
 
+// ─── A write the layer declares anonymous ────────────────────────────────────────
+
+/**
+ * `write.auth: "none"` — the layer says its endpoint takes no credential. The core cannot tell
+ * this plugin directly (neither imports the other): it marks the request, and the interceptor
+ * reads the mark. Without it, a public write endpoint under `baseUrl` received the session's
+ * token all the same.
+ */
+describe("une écriture déclarée sans authentification", () => {
+    let interceptor: InterceptorModule;
+    let backendFetch: ReturnType<typeof vi.fn>;
+    let getToken: ReturnType<typeof vi.fn>;
+
+    const write = (auth?: string) =>
+        globalThis.fetch(`${BASE_URL}/collections/sites`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: "{}",
+            ...(auth !== undefined && { geoleafWriteAuth: auth }),
+        } as RequestInit);
+    const sentAuthorization = () =>
+        new Headers(backendFetch.mock.calls[0][1]?.headers).get("authorization");
+
+    beforeEach(async () => {
+        vi.resetModules();
+        backendFetch = vi.fn().mockResolvedValue(makeOkResponse(201));
+        vi.stubGlobal("fetch", backendFetch);
+        getToken = vi.fn(() => TOKEN);
+        interceptor = await import("../fetch-interceptor.js");
+        interceptor.install({ baseUrl: BASE_URL, getToken });
+        // `install()` asks once, to warn about a static token: only the requests count here.
+        getToken.mockClear();
+    });
+
+    afterEach(() => {
+        interceptor.uninstall();
+        vi.unstubAllGlobals();
+    });
+
+    it("🛑 marquée `none` : aucun jeton, même sous `baseUrl` — et le jeton n'est pas demandé", async () => {
+        await write("none");
+        expect(sentAuthorization()).toBeNull();
+        expect(getToken).not.toHaveBeenCalled();
+        // The rest of the request is the caller's, untouched.
+        expect(backendFetch.mock.calls[0][1].method).toBe("POST");
+        expect(backendFetch.mock.calls[0][1].body).toBe("{}");
+    });
+
+    it("marquée `none` : un 401 revient tel quel, sans renouvellement ni rejeu", async () => {
+        backendFetch.mockResolvedValue(makeOkResponse(401));
+        const seen: Event[] = [];
+        const listener = (e: Event) => seen.push(e);
+        document.addEventListener("geoleaf:connector:auth-error", listener);
+        try {
+            const response = await write("none");
+            expect(response.status).toBe(401);
+            expect(backendFetch).toHaveBeenCalledTimes(1);
+            expect(seen).toHaveLength(0);
+        } finally {
+            document.removeEventListener("geoleaf:connector:auth-error", listener);
+        }
+    });
+
+    it.each([["bearer"], [undefined], ["csrf"]])(
+        "marquée %s : le jeton est posé, comme sur toute requête sous `baseUrl`",
+        async (auth: string | undefined) => {
+            await write(auth);
+            expect(sentAuthorization()).toBe(`Bearer ${TOKEN}`);
+        }
+    );
+});
+
 describe("URL matching and header injection", () => {
     let interceptor: InterceptorModule;
     let backendFetch: ReturnType<typeof vi.fn>;
@@ -101,11 +173,13 @@ describe("URL matching and header injection", () => {
         expect(callInit?.headers?.Authorization).toBeUndefined();
     });
 
-    it("does not intercept .mvt URLs (routed to MapLibre bridge)", async () => {
+    // The map's own tiles never come through this `fetch` — MapLibre loads them in its
+    // worker, and the bridge serves them. The request that does is the offline preparation's,
+    // and it left without the token the display presents.
+    it("🛑 intercepts a .mvt URL — the offline preparation's, on the main thread", async () => {
         await globalThis.fetch(`${BASE_URL}/tiles/14/100/200.mvt`);
-        const callInit = backendFetch.mock.calls[0][1];
-        // Passed through to original fetch without auth header injection
-        expect(callInit?.headers?.Authorization).toBeUndefined();
+        const headers = new Headers(backendFetch.mock.calls[0][1]?.headers);
+        expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
     });
 
     it("🛑 intercepts a PMTiles archive, and keeps its Range header", async () => {
@@ -140,10 +214,15 @@ describe("URL matching and header injection", () => {
         expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
     });
 
-    it("does not intercept .pbf URLs (routed to MapLibre bridge)", async () => {
+    it("🛑 intercepts a .pbf URL — a tile or a glyph range the preparation downloads", async () => {
         await globalThis.fetch(`${BASE_URL}/tiles/14/100/200.pbf`);
-        const callInit = backendFetch.mock.calls[0][1];
-        expect(callInit?.headers?.Authorization).toBeUndefined();
+        const headers = new Headers(backendFetch.mock.calls[0][1]?.headers);
+        expect(headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
+    });
+
+    it("a .pbf URL outside baseUrl still carries nothing", async () => {
+        await globalThis.fetch("https://other.example.com/tiles/14/100/200.pbf");
+        expect(backendFetch.mock.calls[0][1]?.headers?.Authorization).toBeUndefined();
     });
 });
 

@@ -125,7 +125,7 @@
 }
 
 .gl-measure-menu__nav:hover {
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
 }
 
 .gl-measure-menu__nav.gl-is-visible {
@@ -174,14 +174,14 @@
 
 .gl-measure-tool-btn:hover {
     background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     transform: scale(1.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
 }
 
 .gl-measure-tool-btn--active {
     background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
 }
 
 /* ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@
 
 .gl-measure-unit-btn:hover {
     background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     transform: scale(1.12);
 }
 
@@ -247,7 +247,7 @@
 
 .gl-measure-action-btn:hover {
     background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     transform: scale(1.12);
 }
 
@@ -392,7 +392,7 @@
 .gl-measure-gps-modal-btn.--primary {
     background: var(--gl-color-accent, #f97316);
     border-color: var(--gl-color-accent, #f97316);
-    color: #fff;
+    color: var(--gl-color-accent-contrast, #020617);
 }
 
 /* PLUGINS S10: hover used `--gl-color-accent-dark` (undefined) → fell back to

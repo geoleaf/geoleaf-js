@@ -42,7 +42,7 @@ export interface ClusteringNormalizationPatch {
  * `(source, destination)` helper would have type-checked in both directions, since
  * both parameters are structurally loose — so an inverted call would have compiled
  * and silently written the wrong way round. Returning a patch removes that failure
- * mode by construction rather than by vigilance (R.40, backlog résiduel S5).
+ * mode by construction rather than by vigilance.
  *
  * @param clustering - The layer definition's raw `clustering` value, of unknown shape.
  * @returns The fields to merge onto the normalised definition, or `null` for a no-op.

@@ -87,14 +87,17 @@ export interface GeoLeafLayerToggleDetail {
 /**
  * Detail payload for `geoleaf:layer:updated`.
  *
- * Dispatched once per mutation of a layer's store through `GeoLeaf.Layers` — `setData`,
+ * Dispatched once per mutation of a layer's store. Through `GeoLeaf.Layers`: `setData`,
  * `clear`, `addFeature`, `removeFeature` (when it removed something), `updateFeatureId`,
- * `mergeFeatures`, and `patchFeature` with `{ rerender: true }`. NOT by a silent
- * `patchFeature`, which changes state only; NOT by the loading of a layer
+ * `mergeFeatures`, and `patchFeature` with `{ rerender: true }`. And, since 3.15.0, by every
+ * writer of a WHOLE collection around it — a real-time layer's ticks, an OGC layer's
+ * auto-refresh, a direct `GeoLeaf.GeoJSON.updateLayerData`: they rewrote the store unannounced
+ * before.
+ *
+ * NOT by a silent `patchFeature`, which changes state only; NOT by the loading of a layer
  * (`geoleaf:geojson:layers-loaded` says that); NOT by a filter or `setVisibleSubset`, which
- * change what is DRAWN, never what the store holds; and NOT by a writer of a whole collection
- * outside `GeoLeaf.Layers` — a real-time layer's ticks, an OGC layer's auto-refresh, a direct
- * `GeoLeaf.GeoJSON.updateLayerData`: the store changes, and nothing announces it.
+ * change what is DRAWN, never what the store holds; and not by a plugin that feeds its source
+ * without writing the store.
  *
  * What derives from the store listens to it: the open table, the active filter.
  */
@@ -225,7 +228,7 @@ export interface GeoLeafPluginFailedDetail {
     error: string;
 }
 
-// ── Editor seam (plugin-emitted, task 7.3) ───────────────────────────────────
+// ── Editor seam (plugin-emitted) ───────────────────────────────────
 //
 // ⚠️ These ten shapes are NOT exported, unlike the `*Detail` types above — and the
 // asymmetry is measured, not stylistic. Those have real, named consumers; these would
@@ -418,8 +421,46 @@ interface GeoLeafOutboxDrainedDetail {
     deferred: number;
     /** Conflicts detected then settled by `lastWriteWins`. */
     conflicts: number;
-    /** What stopped the pass before the end of the queue, or `null`. */
+    /**
+     * What stopped the pass before the end of the queue, or `null`.
+     *
+     * - `authRequired` — a write was answered 401: the session is over. The automatic
+     *   triggers pause until a person sends or requeues.
+     */
     haltedBy: "authRequired" | null;
+    /**
+     * Captures walked past because their layer declares `write.auth: "bearer"` and no session
+     * is open: nothing was sent for them, they stay queued, and the pass went on with the
+     * rest. The triggers keep running — the periodic tick included. The sync strip reads this
+     * count to say a sign-in is required.
+     */
+    heldForSession: number;
+}
+
+/**
+ * Detail payload for `geoleaf:offline:quarantine-exited` — entries left quarantine.
+ *
+ * The third voice of the write cycle, after {@link GeoLeafOutboxQueuedDetail} (something
+ * entered) and {@link GeoLeafOutboxDrainedDetail} (a pass ended): an entry SET ASIDE left by
+ * one of its two exits. Without it, `Storage.requeueQuarantined()`, `requeueAll()` and
+ * `discardQuarantined()` changed the queue in silence — a counter of the entries set aside
+ * stayed stale, and a requeue on a calm queue sent nothing before the next trigger.
+ *
+ * Emitted on `document`, **once per gesture**: a `requeueAll()` that brings forty entries back
+ * is one event carrying forty entries. **A gesture that moved nothing is not announced** — a
+ * refusal, or a `requeueAll()` with nothing to requeue.
+ *
+ * ⚠️ A `requeued` exit also asks the drain for a pass: requeueing is asking to send. A
+ * `discarded` one does not — nothing is left to send.
+ *
+ * ⚠️ NOT exported, like its two neighbours and for the same reason: integrators reach it
+ * through `GeoLeafEventMap["geoleaf:offline:quarantine-exited"]`.
+ */
+interface GeoLeafQuarantineExitedDetail {
+    /** Which exit was taken: back in the queue, or destroyed on the operator's confirmation. */
+    exit: "requeued" | "discarded";
+    /** The entity each departed entry edits, in the order they left. Never empty. */
+    entries: ReadonlyArray<{ layerId: string; localId: string }>;
 }
 
 /**
@@ -750,9 +791,9 @@ interface GeoLeafTableExportLayerDetail {
 // ⚠️ **The `geoleaf:connector:*` namespace is now SHARED.** The downstream consumer
 // maintains a proprietary plugin emitting six other names under this same prefix
 // (`ready`, `bbox-loading`, `bbox-loaded`, `data-version-changed`, `error`,
-// `auth-required`). Verified on 13/08/2026: no overlap with the six below. But nothing,
-// on either side, prevents a future collision — a name added here must be checked
-// against that list.
+// `auth-required`). Verified on 13/08/2026: no overlap with the six below, and again on
+// 04/10/2026 when `login-failed` was added. But nothing, on either side, prevents a future
+// collision — a name added here must be checked against that list.
 
 /** Detail payload for `geoleaf:connector:token-refreshed` and `:authenticated`. */
 interface GeoLeafConnectorBaseUrlDetail {
@@ -765,6 +806,33 @@ interface GeoLeafConnectorAuthErrorDetail {
     baseUrl: string;
     /** Error message, already flattened to a string by the emitter. */
     error: string;
+}
+
+/**
+ * Detail payload for `geoleaf:connector:login-failed` — a sign-in from the connector's login
+ * window was refused, or could not conclude.
+ *
+ * ⚠️ Not `:auth-error`: that one says an ESTABLISHED session died. This one says no session
+ * was opened, and why as far as the server said it.
+ */
+interface GeoLeafConnectorLoginFailedDetail {
+    baseUrl: string;
+    /** The failure, as a short English message — `"Invalid credentials"`, `"Network unavailable"`… */
+    error: string;
+    /** HTTP status of the server's answer; absent when the exchange never got one. */
+    status?: number;
+    /**
+     * What the server said of its refusal, when it answered RFC 9457 problem details
+     * (`application/problem+json`). `type`, `title` and `detail` are present only as non-empty
+     * strings; `body` is the whole parsed answer, extension members included. It is the
+     * server's text: render it as text.
+     */
+    problem?: {
+        type?: string;
+        title?: string;
+        detail?: string;
+        body: Record<string, unknown>;
+    };
 }
 
 /** Detail payload for `geoleaf:connector:credential-button-clicked`. */
@@ -800,7 +868,7 @@ interface GeoLeafConnectorLinkRequestDetail {
  * through the sanitising bus is restricted to this one.
  *
  * ⚠️ **Being listed here does NOT mean the event travels through that bus** — it means it
- * COULD. This sentence read « events carried by the sanitising bus » until task 7.3, which
+ * COULD. This sentence used to read « events carried by the sanitising bus », which
  * was narrower than the rule the two maps actually enforce, and it had no answer for the
  * nine `geoleaf:editor:*` events: their payloads clone perfectly, but the editor dispatches
  * them as raw `CustomEvent`s and `dispatchGeoLeafEvent` is exported to no plugin. Reading
@@ -944,7 +1012,23 @@ export interface GeoLeafEventMap {
     // Filters (applied state change, no structured payload)
     "geoleaf:filters:applied": Record<string, never>;
     // Service worker
+    /**
+     * A new service worker ACTIVATED: it now serves the pages of its scope.
+     *
+     * ⚠️ Not "an update is available" — see `geoleaf:sw:update-waiting` for that. This one
+     * also fires at a first install, when the first worker takes the page.
+     */
     "geoleaf:sw:updated": Record<string, never>;
+    /**
+     * A new version of the application is installed and WAITS: its service worker will not
+     * take a page that is in use until `GeoLeaf.PWA.applyUpdate()` is called, or until every
+     * tab it serves is closed.
+     *
+     * Emitted once per waiting worker — when its install completes, or when a page boots
+     * onto one that was already waiting. Never at a first install. ⚠️ A listener set after
+     * the boot may have missed it: read `GeoLeaf.PWA.isUpdateWaiting()` as well.
+     */
+    "geoleaf:sw:update-waiting": Record<string, never>;
     // Storage — a cache made room for itself. TWO producers, see the type.
     // Typed here rather than left in the `event-map-coverage` baseline: an integrator can
     // neither discover nor check the payload of an untyped event, and this one becomes an
@@ -957,6 +1041,8 @@ export interface GeoLeafEventMap {
     // Storage — an edit reached the write queue. Typed at birth, same motive.
     "geoleaf:offline:outbox-queued": GeoLeafOutboxQueuedDetail;
     "geoleaf:offline:outbox-drained": GeoLeafOutboxDrainedDetail;
+    // Storage — entries left quarantine, requeued or discarded. Typed at birth, same motive.
+    "geoleaf:offline:quarantine-exited": GeoLeafQuarantineExitedDetail;
     // Storage — a conflict was settled by `lastWriteWins`, and what it crushed was kept
     // (v6 store). Typed at birth, same motive as the two above.
     "geoleaf:offline:write-conflict": GeoLeafOfflineWriteConflictDetail;
@@ -990,7 +1076,7 @@ export interface GeoLeafEventMap {
     "geoleaf:plugin:loaded": GeoLeafPluginLoadedDetail;
     "geoleaf:plugin:lazy-loaded": GeoLeafPluginLazyLoadedDetail;
     "geoleaf:plugin:failed": GeoLeafPluginFailedDetail;
-    // Editor seam (task 7.3) — the FIRST plugin-emitted events typed here, and the
+    // Editor seam — the FIRST plugin-emitted events typed here, and the
     // precedent for the 39 that remain in `event-map-coverage`'s baseline. Seven of the
     // nine have no listener in this repo, which is exactly what put them on reserve:
     // an emitter without a listener is legitimate ONLY as public API, and an
@@ -1032,6 +1118,8 @@ export interface GeoLeafEventMap {
      */
     "geoleaf:connector:signed-out": GeoLeafConnectorBaseUrlDetail;
     "geoleaf:connector:auth-error": GeoLeafConnectorAuthErrorDetail;
+    /** A sign-in was refused or could not conclude — no session was opened. */
+    "geoleaf:connector:login-failed": GeoLeafConnectorLoginFailedDetail;
     "geoleaf:connector:credential-button-clicked": GeoLeafConnectorCredentialClickDetail;
     /** ⚠️ **Cancelable** — `preventDefault()` prevents the navigation to `url`. */
     "geoleaf:connector:signup-requested": GeoLeafConnectorLinkRequestDetail;

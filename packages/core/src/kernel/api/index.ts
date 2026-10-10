@@ -15,7 +15,7 @@ export { APIInitializationManager } from "./initialization-manager.js";
 export { APIModuleManager } from "./module-manager.js";
 export { PluginRegistry } from "./plugin-registry.js";
 export { BootInfo, showBootInfo } from "./boot-info.js";
-// Mediated route for the `capabilities/ → kernel/` boundary (backlog R.8):
+// Mediated route for the `capabilities/ → kernel/` boundary (rule R.8):
 // capabilities read their own opt-out gate through the registry.
 export { CapabilityRegistry } from "./capability-registry.js";
 // The `GeoLeaf.Capabilities` bus. Same boundary as the registry above: a capability that

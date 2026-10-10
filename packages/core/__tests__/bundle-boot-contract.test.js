@@ -101,9 +101,9 @@ const importArtefact = (p) => import(/* @vite-ignore */ pathToFileURL(p).href);
  * Update by hand, having read the diff.
  *
  * ── Baseline history ────────────────────────────────────────────────────────────────────────
- * S6 Lot 0: 64 keys — the pre-boot surface as the lazy phase left it (only `globals.core.ts` ran its
+ * 64 keys — the pre-boot surface as the lazy phase left it (only `globals.core.ts` ran its
  *           setups at import; the other five were lazy, and the rustine compensated).
- * S6 Lot 2: 88 keys — phase A restored. The five remaining globals now post their facades at
+ * 88 keys — phase A restored. The five remaining globals now post their facades at
  *           import too. Measured diff on the built bundle: +24, **-0**. Every addition is a
  *           kernel facade that had been made lazy (`GeoJSON`, `ThemeCache`, `_GeoJSONLoader`,
  *           the `_LayerManager*` / `_UI*` / `_Theme*` families, `_OfflineDetector`, `_SWRegister`,

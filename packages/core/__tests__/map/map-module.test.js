@@ -1,6 +1,6 @@
 /**
  *
- * T4.2 — kernel/map (0% → ≥60% branches)
+ * kernel/map (0% → ≥60% branches)
  * Tests for:
  *   - src/kernel/map/facade.ts  (Core.init, getMap, getAdapter)
  *   - src/kernel/map/map-container.ts (resolveMapContainer, padBounds,

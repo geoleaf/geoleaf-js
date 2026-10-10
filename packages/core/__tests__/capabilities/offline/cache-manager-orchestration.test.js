@@ -116,7 +116,7 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
         // manifest for the pre-departure check.
         await expect(CacheManager.cacheProfile("t")).resolves.toEqual({
             ok: true,
-            preparation: { zone: null, skippedZooms: [], capped: false },
+            preparation: { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] },
         });
         expect(downloaderCacheProfile).toHaveBeenCalledTimes(1);
     });
@@ -139,7 +139,7 @@ describe("cacheProfile — le pré-contrôle de quota (déplacé de la façade, 
         // manifest for the pre-departure check.
         await expect(CacheManager.cacheProfile("t")).resolves.toEqual({
             ok: true,
-            preparation: { zone: null, skippedZooms: [], capped: false },
+            preparation: { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] },
         });
     });
 
@@ -275,7 +275,7 @@ describe("_fallbackEstimation", () => {
     });
 });
 
-// ── R9, task 2.3 — the button finally pulls the ENTITIES ────────────────────────────────
+// ── The button finally pulls the ENTITIES ────────────────────────────────
 //
 // 🛑 WHAT THIS DESCRIBE HOLDS IS A CONNECTION, not a behaviour. `pullLayer` was complete,
 // tested against a real IndexedDB, and called by NOTHING in the application: the download

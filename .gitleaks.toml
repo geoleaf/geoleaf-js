@@ -18,8 +18,8 @@
 # Elles ne ferment aucune fuite : les valeurs qu'elles nomment ne sont pas des secrets.
 # L'IP du VPS **résout déjà publiquement** (`geoleaf.dev` y pointe), l'hôte du backend de
 # preuve est un sous-domaine public qui ne répond que derrière un fichier `hosts` de poste,
-# et un nom de distro n'identifie personne. Ce sont des **cliquets d'hygiène** : le Sprint 5
-# a retiré ces motifs des fichiers suivis, et sans règle le nettoyage resterait un
+# et un nom de distro n'identifie personne. Ce sont des **cliquets d'hygiène** : le passage
+# public a retiré ces motifs des fichiers suivis, et sans règle le nettoyage resterait un
 # instantané au lieu d'être une propriété. Elles servent à faire rougir la RÉINTRODUCTION.
 #
 # ⚠️ Conséquence directe : leurs listes d'exemption nomment les endroits où ces motifs
@@ -28,7 +28,7 @@
 # règles par défaut avec elle.
 #
 # ⚠️ `_docs_projet/` et `CLAUDE.md` sont exemptés de TOUTES les règles maison : ce sont les
-# documents internes, qui sortent du périmètre public au Sprint 6 puis à la tâche 9.4. Ils
+# documents internes, qui sortent du périmètre public avec la partition du dépôt. Ils
 # portent l'historique de ces motifs — le décrire est leur travail. Le jour où ils quittent
 # le dépôt public, ces exemptions deviennent sans objet et doivent être RETIRÉES, pas
 # oubliées : c'est ce qui rendrait les règles pleinement mordantes.
@@ -40,7 +40,7 @@
 # lui-même. L'exemption `.gitleaks.toml` posée sur chaque règle est une seconde ceinture,
 # utile le jour où quelqu'un écrira un motif sans échappement.
 
-title = "GeoLeaf — règles par défaut + motifs maison (Sprint 5, passage public)"
+title = "GeoLeaf — règles par défaut + motifs maison (passage public)"
 
 [extend]
 # 🛑 NE JAMAIS RETIRER — voir l'en-tête. Sans cette ligne, les ~150 règles par défaut
@@ -94,7 +94,7 @@ paths = ['''^_docs_projet/''', '''^CLAUDE\.md$''', '''^\.gitleaks\.toml$''']
 id = "geoleaf-windows-datas-path"
 description = "Chemin absolu du poste de production de données (résidu d'export QGIS)"
 # Les DEUX formes : barre oblique et antislash — dont l'antislash DOUBLÉ, tel qu'il apparaît
-# dans un littéral JSON. La tâche 5.1 a mesuré que la recette de contrôle de la roadmap,
+# dans un littéral JSON. Mesuré au passage public : la recette de contrôle d'alors,
 # écrite sur la seule forme à barres obliques, était aveugle à 52 des 531 chemins absolus.
 regex = '''[A-Za-z]:[\\/]{1,2}DATAS'''
 tags = ["geoleaf", "hygiene", "poste"]

@@ -173,7 +173,7 @@
 .gl-editor-tool-btn:hover:not(:disabled),
 .gl-editor-tool-btn:focus-visible:not(:disabled) {
     background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     transform: scale(1.12);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
     outline: none;
@@ -181,7 +181,7 @@
 
 .gl-editor-tool-btn--active {
     background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -218,7 +218,7 @@
 .gl-editor-action-btn:hover:not(:disabled),
 .gl-editor-action-btn:focus-visible:not(:disabled) {
     background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     transform: scale(1.12);
     outline: none;
 }
@@ -250,7 +250,7 @@
     border: 1px solid var(--gl-color-border-soft, #e5e7eb);
     border-radius: 9999px;
     background: var(--gl-color-accent-soft, rgba(37, 99, 235, 0.12));
-    color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
     font-size: 0.72rem;
     font-weight: 600;
     line-height: 1.4;
@@ -261,7 +261,7 @@
 .gl-editor-queue-badge:hover,
 .gl-editor-queue-badge:focus-visible {
     background: var(--gl-color-accent, #2563eb);
-    color: var(--gl-color-tooltip-text, #ffffff);
+    color: var(--gl-color-accent-contrast, #f9fafb);
 }
 
 /* Pending-queue detail modal rows */
@@ -417,11 +417,11 @@
 .gl-editor-conflict-merge__opt.gl-is-selected {
     opacity: 1;
     border-color: var(--gl-color-accent, #f97316);
-    color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
 }
 
 /* ========================================
-   TEMPORARY PLACEMENT MARKER  (tâche 5.1-a)
+   TEMPORARY PLACEMENT MARKER
    Absorbé d'`addpoi/src/css/geoleaf-addpoi.css`, qui n'était plus QUE ce bloc et
    meurt avec le plugin. Deux écarts assumés avec l'original :
      1. la couleur passe par `currentColor`, pas par une interpolation dans le markup ;
@@ -440,7 +440,7 @@
     justify-content: center;
     background: transparent;
     border: none;
-    color: var(--gl-color-accent, #0ea5e9);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #0ea5e9));
 }
 
 .gl-editor-placement-marker.snapped {

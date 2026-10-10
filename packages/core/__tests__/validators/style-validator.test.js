@@ -384,14 +384,16 @@ describe("style-validator — label configuration branches", () => {
         expect(r.errors.some((e) => e.field === "label.font.sizePt")).toBe(true);
     });
 
-    it("validates font weight must be 0-100", () => {
+    // `font.weight` was range-checked (0-100) although no renderer ever read it: a style
+    // following the CSS scale (400, 700) was REFUSED at load for a key that changed nothing.
+    it("does not judge a font key the renderer does not read", () => {
         const r = validateStyle({
             id: "s1",
             style: {},
             scaleConfig: { minScale: 0, maxScale: 100 },
-            label: { enabled: true, field: "name", font: { weight: 150 } },
+            label: { enabled: true, field: "name", font: { weight: 700, family: "Arial" } },
         });
-        expect(r.errors.some((e) => e.field === "label.font.weight")).toBe(true);
+        expect(r.errors.filter((e) => e.field.startsWith("label.font"))).toEqual([]);
     });
 
     it("validates label buffer as non-object", () => {
@@ -488,27 +490,20 @@ describe("validateFont — direct", () => {
         validateFont({ sizePt: "large" }, errors, [], {});
         expect(errors.some((e) => e.field === "label.font.sizePt")).toBe(true);
     });
-    it("pushes error for weight > 100", () => {
-        const errors = [];
-        validateFont({ weight: 150 }, errors, [], {});
-        expect(errors.some((e) => e.field === "label.font.weight")).toBe(true);
-    });
-    it("pushes error for weight < 0", () => {
-        const errors = [];
-        validateFont({ weight: -5 }, errors, [], {});
-        expect(errors.some((e) => e.field === "label.font.weight")).toBe(true);
-    });
-    it("pushes error for weight non-integer", () => {
-        const errors = [];
-        validateFont({ weight: 1.5 }, errors, [], {});
-        expect(errors.some((e) => e.field === "label.font.weight")).toBe(true);
-    });
+    it.each([[{ weight: 150 }], [{ weight: -5 }], [{ weight: 1.5 }], [{ bold: "yes" }]])(
+        "ignores a key the renderer does not read — %o",
+        (font) => {
+            const errors = [];
+            validateFont(font, errors, [], {});
+            expect(errors).toHaveLength(0);
+        }
+    );
     it("no error for valid font", () => {
         const errors = [];
-        validateFont({ sizePt: 12, weight: 50 }, errors, [], {});
+        validateFont({ sizePt: 12 }, errors, [], {});
         expect(errors).toHaveLength(0);
     });
-    it("no error when sizePt/weight absent (optional)", () => {
+    it("no error when sizePt is absent (optional)", () => {
         const errors = [];
         validateFont({}, errors, [], {});
         expect(errors).toHaveLength(0);
@@ -523,8 +518,13 @@ describe("validateLabelComponent — direct", () => {
     });
     it("pushes error when component is null", () => {
         const errors = [];
-        validateLabelComponent(null, "label.background", errors, [], {});
-        expect(errors.some((e) => e.field === "label.background")).toBe(true);
+        validateLabelComponent(null, "label.buffer", errors, [], {});
+        expect(errors.some((e) => e.field === "label.buffer")).toBe(true);
+    });
+    it("ignores an opacity — a text halo has a colour and a width, nothing else", () => {
+        const errors = [];
+        validateLabelComponent({ opacity: 7 }, "label.buffer", errors, [], {});
+        expect(errors).toHaveLength(0);
     });
     it("no error for empty valid component", () => {
         const errors = [];
@@ -611,10 +611,10 @@ describe("validateLabel — direct", () => {
         validateLabel({ label: { enabled: false, buffer: "bad" } }, errors, [], {});
         expect(errors.some((e) => e.field === "label.buffer")).toBe(true);
     });
-    it("validates background when present", () => {
+    it("ignores `background`, which no renderer reads", () => {
         const errors = [];
         validateLabel({ label: { enabled: false, background: "solid" } }, errors, [], {});
-        expect(errors.some((e) => e.field === "label.background")).toBe(true);
+        expect(errors).toHaveLength(0);
     });
 });
 

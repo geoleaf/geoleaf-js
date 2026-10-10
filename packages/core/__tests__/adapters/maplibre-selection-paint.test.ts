@@ -155,6 +155,60 @@ describe("at creation", () => {
     });
 });
 
+/**
+ * The pending-sync badge is the selection's FALLBACK: the outer `case` tests `selected`, and
+ * its last branch is the badge's own `case`.
+ */
+function badgeInsideSelection(expr: unknown): boolean {
+    if (!Array.isArray(expr) || expr[0] !== "case") return false;
+    return readsSelected(expr[1]) && !readsSyncBadge(expr[1]) && readsSyncBadge(expr.at(-1));
+}
+
+describe("the pending-sync badge on a line and a polygon outline", () => {
+    // 🛑 The badge was a CIRCLE stroke and nothing else: a line or a polygon owed to the server
+    // was drawn like any other, reload or not.
+    const STROKES = ["gl-lines-line", "gl-zones-line"];
+
+    it("🛑 at creation, their stroke carries it — colour and width, selection outside", () => {
+        adapterWithLayers();
+        for (const id of STROKES) {
+            const paint = layers[id]?.paint;
+            expect(badgeInsideSelection(paint?.["line-color"]), `${id} line-color`).toBe(true);
+            expect(badgeInsideSelection(paint?.["line-width"]), `${id} line-width`).toBe(true);
+        }
+    });
+
+    it("🛑 after a re-style, it is still there", () => {
+        const adapter = adapterWithLayers();
+        adapter.setLayerStyle("lines", { color: "#00ff00", weight: 3 });
+        adapter.setLayerStyle("zones", { color: "#0000ff", fillColor: "#0000ff" });
+        for (const id of STROKES) {
+            expect(badgeInsideSelection(lastPaint(id, "line-color")), `${id} line-color`).toBe(
+                true
+            );
+            expect(badgeInsideSelection(lastPaint(id, "line-width")), `${id} line-width`).toBe(
+                true
+            );
+        }
+    });
+
+    it("a stroke that is not owed keeps its own colour and width — the badge is its last branch's fallback", () => {
+        const adapter = adapterWithLayers();
+        adapter.setLayerStyle("lines", { color: "#00ff00", weight: 3 });
+        const badge = (lastPaint("gl-lines-line", "line-color") as unknown[]).at(-1) as unknown[];
+        // ["case", <pending>, <orange>, <own colour>]
+        expect(badge[0]).toBe("case");
+        expect(badge.at(-1)).toBe("#00ff00");
+        const width = (lastPaint("gl-lines-line", "line-width") as unknown[]).at(-1) as unknown[];
+        expect(width.at(-1)).toBe(3);
+    });
+
+    it("the fill of a polygon is left alone", () => {
+        adapterWithLayers();
+        expect(readsSyncBadge(layers["gl-zones-fill"]?.paint)).toBe(false);
+    });
+});
+
 describe("after a re-style, which rebuilds the paint", () => {
     it("the point still shows it, and so do the line and the outline", () => {
         const adapter = adapterWithLayers();

@@ -16,8 +16,8 @@ GeoLeaf uses **Vitest** for unit testing. This guide documents testing patterns,
 **Test Coverage:** non connue à ce jour. Les chiffres affichés ici (82,5 % lignes /
 80,3 % statements / ~85,7 % branches) proviennent d'une mesure dont l'attribution est
 fausse à 49 % — mesuré et archivé le 24/07/2026. Ils sont retirés plutôt que remplacés :
-les rechiffrer maintenant substituerait un chiffre faux à un autre. Rétablissement au
-sprint 6 de cette roadmap.
+les rechiffrer maintenant substituerait un chiffre faux à un autre. Ils seront rétablis sur une
+mesure vraie.
 
 **Framework:** Vitest 4, environnement `happy-dom`, pool `forks` pour le cœur (`vmForks`
 pour la plupart des plugins) — voir `packages/core/vitest.config.ts` et la fabrique
@@ -155,24 +155,32 @@ test("should return an empty array on an unknown layer", () => {
 **Example**:
 
 ```javascript
-// INCORRECT - Expects immediate DOM creation
+// The detail the capability receives when a feature is clicked
+const detail = {
+    layerId: "poi",
+    featureId: "test",
+    properties: { name: "Test" },
+    geometry: { type: "Point", coordinates: [-73, 45] },
+    lngLat: { lat: 45, lng: -73 },
+    point: { x: 0, y: 0 },
+};
+
+// INCORRECT - Expects the DOM before the action that creates it
 test("should create the side panel", () => {
-    GeoLeaf.FeatureInfo.init({ map: mockMap });
+    // The capability installs itself: there is no init call to make
     const panel = document.querySelector(".gl-poi-sidepanel");
     expect(panel).toBeTruthy(); // FAILS - element doesn't exist yet
 });
 
-// CORRECT - Tests module existence, not DOM
-test("should initialize the feature-info module", () => {
-    GeoLeaf.FeatureInfo.init({ map: mockMap });
+// CORRECT - Tests the capability, not the DOM
+test("should expose the feature-info capability", () => {
     // The side panel is created lazily
-    expect(GeoLeaf.FeatureInfo).toBeDefined();
+    expect(GeoLeaf.FeatureInfo.isEnabled()).toBe(true);
 });
 
 // ALSO CORRECT - Trigger creation, then test
 test("should create the side panel on demand", () => {
-    GeoLeaf.FeatureInfo.init({ map: mockMap });
-    GeoLeaf.FeatureInfo.showDetails({ id: "test", latlng: [45, -73] });
+    GeoLeaf.FeatureInfo.openSidePanel(detail);
     // Now the DOM element exists
     const panel = document.querySelector(".gl-poi-sidepanel");
     expect(panel).toBeTruthy();

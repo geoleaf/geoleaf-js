@@ -281,6 +281,59 @@ describe("4.1 — rapatriement borné vers le store `features`", () => {
         expect(await readFeatures()).toHaveLength(0);
     });
 
+    // ── ⑥ bis — the origin rule: silence refuses only in a profile that DECLARES ────────
+    describe("la règle d'origine du rapatriement", () => {
+        /** Mounts the profile's `modules.offline.dataOrigins`, as `Config.get` serves it. */
+        function declare(dataOrigins) {
+            globalThis.GeoLeaf.Config.get = (key, fallback) =>
+                key === "modules.offline.dataOrigins" ? dataOrigins : fallback;
+        }
+        const declaration = (origin, extra = {}) => ({
+            origin,
+            roles: ["layerData"],
+            cacheable: false,
+            ...extra,
+        });
+
+        test("🛑 le profil déclare des origines, pas celle de la source : `originUndeclared`, sans requête", async () => {
+            declare([declaration("https://other.test")]);
+            serveFeatures([ogcFeature(1)]);
+
+            const report = await pullLayer("sites_rosario");
+
+            expect(report.refused).toBe("originUndeclared");
+            expect(report.written).toBe(0);
+            expect(fetchSpy).not.toHaveBeenCalled();
+            expect(await readFeatures()).toHaveLength(0);
+        });
+
+        test("l'origine de la source est déclarée : rapatriée, sans `prefetch` ni `cacheable`", async () => {
+            declare([declaration("https://backend.test")]);
+            serveFeatures([ogcFeature(1)]);
+
+            const report = await pullLayer("sites_rosario");
+
+            expect(report.refused).toBeNull();
+            expect(report.written).toBe(1);
+        });
+
+        // The source a pull exists for: a data API behind a session. `prefetchVerdict`
+        // refuses it — `prefetch` is dropped from an `authenticated` declaration.
+        test("🛑 une origine déclarée `authenticated` reste rapatriable", async () => {
+            declare([declaration("https://backend.test", { authenticated: true })]);
+            serveFeatures([ogcFeature(1)]);
+
+            expect((await pullLayer("sites_rosario")).refused).toBeNull();
+        });
+
+        test("aucune déclaration au profil : la source est rapatriée, comme avant la règle", async () => {
+            declare([]);
+            serveFeatures([ogcFeature(1)]);
+
+            expect((await pullLayer("sites_rosario")).refused).toBeNull();
+        });
+    });
+
     // ── ⑦ the absent engine is SAID too, and does not hang ──────────────────────────────
     test("sans moteur de stockage, le rapport dit `engineUnavailable`", async () => {
         StorageContract.init({

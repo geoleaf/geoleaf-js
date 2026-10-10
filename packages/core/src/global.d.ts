@@ -59,6 +59,103 @@ declare global {
     }
 
     /**
+     * The types of the namespaces the PLUGINS mount — an augmentable registry.
+     *
+     * The core declares those namespaces (`GeoLeaf.Table`, `GeoLeaf.Editor`…) and cannot type
+     * them: it never imports a plugin (`no-plugin-in-core`). A plugin's own declarations add
+     * one member here, named after its namespace:
+     *
+     * ```ts
+     * declare global {
+     *     interface GeoLeafPluginApis {
+     *         Table: TableApi;
+     *     }
+     * }
+     * ```
+     *
+     * and `GeoLeaf.Table` is then typed for whoever installs that plugin. A namespace nobody
+     * augmented stays `unknown` — reachable, never callable — which is what it was before.
+     *
+     * ⚠️ Augmenting `GeoLeafGlobal` directly does not work: redeclaring `Table` with another
+     * type is refused (TS2717), and `skipLibCheck` silences the refusal while keeping the
+     * first declaration — the augmentation would have no effect and say nothing.
+     */
+    interface GeoLeafPluginApis {}
+
+    /** The type a plugin registered for its namespace `K`, or `unknown` when none did. */
+    type GeoLeafPluginApi<K extends string> =
+        GeoLeafPluginApis extends Record<K, infer Api> ? Api : unknown;
+
+    /**
+     * `GeoLeaf.Utils` as the kernel mounts it — what the members named on the namespace's
+     * `Utils` are typed from. A type alone.
+     */
+    type GeoLeafUtilsNamespace = import("./utils/general/utils-namespace.js").UtilsNamespace;
+
+    /**
+     * The IndexedDB engine as the offline capability builds it — what the relays named on
+     * {@link GeoLeafStorageDB} are typed from. A type alone: nothing is imported at run time.
+     */
+    type GeoLeafStorageEngine = typeof import("./capabilities/offline/db/indexeddb.js").IndexedDB;
+
+    /**
+     * `GeoLeaf.Storage.DB` — the IndexedDB engine, as far as the namespace names it.
+     *
+     * Hoisted so that `DB` and its lower-case alias `db` are ONE declaration: derived from the
+     * façade's getter, `db` would not carry `listPendingEdits`, and the two would disagree.
+     */
+    interface GeoLeafStorageDB {
+        /**
+         * The edits still owed or set aside, oldest first — `state` says which. An entry
+         * set aside (`state: "quarantined"`) also says why: `quarantine` is the motive,
+         * `quarantineStatus` the HTTP status of the refusal when a server caused it.
+         */
+        listPendingEdits?(): Promise<
+            Array<{
+                entryId: string;
+                kind: string;
+                layerId: string;
+                localId: string;
+                state: string;
+                createdAt: number;
+                feature: unknown;
+                quarantine?: import("./contracts/sync.contract.js").QuarantineReason;
+                quarantineStatus?: number;
+            }>
+        >;
+        /*
+         * The relays a caller outside the engine reads. Each is typed FROM the engine, never
+         * rewritten here: a consumer that declared its own view of one of them could pass an
+         * argument the engine does not take — a status written as a string where an object
+         * is read, a `null` where a profile is declared — and no compiler stood between the
+         * two. A view is now a `Pick` of this interface, or it is not checked.
+         */
+        /** A cached layer record by id. */
+        getLayer?: GeoLeafStorageEngine["getLayer"];
+        /** Caches a layer's payload under a profile — `null` when the layer belongs to none. */
+        cacheLayer?: GeoLeafStorageEngine["cacheLayer"];
+        /** Removes a cached layer. */
+        removeLayer?: GeoLeafStorageEngine["removeLayer"];
+        /** Every cached layer of a profile. */
+        getLayersByProfile?: GeoLeafStorageEngine["getLayersByProfile"];
+        /** What the stores hold, and the quota they are held against. */
+        getStorageStats?: GeoLeafStorageEngine["getStorageStats"];
+        /** Stores an image awaiting its upload. */
+        storeImageLocally?: GeoLeafStorageEngine["storeImageLocally"];
+        /** One stored image, by id. */
+        getLocalImage?: GeoLeafStorageEngine["getLocalImage"];
+        /** The images whose upload is still owed. */
+        getPendingImages?: GeoLeafStorageEngine["getPendingImages"];
+        /** Records the outcome of an upload — `status` is an object, never a string. */
+        updateImageUploadStatus?: GeoLeafStorageEngine["updateImageUploadStatus"];
+        /** Records which entity a stored image belongs to. */
+        bindLocalImage?: GeoLeafStorageEngine["bindLocalImage"];
+        /** Reclaims the images the server has acknowledged. */
+        cleanUploadedImages?: GeoLeafStorageEngine["cleanUploadedImages"];
+        [key: string]: unknown;
+    }
+
+    /**
      * Local shortcut to the contract of the eleven top-level methods.
      *
      * `GeoLeafGlobal` references them member by member (`init?: GeoLeafTopLevelApi["init"]`)
@@ -506,6 +603,23 @@ declare global {
                 ...children: unknown[]
             ) => HTMLElement;
             events?: GeoLeafUtilsEvents;
+            /*
+             * Five members a plugin reads through its host contract. The kernel mounts them
+             * (`utils/general/utils-namespace.ts`) and they sat in the tail below, as
+             * `unknown`, while the host contract named their shape: two descriptions of one
+             * member, one of them empty. Each is typed from the function the kernel mounts.
+             * Optional like their neighbours: the namespace is assembled in steps at boot.
+             */
+            /** Applies a CSS declaration string property by property, through the CSSOM. */
+            applyCssText?: GeoLeafUtilsNamespace["applyCssText"];
+            /** A URL resolved against the allowed protocols, or `null` when its protocol is refused. */
+            validateUrl?: GeoLeafUtilsNamespace["validateUrl"];
+            /** The distance between two points, in kilometres. */
+            getDistance?: GeoLeafUtilsNamespace["getDistance"];
+            /** Date and size formatters. */
+            Formatters?: GeoLeafUtilsNamespace["Formatters"];
+            /** The DOM sanitisation helpers — the same object as `GeoLeaf.DOMSecurity`. */
+            DOMSecurity?: GeoLeafUtilsNamespace["DOMSecurity"];
             [key: string]: unknown;
         };
         DOMSecurity?: {
@@ -967,9 +1081,13 @@ declare global {
              * The instance targeted by `mapId`; **with no argument, the first active
              * instance** — the backward-compatible form for single-map applications.
              */
-            getMap(mapId?: string): unknown;
+            getMap(
+                mapId?: string
+            ): import("./contracts/map-adapter.contract.js").IMapAdapter | null;
             /** Alias of {@link getMap}. */
-            getAdapter(mapId?: string): unknown;
+            getAdapter(
+                mapId?: string
+            ): import("./contracts/map-adapter.contract.js").IMapAdapter | null;
             /**
              * Destroys the instance (`map.remove()` then frees the registry slot).
              * Returns `true` when it existed. Call it at unmount on the consumer side.
@@ -1036,6 +1154,11 @@ declare global {
         plugins?: {
             register?(name: string, meta?: Record<string, unknown>): void;
             registerLazy?(name: string, resolver: () => Promise<void>): void;
+            /**
+             * Declares the toolbar slot of a plugin loaded on demand — its button exists before
+             * its bundle does, and the first press loads the plugin. Call it before the boot.
+             */
+            registerLazyForAction?: (typeof import("./kernel/api/plugin-registry.js").PluginRegistry)["registerLazyForAction"];
             isLoaded?(name: string): boolean;
             canActivate?(name: string): boolean;
             getLoadedPlugins?(): string[];
@@ -1070,23 +1193,11 @@ declare global {
         Storage?: {
             /**
              * The IndexedDB engine. Only the member the write cycle teaches is named; the rest
-             * stays in the tail.
+             * stays in ITS OWN tail — the namespace's tail is gone, this one is not.
              */
-            DB?: {
-                /** The edits still owed or set aside, oldest first — `state` says which. */
-                listPendingEdits?(): Promise<
-                    Array<{
-                        entryId: string;
-                        kind: string;
-                        layerId: string;
-                        localId: string;
-                        state: string;
-                        createdAt: number;
-                        feature: unknown;
-                    }>
-                >;
-                [key: string]: unknown;
-            };
+            DB?: GeoLeafStorageDB;
+            /** Lower-case alias of `DB` — the same engine. */
+            db?: GeoLeafStorageDB;
             /*
              * The offline write cycle. These members lived in the `[key: string]: unknown`
              * tail below, which made them `unknown` — NOT CALLABLE — for an integrator's
@@ -1144,6 +1255,7 @@ declare global {
                 skipped: number;
                 capped: boolean;
                 aborted: boolean;
+                cursorRefused: boolean;
                 mode: "full" | "delta" | null;
                 refused: string | null;
             }>;
@@ -1178,7 +1290,46 @@ declare global {
              * preparation in one read, with a verdict. `null` when the engine is not wired.
              */
             preflight?(): Promise<import("./contracts/sync.contract.js").PreflightReport | null>;
-            [key: string]: unknown;
+            /**
+             * Will the offline preparation download this URL, and if not, why — the origin rule
+             * of `modules.offline.dataOrigins`, asked before the download.
+             */
+            prefetchVerdict?: (typeof import("./kernel/storage/facade.js").Storage)["prefetchVerdict"];
+            /*
+             * The rest of the façade. Named one by one so that the tail could go: a member
+             * that is NOT declared here is now an error for an integrator's compiler
+             * (TS2339), where the tail used to turn a misspelled name into `unknown`.
+             */
+            /** Injects the offline engine's modules — called by the engine itself when it loads. */
+            wireModules?: (typeof import("./kernel/storage/facade.js").Storage)["wireModules"];
+            /** Initialises the wired sub-modules; resolves `false` when nothing is wired. */
+            init?: (typeof import("./kernel/storage/facade.js").Storage)["init"];
+            /** Whether the offline engine is wired and its database usable. */
+            isAvailable?: (typeof import("./kernel/storage/facade.js").Storage)["isAvailable"];
+            /** Whether the offline engine's modules have been injected. */
+            isPluginLoaded?: (typeof import("./kernel/storage/facade.js").Storage)["isPluginLoaded"];
+            /** Whether the network detector currently says offline. */
+            isOffline?: (typeof import("./kernel/storage/facade.js").Storage)["isOffline"];
+            /** Quota, usage and the tallies of the data-bearing stores. */
+            getStats?: (typeof import("./kernel/storage/facade.js").Storage)["getStats"];
+            /** The profiles prepared for offline use on this device. */
+            getOfflineProfiles?: (typeof import("./kernel/storage/facade.js").Storage)["getOfflineProfiles"];
+            /** Whether one profile was prepared for offline use. */
+            isProfileAvailableOffline?: (typeof import("./kernel/storage/facade.js").Storage)["isProfileAvailableOffline"];
+            /** Erases every prepared profile, the cached tiles and the engine's own stores. */
+            clearAll?: (typeof import("./kernel/storage/facade.js").Storage)["clearAll"];
+            /** Closes the database handle. */
+            close?: (typeof import("./kernel/storage/facade.js").Storage)["close"];
+            /** The cache manager, when the engine is wired — the façade's narrow view of it. */
+            CacheManager?: (typeof import("./kernel/storage/facade.js").Storage)["CacheManager"];
+            /** Lower-case alias of `CacheManager`. */
+            cacheManager?: (typeof import("./kernel/storage/facade.js").Storage)["cacheManager"];
+            /** The network detector, when the engine is wired — the façade's narrow view of it. */
+            OfflineDetector?: (typeof import("./kernel/storage/facade.js").Storage)["OfflineDetector"];
+            /** The cache namespace of the engine. Untyped: the façade hands it over as `unknown`. */
+            Cache?: (typeof import("./kernel/storage/facade.js").Storage)["Cache"];
+            /** Lower-case alias of `Cache`. */
+            cache?: (typeof import("./kernel/storage/facade.js").Storage)["cache"];
         };
         /**
          * GeoJSON subsystem façade (`GeoLeaf.GeoJSON`) — 87 call sites across the plugins,
@@ -1305,15 +1456,15 @@ declare global {
         // npm.
 
         /** `@geoleaf-plugins/table` — tabular panel. */
-        Table?: unknown;
+        Table?: GeoLeafPluginApi<"Table">;
         /** `@geoleaf-plugins/geocoding` — address search. */
-        Geocoding?: unknown;
+        Geocoding?: GeoLeafPluginApi<"Geocoding">;
         /** `@geoleaf-plugins/realtime-layer` — realtime feeds (GTFS-RT…). */
-        RealtimeLayer?: unknown;
+        RealtimeLayer?: GeoLeafPluginApi<"RealtimeLayer">;
         /** `@geoleaf-plugins/position-share` — user position broadcasting. */
-        PositionShare?: unknown;
+        PositionShare?: GeoLeafPluginApi<"PositionShare">;
         /** `@geoleaf-plugins/routing` — multi-stop route computation. */
-        Routing?: unknown;
+        Routing?: GeoLeafPluginApi<"Routing">;
         /**
          * `@geoleaf-plugins/navigation` — realtime guidance.
          *
@@ -1321,13 +1472,13 @@ declare global {
          * without it. The dependency is asymmetric, so the boundary sits there — and
          * `navigation` imports only TYPES from `routing`.
          */
-        Navigation?: unknown;
+        Navigation?: GeoLeafPluginApi<"Navigation">;
         /** `@geoleaf-plugins/flatgeobuf` — FlatGeobuf reads by bbox. */
-        FlatGeobuf?: unknown;
+        FlatGeobuf?: GeoLeafPluginApi<"FlatGeobuf">;
         /** `@geoleaf-plugins/connector` — bridge to the Connector backend. */
-        Connector?: unknown;
+        Connector?: GeoLeafPluginApi<"Connector">;
         /** `@geoleaf-plugins/cog` — Cloud Optimized GeoTIFF. */
-        COG?: unknown;
+        COG?: GeoLeafPluginApi<"COG">;
 
         // ── The 5 plugin namespaces, declared on 27/07/2026 ──────────────────────────
         //
@@ -1343,17 +1494,18 @@ declare global {
         // after. The probe also carried a POSITIVE witness (`GeoLeaf.COG`, declared) to
         // prove it discriminated instead of rejecting everything.
         //
-        // `unknown` suffices here, deliberately: this line's object is the EXISTENCE of
-        // the property (a typo does not compile, a legitimate access does). The fine
-        // typing of each surface remains a tracked deposit, and **never widens back to
-        // `any`**.
+        // `unknown` sufficed here, deliberately: this line's object is the EXISTENCE of
+        // the property (a typo does not compile, a legitimate access does). Since 3.15.0
+        // each namespace reads `GeoLeafPluginApis`, which the plugin's own types augment:
+        // typed for whoever installs the plugin, `unknown` otherwise — and **never widened
+        // back to `any`**.
         //
         // ⚠️ `offline-ui` is not in this list and never will be: it mounts NO namespace
         // of its own — it drives `GeoLeaf.Storage`, a core facade. Its `entry.ts` says
         // so in as many words.
 
         /** `@geoleaf-plugins/file-import` — GPX/KML/KMZ/CSV/TSV/TopoJSON conversion. */
-        FileImport?: unknown;
+        FileImport?: GeoLeafPluginApi<"FileImport">;
         /**
          * `@geoleaf-plugins/measure` — measuring tools.
          *
@@ -1362,13 +1514,13 @@ declare global {
          * two differ only by case. The compiler is in fact what flagged it — the
          * declaration probe yielded TS2551 "Did you mean 'measure'?" on this name.
          */
-        Measure?: unknown;
+        Measure?: GeoLeafPluginApi<"Measure">;
         /** `@geoleaf-plugins/print` — printable map export. */
-        Print?: unknown;
+        Print?: GeoLeafPluginApi<"Print">;
         /** `@geoleaf-plugins/editor` — feature editing. */
-        Editor?: unknown;
+        Editor?: GeoLeafPluginApi<"Editor">;
         /** `@geoleaf-plugins/websocket` — WebSocket feeds (mounted as `Ws`, not `Websocket`). */
-        Ws?: unknown;
+        Ws?: GeoLeafPluginApi<"Ws">;
 
         /** @internal Service Worker registration (`kernel/storage/sw-register.ts`). */
 
@@ -1383,35 +1535,25 @@ declare global {
     /**
      * The global `GeoLeaf` namespace (`undefined` before boot completes).
      *
-     * 🛑 **The `| undefined` is a DELIBERATE CHOICE, not an oversight — and it costs 117
-     * diagnostics. The next reader must know both.**
+     * 🛑 **The `| undefined` is a DELIBERATE CHOICE, not an oversight.**
      *
-     * **The motive**: the namespace **does not exist** before boot. Declaring it
-     * present-holding-`undefined` is more **true** than `GeoLeaf?:`, which would suggest
+     * **The motive**: the namespace **does not exist** before the bundle has run. Declaring
+     * it present-holding-`undefined` is more **true** than `GeoLeaf?:`, which would suggest
      * an optional property of an existing object.
      *
-     * **The cost, measured on 17/08/2026** — `scripts/typecheck-docs-examples.baseline.json`:
-     * `generatedCount: 117`, `diagnostics: [117]`, and **117 out of 117 are `TS18048 —
-     * 'GeoLeaf' is possibly 'undefined'`**. A single cause, this line. The deposit is
-     * therefore not a 117-fix work site: it is **one** decision.
+     * **What it costs an integrator**: a typed read of the global must say that it runs
+     * after the bundle — a guard, an optional chain, or a local declaration of the booted
+     * global. The arbitration was rendered on 17/08/2026: KEEP — the alternative, removing
+     * the `| undefined`, is an ambient asserting a presence the boot does not guarantee.
      *
-     * 🛑 **There is no third way, and the arbitration was RENDERED on 17/08/2026: KEEP.**
-     * The two branches, for the decision's record:
-     *   • **keep** — the typing stays true, the 117 diagnostics stay in the baseline
-     *     (chosen);
-     *   • **remove the `| undefined`** — the 117 would fall at once, at the price of an
-     *     ambient asserting a presence the boot does not guarantee.
+     * **What it no longer costs this repository** (08/10/2026): the documentation's typed
+     * examples used to fail on their first word — one frozen diagnostic per file, none saying
+     * anything about the example. They are now compiled as what they are, code of a page
+     * whose bundle has run (`scripts/typecheck-docs-examples.cjs`). The declaration below is
+     * unchanged by that: it is the harness's reading, not the ambient's.
      *
-     * ⚠️ **What must ABOVE ALL not be done**: fix example by example. The baseline's
-     * `_comment` settles it — _"this is NOT a per-example defect, it is a property of the
-     * published ambient […] fixing it example by example would teach an idiom
-     * (`GeoLeaf!.X`) the rest of the doc does not use; it gets fixed at the source, in
-     * the declaration, or not at all."_
-     *
-     * ⚠️ **And both branches commit the ambient PUBLISHED on npm** since 12/08/2026: this
-     * is not an internal setting. That is why the motive was written down without
-     * deciding — writing the decision has value whatever the outcome, taking it only has
-     * value once.
+     * ⚠️ **Both branches commit the ambient PUBLISHED on npm** since 12/08/2026: this is not
+     * an internal setting.
      */
     var GeoLeaf: GeoLeafGlobal | undefined;
 

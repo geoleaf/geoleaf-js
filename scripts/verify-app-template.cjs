@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * APP-TEMPLATE: the deployable application's HTML/JS contract (T2.6).
+ * APP-TEMPLATE: the deployable application's HTML/JS contract.
  *
  * ## Why this is a gate and not a Vitest suite
  *
@@ -42,6 +42,12 @@
  *           the file lands in the deploy. Measured on 2026-07-30: `connector.local.js` was
  *           git-ignored and imported at boot, hence present on the author's machine and
  *           absent everywhere else — 8 E2E specs green locally, red in CI, for months.
+ *   APP-13  init.js carries the line the build turns into the GeoJSON worker's URL — once,
+ *           on a line of its own, ABOVE the boot. The worker is the one file the core asks for
+ *           under a name built at run time: nothing in the markup can carry its content
+ *           token, so the build writes `setWorkerUrl()` where this line is. The build throws
+ *           when the line is missing; this rule holds the SOURCE, before any build, and the
+ *           one thing the build cannot see — a line set after `GeoLeaf.boot(`.
  *   APP-09  index.html's CSP policy is COMPARED to an expected policy, in both
  *           directions, plus a list of forbidden tokens the constant cannot lift.
  *           Before it, an injected `'unsafe-eval'` came out GREEN.
@@ -71,7 +77,7 @@ const registry = require("./lib/packages.cjs");
 // The markers come from their PRODUCER — one corpus, two consumers. Copying them here
 // would let APP-11 go green the day of a build-side rename, i.e. the day the tag
 // removal stops applying: the gate would guard a pair nothing looks for anymore.
-const { DEV_CONNECTOR_MARKERS } = require("./build-deploy.cjs");
+const { DEV_CONNECTOR_MARKERS, WORKER_URL_MARKER } = require("./build-deploy.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const APP = registry.requireByDirName("geoleaf-app").absDir;
@@ -240,6 +246,30 @@ if (html !== null) {
 // empty parentheses were a drafting accident, not the subject.
 if (init !== null && !init.includes("GeoLeaf.boot(")) {
     errors.push("APP-02 init.js does not call `GeoLeaf.boot(…)` — the app would never start.");
+}
+
+// APP-13 — the line `build-deploy.cjs` replaces by the GeoJSON worker's URL.
+//
+// ⚠️ The boot is looked for as a STATEMENT (`GeoLeaf.boot(` opening a line): the file's
+// comments spell the call too, and the first of them sits two hundred lines above the code.
+if (init !== null) {
+    const lines = init.split("\n");
+    const markers = lines.flatMap((line, i) => (line.trim() === WORKER_URL_MARKER ? [i] : []));
+    const boot = lines.findIndex((line) => /^\s*GeoLeaf\.boot\(/.test(line));
+    if (markers.length !== 1) {
+        errors.push(
+            `APP-13 init.js porte la ligne \`${WORKER_URL_MARKER}\` ${markers.length} fois, ` +
+                `attendu : une fois, seule sur sa ligne. C'est là que le build écrit l'URL du ` +
+                `worker GeoJSON avec son jeton de contenu ; sans elle le worker est demandé sous ` +
+                `un nom stable, que le contrat serveur épingle un an.`
+        );
+    } else if (boot >= 0 && markers[0] > boot) {
+        errors.push(
+            `APP-13 init.js porte \`${WORKER_URL_MARKER}\` APRÈS \`GeoLeaf.boot(\` (ligne ` +
+                `${markers[0] + 1} contre ${boot + 1}). L'URL doit être posée avant le boot : ` +
+                `après, le core peut avoir déjà construit son worker sous l'URL par défaut.`
+        );
+    }
 }
 
 /**
@@ -705,6 +735,7 @@ const HELD = [
     "nosniff sur chaque vhost",
     "marqueurs du bootstrap de poste + balise mono-ligne",
     "parité flotte découverte ↔ boot (2 sens)",
+    "ligne de l'URL du worker, une fois et avant le boot",
 ];
 
 console.log(

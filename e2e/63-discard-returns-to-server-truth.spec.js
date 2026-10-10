@@ -151,6 +151,25 @@ test("[offline] une saisie `deletedOnServer` détruite ne reste pas sur la carte
     );
     expect(outcome).toEqual({ ok: true });
 
+    // 🛑 THE MAP, NOW — not after a reload. The store went back to the server's truth and the
+    // layer kept drawing the entity until the next page load: nothing in the destruction
+    // touched it. Seen red on the bundle built before the layer followed the gesture.
+    await expect
+        .poll(
+            () =>
+                page.evaluate(
+                    ([id, mark]) => {
+                        const f = /** @type {any} */ (window).GeoLeaf?.Layers?.getFeatures?.(id);
+                        return (f ?? []).some(
+                            (/** @type {any} */ x) => x?.properties?.nom === mark
+                        );
+                    },
+                    [LAYER, MARK]
+                ),
+            { message: "une saisie détruite ne reste pas dessinée jusqu'au rechargement" }
+        )
+        .toBe(false);
+
     // What the layer loader reads on the next load, asserted where it is decided rather than by
     // sampling a render: the record is gone, and the device no longer serves the entity.
     expect(

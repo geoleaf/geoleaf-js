@@ -1,13 +1,13 @@
 /**
- * Boot sequence order invariants — Sprint T11.1
+ * Boot sequence order invariants
  *
  * Tests that:
- *  T11.1.1 — boot.ts registers the 7 expected core modules in the registry
+ *  boot.ts registers the 7 expected core modules in the registry
  *            before startApp() is called.
- *  T11.1.2 — GeoLeaf._registry and GeoLeaf.registry are exposed on the
+ *  GeoLeaf._registry and GeoLeaf.registry are exposed on the
  *            namespace after the boot module loads.
- *  T11.1.2 — The 'geoleaf:app:ready' DOM listener is registered by startApp().
- *  T11.1.3 — If a module's init() is missing (empty stub), the registry does
+ *  The 'geoleaf:app:ready' DOM listener is registered by startApp().
+ *  If a module's init() is missing (empty stub), the registry does
  *            not throw fatally — it resolves gracefully.
  *
  * Strategy: vi.mock() for all side-effect dependencies (globals, module classes),
@@ -26,7 +26,7 @@ vi.mock("../../src/utils/general/geoleaf-global.js", () => ({
     getGeoLeaf: () => mockGeoLeaf,
 }));
 
-// Stub the 6 core module classes (S6 Lot 6: `security` and `api` are gone — facade-only
+// Stub the 6 core module classes (`security` and `api` are gone — facade-only
 // wrappers whose init()/destroy() had become empty).
 //
 // The `dependencies` below now MIRROR the real graph. They used to be arbitrary (`config`
@@ -127,7 +127,7 @@ await import("../../src/app/boot.ts");
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
 describe("boot.ts — boot sequence order invariants (T11)", () => {
-    // ── T11.1.1/T11.1.2 — Registry setup at module-init time ──────────────────
+    // ── Registry setup at module-init time ──────────────────
 
     describe("ModuleRegistry setup (B1→B11 contract)", () => {
         it("exposes GeoLeaf._registry after boot module loads", () => {
@@ -139,7 +139,7 @@ describe("boot.ts — boot sequence order invariants (T11)", () => {
             expect(mockGeoLeaf._registry).toBe(mockGeoLeaf.registry);
         });
 
-        // S6 Lot 6 — 6 kernel modules, down from 8. `security` and `api` are gone: their
+        // 6 kernel modules, down from 8. `security` and `api` are gone: their
         // init()/destroy() had become empty once phase A posted their facades at import, so
         // they carried a graph node and nothing else. This is a BREAKING change of an
         // observable surface (`GeoLeaf.registry.getAll()`, Introspection) — updated on purpose.
@@ -167,7 +167,7 @@ describe("boot.ts — boot sequence order invariants (T11)", () => {
         });
     });
 
-    // ── T11.1.2 — geoleaf:app:ready listener registered by startApp ───────────
+    // ── geoleaf:app:ready listener registered by startApp ───────────
 
     describe("'geoleaf:app:ready' event contract", () => {
         it("addEventListener for 'geoleaf:app:ready' is registered when startApp runs", async () => {
@@ -215,9 +215,9 @@ describe("boot.ts — boot sequence order invariants (T11)", () => {
         });
     });
 
-    // ── T11.1.3 — Resilience: module init() stub (no-op) doesn't throw ────────
+    // ── Resilience: module init() stub (no-op) doesn't throw ────────
 
-    describe("T11.1.3 — resilience: module with no-op init does not crash registry", () => {
+    describe("resilience: module with no-op init does not crash registry", () => {
         it("registry.init() resolves when all modules have no-op init()", async () => {
             // The mocked module stubs all have init = vi.fn().mockResolvedValue(undefined)
             await expect(mockGeoLeaf._registry.init({}, {})).resolves.toBeUndefined();

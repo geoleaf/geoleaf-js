@@ -5,18 +5,13 @@
         "visibleByDefault": false,
         "field": "ref",
         "font": {
-            "family": "Open Sans",
-            "sizePt": 6,
-            "weight": 50,
-            "bold": false,
-            "italic": false
+            "sizePt": 6
         },
         "color": "#323232",
         "opacity": 1,
         "buffer": {
             "enabled": true,
             "color": "#fafafa",
-            "opacity": 1,
             "sizePx": 3.78
         }
     },

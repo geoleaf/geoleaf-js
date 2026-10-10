@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 4.16 — modules/layer-manager/style-selector.ts */
+/* modules/layer-manager/style-selector.ts */
 
 vi.mock("../../src/kernel/config/config-primitives.js", () => ({
     Config: { get: vi.fn() },
@@ -18,7 +18,7 @@ import { StyleSelector } from "../../src/kernel/layer-manager/style-selector.js"
 import { GeoJSONCore } from "../../src/kernel/geojson/core.js";
 import { Config } from "../../src/kernel/config/config-primitives.js";
 
-describe("layer-manager/style-selector (Phase 4.16)", () => {
+describe("layer-manager/style-selector", () => {
     it("getCurrentStyle returns null for unknown layerId", () => {
         expect(StyleSelector.getCurrentStyle("unknown")).toBeNull();
     });

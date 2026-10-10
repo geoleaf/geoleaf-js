@@ -19,7 +19,7 @@ import "./css/geolocation.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { GEOLOCATION_CAPABILITY } from "./geolocation-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { GeolocationModule } from "./module.js";
 import { Geolocation } from "../../api/geoleaf.geolocation.js";

@@ -13,7 +13,7 @@
  *   - GeoLeaf.UI namespace guard + Branding, CoordinatesDisplay, ScaleControl
  *   - _UIComponents, _UIEventDelegation
  *   - GeoLeaf.UI.notify (info/warn/error/success/dismiss) — kernel adapter, stays here
- *     (the toast-renderer globals moved to capabilities/toast-renderer/install.ts — S2 Lot 4)
+ *     (the toast-renderer globals moved to capabilities/toast-renderer/install.ts)
  *   - _UITheme + UI.applyTheme, setTheme, toggleTheme, initThemeToggle, initAutoTheme, getCurrentTheme
  *   - _ContentBuilder (Core, Helpers, Shared, Templates, Assemblers)
  *   - Filter-panel: _UIFilterPanelShared, _UIFilterPanelStateReader, _UIFilterPanelApplier,
@@ -171,7 +171,7 @@ vi.mock("../../src/kernel/themes/theme-cache.js", () => ({
 vi.mock("../../src/kernel/themes/theme-loader.js", () => ({
     ThemeLoader: mocks.ThemeLoader,
 }));
-// theme-selector migrated to capabilities/theme-selector/install.ts (S2 Lot 8) — the
+// theme-selector migrated to capabilities/theme-selector/install.ts — the
 // theme ENGINE below stays kernel.
 vi.mock("../../src/kernel/themes/theme-applier/core.js", () => ({
     ThemeApplierCore: mocks.ThemeApplierCore,
@@ -230,9 +230,9 @@ const GL = globalThis.GeoLeaf;
 
 describe("globals.ui.ts — B6 registrations (LayerManager)", () => {
     // Labels (_LabelButtonManager / _LabelRenderer / Labels) migrated to
-    // capabilities/labels/install.ts (S2 Lot 1) — asserted in install.test.js.
+    // capabilities/labels/install.ts — asserted in install.test.js.
     // Legend (_LegendControl / _LegendGenerator) migrated to
-    // capabilities/legend/install.ts (S2 Lot 4) — asserted in multi-layer-installers.test.js.
+    // capabilities/legend/install.ts — asserted in multi-layer-installers.test.js.
 
     it("registers GeoLeaf._LayerManagerControl", () => {
         expect(GL._LayerManagerControl).toBe(mocks.LMControl);
@@ -248,7 +248,7 @@ describe("globals.ui.ts — B7 registrations (Themes)", () => {
         expect(GL.ThemeCache).toBe(mocks.ThemeCache);
     });
 
-    // GeoLeaf.ThemeSelector migrated to capabilities/theme-selector/install.ts (S2 Lot 8)
+    // GeoLeaf.ThemeSelector migrated to capabilities/theme-selector/install.ts
     // — asserted in __tests__/capabilities/ui-installers.test.js.
 });
 
@@ -269,7 +269,7 @@ describe("globals.ui.ts — B9 registrations (UI components)", () => {
     });
 
     // _UINotifications / NotificationSystem / Notifications migrated to
-    // capabilities/toast-renderer/install.ts (S2 Lot 4) — asserted in
+    // capabilities/toast-renderer/install.ts — asserted in
     // multi-layer-installers.test.js. The `ui.notify` adapter below stays KERNEL, but (S7)
     // it no longer imports the singleton: it reads `GeoLeaf._UINotifications` back lazily,
     // exactly like the toast-renderer installer's `registerGlobals` would write it in prod.

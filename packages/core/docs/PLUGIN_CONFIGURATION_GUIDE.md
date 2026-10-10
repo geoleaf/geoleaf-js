@@ -65,20 +65,26 @@ Configures the offline cache. The file is referenced by `Files.modules.offline` 
 }
 ```
 
-| Key                        | Type    | Default | Description                                                                                                                                                      |
-| -------------------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`                  | boolean | `false` | Loads the offline engine (requires `modules.pwa.enabled`)                                                                                                        |
-| `cache.enableProfileCache` | boolean | `true`  | Enables the profile download — configuration files and layer data                                                                                                |
-| `cache.enableTileCache`    | boolean | `true`  | Downloads the tiles of offline basemaps. A veto: `false` wins over any selection                                                                                 |
-| `dataOrigins`              | array   | `[]`    | Declared origins — `prefetch: true` lets the preparation download from that origin                                                                               |
-| `banner.enabled`           | boolean | `true`  | Mounts the sync bar at the top of the application. `false` mounts nothing; the queue is unaffected                                                               |
-| `drain.pollIntervalMs`     | number  | `60000` | Period of the queue's retry tick, in ms. `0` turns it off: an entry waiting after a failure then waits for the network to come back or the tab to be shown again |
+<!-- geoleaf:docs:key-prefix modules.offline -->
+
+| Key                        | Type    | Default | Description                                                                                                                                                                                                                                      |
+| -------------------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled`                  | boolean | `false` | Loads the offline engine (requires `modules.pwa.enabled`)                                                                                                                                                                                        |
+| `cache.enableProfileCache` | boolean | `true`  | Enables the profile download — configuration files and layer data                                                                                                                                                                                |
+| `cache.enableTileCache`    | boolean | `true`  | Downloads the tiles of offline basemaps. A veto: `false` wins over any selection                                                                                                                                                                 |
+| `dataOrigins`              | array   | `[]`    | Declared origins — `prefetch: true` lets the preparation download tiles from that origin; once one is declared, a layer's entities, its direct `url`, its `fetchOptions` lists and the sprite come only from a declared origin or the page's own |
+| `banner.enabled`           | boolean | `true`  | Mounts the sync bar at the top of the application. `false` mounts nothing; the queue is unaffected                                                                                                                                               |
+| `drain.pollIntervalMs`     | number  | `60000` | Period of the queue's retry tick, in ms. `0` turns it off: an entry waiting after a failure then waits for the network to come back or the tab to be shown again                                                                                 |
 
 > ⚠️ **A tile from another origin is only downloaded when that origin is declared `cacheable: true`
 > and `prefetch: true`.** Downloading ahead of use is not viewing, and several free providers forbid
 > it — OpenStreetMap: « Offline use is not permitted on tile.openstreetmap.org ». Declare an origin
 > only if you operate it or its terms allow it. Tiles served by the application's own origin need no
-> declaration. A basemap refused by this rule is skipped, with a warning that names its origin.
+> declaration — but a declaration prevails: once that origin is declared (for a data API it also
+> serves, say), its tiles are prepared only if the declaration says `prefetch: true`. A basemap
+> refused by this rule is skipped, with a warning that names its origin.
+> `GeoLeaf.Storage.prefetchVerdict(url)` answers the same rule before the download, with the
+> reason of a refusal, and a download reports what it left out in `preparation.refusedOrigins`.
 >
 > The network indicator is no longer part of this block: it is `modules.pwa.offlineDetector.enabled`.
 
@@ -216,15 +222,13 @@ npm install @geoleaf-plugins/file-import
 import "@geoleaf/core";
 import "@geoleaf-plugins/file-import";
 
-// Convert a File object into GeoJSON
-const geojson = await GeoLeaf.FileImport.convert(file, {
-    type: "auto", // automatic detection — or "gpx", "kml", "csv", "topojson"
-});
+// Convert a File object into GeoJSON — the format is detected from the file extension
+const { data, warnings } = await GeoLeaf.FileImport.convert(file);
 
-// Import and display as a map layer
-const layer = await GeoLeaf.FileImport.importAsLayer(file, {
+// Import and display as a map layer — resolves to the id of the layer
+const layerId = await GeoLeaf.FileImport.importAsLayer(file, {
     layerId: "imported-data",
-    style: { color: "#e74c3c", weight: 2 },
+    layerName: "Imported data",
 });
 ```
 
@@ -381,27 +385,31 @@ npm install @geoleaf-plugins/cog
 import "@geoleaf/core";
 import "@geoleaf-plugins/cog";
 
-// Add a COG layer to the map
-await GeoLeaf.COG.addLayer("https://example.com/ortho.tif", {
-    layerId: "ortho",
+// The plugin draws on the native MapLibre map
+const map = GeoLeaf.Core.getMap().getNativeMap();
+
+// Add a COG layer to the map — resolves to a handle
+const handle = await GeoLeaf.COG.addLayer("https://example.com/ortho.tif", map, {
+    id: "ortho",
     bands: [1, 2, 3],
-    colorMap: "viridis",
     opacity: 0.85,
 });
 
 // Remove the layer
-GeoLeaf.COG.removeLayer("ortho");
+handle.remove();
+// or, by id
+GeoLeaf.COG.removeLayer(map, "ortho");
 ```
 
 ### `addLayer` options
 
-| Option     | Type     | Default   | Description                                     |
-| ---------- | -------- | --------- | ----------------------------------------------- |
-| `layerId`  | string   | generated | Identifier of the MapLibre layer                |
-| `bands`    | number[] | `[1,2,3]` | Raster bands to display (RGB)                   |
-| `colorMap` | string   | `null`    | LUT: `"viridis"`, `"gray"`, `"rdbu"`, and so on |
-| `opacity`  | number   | `1`       | Layer opacity (0–1)                             |
-| `nodata`   | number   | `null`    | nodata value to mask out                        |
+| Option     | Type             | Default            | Description                                                      |
+| ---------- | ---------------- | ------------------ | ---------------------------------------------------------------- |
+| `id`       | string           | generated          | Identifier of the MapLibre layer and source                      |
+| `bands`    | number[]         | first three bands  | Three bands for RGB, or one band rendered as grayscale (1-based) |
+| `colorMap` | `[r, g, b, a][]` | —                  | Lookup table of 256 RGBA entries, for single-band rendering      |
+| `opacity`  | number           | `1`                | Layer opacity (0–1)                                              |
+| `nodata`   | number           | from file metadata | nodata value to mask out                                         |
 
 ---
 
@@ -600,20 +608,22 @@ The table is now the MIT plugin `@geoleaf-plugins/table`. Its configuration live
 
 ### `modules.table` keys
 
-| Key                  | Type                                          | Default      | Description                                                                                                                            |
-| -------------------- | --------------------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`            | `boolean`                                     | `true`       | Enables or disables the table module entirely.                                                                                         |
-| `defaultVisible`     | `boolean`                                     | `false`      | Opens the table panel when the profile loads.                                                                                          |
-| `pageSize`           | `number`                                      | —            | **Deprecated, inert.** There is no pagination; the renderer windows by scroll.                                                         |
-| `maxRowsPerLayer`    | `number`                                      | `30000`      | Rows kept per layer; the cut warns the user once per layer and per session, and `0` means zero. Does not affect `Table.exportLayer()`. |
-| `enableExportButton` | `boolean`                                     | `true`       | Shows the export buttons (selection + layer) in the toolbar.                                                                           |
-| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | every format | Restricts the formats offered in the export dropdowns. When absent, every format is available.                                         |
-| `csvSeparator`       | `',' \| ';'`                                  | `','`        | Separator used for CSV export. Useful for Excel compatibility in locales that use `;`.                                                 |
-| `csvIncludeGeometry` | `boolean`                                     | `false`      | Includes a `__geometry` column (WKT/GeoJSON) in the CSV export.                                                                        |
-| `resizable`          | `boolean`                                     | `true`       | Allows vertical resizing of the table panel.                                                                                           |
-| `defaultHeight`      | `string`                                      | `'40%'`      | Initial height of the panel.                                                                                                           |
-| `minHeight`          | `string`                                      | `'180px'`    | Minimum height when resizing.                                                                                                          |
-| `maxHeight`          | `string`                                      | `'80vh'`     | Maximum height when resizing.                                                                                                          |
+<!-- geoleaf:docs:key-prefix modules.table -->
+
+| Key                  | Type                                          | Default                                     | Description                                                                                                                            |
+| -------------------- | --------------------------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`            | `boolean`                                     | `true`                                      | Enables or disables the table module entirely.                                                                                         |
+| `defaultVisible`     | `boolean`                                     | `false`                                     | Opens the table panel when the profile loads.                                                                                          |
+| `pageSize`           | `number`                                      | —                                           | **Deprecated, inert.** There is no pagination; the renderer windows by scroll.                                                         |
+| `maxRowsPerLayer`    | `number`                                      | `30000`                                     | Rows kept per layer; the cut warns the user once per layer and per session, and `0` means zero. Does not affect `Table.exportLayer()`. |
+| `enableExportButton` | `boolean`                                     | `true`                                      | Shows the export buttons (selection + layer) in the toolbar.                                                                           |
+| `exportFormats`      | `('geojson'\|'csv'\|'kml'\|'gpx'\|'excel')[]` | `["geojson", "csv", "kml", "gpx", "excel"]` | Formats offered in the export dropdowns, in this order.                                                                                |
+| `csvSeparator`       | `',' \| ';'`                                  | `","`                                       | Separator used for CSV export. Useful for Excel compatibility in locales that use `;`.                                                 |
+| `csvIncludeGeometry` | `boolean`                                     | `false`                                     | Includes a `__geometry` column (WKT/GeoJSON) in the CSV export.                                                                        |
+| `resizable`          | `boolean`                                     | `true`                                      | Allows vertical resizing of the table panel.                                                                                           |
+| `defaultHeight`      | `string`                                      | `"40%"`                                     | Initial height of the panel.                                                                                                           |
+| `minHeight`          | `string`                                      | `"20%"`                                     | Minimum height when resizing.                                                                                                          |
+| `maxHeight`          | `string`                                      | `"60%"`                                     | Maximum height when resizing.                                                                                                          |
 
 ### Example — restrict the formats and force the `;` separator
 
@@ -643,15 +653,18 @@ The table is now the MIT plugin `@geoleaf-plugins/table`. Its configuration live
 ### Extended public API
 
 ```ts
+// `GeoLeaf.Table` is mounted by the plugin: it is absent from a page that does not load it,
+// hence the `?.`.
+
 // Export the current selection
-GeoLeaf.Table.exportSelection(); // GeoJSON (default)
-GeoLeaf.Table.exportSelection("csv"); // CSV
-GeoLeaf.Table.exportSelection("csv", { csvSeparator: ";" }); // CSV with a custom separator
+GeoLeaf.Table?.exportSelection(); // GeoJSON (default)
+GeoLeaf.Table?.exportSelection("csv"); // CSV
+GeoLeaf.Table?.exportSelection("csv", { csvSeparator: ";" }); // CSV with a custom separator
 
 // Export the whole active layer (ignores the maxRowsPerLayer limit)
-GeoLeaf.Table.exportLayer(); // GeoJSON (default)
-GeoLeaf.Table.exportLayer("kml");
-GeoLeaf.Table.exportLayer("excel");
+GeoLeaf.Table?.exportLayer(); // GeoJSON (default)
+GeoLeaf.Table?.exportLayer("kml");
+GeoLeaf.Table?.exportLayer("excel");
 ```
 
 ### Emitted events
@@ -703,7 +716,6 @@ GeoLeaf.plugins.isLoaded("cog"); // → true / false
 - `CONNECTOR_GUIDE.md` — HTTP authentication with `@geoleaf-plugins/connector`. The guide ships
   **with the plugin package** (`docs/CONNECTOR_GUIDE.md` of `@geoleaf-plugins/connector`), not
   with the core: it documents the plugin
-- [PROFILES_GUIDE.md](PROFILES_GUIDE.md) — full structure of a profile
 - [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md) — clustering configuration (`modules.cluster`); the `poiConfig` key was removed in v3
 - [ui/PERMALINK.md](ui/PERMALINK.md) — permalink configuration
 - [GETTING_STARTED.html](https://geoleaf.dev/docs/GETTING_STARTED.html) — quick-start guide

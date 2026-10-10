@@ -103,7 +103,7 @@ npx lint-staged
 # re-stage les fichiers, ce qui change leur nombre de lignes. Régénérer avant décrirait un
 # index périmé d'un cran.
 #
-# ⚠️ Correct par construction avec un commit PARTIEL (`git add -p`) : depuis B-102 le
+# ⚠️ Correct par construction avec un commit PARTIEL (`git add -p`) : le
 # générateur dérive de l'INDEX (`git ls-files` + `git cat-file`), pas du disque. Il décrit donc
 # exactement ce qui part dans le commit, jamais les modifications en vol restées à côté.
 # Vérifié le 02/08/2026 : une mutation non stagée ne le fait PAS bouger, la même stagée oui.
@@ -155,7 +155,7 @@ fi
 # Config consumers gate (S7 — roadmap nettoyage) — the other direction of the config
 # contract: coverage above proves every key HAS a row; this proves each row's
 # "Consommateur (file:line)" citation still points at real code.
-# NO MORE BASELINE since R.43 (25/07/2026): the 62 drifts inherited from the S3→S6
+# NO MORE BASELINE since 25/07/2026: the 62 drifts inherited from the S3→S6
 # refactors were repaired one by one, so the gate now blocks on ANY hard drift instead
 # of only on a new one. Proven by mutation in both categories before the baseline was
 # dropped. Soft drifts (key no longer on the cited line, ambiguous suffix) stay
@@ -170,7 +170,7 @@ else
   node scripts/check-config-consumers.cjs --fail --no-report
 fi
 
-# No-Leaflet gate (S4 — roadmap_code) — fails if any Leaflet reference is
+# No-Leaflet gate — fails if any Leaflet reference is
 # reintroduced in source OR tests: runtime L.*, import/require leaflet, declare L,
 # "leaflet" engine literal, JSDoc {L. type, or a `global.L`/`globalThis.L` test
 # mock (the "Global L assignment" lock). CI already runs this step; mirrored
@@ -183,7 +183,7 @@ else
   node scripts/verify-no-leaflet.cjs
 fi
 
-# Core-standalone gate (S0 — roadmap_architecture-application) — fails if
+# Core-standalone gate — fails if
 # `packages/core/src/` references a plugin package, as the published specifier
 # `@geoleaf-plugins/*` or as a workspace path. This is an ARCHITECTURE boundary
 # (the core stays autonomous and tree-shakeable), NOT a licence one: it survives
@@ -208,7 +208,7 @@ else
   node scripts/verify-plugin-core-boundary.cjs
 fi
 
-# PLUGINS S11.1 — troisième frontière : re-définition d'un utilitaire canonique de
+# PLUGINS — troisième frontière : re-définition d'un utilitaire canonique de
 # @geoleaf/host-runtime hors baseline. Même trampoline WSL. Mirrored in ci.yml and ci-local.cjs.
 if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
   ROOT_WSL="$(wsl_run wslpath "$(git rev-parse --show-toplevel)" | tr -d '\r')"
@@ -217,7 +217,7 @@ else
   node scripts/verify-plugin-shared-fork.cjs
 fi
 
-# Package files[] gate (S1 — roadmap_architecture-application) — every entry of a
+# Package files[] gate — every entry of a
 # package's files[] must exist on disk. npm drops a dangling entry silently, so a
 # package can declare it ships a LICENSE and publish without one for months: that
 # is exactly what happened (10 packages, plus addpoi listing "LICENCE" in French,
@@ -249,14 +249,14 @@ else
   node scripts/check-shipped-specifiers.cjs
 fi
 
-# Dead-code filet B3 (roadmap nettoyage, Sprint 2). Ce script grepe les
+# Dead-code filet. Ce script grepe les
 # consommateurs d'un export core dans TOUT le monorepo (pas seulement core) pour
 # éviter les faux positifs sur l'API consommée par les plugins — y compris les
 # VALEURS littérales des const de type chaîne, qu'aucun graphe d'imports ne relie
 # à leur consommateur. C'est son apport propre face à knip : 51 des 74 candidats
 # de sa baseline sont invisibles à knip (mesure 25/07/2026). N.B. l'ancien motif
 # « knip est aveugle sur packages/core/src » est PÉRIMÉ — cause trouvée et
-# corrigée à l'API S2.4, cf. l'en-tête de scripts/check-orphan-exports.cjs.
+# corrigée, cf. l'en-tête de scripts/check-orphan-exports.cjs.
 # Mesuré à ~800ms — assez rapide pour le pre-commit (contrairement à
 # `dead-code`/knip, non câblé ici pour cette raison). Même trampoline WSL
 # worktree-aware ; exit 1 sur tout candidat.
@@ -282,9 +282,9 @@ else
   node scripts/check-dead-links.cjs
 fi
 
-# Contracts purity gate (socle S4 — roadmap_optimisation-socle 4.3) — contracts/*.contract.ts
+# Contracts purity gate — contracts/*.contract.ts
 # must stay a pure type surface: no runtime value export, no non-type import, no top-level
-# statement. Stops the Sprint 2 "membrane" drift (LegendContract/POIAddFormContract, singletons
+# statement. Stops the "membrane" drift (LegendContract/POIAddFormContract, singletons
 # doing globalThis lookups) from recurring. Static parse of 13 files (~instant). Vert au câblage
 # ⇒ pas de baseline. Same worktree-aware WSL trampoline; exits 1 on any runtime leak.
 if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
@@ -294,7 +294,7 @@ else
   node scripts/check-contracts-pure.cjs
 fi
 
-# Facade purity gate (kernel S13.1) — the 29 `modules/geoleaf.*.ts` expose the public
+# Facade purity gate — the 29 `modules/geoleaf.*.ts` expose the public
 # API and delegate; they do not implement. The rule is documented (ARCHITECTURE.md
 # §Façades publiques) and was broken twice: geoleaf.config.ts drifted into
 # self-registration (removed S2) and geoleaf.storage.ts accumulated ~430 L of Storage
@@ -308,10 +308,10 @@ else
   node scripts/check-facade-purity.cjs
 fi
 
-# Dynamic-key write ratchet (S13.2) — every `X[k] = …` with a non-literal key either
+# Dynamic-key write ratchet — every `X[k] = …` with a non-literal key either
 # calls the canonical blocklist (modules/utils/general/object-path-guard), is allowlisted
-# in the script with a written reason, or is frozen in the baseline. The Sprint 5
-# prototype-pollution hole was a sink an earlier sweep had not reached, and S13.2 found
+# in the script with a written reason, or is frozen in the baseline. An earlier
+# prototype-pollution hole was a sink a previous sweep had not reached, and writing this ratchet found
 # three more, all reachable from a profile. Static AST parse of ~470 files (~0.4 s).
 # Baselined ⇒ blocks only NEW unguarded sinks. Same WSL trampoline.
 if command -v wsl.exe >/dev/null 2>&1 && [ "${OS:-}" = "Windows_NT" ]; then
@@ -336,7 +336,7 @@ else
   node scripts/verify-test-load-mode.cjs
 fi
 
-# Contrat inverse (S1.8) — les gates ci-dessus tiennent que ce que NOUS déclarons existe ;
+# Contrat inverse — les gates ci-dessus tiennent que ce que NOUS déclarons existe ;
 # celle-ci tient que ce dont l'AVAL dépend n'a pas disparu. Neuf clés du namespace sont
 # parties parce qu'aucun lecteur du monorepo ne les lisait — le lecteur était dehors, et
 # aucun vert d'ici ne pouvait le voir.

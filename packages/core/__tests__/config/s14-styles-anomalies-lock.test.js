@@ -87,6 +87,31 @@ describe("config B6 — label oneOf (selector string OR text-config object)", ()
         ));
     it("unknown key under label.offset is rejected (additionalProperties:false)", () =>
         expect(validate(doc({ label: { enabled: true, offset: { angleDeg: 45 } } }))).toBe(false));
+
+    // Six keys left the schema with their last reader: the symbol layer takes its font stack
+    // from the loaded map style and a text halo has neither an opacity nor a "no fill". They
+    // were accepted and silently ignored — a profile set `bold: true` and nothing got bolder.
+    it.each([
+        ["font.family", { font: { family: "Arial" } }],
+        ["font.weight", { font: { weight: 50 } }],
+        ["font.bold", { font: { bold: true } }],
+        ["font.italic", { font: { italic: true } }],
+        ["buffer.opacity", { buffer: { enabled: true, opacity: 0.5 } }],
+        ["buffer.noFill", { buffer: { enabled: true, noFill: true } }],
+    ])("label.%s is rejected — no renderer reads it", (_key, fragment) => {
+        expect(validate(doc({ label: { enabled: true, ...fragment } }))).toBe(false);
+    });
+    it("sanity: what the renderer DOES read is still accepted", () => {
+        const label = {
+            enabled: true,
+            field: "name",
+            font: { sizePt: 11 },
+            color: "#1a1a1a",
+            opacity: 0.9,
+            buffer: { enabled: true, color: "#ffffff", sizePx: 2 },
+        };
+        expect(validate(doc({ label }))).toBe(true);
+    });
 });
 
 describe("config B6 — styleRules operator enum is hardened", () => {

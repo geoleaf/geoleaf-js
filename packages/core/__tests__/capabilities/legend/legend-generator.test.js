@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.21 - legend-generator */
+/* legend-generator */
 
 const Log = vi.hoisted(() => ({ debug: vi.fn(), warn: vi.fn() }));
 // ⚠️ This file set a `vi.mock` of `kernel/config/config-primitives.js` its
@@ -28,7 +28,7 @@ vi.mock("../../../src/kernel/shared/poi-state.js", () => ({
 
 import { LegendGenerator } from "../../../src/capabilities/legend/legend-generator.ts";
 
-describe("legend/legend-generator (Phase 5.21)", () => {
+describe("legend/legend-generator", () => {
     beforeEach(() => {
         // `_getCategories()` reads `GeoLeaf.Taxonomy.getCategories("poi-cat")`
         // and `shouldUseIcons()` reads `GeoLeaf.Taxonomy.getIcons()`. The stub

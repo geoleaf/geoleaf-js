@@ -6,7 +6,7 @@
  */
 
 /**
- * Declared data origins — routing by DECLARATION instead of by guesswork (task 3.9).
+ * Declared data origins — routing by DECLARATION instead of by guesswork.
  *
  * 🛑 WHAT THIS REPLACES, and why none of it could be reviewed. The Service Worker decided
  * where a request should go by four heuristics, all of them guesses:
@@ -16,7 +16,7 @@
  *   - a blanket `/api/` exclusion — which skips the most common path of a data API, i.e.
  *     exactly the traffic a field deployment depends on.
  *
- * Task 3.7 made the first three honest (host boundaries instead of substrings). It did not
+ * An earlier fix made the first three honest (host boundaries instead of substrings). It did not
  * make them REVIEWABLE: an integrator still could not answer "which origins does my profile
  * talk to, and which of them may be cached?" without reading the worker's source. A
  * declaration can be read, diffed and refused; a heuristic can only be discovered.
@@ -26,7 +26,7 @@
  * `postMessage`, but a message is lost on every worker restart, and the worker restarts
  * whenever the browser feels like it — leaving it un-declared exactly when a field device
  * wakes up offline. Writing to IndexedDB makes the declaration survive, and the worker can
- * already read that database since task 3.1 repaired its versionless open.
+ * already read that database since its versionless open was repaired.
  *
  * @version 3.0.0
  */
@@ -133,10 +133,10 @@ export function parseDataOrigins(declared: unknown): DataOriginDeclaration[] {
 /**
  * Does `url` belong to a declared origin, and may it be cached?
  *
- * ⚠️ NOT exported. Its two consumers live in this file — the duplicate detection and
- * {@link prefetchVerdict} — and exporting for a caller that does not yet exist is exactly the
- * posture criticised elsewhere. Its behaviour stays PROVEN, through `publishDataOrigins` and
- * `prefetchVerdict`.
+ * ⚠️ NOT exported. Its consumers live in this file — the duplicate detection,
+ * {@link prefetchVerdict} and {@link pullVerdict} — and exporting for a caller that does not
+ * yet exist is exactly the posture criticised elsewhere. Its behaviour stays PROVEN, through
+ * `publishDataOrigins` and the two verdicts.
  *
  * @param url - Absolute URL of the request.
  * @param origins - Normalised declarations.
@@ -169,23 +169,43 @@ function matchDataOrigin(
 }
 
 /**
+ * What the origin rule answers for one URL. `reason` is present on a refusal only.
+ *
+ * ⚠️ NOT exported: the facade declares its own structural shape (`StoragePrefetchVerdict`),
+ * because it lives in the boot graph and this module in the deferred chunk.
+ */
+interface PrefetchVerdict {
+    allowed: boolean;
+    origin: string;
+    reason?: "undeclared" | "notPrefetchable" | "unparsable";
+}
+
+/**
  * May `url` be downloaded AHEAD of use — during the offline preparation — and from which
  * origin does it come?
  *
- * Allowed when the URL is on the page's own origin (no third party is involved, and that
- * origin cannot be written portably in a profile), or when its origin is declared with
- * `cacheable: true` and `prefetch: true`. Anything else is refused: an undeclared origin, a
- * declaration that only allows caching what was already served, an unparsable URL.
+ * **A declaration prevails.** An origin declared in `modules.offline.dataOrigins` — the page's
+ * own included — is allowed when it says `cacheable: true` and `prefetch: true`, and refused
+ * otherwise. An UNDECLARED origin is allowed only when it is the page's own: no third party is
+ * involved, and that origin cannot be written portably in a profile. Anything else is refused:
+ * an undeclared third-party origin, a declaration that only allows caching what was already
+ * served, an unparsable URL.
  *
  * ⚠️ Roles are NOT consulted. They route the Service Worker's cache; `prefetch` is the
  * integrator's statement that the origin's terms allow downloading ahead of use, and it covers
- * everything the profile needs from that origin — tiles, style, glyphs, sprite.
+ * everything the profile needs from that origin — tiles, style, glyphs, sprite. One origin, one
+ * verdict: declaring the page's own origin for a same-origin data API alone — `authenticated`,
+ * or `cacheable` without `prefetch` — also refuses the tiles that origin serves.
  *
  * @param url - Resource URL, absolute or relative to `pageUrl`.
  * @param origins - Normalised declarations ({@link parseDataOrigins}).
  * @param pageUrl - The page's URL, which resolves a relative `url` and defines "own origin".
- *   Absent (no `location`), only a declared origin is allowed.
+ *   Absent (no `location`), only a declared origin is allowed. The own origin is implicit only
+ *   while it is undeclared.
  * @returns `origin` — the parsed origin, or the raw URL when it does not parse — and `allowed`.
+ *   A refusal also says why, in `reason`: `"undeclared"` (a third-party origin no declaration
+ *   names), `"notPrefetchable"` (declared, without `cacheable: true` and `prefetch: true` — an
+ *   `authenticated` origin lands here, the flag being dropped from it) or `"unparsable"`.
  * @example
  * const origins = parseDataOrigins(configGet("modules.offline.dataOrigins", []));
  * const { allowed, origin } = prefetchVerdict(tileUrl, origins, globalThis.location?.href);
@@ -195,20 +215,68 @@ export function prefetchVerdict(
     url: string,
     origins: readonly DataOriginDeclaration[],
     pageUrl?: string
-): { allowed: boolean; origin: string } {
+): PrefetchVerdict {
     let resolved: URL;
     try {
         resolved = new URL(url, pageUrl);
     } catch {
-        return { allowed: false, origin: url };
+        return { allowed: false, origin: url, reason: "unparsable" };
     }
     const origin = resolved.origin;
-    if (pageUrl !== undefined && origin === new URL(pageUrl).origin) {
-        return { allowed: true, origin };
-    }
+    // The declaration is read FIRST: admitting the page's own origin before it made a declared
+    // `authenticated` own origin downloadable all the same.
     const declared = matchDataOrigin(resolved.href, origins);
-    const allowed = declared?.cacheable === true && declared.prefetch === true;
-    return { allowed, origin };
+    if (declared) {
+        return declared.cacheable === true && declared.prefetch === true
+            ? { allowed: true, origin }
+            : { allowed: false, origin, reason: "notPrefetchable" };
+    }
+    const ownOrigin = pageUrl !== undefined && origin === new URL(pageUrl).origin;
+    return ownOrigin ? { allowed: true, origin } : { allowed: false, origin, reason: "undeclared" };
+}
+
+/**
+ * May the ENTITIES of a layer be pulled from `url` — the source its `offline.source.url` names?
+ *
+ * **Silence is a refusal only in a profile that declares.** A profile with no declaration at
+ * all pulls from wherever its layers say, as it always did. From the first declaration on, a
+ * source is pulled when its origin is declared or is the page's own, and refused otherwise.
+ *
+ * ⚠️ **Not {@link prefetchVerdict}, on purpose — neither `prefetch` nor `cacheable` is read,
+ * and an `authenticated` origin is pullable.** `prefetch` says an origin's terms allow
+ * downloading what was not asked for; the layer naming its source IS the request. `cacheable`
+ * rules the Service Worker's cache, and a pull writes the `features` store, not that cache.
+ * And `prefetch` is dropped from an `authenticated` declaration: read here, it would make the
+ * one kind of source a pull exists for — a data API behind a session — impossible to pull.
+ *
+ * @param url - The source URL, absolute or relative to `pageUrl`.
+ * @param origins - Normalised declarations ({@link parseDataOrigins}).
+ * @param pageUrl - The page's URL, which resolves a relative `url` and defines "own origin".
+ * @returns `origin` — the parsed origin, or the raw URL when it does not parse — and `allowed`.
+ *   A refusal says why, in `reason`: `"undeclared"` or `"unparsable"`. An unparsable URL is
+ *   refused only where a declaration exists; elsewhere the loader's own URL guard judges it.
+ * @example
+ * const origins = parseDataOrigins(configGet("modules.offline.dataOrigins", []));
+ * const { allowed, origin } = pullVerdict(source.url, origins, globalThis.location?.href);
+ * if (!allowed) Log.warn(`Not pulled: ${origin} is not a declared origin`);
+ */
+export function pullVerdict(
+    url: string,
+    origins: readonly DataOriginDeclaration[],
+    pageUrl?: string
+): PrefetchVerdict {
+    let resolved: URL | null;
+    try {
+        resolved = new URL(url, pageUrl);
+    } catch {
+        resolved = null;
+    }
+    if (origins.length === 0) return { allowed: true, origin: resolved?.origin ?? url };
+    if (!resolved) return { allowed: false, origin: url, reason: "unparsable" };
+    const origin = resolved.origin;
+    if (matchDataOrigin(resolved.href, origins)) return { allowed: true, origin };
+    const ownOrigin = pageUrl !== undefined && origin === new URL(pageUrl).origin;
+    return ownOrigin ? { allowed: true, origin } : { allowed: false, origin, reason: "undeclared" };
 }
 
 /**

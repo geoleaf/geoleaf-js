@@ -125,10 +125,19 @@ function injectSheetContent(sheetId: string): void {
     }
 }
 
-/** Restores nodes moved into the sheet back to their original positions. */
+/**
+ * Restores nodes moved into the sheet back to their original positions.
+ *
+ * 🛑 ONLY THE NODES THE SHEET STILL HOLDS. A node its owner took out in the meantime — a
+ * plugin's teardown runs BEFORE this one at an unmount, and removes its own panel — is not
+ * the sheet's to give back: restored anyway, a removed panel came back into the document,
+ * orphaned and hidden, and its owner built a second one beside it at the next opening.
+ */
 function restoreMovedNodes(): void {
+    const body = domState.panelBody;
     for (const { parent, node, nextSibling } of [...domState.restoreOnClose].reverse()) {
         node.classList.remove("gl-sheet-content");
+        if (!body?.contains(node)) continue;
         if (nextSibling && nextSibling.parentNode === parent) {
             parent.insertBefore(node, nextSibling);
         } else {

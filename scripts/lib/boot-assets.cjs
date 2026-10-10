@@ -233,9 +233,33 @@ function extractVendorModuleClosure(outDir, htmlRefs) {
  * @throws {Error} If the derivation is empty, or if a derived URL has no file behind it in
  *   `outDir` — the bijection that keeps a pre-cache from pointing at nothing.
  */
+/**
+ * Extracts the URL a variant's `init.js` sets for the GeoJSON worker, token included.
+ *
+ * Read off the STAMPED script, for the reason `extractHtmlAssetRefs` gives: the pre-cache key
+ * must be the URL the page will request, byte for byte — `cache.match()` does not ignore the
+ * query. The worker's URL is built at run time by the core; this call is the only place it is
+ * written down.
+ *
+ * @param {string} outDir Directory of a deployed variant.
+ * @returns {string | null} The URL, relative to the page; `null` when `init.js` sets none.
+ */
+function extractWorkerUrl(outDir) {
+    const initFile = path.join(outDir, "init.js");
+    if (!fs.existsSync(initFile)) return null;
+    // Comments out first: the application's `init.js` explains this very call in prose.
+    const code = fs
+        .readFileSync(initFile, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/^\s*\/\/.*$/gm, "");
+    const m = /\.setWorkerUrl\(\s*["']([^"']+)["']\s*\)/.exec(code);
+    return m ? m[1] : null;
+}
+
 function deriveBootCriticalAssets({ outDir, patchedHtml, eagerChunks }) {
     const assets = [];
     const htmlRefs = extractHtmlAssetRefs(patchedHtml);
+    const workerUrl = extractWorkerUrl(outDir);
     for (const url of [
         // The shell, first and under EXACTLY this key. A document does not reference
         // itself, so no extraction can produce it — yet `navigationStrategy` serves offline
@@ -248,6 +272,11 @@ function deriveBootCriticalAssets({ outDir, patchedHtml, eagerChunks }) {
         // MapLibre graph; its three dependencies appear nowhere else.
         ...extractVendorModuleClosure(outDir, htmlRefs),
         ...eagerChunks,
+        // The GeoJSON worker: asked for by `new Worker()` the first time a layer is parsed off
+        // the main thread, hence by nothing the markup names. Without it, a visit that goes
+        // offline before that moment cannot build its worker, and the core parses on the main
+        // thread for the life of the page.
+        ...(workerUrl ? [workerUrl] : []),
         ROOT_CONFIG_DEPLOY_PATH,
     ]) {
         if (!assets.includes(url)) assets.push(url);
@@ -418,6 +447,7 @@ module.exports = {
     extractEagerChunks,
     extractHtmlAssetRefs,
     extractVendorModuleClosure,
+    extractWorkerUrl,
     deriveBootCriticalAssets,
     deriveFirstScreenData,
     gzipSize,

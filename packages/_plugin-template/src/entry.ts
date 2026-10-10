@@ -40,6 +40,19 @@ getGeoLeaf()?.I18n?.registerDict?.("__PLUGIN_NAME__", {
 });
 /* </i18n> */
 
+/** The API this plugin mounts as `GeoLeaf.__PLUGIN_NAMESPACE__`. */
+export type __PLUGIN_NAMESPACE__Api = ReturnType<typeof buildPublicApi>;
+
+// The core declares the namespaces the plugins mount and cannot type them: it never imports a
+// plugin. The type comes from here, through the registry those declarations read — for
+// whoever installs this package. ⚠️ The core must declare the namespace for this to show:
+// `__PLUGIN_NAMESPACE__?: GeoLeafPluginApi<"__PLUGIN_NAMESPACE__">` in its `global.d.ts`.
+declare global {
+    interface GeoLeafPluginApis {
+        __PLUGIN_NAMESPACE__: __PLUGIN_NAMESPACE__Api;
+    }
+}
+
 // 2 — Mount the GeoLeaf.__PLUGIN_NAMESPACE__ namespace. The façade is kept in a local:
 // reading it back off the namespace yields `unknown` (the trailing `[key: string]: unknown`
 // of `GeoLeafHost`), and asserting it back would trade the `as any` for an `as`.

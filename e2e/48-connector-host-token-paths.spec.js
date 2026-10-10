@@ -287,15 +287,33 @@ test.describe("48-connector-host-token-paths", () => {
         });
         await createLayer(page, "rotated");
 
+        // Judged: the tiles of a zoom level the route had NOT seen before the rotation.
+        // MapLibre asked for those after it, by construction. ⚠️ This test used to judge the
+        // LAST tile the route saw, and it was unstable under load: a tile requested before
+        // the rotation can reach the route after the new ones, and it carries the token it
+        // left with — rightly. The order of arrival says nothing about the order of asking;
+        // the zoom level does.
+        const zoomOf = (/** @type {string} */ url) => /\/tiles\/(\d+)\//.exec(url)?.[1];
+        const zoomsBefore = new Set(state.seen.slice(0, mark).map((s) => zoomOf(s.url)));
+        const freshTiles = () =>
+            state.seen.slice(mark).filter((s) => {
+                const zoom = zoomOf(s.url);
+                return zoom !== undefined && !zoomsBefore.has(zoom);
+            });
+
         await expect
-            .poll(() => state.seen.slice(mark).some((s) => s.url.includes("/tiles/")))
-            .toBe(true);
+            .poll(() => freshTiles().length, "the jump asked for no tile of a new zoom level")
+            .toBeGreaterThan(0);
         await expect
             .poll(() => seenFor(state, "/layers/rotated.geojson").length)
             .toBeGreaterThan(0);
 
-        const lastTile = state.seen.filter((s) => s.url.includes("/tiles/")).at(-1);
-        expect(lastTile?.authorization).toBe(`Bearer ${ROTATED}`);
+        expect(
+            freshTiles()
+                .filter((s) => s.authorization !== `Bearer ${ROTATED}`)
+                .map((s) => `${s.url} — ${s.authorization}`),
+            "tile(s) of a new zoom level sent with a token from before the rotation"
+        ).toEqual([]);
         expect(seenFor(state, "/layers/rotated.geojson")[0]?.authorization).toBe(
             `Bearer ${ROTATED}`
         );

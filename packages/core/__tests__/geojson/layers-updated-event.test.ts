@@ -16,6 +16,7 @@ import type { LayerDataApi } from "../../src/contracts/layer-data.contract.js";
 
 const { buildLayersPublicApi } = await import("../../src/kernel/geojson/layers-public-api.ts");
 const { GeoJSONShared } = await import("../../src/kernel/geojson/shared.ts");
+const { GeoJSONCore } = await import("../../src/kernel/geojson/core.ts");
 
 const pt = (id: string): GeoJSON.Feature => ({
     type: "Feature",
@@ -90,6 +91,80 @@ describe("geoleaf:layer:updated", () => {
         api.setVisibleSubset("L", () => false);
         api.clearVisibleSubset("L");
         expect(seen).toEqual([]);
+    });
+});
+
+describe("geoleaf:layer:updated — a writer of the whole collection, around this API", () => {
+    // A real-time tick, an OGC auto-refresh and a host's own `GeoLeaf.GeoJSON.updateLayerData`
+    // rewrite the store this API reads, and announced nothing: the open table and the active
+    // filter stayed stale until the user's next gesture (`e2e/69`). The announcement now lives
+    // in the one place every such writer goes through, `GeoJSONShared.setLayerCollection`.
+    const fc = (...ids: string[]) => ({ type: "FeatureCollection", features: ids.map(pt) });
+
+    it("🛑 fires for `GeoJSONCore.updateLayerData`", () => {
+        GeoJSONCore.updateLayerData("L", fc("z"));
+        expect(seen).toEqual(["L"]);
+    });
+
+    it("🛑 fires for the funnel itself — the OGC auto-refresh writes through it directly", () => {
+        GeoJSONShared.setLayerCollection("L", fc("z"));
+        expect(seen).toEqual(["L"]);
+    });
+
+    it("does not fire for a layer the store does not hold", () => {
+        GeoJSONCore.updateLayerData("UNKNOWN", fc("z"));
+        GeoJSONShared.setLayerCollection("UNKNOWN", fc("z"));
+        expect(seen).toEqual([]);
+    });
+
+    // The three unit mutations that FALL BACK to a whole-collection write reach the funnel:
+    // announcing there AND in the API would say each of them twice.
+    it("🛑 an id collision in `updateFeatureId` is announced once", () => {
+        api.updateFeatureId("L", "a", "b");
+        expect(seen).toEqual(["L"]);
+    });
+
+    it("🛑 a rerendered patch of a feature with no `properties.id` is announced once", () => {
+        // Found by its top-level `id`, but a diff must name `properties.id`: with none, the
+        // API rewrites the whole collection instead.
+        const topLevelOnly = {
+            type: "Feature",
+            id: "top",
+            geometry: { type: "Point", coordinates: [0, 0] },
+            properties: { name: "n" },
+        } as GeoJSON.Feature;
+        api.setData("L", [topLevelOnly]);
+        seen = [];
+        api.patchFeature("L", "top", { title: "x" }, { rerender: true });
+        expect(seen).toEqual(["L"]);
+    });
+
+    it("🛑 a merge carrying an id-less feature is announced once", () => {
+        const idless = {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [0, 0] },
+            properties: {},
+        } as GeoJSON.Feature;
+        api.mergeFeatures("L", [idless]);
+        expect(seen).toEqual(["L"]);
+    });
+
+    it("🛑 the diff verdict is invalidated BEFORE the announcement, on both writers", () => {
+        // A listener that mutates the layer synchronously must not read a verdict computed
+        // for the collection that was just replaced.
+        const entry = GeoJSONShared.state.layers.get("L") as { _diffable?: boolean };
+        const read: Array<boolean | undefined> = [];
+        const listener = () => read.push(entry._diffable);
+        document.addEventListener("geoleaf:layer:updated", listener);
+        try {
+            entry._diffable = true;
+            GeoJSONCore.updateLayerData("L", fc("z"));
+            entry._diffable = true;
+            GeoJSONShared.setLayerCollection("L", fc("y"));
+        } finally {
+            document.removeEventListener("geoleaf:layer:updated", listener);
+        }
+        expect(read).toEqual([undefined, undefined]);
     });
 });
 

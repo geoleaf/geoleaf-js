@@ -10,7 +10,7 @@ trim_trailing_whitespace = true
 indent_style = space
 indent_size = 4
 
-# T6.5 — le bloc `[*.{json,yml,yaml}] indent_size = 2` a été SUPPRIMÉ ici. Il ne pouvait
+# le bloc `[*.{json,yml,yaml}] indent_size = 2` a été SUPPRIMÉ ici. Il ne pouvait
 # que perdre, et deux fois :
 #   · sur json/md, `.prettierrc.json` (`tabWidth: 4`, aucun bloc `overrides`) l'écrase à
 #     chaque commit via lint-staged — dont la glob `*.{json,md}`, sans `/`, est en

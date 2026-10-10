@@ -25,7 +25,7 @@
  * The imperative body lives in {@link setupSecurity} (B1) and {@link setupCoreMap} (B2), both
  * called at the bottom of this file — PHASE A: the facades are posted at import, in ESM order.
  * Neither takes a parameter (no map adapter, no config), so there is nothing for the registry
- * to order. `SecurityModule` is gone (S6 Lot 6): it was a wrapper with an empty init()/destroy()
+ * to order. `SecurityModule` is gone: it was a wrapper with an empty init()/destroy()
  * around a facade-only subsystem. `CoreMapModule` remains — it owns the real runtime (map
  * creation), which does need the adapter and the merged config.
  *
@@ -119,10 +119,10 @@ export function setupCoreMap(): void {
 
 // ── PHASE A — the facades, at import, in ESM order ───────────────────────────────────────────
 //
-// Direct calls (S6 Lot 5): the `setModuleSetup`/`runModuleSetup` indirection is gone. It existed
+// Direct calls: the `setModuleSetup`/`runModuleSetup` indirection is gone. It existed
 // to let `ICoreModule.init()` run these setups at registry time, with a per-id guard to stop the
-// import-time run and the init()-time run from firing twice. Since Lot 2 posts every facade here
-// and Lot 4 removed the init()-time calls, the registry no longer runs setups at all — the
+// import-time run and the init()-time run from firing twice. Since every facade is posted here
+// and the init()-time calls are gone, the registry no longer runs setups at all — the
 // registry orders the RUNTIME (map, DOM, layers), not the facades.
 //
 // Neither setup reads an (adapter, config) param — none of the seven kernel setups do — so there

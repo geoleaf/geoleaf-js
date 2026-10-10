@@ -1,4 +1,4 @@
-# Backend de preuve — dev uniquement (tâche 4.H)
+# Backend de preuve — dev uniquement
 
 Le critère de preuve du cycle hors-ligne dit : _coupure réseau → édition d'une entité **rapatriée** →
 rechargement → **l'édition est toujours visible** → retour du réseau → push → **l'entité porte son

@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.31 - theme-applier/core */
+/* theme-applier/core */
 
 const mockShowLoading = vi.hoisted(() => vi.fn());
 const mockHideLoading = vi.hoisted(() => vi.fn());
@@ -22,7 +22,7 @@ vi.mock("../../src/kernel/geojson/core.js", () => ({ GeoJSONCore: {} }));
 
 import { ThemeApplierCore } from "../../src/kernel/themes/theme-applier/core.js";
 
-describe("theme-applier/core (Phase 5.31)", () => {
+describe("theme-applier/core", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         ThemeApplierCore._currentThemeId = null;

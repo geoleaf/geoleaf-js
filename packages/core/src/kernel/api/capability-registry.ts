@@ -76,7 +76,7 @@ import { Capabilities, declareUnavailable } from "./unavailable-capabilities.js"
  *   - value `false`      → disabled ;
  *   - any other value    → enabled.
  *
- * Extracted from {@link CapabilityRegistry.isEnabled} (presets build, S2 Lot 6) so a
+ * Extracted from {@link CapabilityRegistry.isEnabled} (presets build) so a
  * preset installer can gate its module on a **sub-key** of its capability's config
  * (`CapabilityInstaller.moduleGate` — e.g. `share` under `permalink`) with exactly the
  * same semantics, instead of an ad-hoc inline test in `boot.ts`.

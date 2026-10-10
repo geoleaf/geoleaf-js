@@ -57,11 +57,6 @@ interface ConflictsModule {
     clear(layerId?: string): Promise<void>;
 }
 
-/** The storage seam, reduced to what this module reads. */
-interface ConflictStore {
-    _ensureModule?: (name: string) => unknown;
-}
-
 /**
  * What the re-read established, and what it read.
  *
@@ -167,8 +162,8 @@ export async function readServerVersion(
 
 /** Resolves the conflicts module, or `null` when the engine is not wired. */
 function _conflicts(): ConflictsModule | null {
-    const db = StorageContract.DB as ConflictStore | null;
-    const mod = db?._ensureModule?.("Conflicts") as Partial<ConflictsModule> | null | undefined;
+    const db = StorageContract.DB;
+    const mod: Partial<ConflictsModule> | null | undefined = db?._ensureModule?.("Conflicts");
     // `typeof … === "function"` and not truthiness: the module comes from a string-keyed
     // registry, so it CAN be missing, and that is the case being guarded (TS2774 otherwise).
     return typeof mod?.put === "function" ? (mod as ConflictsModule) : null;

@@ -8,7 +8,7 @@
 /**
  * @description Public barrel for the cross-module shared contracts.
  *
- * Mediated entry point for the `capabilities/ → kernel/` boundary (backlog R.8).
+ * Mediated entry point for the `capabilities/ → kernel/` boundary (rule R.8).
  *
  * `StorageContract` is a passive registry: it has NO top-level side effect. `init()` is
  * driven by the `geoleaf.storage.ts` facade when the Storage plugin loads — importing

@@ -1,5 +1,5 @@
 /**
- * @fileoverview Deep branch coverage for table module (T10.2.7)
+ * @fileoverview Deep branch coverage for table module
  *
  * Strategy: await import() — Istanbul ESM instrumentation active.
  * Targets:
@@ -21,7 +21,7 @@ let sortInPlace, nextSortState;
 let resolveFeatureId, buildGeoJSONCollection, downloadGeoJSON;
 let tableState, fireEvent, getSelectedFeatures;
 
-describe("table-branches-deep (T10.2.7)", () => {
+describe("table-branches-deep", () => {
     beforeAll(async () => {
         const sortMod = await import("../sort.js");
         sortInPlace = sortMod.sortInPlace;

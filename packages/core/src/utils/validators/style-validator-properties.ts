@@ -15,7 +15,8 @@ import type { ValidationErrorItem, ValidationWarningItem } from "./style-validat
 import { pushColorError, pushOpacityError, pushSizeError } from "./style-validator-helpers.js";
 
 /**
- * Validates a label's font configuration
+ * Validates a label's font configuration: an object, whose `sizePt` — the one key the
+ * renderer reads — is a number of at least 1. Any other key is ignored, not judged.
  */
 
 export function validateFont(
@@ -42,19 +43,11 @@ export function validateFont(
             });
         }
     }
-    if (f.weight !== undefined) {
-        if (!Number.isInteger(f.weight) || (f.weight as number) < 0 || (f.weight as number) > 100) {
-            errors.push({
-                field: "label.font.weight",
-                message: `weight must be un entier entre 0 et 100`,
-                context: { received: f.weight, ...context },
-            });
-        }
-    }
 }
 
 /**
- * Validates a label component (buffer, background)
+ * Validates the text buffer (halo) of a label: an object, whose `color` and `sizePx` — what
+ * the renderer reads besides `enabled` — are well-formed. Any other key is ignored.
  */
 
 export function validateLabelComponent(
@@ -74,7 +67,6 @@ export function validateLabelComponent(
     }
     const comp = component as Record<string, unknown>;
     pushColorError(comp, "color", `${fieldPath}.color`, errors, context);
-    pushOpacityError(comp, "opacity", `${fieldPath}.opacity`, errors, context);
     pushSizeError(comp, "sizePx", `${fieldPath}.sizePx`, errors, context);
 }
 
@@ -161,18 +153,17 @@ function _validateLabelObject(
     pushOpacityError(labelObj, "opacity", "label.opacity", errors, context);
     if (labelObj.buffer)
         validateLabelComponent(labelObj.buffer, "label.buffer", errors, warnings, context);
-    if (labelObj.background)
-        validateLabelComponent(labelObj.background, "label.background", errors, warnings, context);
     _validateLabelOffset(labelObj, errors, context);
 }
 
 /**
  * Validates the `label` block of a style, in either of its two accepted forms.
  *
- * `label` may be a **string** — the feature property to display, which needs no further
- * checking — or a **configuration object**, whose colour, opacity, buffer, background and
- * offset are then validated. An absent `label` is not a defect. Anything else (a number, an
- * array) is an error.
+ * `label` may be a **string** — the name of the style, as a legend titles it, which needs no
+ * further checking — or a **configuration object** for the text drawn on the features, whose
+ * font size, colour, opacity, buffer and offset are then validated. A key of that object the
+ * renderer does not read is ignored here; refusing it is the job of the profile schema. An
+ * absent `label` is not a defect. Anything else (a number, an array) is an error.
  *
  * Accumulator contract: findings are pushed into `errors` and `warnings`, nothing is returned.
  *

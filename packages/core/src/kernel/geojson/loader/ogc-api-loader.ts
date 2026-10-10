@@ -211,6 +211,34 @@ function _capVerdict(
     };
 }
 
+/**
+ * Whether the caller's judge refuses the cursor to the next page — and says so.
+ *
+ * @param cursor - The cursor the page rendered, or `null` when it rendered none.
+ * @param followCursor - The caller's judge, if any.
+ * @returns `true` when the walk must stop here, with pages left unread.
+ */
+function _cursorRefused(
+    cursor: string | null,
+    followCursor: ((url: string) => boolean) | undefined
+): boolean {
+    if (cursor === null || !followCursor || followCursor(cursor)) return false;
+    getLog().warn(
+        "[OgcApiLoader] Pagination stopped: the next page's URL was refused by the " +
+            `caller — ${_originOf(cursor)}. The result is PARTIAL.`
+    );
+    return true;
+}
+
+/** The origin of a cursor, for a log line — the raw start of it when it does not parse. */
+function _originOf(url: string): string {
+    try {
+        return new URL(url).origin;
+    } catch {
+        return url.slice(0, 48);
+    }
+}
+
 function _extractNextUrl(response: OgcFeatureCollection): string | null {
     if (!Array.isArray(response.links)) return null;
     const next = response.links.find(
@@ -337,6 +365,11 @@ export interface OgcApiStreamOutcome {
     readonly aborted: boolean;
     /** Cursor of the page never fetched, or `null` when the source was exhausted. */
     readonly lastCursor: string | null;
+    /**
+     * Present, and only present, when the caller's `followCursor` refused a cursor: the run
+     * is PARTIAL, and `lastCursor` is the URL that was not followed.
+     */
+    readonly cursorRefused?: true;
 }
 
 /**
@@ -373,6 +406,10 @@ export interface OgcApiStreamOutcome {
  * @param bbox - Override bounding box (used by autoRefresh to inject viewport bbox).
  * @param datetime - OGC `datetime` filter for the first request, e.g. `<instant>/..`. The pages
  *   after it follow the server's `next` links, which carry the query as the server built them.
+ * @param followCursor - Asked before each page AFTER the first, with the cursor the server
+ *   rendered. `config.url` is the caller's own statement; a cursor is the SERVER's, and can
+ *   name any host. Returning `false` stops the walk there, with `cursorRefused` set — the run
+ *   is partial, and must not be read as an exhausted source. Absent, every cursor is followed.
  * @returns What the run observed — counts, truncation, abort, and the unfollowed cursor.
  * @throws Error if the URL is invalid, the network request fails, or the response is malformed.
  * @example
@@ -386,7 +423,8 @@ export async function streamOgcApiFeatures(
     onPage: (page: OgcApiPage) => void | Promise<void>,
     signal?: AbortSignal,
     bbox?: [number, number, number, number],
-    datetime?: string
+    datetime?: string,
+    followCursor?: (url: string) => boolean
 ): Promise<OgcApiStreamOutcome> {
     const Log = getLog();
     const maxFeatures = config.maxFeatures ?? DEFAULT_MAX_FEATURES;
@@ -408,6 +446,8 @@ export async function streamOgcApiFeatures(
     let lastCursor: string | null = null;
     // The cap stopped the walk while the source held more — see `_capVerdict`.
     let cutShort = false;
+    // The caller's judge refused a cursor — the walk stopped with pages left unread.
+    let cursorRefused = false;
 
     while (nextUrl !== null) {
         if (signal?.aborted) {
@@ -480,6 +520,12 @@ export async function streamOgcApiFeatures(
 
         index += 1;
         lastCursor = cursor;
+        // AFTER `onPage`: the page that carried the cursor is the consumer's whatever the
+        // verdict on what follows it.
+        if (_cursorRefused(cursor, followCursor)) {
+            cursorRefused = true;
+            break;
+        }
         nextUrl = cursor;
     }
 
@@ -492,20 +538,48 @@ export async function streamOgcApiFeatures(
     // path, meanwhile, received the overflow unknowingly. Fixing at the source makes
     // the caller's compensation redundant (cutting an already-cut list has no
     // effect) and serves both paths in one gesture.
-    return {
+    return _outcome({
         fetched,
         delivered,
-        ...(cutShort
+        aborted,
+        lastCursor,
+        cursorRefused,
+        truncated: cutShort ? { limit: maxFeatures, fetched, matched } : undefined,
+    });
+}
+
+/**
+ * Shapes what a run observed into its report, leaving out every member that has nothing to
+ * say — `truncated`, its `matched` and `cursorRefused` are PRESENT only when they bite, and a
+ * consumer tests their presence.
+ *
+ * @param seen - The run's tallies, with `undefined` where a member does not apply.
+ * @returns The outcome, with no key carrying `undefined`.
+ */
+function _outcome(seen: {
+    fetched: number;
+    delivered: number;
+    aborted: boolean;
+    lastCursor: string | null;
+    cursorRefused: boolean;
+    truncated: { limit: number; fetched: number; matched: number | undefined } | undefined;
+}): OgcApiStreamOutcome {
+    const { truncated } = seen;
+    return {
+        fetched: seen.fetched,
+        delivered: seen.delivered,
+        ...(truncated
             ? {
                   truncated: {
-                      limit: maxFeatures,
-                      fetched,
-                      ...(matched !== undefined ? { matched } : {}),
+                      limit: truncated.limit,
+                      fetched: truncated.fetched,
+                      ...(truncated.matched !== undefined ? { matched: truncated.matched } : {}),
                   },
               }
             : {}),
-        aborted,
-        lastCursor,
+        aborted: seen.aborted,
+        lastCursor: seen.lastCursor,
+        ...(seen.cursorRefused ? { cursorRefused: true as const } : {}),
     };
 }
 

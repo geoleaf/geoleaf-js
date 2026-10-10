@@ -439,7 +439,7 @@ describe("pagination par curseur déclaré", () => {
     });
 });
 
-// ─── streamOgcApiFeatures — R9, tâche 2.3 ─────────────────────────────────────
+// ─── streamOgcApiFeatures ─────────────────────────────────────
 //
 // 🛑 THE POINT OF THESE CASES IS THE EQUIVALENCE, not the stream. `fetchOgcApiFeatures`
 // is now a thin accumulator over `streamOgcApiFeatures`, so the twenty cases above are
@@ -651,6 +651,79 @@ describe("streamOgcApiFeatures — la marche, séparée de l'accumulation", () =
         expect(outcome.aborted).toBe(true);
         // The unfollowed cursor is what a resumable consumer persists.
         expect(outcome.lastCursor).toBe("https://api.example.com/items?offset=1");
+    });
+});
+
+// ─── The caller judges the cursor ─────────────────────────────────────────────
+//
+// `config.url` is the caller's own statement; every page after the first is asked at a URL the
+// SERVER rendered. The walk takes an optional judge and stops on its refusal — saying so, since
+// a walk that merely stopped would read as an exhausted source.
+describe("streamOgcApiFeatures — le curseur est soumis au juge de l'appelant", () => {
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    const twoPages = () => [
+        {
+            body: makeFeatureCollection(
+                [{ type: "Feature", geometry: null, properties: { id: 1 } }],
+                { links: [{ rel: "next", href: "https://ailleurs.example/items?offset=1" }] }
+            ),
+        },
+        {
+            body: makeFeatureCollection([
+                { type: "Feature", geometry: null, properties: { id: 2 } },
+            ]),
+        },
+    ];
+    const walk = async (followCursor) => {
+        const pages = [];
+        const outcome = await streamOgcApiFeatures(
+            { url: "https://api.example.com/items" },
+            (page) => {
+                pages.push(page);
+            },
+            undefined,
+            undefined,
+            undefined,
+            followCursor
+        );
+        return { pages, outcome };
+    };
+
+    it("🛑 un refus arrête la marche AVANT la requête, et le rapport le dit", async () => {
+        mockFetch(twoPages());
+        const judge = vi.fn(() => false);
+
+        const { pages, outcome } = await walk(judge);
+
+        expect(judge).toHaveBeenCalledWith("https://ailleurs.example/items?offset=1");
+        expect(global.fetch).toHaveBeenCalledTimes(1);
+        // The page that carried the cursor was handed over: it came from the judged URL.
+        expect(pages).toHaveLength(1);
+        expect(outcome.cursorRefused).toBe(true);
+        expect(outcome.lastCursor).toBe("https://ailleurs.example/items?offset=1");
+        expect(outcome.aborted).toBe(false);
+    });
+
+    it("un juge qui accepte laisse la marche aller au bout, sans membre `cursorRefused`", async () => {
+        mockFetch(twoPages());
+
+        const { pages, outcome } = await walk(() => true);
+
+        expect(pages).toHaveLength(2);
+        expect("cursorRefused" in outcome).toBe(false);
+    });
+
+    it("le juge n'est pas consulté quand la page ne rend aucun curseur", async () => {
+        mockFetch([twoPages()[1]]);
+        const judge = vi.fn(() => false);
+
+        const { outcome } = await walk(judge);
+
+        expect(judge).not.toHaveBeenCalled();
+        expect("cursorRefused" in outcome).toBe(false);
     });
 });
 

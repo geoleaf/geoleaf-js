@@ -1,6 +1,6 @@
 /**
  * Unit tests — `adapters/maplibre/maplibre-source-diff.ts` and the adapter's
- * `applyDataDiff` (R6, task 2.2).
+ * `applyDataDiff`.
  *
  * Pure translation only — no map, no mock engine. Three objects, three homes: whether
  * the KERNEL chose the diff path lives in `geojson/layers-public-api-diff.test.ts`;

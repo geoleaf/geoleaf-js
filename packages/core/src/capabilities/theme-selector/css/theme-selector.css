@@ -72,7 +72,7 @@
 
     .gl-theme-btn:hover {
         background: var(--gl-color-accent-soft);
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
     }
 
     .gl-theme-btn--active {
@@ -133,7 +133,7 @@
 
     .gl-theme-dropdown:hover {
         background: var(--gl-color-accent-soft);
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
     }
 
     .gl-theme-dropdown:focus-visible {
@@ -227,7 +227,7 @@
 
     .gl-theme-selector-primary__nav:hover {
         background: var(--gl-color-accent-soft);
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
         transform: scale(1.1);
     }
 
@@ -353,8 +353,12 @@
         #gl-theme-primary-container {
             display: block !important;
             position: absolute !important;
+            /* The sync strip's footprint is added here as everywhere else in this sheet: this
+   rule restates `top` with `!important`, so leaving the token out silently undid it on a
+   phone — the pills painted over the strip's counters. */
             top: calc(
-                0.65rem + var(--gl-proximity-bar-height, 0px) + var(--gl-proximity-bar-gap, 0px)
+                0.65rem + var(--gl-map-top-inset, 0px) + var(--gl-proximity-bar-height, 0px) +
+                    var(--gl-proximity-bar-gap, 0px)
             ) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
@@ -394,8 +398,8 @@
             display: block !important;
             position: absolute !important;
             top: calc(
-                0.65rem + var(--gl-proximity-bar-height, 0px) + var(--gl-proximity-bar-gap, 0px) +
-                    44px + 0.4rem
+                0.65rem + var(--gl-map-top-inset, 0px) + var(--gl-proximity-bar-height, 0px) +
+                    var(--gl-proximity-bar-gap, 0px) + 44px + 0.4rem
             ) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;

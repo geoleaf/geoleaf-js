@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.30 - theme-loader */
+/* theme-loader */
 
 vi.mock("../../src/utils/log/index.js", () => ({ Log: { debug: vi.fn(), warn: vi.fn() } }));
 vi.mock("../../src/utils/general/fetch-helper.js", () => ({
@@ -11,7 +11,7 @@ vi.mock("../../src/utils/general/fetch-helper.js", () => ({
 import { ThemeLoader } from "../../src/kernel/themes/theme-loader.js";
 import { FetchHelper } from "../../src/utils/general/fetch-helper.js";
 
-describe("themes/theme-loader (Phase 5.30)", () => {
+describe("themes/theme-loader", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         ThemeLoader.clearCache();

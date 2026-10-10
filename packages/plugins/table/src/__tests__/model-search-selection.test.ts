@@ -293,7 +293,7 @@ describe("2.7 — search and selection read the MODEL, not the rendered window",
         // 🛑 THE DEFECT: the cut had exactly one channel, `Log.warn`. A user whose layer
         // was silently reduced to its first 1 000 rows read a complete-looking table of an
         // incomplete parc — the same class `truncation-notice.ts` closed for the GeoJSON
-        // loader at task 2.4, and for the same reason.
+        // loader, and for the same reason.
         expect(notify).toHaveBeenCalledTimes(1);
         const [message, level] = notify.mock.calls[0] ?? [];
         expect(level).toBe("warning");

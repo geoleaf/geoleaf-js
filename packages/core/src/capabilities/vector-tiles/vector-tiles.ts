@@ -162,7 +162,7 @@ const VectorTiles = {
      * `tilesUrl` — so by the time we get here, the first branch always wins. The
      * derived `…/{z}/{x}/{y}.pbf` path is therefore dead code *in practice*.
      *
-     * It is kept, not purged (R.33, backlog résiduel S5). Two reasons: it is covered by
+     * It is kept, not purged. Two reasons: it is covered by
      * 13 assertions across `__tests__/geojson/vector-tiles.test.js` and
      * `__tests__/config/s13-layer-data.test.js`, several of them asserting the derived
      * path specifically; and it becomes live again the moment the absolute-URL guard is

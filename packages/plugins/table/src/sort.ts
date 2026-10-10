@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf Table – Sort Utilities
- * Pure sort helpers extracted from geoleaf.table.js (Phase 8.2.2)
+ * Pure sort helpers extracted from geoleaf.table.js
  */
 
 export interface SortState {

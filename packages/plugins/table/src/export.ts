@@ -11,6 +11,7 @@
  */
 
 import { mintFeatureIds, resolveFeatureId, _str } from "./feature-id.js";
+import { DEFAULTS } from "./config.js";
 
 // Re-exported so `import { resolveFeatureId } from "./export.js"` keeps working
 // for `table-api` and the existing test suites; the implementation is shared
@@ -86,8 +87,8 @@ export function downloadGeoJSON(geojson: unknown, layerId?: string): void {
 
 /** Builds a CSV string with UTF-8 BOM (Excel Windows compatibility). */
 export function buildCSV(features: GeoJSONFeature[], options?: ExportOptions): string {
-    const sep = options?.csvSeparator ?? ",";
-    const includeGeom = options?.csvIncludeGeometry ?? false;
+    const sep = options?.csvSeparator ?? DEFAULTS.csvSeparator;
+    const includeGeom = options?.csvIncludeGeometry ?? DEFAULTS.csvIncludeGeometry;
 
     const allKeys = new Set<string>();
     for (const f of features) {

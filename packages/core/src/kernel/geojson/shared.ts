@@ -9,6 +9,7 @@
  * GeoLeaf GeoJSON Module - Shared State & Constants
  */
 
+import { dispatchGeoLeafEvent } from "../events/event-bus.js";
 import { registerLifecycleTeardown } from "../shared/lifecycle.js";
 import { STYLE_OPERATORS } from "./style-operators.js";
 import type { GeoJSONAdapter, GeoJSONLayerEntry, GeoJSONNativeMap } from "./core-types.js";
@@ -118,6 +119,17 @@ const GeoJSONShared = {
      * `applyOgcRefreshedData` fed the source an `autoRefresh` result straight off the
      * network, which the store never saw.
      *
+     * 🛑 **AND IT ANNOUNCES — `geoleaf:layer:updated`, once per write.** What derives from the
+     * store (an open table, an active filter) follows the event, and the event used to leave
+     * from the calls of `GeoLeaf.Layers` alone: a real-time tick, an OGC auto-refresh and a
+     * host's own `GeoLeaf.GeoJSON.updateLayerData` rewrote the store unannounced, and both
+     * stayed stale until the user's next gesture. Announcing HERE covers every writer of a
+     * whole collection by construction — including the ones not written yet.
+     *
+     * ⚠️ What derives a verdict from the collection is invalidated BEFORE the announcement:
+     * a listener that mutates the layer synchronously must not read one computed for the
+     * collection just replaced.
+     *
      * Not exported as a free function on purpose — it belongs to the state it writes,
      * beside `getLayerById`, which is what readers of that state already reach for.
      */
@@ -129,6 +141,9 @@ const GeoJSONShared = {
         if (fc && Array.isArray(fc.features)) entry.features = fc.features;
         // The layer search keeps an index of what this entry held (`layer-search.ts`).
         entry._searchIndex = undefined;
+        // Invalidate, never recompute: see `_isDiffable` (`core.ts`).
+        entry._diffable = undefined;
+        dispatchGeoLeafEvent("geoleaf:layer:updated", { layerId });
     },
 };
 

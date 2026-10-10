@@ -4,8 +4,8 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: c8b7911ec
-date: 1er octobre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
@@ -384,6 +384,13 @@ haute publie sa hauteur **mesurée** dans `--gl-map-top-inset` ; les `top` de ce
 l'ajoutent. Aucune des deux capacités ne nomme l'autre — le jeton porte le contrat, déclaré à `0px`
 par défaut sur `.gl-main` (`css/geoleaf-ui-base.css`). Si `:has()` manque, le jeton reste à `0px` et
 l'on retrouve exactement l'état antérieur : un repli qui échoue du bon côté.
+
+🛑 **Les deux règles de petit écran l'ajoutent aussi, depuis le 06/10/2026 — elles l'avaient
+oublié.** Sous 768 px, le bloc de fin de feuille repose le `top` des deux conteneurs en
+`!important`, à partir de la barre de proximité ; écrit sans le jeton, il défaisait l'empilement
+sur un téléphone et là seulement : à 375 px les pastilles couvraient le compte des écritures dues.
+Gardé par `e2e/41-sync-banner.spec.js`, qui compare les rectangles et non une valeur de `top` — la
+hauteur de la bande double sous `(pointer: coarse)`.
 
 ---
 

@@ -157,6 +157,21 @@ function addFeature(page, feature) {
     );
 }
 
+/**
+ * Rewrites the layer's WHOLE collection around `GeoLeaf.Layers` — what a real-time tick, an OGC
+ * auto-refresh or a host calling `GeoLeaf.GeoJSON.updateLayerData` does.
+ */
+function writeWholeCollection(page, features) {
+    return page.evaluate(
+        ([id, list]) =>
+            /** @type {any} */ (window).GeoLeaf.GeoJSON.updateLayerData(id, {
+                type: "FeatureCollection",
+                features: list,
+            }),
+        /** @type {[string, any[]]} */ ([LAYER, features])
+    );
+}
+
 test.beforeEach(async ({ context }) => {
     // The basemap is not this spec's subject: its third-party latency must not decide it.
     await serveBasemapTilesLocally(context);
@@ -206,6 +221,62 @@ test("[layers] le tableau ouvert suit une entité ajoutée", async ({ page }) =>
     await expect(rows, "le tableau ouvert n'a pas suivi l'ajout").toHaveCount(COUNT + 1, {
         timeout: WAIT_MS,
     });
+});
+
+// ── ③ A writer of the whole collection changed the store and announced nothing ───────────────
+//
+// The event of ① left from the calls of `GeoLeaf.Layers` alone. A real-time tick, an OGC
+// auto-refresh and a host's own `GeoLeaf.GeoJSON.updateLayerData` rewrite the same store around
+// it: the two subscribers stayed stale until the user's next gesture.
+
+test("[geojson] une collection réécrite sous un filtre actif est jugée par le filtre", async ({
+    page,
+}) => {
+    await boot(page);
+    await search(page, TARGET);
+    await expect.poll(() => renderedNames(page), { timeout: WAIT_MS }).toEqual([TARGET]);
+
+    await writeWholeCollection(page, [
+        ...lines().features,
+        // Passes the search — its name contains the searched text.
+        line("r-10", `${TARGET} bis`, 10.5),
+        // Fails it — must stay hidden.
+        line("r-11", "Autre route", 11),
+    ]);
+
+    // Before the fix: the filter's id list was never rebuilt, so the passing newcomer stayed
+    // hidden.
+    await expect
+        .poll(() => renderedNames(page), {
+            timeout: WAIT_MS,
+            message: "le filtre actif n'a pas rejugé la collection réécrite",
+        })
+        .toEqual([TARGET, `${TARGET} bis`]);
+});
+
+test("[geojson] le tableau ouvert suit une collection réécrite", async ({ page }) => {
+    await boot(page);
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("table"));
+    await page.waitForFunction(
+        () => typeof (/** @type {any} */ (window).GeoLeaf?.Table) === "object"
+    );
+    await page.evaluate(() => {
+        /** @type {HTMLElement|null} */ (
+            document.querySelector('[data-gl-toolbar-action="table"]')
+        )?.click();
+    });
+    await expect(page.locator(".gl-table-panel")).toBeAttached({ timeout: WAIT_MS });
+    await page.evaluate((id) => /** @type {any} */ (window).GeoLeaf.Table.setLayer(id), LAYER);
+    const rows = page.locator("tr[data-feature-id]");
+    await expect(rows).toHaveCount(COUNT, { timeout: WAIT_MS });
+
+    await writeWholeCollection(page, [...lines().features, line("r-10", "Route ajoutée", 10.5)]);
+
+    // Before the fix: ten rows until the next filter or visibility change.
+    await expect(rows, "le tableau ouvert n'a pas suivi la collection réécrite").toHaveCount(
+        COUNT + 1,
+        { timeout: WAIT_MS }
+    );
 });
 
 test("[editor] éditer une entité sous un filtre actif ne lève pas le filtre", async ({ page }) => {

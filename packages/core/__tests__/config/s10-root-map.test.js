@@ -83,9 +83,9 @@ describe("config B1 — profile.json map.* (CoreMapModule seam)", () => {
     });
 
     /** Run CoreMapModule.init() with the given map config; return the captured init/fitBounds args. */
-    function run(mapCfg) {
+    function run(mapCfg, root = {}) {
         populateInitGeoLeaf(GeoLeaf, fakeMap);
-        new CoreMapModule().init(null, { map: mapCfg, ui: {} });
+        new CoreMapModule().init(null, { map: mapCfg, ui: {}, ...root });
         const initArg = GeoLeaf.init.mock.calls[0]?.[0];
         const fitBoundsCall = fakeMap.fitBounds.mock.calls[0];
         return { initArg, fitBoundsCall };
@@ -131,6 +131,44 @@ describe("config B1 — profile.json map.* (CoreMapModule seam)", () => {
         it("numeric minZoom (no positionFixed) sets mapOptions.minZoom", async () => {
             const { initArg } = await run({ bounds: BOUNDS, initialMaxZoom: 10, minZoom: 5 });
             expect(initArg.map.mapOptions.minZoom).toBe(5);
+        });
+    });
+
+    // ── root `mapOptions` (config/core/features.json, merged at the profile root) ──
+    //
+    // 🛑 DECLARED, VALIDATED, LISTED AS CONSUMED — AND READ BY NOBODY AT BOOT. The option was
+    // built from the `map` block alone, so `GeoLeaf.init()` received `mapOptions: {}` whatever
+    // the profile said. Measured in a browser on both shipped variants: declared `true`, the
+    // WebGL context created with `false`.
+    describe("root mapOptions.preserveDrawingBuffer → mapOptions", () => {
+        it("🛑 a profile declaring it reaches GeoLeaf.init()", async () => {
+            const { initArg } = await run(
+                { bounds: BOUNDS, initialMaxZoom: 10 },
+                { mapOptions: { preserveDrawingBuffer: true } }
+            );
+            expect(initArg.map.mapOptions.preserveDrawingBuffer).toBe(true);
+        });
+
+        it("absent, or anything but `true`, sets nothing", async () => {
+            for (const root of [
+                {},
+                { mapOptions: {} },
+                { mapOptions: { preserveDrawingBuffer: 1 } },
+            ]) {
+                GeoLeaf.init?.mockClear?.();
+                const { initArg } = await run({ bounds: BOUNDS, initialMaxZoom: 10 }, root);
+                expect("preserveDrawingBuffer" in initArg.map.mapOptions).toBe(false);
+            }
+        });
+
+        // The schema's list is closed, and so is this one: an engine option nobody vetted does
+        // not reach the constructor because a profile spelled it.
+        it("no other key is forwarded", async () => {
+            const { initArg } = await run(
+                { bounds: BOUNDS, initialMaxZoom: 10 },
+                { mapOptions: { preserveDrawingBuffer: true, antialias: true } }
+            );
+            expect("antialias" in initArg.map.mapOptions).toBe(false);
         });
     });
 

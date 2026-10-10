@@ -92,7 +92,7 @@ config/core/features.json — core feature configuration (map options). A POI is
 | Chemin | Type | Requis | Défaut | Valeurs | Description |
 | ------ | ---- | ------ | ------ | ------- | ----------- |
 | `$schema` | string | — | — | — | — |
-| `mapOptions` | object | — | — | — | Pass-through MapLibre map options exposed at profile level. |
+| `mapOptions` | object | — | — | — | Map engine options a profile may set. A closed list, not a pass-through: only the keys declared here reach the engine, read at boot. |
 | `mapOptions.preserveDrawingBuffer` | boolean | — | — | — | — |
 
 ## `geoleaf-config.schema.json`
@@ -110,7 +110,7 @@ geoleaf.config.json — root configuration file loaded at application startup. S
 | `data.availableProfiles[].displayLabel` | string | oui | — | — | Libellé court du sélecteur. Le build le dérive de `displayLabel`, à défaut `label`, à défaut l'identifiant — il est donc toujours présent. |
 | `data.availableProfiles[].icon` | string | — | — | — | Emoji facultatif rendu devant le libellé. Omis, et non vide, quand le profil n'en déclare pas. |
 | `data.availableProfiles[].id` | string | oui | — | — | Identifiant du profil, égal au nom de son répertoire sous `profiles/`. |
-| `data.enableProfilePoiMapping` | boolean | — | `false` | — | Enable POI data normalization via mapping.json. |
+| `data.enableProfilePoiMapping` | boolean | — | `true` | — | Enable POI data normalization via mapping.json. |
 | `data.profileBundle` | object | — | — | — | The active profile handed over in memory instead of being fetched. Carries both on-disk artefacts: `profile` (profile.json) and `bundle` (profile-bundle.json). Present, no HTTP request is issued for the profile configuration; absent, the cascade stays the default path. |
 | `data.profilesBasePath` | string | — | `"profiles"` | — | Base path to the profiles directory. |
 | `data.profileVersion` | string \| number | — | `0` | — | Empreinte de CONTENU du profil, ajoutée en `?t=` à chaque requête de ressource de profil — `profile.json`, `mapping.json`, les fichiers de section, les configs de couche et le bundle. ⚠️ Opaque, et JAMAIS une date : la valeur n'est ni lue ni comparée ni ordonnée, seul importe qu'elle change quand le contenu change — une empreinte, un compteur de révision, un identifiant de déploiement. Une horloge défait le mécanisme, puisqu'elle change à chaque chargement et fait re-télécharger ce qui n'a pas bougé. Fournie par l'APPLICATION INTÉGRANTE, seule à savoir quand son profil a changé ; l'écrire dans `profile.json` est trop tard, le jeton est résolu avant que ce fichier soit requêté. Absente, le jeton vaut `0` — URL fixe, comportement historique conservé, mais un serveur envoyant un `max-age` long épingle alors le profil et toutes ses annexes pour la durée de cet en-tête. |
@@ -161,7 +161,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].edit.options.maxLength` | number | — | — | — | — |
 | `attributes.fields[].edit.options.maxReviews` | number | — | — | — | — |
 | `attributes.fields[].edit.options.maxRows` | number | — | — | — | — |
-| `attributes.fields[].edit.options.maxSizeMb` | number | — | — | — | Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ Ce n'était un plafond de refus sec que jusqu'à la tâche 5.1-d — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours. |
+| `attributes.fields[].edit.options.maxSizeMb` | number | — | — | — | Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ C'était d'abord un plafond de refus sec — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours. |
 | `attributes.fields[].edit.options.maxStars` | number | — | — | — | — |
 | `attributes.fields[].edit.options.maxTags` | number | — | — | — | — |
 | `attributes.fields[].edit.options.min` | number \| string | — | — | — | — |
@@ -209,7 +209,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].options.maxLength` | number | — | — | — | — |
 | `attributes.fields[].options.maxReviews` | number | — | — | — | — |
 | `attributes.fields[].options.maxRows` | number | — | — | — | — |
-| `attributes.fields[].options.maxSizeMb` | number | — | — | — | Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ Ce n'était un plafond de refus sec que jusqu'à la tâche 5.1-d — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours. |
+| `attributes.fields[].options.maxSizeMb` | number | — | — | — | Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ C'était d'abord un plafond de refus sec — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours. |
 | `attributes.fields[].options.maxStars` | number | — | — | — | — |
 | `attributes.fields[].options.maxTags` | number | — | — | — | — |
 | `attributes.fields[].options.min` | number \| string | — | — | — | — |
@@ -234,7 +234,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `attributes.fields[].options.variant` | string | — | — | "primary" \| "secondary" \| "danger" | `action` only — visual weight of the button: `primary` is the filled accent button (also the look of a button declaring none), `secondary` and `danger` are outlined. Rendered as the `gl-poi-popup__action--<variant>` modifier plus `data-gl-variant`; the legacy `capabilities.feature-info` descriptor carries the same key flat. |
 | `attributes.fields[].primitive` | string | oui | — | "string" \| "number" \| "boolean" \| "string[]" \| "object" \| "object[]" | What the value IS in the GeoJSON. ⚠️ `badge`, `link` and `price` hold OBJECTS, not scalars — handing one to a plain text renderer is what produces `[object Object]`. |
 | `attributes.fields[].widget` | string | oui | — | "action" \| "badge" \| "checkbox" \| "coordinates" \| "date" \| "dropdown" \| "email" \| "gallery" \| "hours" \| "image" \| "link" \| "list" \| "longtext" \| "metric" \| "number" \| "phone" \| "price" \| "radio" \| "rating" \| "reviews" \| "table" \| "tags" \| "text" \| "url" | 23 components registered by field-renderer, plus `action` — which is NOT one: field-renderer has no action component. It is a core-only reading widget, a button emitting `geoleaf:popup:action`. This list is the reference vocabulary; the core render tables align on it. |
-| `attributes.titleField` | string | — | — | — | Dotted path of the field whose value titles the popup and the side panel. |
+| `attributes.titleField` | string | — | — | — | Names one entry of `fields`, by its `field` path. That field becomes the title of each surface it is displayed on: a popup or a side panel whose `display.surfaces` does not list it opens without a title. |
 | `capabilities` | object | — | — | — | Plugin capability bindings keyed by capability id. `feature-info` is typed below because it is the LEGACY attribute model, superseded by the root `attributes` block: it stays valid for the migration window (both shapes are live) and disappears with the dry switch. Any other capability id stays opaque and plugin-owned. |
 | `cluster` | boolean | — | `false` | — | FlatGeobuf layers only (`plugin: "flatgeobuf"`): point clustering on or off. Read by the plugin's loader, and by nothing else — the schema refuses the key on any other layer, where clustering is the `clustering` object. The plugin does not read `clustering`. |
 | `clustering` | object | — | — | — | Point clustering configuration. |
@@ -282,8 +282,8 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `edition.create` | boolean | — | — | — | Right to create a feature. Absent or false = refused. |
 | `edition.delete` | boolean | — | — | — | Right to delete a feature — what `enableEditionFull` actually gated. |
 | `edition.update` | boolean | — | — | — | Right to modify an existing feature. Absent or false = refused. |
-| `geometry` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" | Geometry type of this layer's features. |
-| `geometryType` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" | Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate. Enum mirrors `geometry` (gate-safe: profile values ⊆ enum). |
+| `geometry` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" \| "mixed" | Geometry type of this layer's features. `mixed` is for a vector-tile layer whose source-layer holds points, lines and polygons at once — it is refused on any other layer, where it names no geometry. |
+| `geometryType` | string | — | — | "polygon" \| "polyline" \| "line" \| "point" \| "multipolygon" \| "multiline" \| "multipoint" \| "fill-extrusion" \| "mixed" | Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate. Enum mirrors `geometry` (gate-safe: profile values ⊆ enum). |
 | `id` | string | oui | — | — | Unique layer identifier. Must match the key in layers.json. |
 | `interactiveShape` | boolean | — | — | — | Whether features are clickable/hoverable. |
 | `label` | string | — | — | — | Display label shown in the layer manager. |
@@ -291,18 +291,12 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `labels.buffer` | object | — | — | — | — |
 | `labels.buffer.color` | string | — | `"#ffffff"` | — | — |
 | `labels.buffer.enabled` | boolean | — | `false` | — | — |
-| `labels.buffer.noFill` | boolean | — | — | — | — |
-| `labels.buffer.opacity` | number | — | `1` | — | — |
 | `labels.buffer.sizePx` | number | — | `2` | — | — |
 | `labels.color` | string | — | `"#000000"` | — | — |
 | `labels.enabled` | boolean | oui | — | — | Enable/disable these labels. |
 | `labels.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
 | `labels.font` | object | — | — | — | — |
-| `labels.font.bold` | boolean | — | `false` | — | — |
-| `labels.font.family` | string | — | `"Arial"` | — | — |
-| `labels.font.italic` | boolean | — | `false` | — | — |
-| `labels.font.sizePt` | number | — | `12` | — | Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer. |
-| `labels.font.weight` | number | — | `50` | — | — |
+| `labels.font.sizePt` | number | — | `12` | — | Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style. |
 | `labels.offset` | object | — | — | — | Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all. |
 | `labels.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `labels.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
@@ -348,7 +342,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `table.searchFields` | array | — | — | — | — |
 | `type` | string | — | — | — | Optional layer type tag. |
 | `write` | object | — | — | — | Per-layer write target: where this layer's edits are pushed. Declared per layer because on many backends each layer is a distinct collection. Shape mirrors contracts/sync.contract.ts (LayerWriteTarget) and what the persistence adapters actually read. |
-| `write.auth` | string | — | — | "bearer" \| "none" | How the endpoint is authenticated — declarative only: no code reads it. Writes are authenticated by the connector plugin, which adds its bearer token to the requests it intercepts. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify. |
+| `write.auth` | string | — | — | "bearer" \| "none" | How the endpoint is authenticated. `none`: it takes no credential — the connector plugin attaches no token to the layer's writes, even under its base URL. `bearer`: it requires a session — while no session is open the capture stays queued instead of being sent without one. Absent: the request goes out, with the connector's token when it falls under its base URL. The core sends no authentication header of its own. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify. |
 | `write.dialect` | string | — | `"collection"` | "rest" \| "collection" | `collection` (the default, and the only one the offline queue sends): rows addressed by query filters — `POST {endpoint}`, `PATCH` and `DELETE {endpoint}?id=eq.<id>` with the freshness marker as a filter — carrying a flat body of the whitelisted properties, the geometry under `geometryProperty` and the client identity `local_id`; authentication is the connector's. `rest`: spoken by the editor plugin's ONLINE adapter only — `POST|PUT|DELETE {api.baseUrl}/features[/<id>]?layerId=<layer>` with a `{ feature, layerId }` body, addressed by the plugin's own `api.baseUrl` — and a layer declaring it has its offline writes set aside under `dialectNotSupported`. Exactly the two the code dispatches on: a third value would be indistinguishable from a typo. The full wire contract is `packages/core/docs/SERVER_CONTRACT.md`. |
 | `write.enabled` | boolean | oui | — | — | Gate — only `true` lets the drain send. A layer whose write target is absent, disabled or without an `endpoint` still KEEPS the edits made on it, locally; the drain then sets each one aside as `layerNoLongerWritable`, until the target is enabled and the edits are requeued. |
 | `write.endpoint` | string | — | — | — | URL edits are pushed to. |
@@ -430,6 +424,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `map.bounds` | array | — | — | — | Geographic bounds [[south, west], [north, east]]. |
 | `map.boundsMargin` | number | — | — | — | — |
 | `map.center` | array | — | — | — | — |
+| `map.id` | string | — | — | — | Alias of `target`, read only when `target` is absent. |
 | `map.initialMaxZoom` | number | — | — | — | Alias for maxZoom (legacy). |
 | `map.maxPitch` | number | — | — | — | Maximum map pitch in degrees (0-85). MapLibre default: 60. |
 | `map.maxZoom` | number | — | — | — | — |
@@ -440,6 +435,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `map.padding.right` | number | — | — | — | — |
 | `map.padding.top` | number | — | — | — | — |
 | `map.positionFixed` | boolean | — | — | — | — |
+| `map.target` | string | — | — | — | Id of the HTML element that hosts the map, without `#` - it is resolved with `document.getElementById`, not as a CSS selector. Read by `GeoLeaf.boot()`; absent, the boot looks for `geoleaf-map`. `GeoLeaf.mount()` hosts the map in the element it is given and does not read this key. |
 | `map.zoom` | number | — | — | — | — |
 | `modules` | object | — | — | — | Configuration blocks keyed by module id — in-core capabilities such as `offline`, and plugins (Plugin Contract v1, INV-CONFIG). Every block stays additionalProperties:true: the schema does not describe its keys. A block is named below only if something reads it. For a plugin block, neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.editor` | object | — | — | — | Read by @geoleaf-plugins/editor, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
@@ -452,6 +448,8 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `modules.print` | object | — | — | — | Read by @geoleaf-plugins/print, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.routing` | object | — | — | — | Read by @geoleaf-plugins/routing, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. ⚠️ `labelField` names a feature property that must ALSO appear in the `payloadFields` of the `action` widget declaring the entry-point button: the two are a cross-file rule no schema expresses, and a profile valid on both sides can still render a panel with no destination name. |
 | `modules.table` | object | — | — | — | Read by @geoleaf-plugins/table, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `performance` | object | — | — | — | Loading tuning. One key: the three once documented here (`maxConcurrentLayers`, `layerLoadDelay`, `fitBoundsOnThemeChange`) have no reader and are refused. |
+| `performance.themeBatchSize` | integer | — | `6` | — | How many layers of a theme are revealed at a time when a theme is applied. Read by the theme applier; absent, 6. |
 | `version` | string | — | — | — | Profile version (SemVer). |
 
 ## `style.schema.json`
@@ -469,18 +467,12 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `label.buffer` | object | — | — | — | — |
 | `label.buffer.color` | string | — | `"#ffffff"` | — | — |
 | `label.buffer.enabled` | boolean | — | `false` | — | — |
-| `label.buffer.noFill` | boolean | — | — | — | — |
-| `label.buffer.opacity` | number | — | `1` | — | — |
 | `label.buffer.sizePx` | number | — | `2` | — | — |
 | `label.color` | string | — | `"#000000"` | — | — |
 | `label.enabled` | boolean | oui | — | — | Enable/disable these labels. |
 | `label.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
 | `label.font` | object | — | — | — | — |
-| `label.font.bold` | boolean | — | `false` | — | — |
-| `label.font.family` | string | — | `"Arial"` | — | — |
-| `label.font.italic` | boolean | — | `false` | — | — |
-| `label.font.sizePt` | number | — | `12` | — | Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer. |
-| `label.font.weight` | number | — | `50` | — | — |
+| `label.font.sizePt` | number | — | `12` | — | Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style. |
 | `label.offset` | object | — | — | — | Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all. |
 | `label.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `label.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |

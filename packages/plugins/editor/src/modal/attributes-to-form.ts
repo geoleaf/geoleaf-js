@@ -5,14 +5,14 @@
  */
 
 /**
- * The CAPTURE projection — task 7.2.
+ * The CAPTURE projection.
  *
  * A profile now carries ONE field list (`attributes.fields[]`) with two projections —
  * `display` for reading, `edit` for capture — and this module translates the second into
  * the contract `field-renderer` consumes.
  *
- * ⚠️ It REPLACES the reading of `formSchema`, removed in the same task (decision A15: the
- * removal belongs to the sprint that makes the code useless). `formSchema` was a second
+ * ⚠️ It REPLACES the reading of `formSchema`, removed in the same change: a
+ * removal belongs to the change that makes the code useless. `formSchema` was a second
  * field list, parallel to `attributes.fields[]` and reconciled with it by nothing.
  */
 

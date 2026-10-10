@@ -87,7 +87,7 @@ const ProfileLoader = {
      * Loads and hydrates a modular GeoLeaf profile by fetching the themes, layers, basemaps,
      * ui, features and mapping files, the per-module files, and the individual layer configs.
      *
-     * ⚠️ Taxonomy is NOT one of them: it is a module since the Lot 2 removal (11/07/2026) and
+     * ⚠️ Taxonomy is NOT one of them: it is a module since the removal of 11/07/2026 and
      * travels through `Files.modules.taxonomy` like any other plugin block. The manifest has no
      * dedicated taxonomy path entry any more, and never had an icons one; icons live under the
      * taxonomy module's own `icons.spriteUrl`. The retired manifest key is a banned token in

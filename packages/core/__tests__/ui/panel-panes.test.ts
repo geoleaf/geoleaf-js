@@ -294,4 +294,21 @@ describe("the desktop panel hosts registered panes", () => {
         destroyDesktopPanel();
         expect(owned.parentElement).toBe(document.body);
     });
+
+    it("🛑 does NOT bring back an element its owner removed before the teardown", () => {
+        // Measured in a browser on a plugin's pane: at an unmount the plugin's own teardown
+        // runs first and REMOVES its panel; this host then "restored" the node it no longer
+        // held to its original parent — the removed panel came back into `<body>`, hidden,
+        // and the plugin built a second one beside it at the next opening.
+        const owned = mountOwnedPanel();
+        registerPanelPane({ id: "fake", labelKey: "fake.label", selector: ".gl-fake-panel" });
+        mountKernelPanel();
+        expect(document.getElementById("gl-rp-pane-fake")?.contains(owned)).toBe(true);
+
+        owned.remove();
+        destroyDesktopPanel();
+
+        expect(owned.isConnected, "the removed panel was put back in the document").toBe(false);
+        expect(document.querySelector(".gl-fake-panel")).toBeNull();
+    });
 });

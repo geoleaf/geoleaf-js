@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf Performance Profiler – Baseline Storage
- * Pure storage helpers extracted from performance-profiler.js (Phase 8.2.5)
+ * Pure storage helpers extracted from performance-profiler.js
  */
 
 const STORAGE_KEY = "geoleaf_performance_baseline";

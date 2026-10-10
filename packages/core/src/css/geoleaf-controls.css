@@ -92,3 +92,20 @@ body.gl-theme-dark .geoleaf-ctrl a:hover {
     stroke: currentColor;
     margin: auto;
 }
+
+/* =====================================================
+   OFFLINE BADGE — where it sits, by screen width
+   The badge is built by the kernel's network detector, which sets everything but this.
+===================================================== */
+.geoleaf-offline-badge-control {
+    top: 0;
+}
+
+/* 🛑 On a phone the theme selector takes the top row, from the toolbar to the right edge:
+   left on that row, the badge sat UNDER it, half hidden for as long as the network was
+   down. It drops below the row instead. */
+@media (max-width: 768px) {
+    .geoleaf-offline-badge-control {
+        top: 56px;
+    }
+}

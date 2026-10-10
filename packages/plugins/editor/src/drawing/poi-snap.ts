@@ -8,7 +8,7 @@
  * Duplicate guard for point capture: reports the already-existing feature a tap lands on,
  * so the caller can offer to edit it instead of creating a second one.
  *
- * Absorbed from `addpoi/src/poi-placement.ts` (`_findNearbyPoi`) at task 5.1-a.
+ * Absorbed from `addpoi/src/poi-placement.ts` (`_findNearbyPoi`).
  *
  * ⚠️ DO NOT CONFUSE THIS WITH `drawing/snap.ts`. Both carry the word "snap" and they are
  * different features — the roadmap's R6 turned on exactly this distinction:

@@ -9,7 +9,7 @@
  * Features Module — one record PER ENTITY, the v4 substrate of offline field work.
  *
  * Implements {@link FeatureRecord} of `contracts/sync.contract.ts`, which had been frozen on
- * 02/08/2026 with ZERO implementation. This is that implementation (task 3.4).
+ * 02/08/2026 with ZERO implementation. This is that implementation.
  *
  * 🛑 WHY A STORE OF ITS OWN, AND NOT A CORNER OF `layers`. `layers` holds one GeoJSON BLOB
  * per layer, keyed by URL, shared with tiles, glyphs and sprites — and `db/eviction.ts`
@@ -22,7 +22,7 @@
  * field being written correctly. That is the strongest available form of the guarantee, and
  * the store-name assertion of `schema-v4.test.js` is what keeps it true.
  *
- * ⚠️ That last sentence named `features-eviction.guard.test.js` until task 4.1. **No such file
+ * ⚠️ That last sentence used to name `features-eviction.guard.test.js`. **No such file
  * has ever existed** — a citation that pointed at nothing, in the paragraph explaining why the
  * guarantee is checkable. The real guard reads `eviction.ts` as `?raw` and asserts it names
  * exactly one store.
@@ -67,7 +67,7 @@ export interface FeaturesDBInstance {
      *
      * 🛑 The rule lives here, and not in the caller, because `get` and `put` above open
      * SEPARATE transactions: reading the state in the orchestrator and writing after it
-     * would leave a window in which the optimistic write of task 4.4 lands between the two
+     * would leave a window in which the optimistic write lands between the two
      * — and property 1 of the sync contract ("a capture never silently disappears") would
      * hold only by timing.
      *

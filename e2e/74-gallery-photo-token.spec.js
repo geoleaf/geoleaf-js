@@ -14,6 +14,13 @@
  *   3. with NO endpoint — what `deploy-full` ships — the gallery wrote a `blob:` object URL into
  *      the attribute, a value that dies with the document.
  *
+ * 🛑 AND A FOURTH, IN THE SESSION THAT DELIVERED THE PHOTOS. The upload's URL was written onto
+ * the entity the device stores, and the copy the LAYER holds kept its tokens. Moving the point
+ * sends that copy's attributes back: with one photo delivered and another still waiting, the
+ * list left whole, and the URL was replaced — on the device and on the server — by a token whose
+ * file had been purged. Read red on the bundle built before the fix; a reload hid it, since the
+ * layer is then read back from the device.
+ *
  * ⚠️ THE ENDPOINTS ARE INJECTED, in the bundle, never in `profiles/` (see `e2e/53`): `deploy-full`
  * ships `sites_rosario` with no upload endpoint and its write target disabled.
  *
@@ -58,10 +65,13 @@ const TITLE = "E2E 74";
 /**
  * Gives `sites_rosario` a write target and, on request, an upload endpoint on its gallery.
  *
+ * ⚠️ `displayed` puts the layer in the default theme. No theme of the shipped profile names it:
+ * a capture is then written and queued, but handed to no layer — nothing to select back.
+ *
  * @param {import("@playwright/test").Page} page
- * @param {{ uploadEndpoint: boolean }} options
+ * @param {{ uploadEndpoint: boolean, displayed?: boolean }} options
  */
-async function armLayer(page, { uploadEndpoint }) {
+async function armLayer(page, { uploadEndpoint, displayed = false }) {
     await page.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
         const bundle = await (await route.fetch()).json();
         const cfg = bundle.layerConfigs?.sites_rosario;
@@ -73,6 +83,13 @@ async function armLayer(page, { uploadEndpoint }) {
             gallery.options = { ...(gallery.options ?? {}), uploadEndpoint: "/api/upload" };
         }
         cfg.write = { ...cfg.write, enabled: true, endpoint: ENDPOINT };
+        if (displayed) {
+            const theme = (bundle.themes?.themes ?? []).find(
+                (/** @type {any} */ t) => t.id === bundle.themes.defaultTheme
+            );
+            if (!theme) throw new Error("le bundle ne nomme plus son thème par défaut");
+            theme.layers.push({ id: "sites_rosario", visible: true, style: "defaut" });
+        }
         await route.fulfill({ json: bundle });
     });
 }
@@ -149,11 +166,128 @@ async function saveAndWaitQueued(page) {
     });
 }
 
-/** The gallery attribute of the entity the device holds, or `null`. */
+/**
+ * The gallery attribute of the captured entity, as the device holds it, or `null`.
+ *
+ * ⚠️ Found by its TITLE: once the layer is displayed, the capture is not the only entity a
+ * device may hold for it.
+ */
 async function galleryOnDevice(page) {
     const features = await readStore(page, { db: GEOLEAF_DB, store: "features" });
-    const record = features.find((f) => f.layerId === "sites_rosario");
+    const record = features.find(
+        (f) => f.layerId === "sites_rosario" && f.feature?.properties?.title === TITLE
+    );
     return record?.feature?.properties?.galerie ?? null;
+}
+
+/**
+ * A gallery reduced to what this spec compares: a URL as it is, a token as `"jeton"`, sorted —
+ * which photo got which store key is random (see the header).
+ *
+ * @param {unknown} list
+ */
+const shapeOf = (list) =>
+    (Array.isArray(list) ? list : [])
+        .map((value) => (String(value).startsWith("gl-img:") ? "jeton" : String(value)))
+        .sort();
+
+/**
+ * The captured entity as its LAYER holds it — what a geometry edit is built from — or `null`.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<{ id: string, galerie: unknown, at: [number, number] } | null>}
+ */
+function captureInLayer(page) {
+    return page.evaluate((title) => {
+        const G = /** @type {any} */ (window).GeoLeaf;
+        const held = G.Layers.getFeatures("sites_rosario").find(
+            (/** @type {any} */ f) => f.properties?.title === title
+        );
+        if (!held) return null;
+        return {
+            id: String(held.id ?? held.properties?.id),
+            galerie: held.properties.galerie,
+            at: held.geometry.coordinates,
+        };
+    }, TITLE);
+}
+
+/**
+ * Selects the capture THROUGH ITS LAYER, drags it and commits — the gestures of `68`.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {{ id: string, at: [number, number] }} held
+ */
+async function moveCapture(page, held) {
+    const where = await selectCapture(page, held);
+    await dragAndCommit(page, where);
+}
+
+/**
+ * Selects the capture through its layer: the drawing engine now holds a COPY of it.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {{ id: string, at: [number, number] }} held
+ * @returns {Promise<{ x: number, y: number }>} where the capture is, in page pixels.
+ */
+async function selectCapture(page, held) {
+    // Within the layer's zoom range, and away from the layer's other points.
+    await page.evaluate(
+        (at) =>
+            /** @type {any} */ (window).GeoLeaf.Core.getMap()
+                .getNativeMap()
+                .jumpTo({ center: at, zoom: 13 }),
+        held.at
+    );
+    await page.waitForFunction(
+        () => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            return !map.isMoving() && map.loaded();
+        },
+        null,
+        { timeout: 20000 }
+    );
+    const where = await page.evaluate((at) => {
+        const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+        const p = map.project(at);
+        const rect = map.getContainer().getBoundingClientRect();
+        return { x: p.x + rect.left, y: p.y + rect.top };
+    }, held.at);
+
+    await page.locator('button.gl-editor-tool-btn[data-tool="select"]').click();
+    await page.waitForFunction(
+        () => /** @type {any} */ (window).GeoLeaf.Editor.getActiveTool() === "select",
+        null,
+        { timeout: 10000 }
+    );
+    await page.waitForTimeout(300); // the pending setMode() — see `09`
+    await page.mouse.click(where.x, where.y);
+    // The copy the layer picker hands to the drawing engine carries the feature's id.
+    await page.waitForFunction(
+        (id) => {
+            const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const src = map.getSource("td-point");
+            const data = src?.serialize?.()?.data ?? src?._data;
+            return (data?.features ?? []).some((/** @type {any} */ f) => f.properties?.id === id);
+        },
+        held.id,
+        { timeout: 10000 }
+    );
+    return where;
+}
+
+/**
+ * Drags the selected capture and commits the move.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @param {{ x: number, y: number }} where
+ */
+async function dragAndCommit(page, where) {
+    await page.mouse.move(where.x, where.y);
+    await page.mouse.down();
+    await page.mouse.move(where.x + 40, where.y - 40, { steps: 8 });
+    await page.mouse.up();
+    await page.keyboard.press("Enter");
 }
 
 test("[editor] les photos d'une galerie envoyées après coup arrivent à leur entité, par leur URL", async ({
@@ -272,6 +406,319 @@ test("[editor] les photos d'une galerie envoyées après coup arrivent à leur e
         expected
     );
     expect(create?.body?.title).toBe(TITLE);
+});
+
+// 🛑 THE NETWORK COMES BACK WHILE THE FORM IS STILL OPEN. Measured on 04/10/2026: the return of
+// the network orders a pass of the pending uploads, queue empty or not. The two photos of a
+// form not yet saved belong to no entity: they were uploaded, found nothing to reconcile, were
+// marked delivered and purged. The user then saved — and the entity was written with two tokens
+// designating nothing, which the create carried to the server. The files had arrived; their
+// addresses were lost. A photo no entity owns now waits for its form: the save binds it, and
+// the drain the save asks for sends it.
+test("[editor] le réseau revient PENDANT que le formulaire est ouvert : les photos arrivent par leur URL", async ({
+    page,
+    context,
+}) => {
+    test.setTimeout(150_000);
+    /** @type {{ method: string, body: any }[]} */
+    const written = [];
+    let uploads = 0;
+    await armLayer(page, { uploadEndpoint: true });
+    await context.route("**/api/upload**", async (route) => {
+        uploads += 1;
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ url: uploadedUrl(uploads) }),
+        });
+    });
+    await context.route(`${ENDPOINT}**`, async (route) => {
+        const request = route.request();
+        const raw = request.postData();
+        written.push({ method: request.method(), body: raw ? JSON.parse(raw) : null });
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify([{ id: 7402, updated_at: "2026-10-06T12:00:00+00:00" }]),
+        });
+    });
+
+    await openCaptureForm(page);
+    // Offline BEFORE the photos, so that they are kept for later — see the first test.
+    await context.setOffline(true);
+    await attachToGallery(page);
+
+    // The network is back, the form is still open. The pass it orders is immediate; five
+    // seconds leave it every chance to take the photos away before the save.
+    await context.setOffline(false);
+    await page.waitForTimeout(5000);
+    await expect(page.locator(".gl-form-modal-panel")).toBeVisible();
+
+    await saveAndWaitQueued(page);
+
+    // --- the witness: both files reached the server --------------------------------------------
+    await expect
+        .poll(() => uploads, {
+            timeout: 60000,
+            intervals: [500],
+            message: "les photos de la galerie n'ont pas été envoyées",
+        })
+        .toBe(2);
+
+    // --- the subject, on the device and on the wire --------------------------------------------
+    const expected = [uploadedUrl(1), uploadedUrl(2)];
+    await expect
+        .poll(async () => [...((await galleryOnDevice(page)) ?? [])].sort(), {
+            timeout: 30000,
+            intervals: [300],
+            message: "l'entité garde des jetons dont les fichiers sont partis",
+        })
+        .toEqual(expected);
+    await expect
+        .poll(() => written.some((w) => w.method === "POST"), {
+            timeout: 90000,
+            intervals: [500],
+            message: "la création n'est pas partie",
+        })
+        .toBe(true);
+    for (const write of written) {
+        expect(
+            JSON.stringify(write.body?.galerie ?? null),
+            `un jeton est parti sur le fil (${write.method})`
+        ).not.toContain("gl-img:");
+    }
+});
+
+test("[editor] déplacer un point dont une photo est livrée et l'autre en attente garde l'URL livrée", async ({
+    page,
+    context,
+}) => {
+    // An off-network capture, the return of the network, one upload refused, then a move.
+    test.setTimeout(180_000);
+    /** @type {{ method: string, body: any }[]} */
+    const written = [];
+    let uploads = 0;
+    let offline = false;
+    let refused = 0;
+    await armLayer(page, { uploadEndpoint: true, displayed: true });
+    // The first photo lands, every later attempt is refused: one delivered, one still waiting.
+    await context.route("**/api/upload**", async (route) => {
+        uploads += 1;
+        if (uploads > 1) {
+            await route.fulfill({ status: 500, body: "" });
+            return;
+        }
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ url: uploadedUrl(1) }),
+        });
+    });
+    await context.route(`${ENDPOINT}**`, async (route) => {
+        if (offline) {
+            refused += 1;
+            await route.abort("internetdisconnected");
+            return;
+        }
+        const request = route.request();
+        const raw = request.postData();
+        written.push({ method: request.method(), body: raw ? JSON.parse(raw) : null });
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify([{ id: 7402, updated_at: "2026-10-04T12:00:00+00:00" }]),
+        });
+    });
+
+    await openCaptureForm(page);
+    await context.setOffline(true);
+    offline = true;
+    await attachToGallery(page);
+    await saveAndWaitQueued(page);
+    // The cut is held until the save's own attempt has been refused — see the first test.
+    await expect
+        .poll(() => refused, {
+            timeout: 15000,
+            message: "la création n'a pas été tentée, puis refusée, pendant la coupure",
+        })
+        .toBeGreaterThan(0);
+    offline = false;
+    await context.setOffline(false);
+
+    // --- the scenario: one URL and one token on the device, and the create gone ----------------
+    const expected = [uploadedUrl(1), "jeton"];
+    await expect
+        .poll(async () => shapeOf(await galleryOnDevice(page)), {
+            timeout: 60000,
+            intervals: [500],
+            message: "le scénario n'est pas réuni : une photo livrée, l'autre en attente",
+        })
+        .toEqual(expected);
+    await expect
+        .poll(() => written.some((w) => w.method === "POST"), {
+            timeout: 30000,
+            intervals: [500],
+            message: "la création n'est pas partie",
+        })
+        .toBe(true);
+
+    // --- the cause: the copy the layer holds ----------------------------------------------------
+    const held = await captureInLayer(page);
+    expect(held, "la couche ne tient pas l'entité créée").not.toBeNull();
+    // Soft: the headline below is the loss itself, and must be read even when this one fails.
+    expect
+        .soft(shapeOf(held?.galerie), "la copie de la couche garde le jeton d'une photo livrée")
+        .toEqual(expected);
+
+    // --- the subject: a move, built from that copy ----------------------------------------------
+    const before = written.length;
+    await moveCapture(page, /** @type {{ id: string, at: [number, number] }} */ (held));
+    await expect
+        .poll(() => written.length, {
+            timeout: 30000,
+            intervals: [500],
+            message: "le déplacement n'est pas parti",
+        })
+        .toBeGreaterThan(before);
+
+    // 🛑 THE HEADLINE. Read red on the bundle built before the fix: the move carried the two
+    // tokens back, and the URL of the delivered photo was gone from the server and the device.
+    expect(
+        shapeOf(written.at(-1)?.body?.galerie),
+        "le déplacement a renvoyé au serveur le jeton d'une photo livrée"
+    ).toEqual(expected);
+    expect(
+        shapeOf(await galleryOnDevice(page)),
+        "l'appareil a perdu l'URL de la photo livrée"
+    ).toEqual(expected);
+});
+
+// 🛑 THE SAME MOVE, THE ENTITY SELECTED BEFORE ITS PHOTO LANDS. The drawing engine works on a
+// copy taken when the entity is selected. A photo delivered during that selection updates the
+// stored entity and the layer's copy — not the engine's: validated afterwards, the move was
+// built from the attributes as they were at the selection, and sent the delivered photo's
+// token back. Measured on 06/10/2026 on the bundle built before the fix: the create left with
+// two tokens, the URL gone from the device and from the wire.
+//
+// ⚠️ THE WRITE SERVER STAYS DOWN WHILE THE PHOTO LANDS, and that is what makes the case: a push
+// of the selected entity ends its selection — measured too, the engine's copy was gone once the
+// create was acknowledged — so the defect needs the upload to succeed where the write does not.
+// Two servers, one of them unreachable: an ordinary afternoon.
+//
+// A move changes a geometry; its attributes are now read from the layer when it is validated.
+test("[editor] une photo livrée PENDANT la sélection : le déplacement garde son URL", async ({
+    page,
+    context,
+}) => {
+    test.setTimeout(300_000);
+    /** @type {{ method: string, body: any }[]} */
+    const written = [];
+    let uploads = 0;
+    // Whether the WRITE server is unreachable — the upload server never is, once released.
+    let writeDown = true;
+    let refused = 0;
+    // The uploads are HELD until the entity is selected: that is the scenario.
+    /** @type {() => void} */
+    let releaseUploads = () => {};
+    const uploadsHeld = new Promise((resolve) => {
+        releaseUploads = () => resolve(undefined);
+    });
+    await armLayer(page, { uploadEndpoint: true, displayed: true });
+    await context.route("**/api/upload**", async (route) => {
+        uploads += 1;
+        const n = uploads;
+        await uploadsHeld;
+        if (n > 1) {
+            await route.fulfill({ status: 500, body: "" });
+            return;
+        }
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ url: uploadedUrl(1) }),
+        });
+    });
+    await context.route(`${ENDPOINT}**`, async (route) => {
+        if (writeDown) {
+            refused += 1;
+            await route.abort("internetdisconnected");
+            return;
+        }
+        const request = route.request();
+        const raw = request.postData();
+        written.push({ method: request.method(), body: raw ? JSON.parse(raw) : null });
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify([{ id: 7403, updated_at: "2026-10-06T12:00:00+00:00" }]),
+        });
+    });
+
+    await openCaptureForm(page);
+    await context.setOffline(true);
+    await attachToGallery(page);
+    await saveAndWaitQueued(page);
+    await expect
+        .poll(() => refused, {
+            timeout: 15000,
+            message: "la création n'a pas été tentée, puis refusée, pendant la coupure",
+        })
+        .toBeGreaterThan(0);
+    // The device is back on the network; the write server is not.
+    await context.setOffline(false);
+
+    // --- the entity is selected while BOTH its photos are still tokens -------------------------
+    const held = await captureInLayer(page);
+    expect(held, "la couche ne tient pas l'entité créée").not.toBeNull();
+    expect(shapeOf(held?.galerie), "le scénario veut deux jetons à la sélection").toEqual([
+        "jeton",
+        "jeton",
+    ]);
+    const where = await selectCapture(
+        page,
+        /** @type {{ id: string, at: [number, number] }} */ (held)
+    );
+
+    // --- then one photo lands, the other is refused --------------------------------------------
+    releaseUploads();
+    const expected = [uploadedUrl(1), "jeton"];
+    await expect
+        .poll(async () => shapeOf(await galleryOnDevice(page)), {
+            timeout: 60000,
+            intervals: [500],
+            message: "le scénario n'est pas réuni : une photo livrée pendant la sélection",
+        })
+        .toEqual(expected);
+
+    // --- the subject: the move, validated after the delivery -----------------------------------
+    await dragAndCommit(page, where);
+    // The move is an edit of an entity not yet pushed: it joins its create in the queue.
+    await expect
+        .poll(async () => (await captureInLayer(page))?.at?.[0], {
+            timeout: 15000,
+            message: "le déplacement n'a pas été validé",
+        })
+        .not.toBe(held?.at[0]);
+    // 🛑 THE HEADLINE, on the device: read red before the fix — two tokens again.
+    expect(
+        shapeOf(await galleryOnDevice(page)),
+        "le déplacement a rendu à l'entité le jeton d'une photo livrée"
+    ).toEqual(expected);
+
+    // --- and on the wire, once the write server answers ----------------------------------------
+    // A create refused is deferred: about a minute, measured.
+    writeDown = false;
+    await expect
+        .poll(() => written.some((w) => w.method === "POST"), {
+            timeout: 150000,
+            intervals: [1000],
+            message: "la création n'est pas partie",
+        })
+        .toBe(true);
+    expect(
+        shapeOf(written.find((w) => w.method === "POST")?.body?.galerie),
+        "la création a porté au serveur le jeton d'une photo livrée"
+    ).toEqual(expected);
 });
 
 test("[editor] une photo de galerie en attente d'envoi a un aperçu", async ({ page, context }) => {

@@ -75,15 +75,21 @@ describe("config B2 — mapOptions.preserveDrawingBuffer (maplibre-adapter)", ()
         return captured;
     }
 
-    it("preserveDrawingBuffer:true → MapLibre map built with preserveDrawingBuffer:true", () => {
-        expect(init({ preserveDrawingBuffer: true }).preserveDrawingBuffer).toBe(true);
+    // 🛑 MAPLIBRE READS IT UNDER `canvasContextAttributes`, AND NOWHERE ELSE. The adapter passed
+    // `preserveDrawingBuffer` at the top level of the constructor's options, where the engine
+    // ignores it without a word — the option went in by a spread, which no excess-property
+    // check sees. Measured in a browser: asked for, the WebGL context was created without it.
+    it("preserveDrawingBuffer:true → MapLibre map built with canvasContextAttributes.preserveDrawingBuffer", () => {
+        const built = init({ preserveDrawingBuffer: true });
+        expect(built.canvasContextAttributes).toEqual({ preserveDrawingBuffer: true });
+        expect("preserveDrawingBuffer" in built).toBe(false);
     });
 
     it("preserveDrawingBuffer:false → option omitted (MapLibre default)", () => {
-        expect(init({ preserveDrawingBuffer: false }).preserveDrawingBuffer).toBeUndefined();
+        expect(init({ preserveDrawingBuffer: false }).canvasContextAttributes).toBeUndefined();
     });
 
     it("preserveDrawingBuffer absent → option omitted", () => {
-        expect(init({}).preserveDrawingBuffer).toBeUndefined();
+        expect(init({}).canvasContextAttributes).toBeUndefined();
     });
 });

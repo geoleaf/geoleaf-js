@@ -174,22 +174,23 @@ qu'on cite, jamais le chiffre qu'il a rendu un jour.
 
 ## 5. Ce qui garde quoi — et ce que rien ne garde
 
-| Objet gardé                                              | Par quoi                                               |
-| -------------------------------------------------------- | ------------------------------------------------------ |
-| API fantômes et noms de paquet périmés dans les exemples | `validate-docs-examples` — corpus `productDocsFiles()` |
-| Compilation des exemples `ts` et des `@example`          | `typecheck-docs-examples` — **même corpus**            |
-| Clés de config d'un exemple JSON absentes du schéma      | `check-doc-config-examples` — **même corpus**          |
-| Défaut annoncé par le guide intégrateur ↔ l'inventaire   | `check-doc-config-defaults` — **concordance** seule    |
-| Liens markdown morts                                     | `check-dead-links` — 10 scopes, 3 avec plancher        |
-| Chemins cités en backticks par `docs/specs/`             | `SPECS-PATHS`, baseline décroissante                   |
-| Chemins cités en backticks par `docs/guides/`            | `GUIDES-PATHS` (11/08/2026), baseline décroissante     |
-| Chemins cités en backticks par `_docs_projet/vision/`    | `VISION-PATHS` (17/08/2026), baseline décroissante     |
-| Table `## Configuration` d'une fiche ↔ le `configSchema` | `doc-capability-config.guard.test.js`, **deux sens**   |
-| Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`     | `doc-plugin-manifest.guard.test.js`                    |
-| Liens morts du site                                      | `docs:build` (`ignoreDeadLinks: false`)                |
-| Alertes GitHub dans un README **publié** sur npm         | `NPM-README` (`verify-npm-readme-render.cjs`)          |
-| Épingles CDN et release annoncée ↔ version SERVIE        | `CDN-PINS` — à la publication de la doc                |
-| Doc EN LIGNE ↔ version servie par npm                    | `DOCS-LIVE` — dans `release:check`, l'autre sens       |
+| Objet gardé                                                                                      | Par quoi                                               |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| API fantômes et noms de paquet périmés dans les exemples                                         | `validate-docs-examples` — corpus `productDocsFiles()` |
+| Compilation des exemples `ts`, `js` et des `@example`                                            | `typecheck-docs-examples` — **même corpus**            |
+| Clés de config d'un exemple JSON absentes du schéma                                              | `check-doc-config-examples` — **même corpus**          |
+| Défaut annoncé par le guide intégrateur ↔ l'inventaire                                           | `check-doc-config-defaults` — **concordance** seule    |
+| Liens markdown morts                                                                             | `check-dead-links` — 10 scopes, 3 avec plancher        |
+| Chemins cités en backticks par `docs/specs/`                                                     | `SPECS-PATHS`, baseline décroissante                   |
+| Chemins cités en backticks par `docs/guides/`                                                    | `GUIDES-PATHS` (11/08/2026), baseline décroissante     |
+| Chemins cités en backticks par `_docs_projet/vision/`                                            | `VISION-PATHS` (17/08/2026), baseline décroissante     |
+| Table `## Configuration` d'une fiche ↔ le `configSchema`                                         | `doc-capability-config.guard.test.js`, **deux sens**   |
+| Lignes `modules.*` de l'inventaire ↔ `configSchema` des capacités, table de défauts des greffons | la même garde                                          |
+| Table `## Manifeste` d'une fiche plugin ↔ `entry.ts`                                             | `doc-plugin-manifest.guard.test.js`                    |
+| Liens morts du site                                                                              | `docs:build` (`ignoreDeadLinks: false`)                |
+| Alertes GitHub dans un README **publié** sur npm                                                 | `NPM-README` (`verify-npm-readme-render.cjs`)          |
+| Épingles CDN et release annoncée ↔ version SERVIE                                                | `CDN-PINS` — à la publication de la doc                |
+| Doc EN LIGNE ↔ version servie par npm                                                            | `DOCS-LIVE` — dans `release:check`, l'autre sens       |
 
 ⚠️ **Le corpus des trois premières est `productDocsFiles()`** (`scripts/lib/tsdoc-examples.cjs`) :
 **un seul corpus, trois consommateurs**. L'élargir les élargit toutes les trois — c'est voulu, et

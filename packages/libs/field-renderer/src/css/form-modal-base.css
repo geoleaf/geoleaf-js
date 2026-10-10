@@ -15,47 +15,16 @@
      --gl-shadow-medium          panel shadow
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.gl-form-modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: gl-modal-fade-in 0.15s ease;
-    touch-action: none;
-}
+/* 🛑 THE OVERLAY, THE PANEL, THE FOOTER AND THE BUTTONS ARE NOT STYLED HERE. Their rules live
+   in `@geoleaf/host-runtime` — `modal-shell.lazy.css` and `confirm-dialog.lazy.css` — which
+   `ui/host-sheets.ts` adopts BEFORE this sheet. This file used to carry a copy of those
+   eighteen rules, "kept equal" by nothing; it now only holds what the FORM adds.
 
-.gl-form-modal-panel {
-    position: relative;
-    width: 100%;
-    max-height: 90vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    /* Follows the active GeoLeaf theme */
-    background: var(--gl-color-bg-surface, #ffffff);
-    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
-    /* Modal container corners are intentionally larger than the shared
-       --gl-border-radius (6px, buttons/inputs) — kept as a literal so the
-       PLUGINS S10 token realignment does not shrink them. */
-    border-radius: 10px;
-    box-shadow: var(--gl-shadow-medium, 0 4px 16px rgba(15, 23, 42, 0.18));
-    animation: gl-modal-fade-in 0.18s ease;
-    font-family:
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-    color: var(--gl-color-text-main, #0f172a);
-}
-
-/* The class is doubled on purpose. `@geoleaf/host-runtime` adopts its own copy of
-   `.gl-form-modal-panel` (`position: relative`) when its first dialog opens — AFTER this sheet —
-   and a rule of equal specificity loses to the later sheet: from the first confirmation on, the
-   drawer let go of the bottom of the screen. (0,2,0) wins whatever the adoption order. */
+   ⚠️ WHAT THE FORM ADDS ON THESE CLASSES IS WRITTEN AT (0,2,0). Every bundle carries its own
+   copy of host-runtime and adopts its sheets at its first dialog — which can be AFTER this
+   sheet. A rule that merely ties with them then loses: a drawer once let go of the bottom of
+   the screen that way, and the close button turned square. A doubled class wins whatever the
+   order the sheets were adopted in. */
 .gl-form-modal-panel.gl-form-modal-panel--drawer {
     position: fixed;
     bottom: 0;
@@ -133,107 +102,23 @@
     padding: 16px 14px;
 }
 
-.gl-form-modal__footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    padding: 10px 14px 12px;
-    border-top: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.1));
-    flex-shrink: 0;
-}
-
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 
-/* PLUGINS S10: this base was named `.gl-editor-action-btn` — an editor-prefixed
-   class that plugin-editor ALSO defined, differently (a 44×44 round icon button
-   for its floating menu). Both stylesheets ship their own copy, so which one won
-   depended on bundle load order. Renamed to the BEM base of its own modifiers
-   (`__btn-cancel/save/delete`, `--close`); plugin-editor keeps `gl-editor-action-btn`
-   for its floating menu, and its modal buttons adopt this base. */
-.gl-form-modal__btn {
-    appearance: none;
-    background: none;
-    border: none;
-    border-radius: var(--gl-border-radius, 6px);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    transition:
-        background 0.15s,
-        opacity 0.15s;
-    font-family: inherit;
-    color: var(--gl-color-text-main, #0f172a);
-}
-
+/* The base `.gl-form-modal__btn` and its cancel / save / delete variants come from
+   host-runtime's dialog sheet (see the head of this file). Here: the icon, the close button
+   and the busy state, which only the form has. */
 .gl-form-modal__btn svg {
     width: 18px;
     height: 18px;
     pointer-events: none;
 }
 
-.gl-form-modal__btn:hover:not(:disabled),
-.gl-form-modal__btn:focus-visible:not(:disabled) {
-    background: var(--gl-color-bg-surface-muted, #f3f4f6);
-    outline: none;
-}
-
-.gl-form-modal__btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.gl-form-modal__btn--close {
+/* Doubled: it overrides the base's radius and colour, and must keep doing so. */
+.gl-form-modal__btn.gl-form-modal__btn--close {
     width: 32px;
     height: 32px;
     border-radius: 50%;
     color: var(--gl-color-text-muted, #6b7280);
-}
-
-.gl-form-modal__btn-cancel,
-.gl-form-modal__btn-save,
-.gl-form-modal__btn-delete {
-    width: auto;
-    padding: 0 18px;
-    height: 36px;
-    font-size: var(--gl-font-size-base, 0.875rem);
-    font-family: inherit;
-    border-radius: var(--gl-border-radius, 6px);
-}
-
-.gl-form-modal__btn-cancel {
-    color: var(--gl-color-text-muted, #6b7280);
-    border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
-}
-
-.gl-form-modal__btn-cancel:hover:not(:disabled) {
-    background: var(--gl-color-bg-surface-muted, #f3f4f6);
-}
-
-/*
- * `color` is the per-theme token, not a literal. Hard-coding #ffffff put white on the
- * brand orange (#f97316) at ~2.6:1, under the 4.5:1 of WCAG AA — the deviation the E2E
- * a11y allowlist used to carry. `--gl-color-accent-contrast` is what every other accent
- * surface in the repo already reads (ui-base, theme-selector, geolocation, plugin-table,
- * connector), and each theme sets it to whatever is readable on ITS accent: #020617 on
- * the default orange (~8:1), #ffffff on the dark theme's deeper #b75708 (~5.6:1).
- */
-.gl-form-modal__btn-save {
-    background: var(--gl-color-accent, #f97316);
-    color: var(--gl-color-accent-contrast, #020617);
-    border: 1px solid var(--gl-color-accent, #f97316);
-    font-weight: 500;
-}
-
-.gl-form-modal__btn-save:hover:not(:disabled) {
-    background: var(--gl-color-accent, #f97316);
-    opacity: 0.88;
-}
-
-.gl-form-modal__btn-save:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
 }
 
 /* Busy state while persistence (onSave) is pending — inline spinner. */
@@ -262,43 +147,6 @@
     }
 }
 
-.gl-form-modal__btn-delete {
-    color: #dc2626;
-    border: 1px solid rgba(220, 38, 38, 0.35);
-    /* Pushed to the far left of the flex-end footer: an irreversible action must
-       not sit flush against Save, where a mis-click costs the record. */
-    margin-right: auto;
-}
-
-.gl-form-modal__btn-delete:hover:not(:disabled) {
-    background: rgba(220, 38, 38, 0.08);
-}
-
-/* ── Delete confirm dialog ── */
-
-.gl-form-modal__delete-title {
-    font-size: var(--gl-font-size-base, 0.875rem);
-    font-weight: 600;
-    color: #dc2626;
-    margin: 0 0 8px;
-    font-family: inherit;
-}
-
-.gl-form-modal__delete-body {
-    font-size: var(--gl-font-size-sm, 0.78rem);
-    color: var(--gl-color-text-muted, #6b7280);
-    margin: 0 0 16px;
-    line-height: 1.5;
-}
-
-/* Compact panel for the styled confirm dialog (replaces window.confirm). */
-.gl-form-modal-panel.gl-form-modal-confirm {
-    width: min(420px, calc(100vw - 32px));
-    max-width: 420px;
-    padding: 20px;
-    gap: 4px;
-}
-
 /* ═══════════════════════════════════════════════════════════════════════════
    Form field shared styles — theme-aware, no colour overrides needed.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -320,7 +168,7 @@
 
 .gl-form-label[data-required="true"]::after {
     content: " *";
-    color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
 }
 
 .gl-form-input {
@@ -341,7 +189,7 @@
 
 .gl-form-input:focus {
     outline: none;
-    border-color: var(--gl-color-accent, #f97316);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
     box-shadow: 0 0 0 3px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
 }
 
@@ -479,15 +327,7 @@
 
 /* ── Animations ── */
 
-@keyframes gl-modal-fade-in {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
-}
-
+/* `gl-modal-fade-in`, which the overlay and the panel play, travels with their rules. */
 @keyframes gl-modal-slide-up {
     from {
         transform: translateY(24px);
@@ -561,7 +401,7 @@
 
 .gl-form-image__drop-zone:hover,
 .gl-form-image__drop-zone:focus-visible {
-    border-color: var(--gl-color-accent, #f97316);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
     background: var(--gl-color-bg-surface-muted, #f9fafb);
     outline: none;
 }

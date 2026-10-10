@@ -1,5 +1,5 @@
 /**
- * T10.3.5+6 — themes-branches-deep.test.js
+ * themes-branches-deep.test.js
  * Covers: src/kernel/themes/theme-loader.ts + theme-cache.ts
  * Strategy: await import() + mock Log, FetchHelper, GeoLeaf.Storage.DB
  */
@@ -15,7 +15,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
 
 // ─── ThemeLoader tests ────────────────────────────────────────────────────────
 
-describe("ThemeLoader (T10.3.5)", () => {
+describe("ThemeLoader", () => {
     let ThemeLoader;
     let FetchHelperMock;
 
@@ -204,7 +204,7 @@ describe("ThemeLoader (T10.3.5)", () => {
 
 // ─── ThemeCache tests ─────────────────────────────────────────────────────────
 
-describe("ThemeCache (T10.3.6)", () => {
+describe("ThemeCache", () => {
     let ThemeCache;
     let mockDB;
 

@@ -115,7 +115,7 @@ afterAll(() => {
     globalThis.MutationObserver = NativeMutationObserver;
 });
 
-describe("Core.destroy() démonte le panneau desktop (tâches 2.9 / 2.8)", () => {
+describe("Core.destroy() démonte le panneau desktop", () => {
     it("🛑 `#gl-right-panel` a disparu du DOM après Core.destroy()", () => {
         bootPanel("map-teardown-1");
         expect(document.getElementById("gl-right-panel")).not.toBeNull();

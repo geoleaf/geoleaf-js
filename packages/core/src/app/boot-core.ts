@@ -591,7 +591,7 @@ export async function bootWithPreset(
     // Every in-core capability is anchored by its self-sufficient
     // `capabilities/<cap>/install.ts` and composed here by a single 2-pass loop over the
     // active preset manifest — the dispersed per-capability register / gate blocks that
-    // used to live here are gone (S2 Lot 8 closed the migration: 17/17).
+    // used to live here are gone (the migration is closed: 17/17).
     //   Pass 1 — declaration (introspection + gate) + facade globals (`registerGlobals`).
     //   Pass 2 — the gated lifecycle module of every installer that owns one.
     registerPresetDeclarations(

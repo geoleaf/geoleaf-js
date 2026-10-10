@@ -118,7 +118,7 @@
             "severity": null,
             "description": "Câblage de boot : crée le conteneur, initialise le renderer, l'enregistre auprès de la primitive `notify()` et branche les toasts de chargement, de profil et de thème",
             "confidence": "haute",
-            "rationale": "253 LOC, 1 export (`ToastRendererLifecycle`), 1 importeur (`module.ts`) ; absorbe l'ancien `app/init-notifications.ts` (S7), ce que la frontière `capabilities/ ⊄ app/` impose depuis R.10 (INV-CAPABILITY-MODULE)."
+            "rationale": "253 LOC, 1 export (`ToastRendererLifecycle`), 1 importeur (`module.ts`) ; absorbe l'ancien `app/init-notifications.ts` (S7), ce que la frontière `capabilities/ ⊄ app/` impose (INV-CAPABILITY-MODULE)."
         },
         "packages/core/src/capabilities/toast-renderer/module.ts": {
             "kind": "file",
@@ -132,7 +132,7 @@
             "severity": null,
             "description": "Wrapper `ICoreModule` du renderer, déclaré dépendant de `config` seul — jamais de `ui` (interblocage), plus de `geojson` non plus",
             "confidence": "haute",
-            "rationale": "64 LOC, exporte `ToastRendererModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les 13 wrappers de boot vivent en `capabilities/<id>/module.ts` depuis R.10, zéro exception — proposer un retour dans `app/boot-modules/` contredirait la gate eslint. ⚠️ Sa dépendance a été `geojson` jusqu'au 28/07/2026 : astuce d'ordonnancement, pas besoin, et elle plaçait le montage du renderer derrière l'attente de la phase 1 de chargement des couches."
+            "rationale": "64 LOC, exporte `ToastRendererModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les 13 wrappers de boot vivent en `capabilities/<id>/module.ts`, zéro exception — proposer un retour dans `app/boot-modules/` contredirait la gate eslint. ⚠️ Sa dépendance a été `geojson` jusqu'au 28/07/2026 : astuce d'ordonnancement, pas besoin, et elle plaçait le montage du renderer derrière l'attente de la phase 1 de chargement des couches."
         },
         "packages/core/src/capabilities/toast-renderer/public-api.ts": {
             "kind": "file",
@@ -482,7 +482,7 @@
             "severity": null,
             "description": "Wrapper `ICoreModule` de la capacité, déclaré dépendant de `geojson`, déléguant tout au cycle de vie",
             "confidence": "haute",
-            "rationale": "43 LOC, exporte `LabelsModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les wrappers de boot des capacités vivent chez elles depuis R.10, zéro exception."
+            "rationale": "43 LOC, exporte `LabelsModule`. INV-CAPABILITY-MODULE (T6 §3.2) : les wrappers de boot des capacités vivent chez elles, zéro exception."
         },
         "packages/core/src/capabilities/labels/public-api.ts": {
             "kind": "file",

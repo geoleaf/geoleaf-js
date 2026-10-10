@@ -4,8 +4,8 @@ title: position-share — la position du terrain qui remonte, et celle des autre
 plugin_id: position-share
 package: "@geoleaf-plugins/position-share"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e027eef88
-date: 4 octobre 2026
+verifie_contre: 7b846fbe3
+date: 5 octobre 2026
 ---
 
 # position-share — la position du terrain qui remonte, et celle des autres qui s'affiche
@@ -301,7 +301,7 @@ lui. Gardé par `src/__tests__/lifecycle.test.ts` et `e2e/75-remount-plugins.spe
 
 | Frontière                     | Ce qu'elle interdit                                                                                                                             |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `no-plugin-in-core`           | Le core n'a **aucune** référence à ce paquet — seulement `PositionShare?: unknown` déclaré                                                      |
+| `no-plugin-in-core`           | Le core n'a **aucune** référence à ce paquet — seulement `PositionShare` déclaré, typé par le registre que le greffon augmente                  |
 | `PCB-01`                      | Aucun import profond dans `packages/core/src/` — la garde de distance est réimplémentée sur place plutôt qu'importée du core                    |
 | Aucun import statique du core | Le paquet n'importe **aucune valeur** de `@geoleaf/core` ; les types seuls sont permis                                                          |
 | `PSF-01`                      | Ne jamais re-définir un symbole canonique de `@geoleaf/host-runtime` — les primitives HTTP viennent de `packages/libs/host-runtime/src/http.ts` |

@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CORE_SRC = path.resolve(__dirname, "../../src");
 
-/** Recursively collect source files under `dir` (skip tests, node_modules, .d.ts). */
+/** Recursively collect source files under `dir` (skip tests, node_modules,.d.ts). */
 function collectSources(dir) {
     const out = [];
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -174,7 +174,7 @@ const EXTRACTED_FEATURES = [
         // Tokens target the removed legacy surface only — NOT the kept capability
         // (`getCategories(ref)` on public-api.ts / `GeoLeaf.Taxonomy.getCategories`)
         // nor legend-api's own `_loadTaxonomy` (reads `modules.taxonomy`). The legacy
-        // `getIconsConfig` + profile-loader `_loadTaxonomy` are removed in Lot 2 — see
+        // `getIconsConfig` + profile-loader `_loadTaxonomy` were removed on 2026-07-11 — see
         // the `taxonomy-legacy` spec below.
         feature: "taxonomy-unification",
         paths: ["kernel/config/taxonomy.ts", "capabilities/filter/taxonomy-source.ts"],
@@ -249,7 +249,7 @@ const EXTRACTED_FEATURES = [
         allow: [/modules\.route/, /export \{ Route \} removed/],
     },
     {
-        // Lot 2 (2026-07-11): removal of the LEGACY taxonomy path deferred at S10 F5.
+        // 2026-07-11: removal of the LEGACY taxonomy path deferred at S10 F5.
         // Gone: the separate `config/core/taxonomy.json` file (profile data, not src),
         // `Config.getIconsConfig` / `ProfileManager.getIconsConfig`, the profile-loader
         // `_loadTaxonomy` thread + `Files.taxonomyFile`, `_applyTaxonomyCategories` +
@@ -294,7 +294,7 @@ describe("test-garde — extracted features are absent from packages/core/src", 
     // directory would therefore turn this guard GREEN while it checks nothing —
     // the one failure mode a `resolve()` fix cannot prevent. `readdirSync` throws
     // ENOENT on a path that does not exist at all, so only this covers the rest.
-    // The floor is deliberately far below the real count (846 .ts in core at the time
+    // The floor is deliberately far below the real count (846.ts in core at the time
     // of writing): it must catch "scanned nothing", not track the codebase size.
     it("the scan actually reached the core sources", () => {
         expect(files.length).toBeGreaterThan(200);

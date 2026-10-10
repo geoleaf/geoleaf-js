@@ -6,7 +6,7 @@
  */
 
 /**
- * Capability installer for the in-core `filter` capability — presets build (S2 Lot 5).
+ * Capability installer for the in-core `filter` capability — presets build.
  *
  * Single self-sufficient anchor: importing THIS file is the only thing a preset does to
  * embark Filter. Carries the layer-B write moved out of `globals.api.ts`
@@ -31,7 +31,7 @@ import "./css/filter-pill-search.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { FILTER_CAPABILITY } from "./filter-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { FilterModule } from "./module.js";
 import { Filter } from "../../api/geoleaf.filter.js";

@@ -6,7 +6,7 @@
  */
 
 /**
- * Capability installer for the in-core `offline` capability — presets build (S2 Lot 7).
+ * Capability installer for the in-core `offline` capability — presets build.
  *
  * Single self-sufficient anchor: importing THIS file is the only thing a preset does to
  * embark Offline. Carries the layer-B write moved out of `globals.api.ts`.

@@ -217,6 +217,31 @@ GeoLeaf.plugins.isLoaded("hello"); // → true
 GeoLeaf.Hello.greet("World"); // → "Hello, World! From GeoLeaf Hello plugin."
 ```
 
+### Typing the namespace
+
+For a TypeScript application the line above does not compile as it stands: `GeoLeaf` is typed,
+and `Hello` is not one of its members. The plugin says so itself, in its entry module — a
+`declare global` there is emitted into the plugin's published declarations, and applies as soon
+as the application imports the package:
+
+```ts
+declare global {
+    interface GeoLeafGlobal {
+        /** The API `@my-scope/hello-plugin` mounts. */
+        Hello?: { greet(name: string): string };
+    }
+}
+
+GeoLeaf?.Hello?.greet("World");
+```
+
+This works because `Hello` is a NEW name. The namespaces of the plugins published with GeoLeaf —
+`GeoLeaf.Table`, `GeoLeaf.Editor` and the others — are declared by the core, and a declared
+member cannot be redeclared with another type. Those plugins add their API to a registry
+instead, `GeoLeafPluginApis`, which the core's declarations read: installing
+`@geoleaf-plugins/table` is what types `GeoLeaf.Table`, and without the plugin the namespace is
+`unknown`.
+
 ---
 
 ## Load order

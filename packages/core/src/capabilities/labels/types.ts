@@ -20,21 +20,19 @@
 
 // ─── Label style + config ───────────────────────────────────────────────────
 
-/** Font sub-config of a label style. */
+/**
+ * Font sub-config of a label style. The size is all there is: the font stack — family,
+ * weight, slant — comes from the map style the engine has loaded, not from a profile.
+ */
 interface LabelFontConfig {
-    family?: string;
     sizePt?: number;
-    weight?: number;
-    bold?: boolean;
-    italic?: boolean;
     [key: string]: unknown;
 }
 
-/** Text-buffer (halo) sub-config of a label style. */
+/** Text-buffer (halo) sub-config of a label style. A halo has a colour and a width, nothing else. */
 interface LabelBufferConfig {
     enabled?: boolean;
     color?: string;
-    opacity?: number;
     sizePx?: number;
     [key: string]: unknown;
 }
@@ -89,7 +87,6 @@ export interface LabelStyleLike {
     color?: string;
     opacity?: number;
     buffer?: LabelBufferConfig;
-    background?: { enabled?: boolean; [key: string]: unknown };
     offset?: LabelOffsetConfig;
     textTransform?: string;
     visibleByDefault?: boolean;
@@ -132,7 +129,6 @@ export interface LabelUserConfig {
     color?: string;
     opacity?: number;
     buffer?: LabelBufferConfig;
-    background?: { enabled?: boolean; [key: string]: unknown };
     offset?: LabelOffsetConfig;
     minZoom?: number;
     maxZoom?: number;

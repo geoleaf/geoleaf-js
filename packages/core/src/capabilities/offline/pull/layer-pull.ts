@@ -17,8 +17,8 @@
  *
  * ⚠️ **It consumes the source PAGE BY PAGE since R9, and no longer as one array.** The
  * previous shape held the whole collection twice — once as the loader's accumulator, once
- * as store records — and wrote it in a SINGLE IndexedDB transaction: on the 30 000-entity
- * target of Lot 2, that is roughly 90 000 sequential requests in one block, with no
+ * as store records — and wrote it in a SINGLE IndexedDB transaction: on a 30 000-entity
+ * layer, that is roughly 90 000 sequential requests in one block, with no
  * progress and nothing to show for an interruption. One OGC page is now one batch and one
  * transaction; `DEFAULT_LIMIT` is 1 000, so the slice size is the source's own page size
  * rather than a constant invented here.
@@ -69,7 +69,8 @@
 
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
-import { coreProfileLayerConfig } from "../config-seam.js";
+import { coreConfigGet, coreProfileLayerConfig } from "../config-seam.js";
+import { parseDataOrigins, pullVerdict } from "../data-origins.js";
 import { readPullState, writePullState, type LayerPullState } from "../report/pull-state.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 import type { GeoLeafOfflinePullProgressDetail } from "../../../contracts/event-bus.contract.js";
@@ -83,6 +84,11 @@ type PullRefusal =
     | "layerUnknown"
     /** The layer declares no `offline.source` — it is not pullable. */
     | "noSource"
+    /**
+     * The profile declares data origins (`modules.offline.dataOrigins`) and the source's is
+     * neither one of them nor the page's own. Declaring it is the remedy.
+     */
+    | "originUndeclared"
     /** The storage engine is not wired (`modules.offline` disabled, or not ready yet). */
     | "engineUnavailable"
     /** The source answered with an error, or did not answer. */
@@ -134,6 +140,12 @@ interface LayerPullReport {
      * itself partial.
      */
     readonly aborted: boolean;
+    /**
+     * True when the source's next page named an origin the profile does not declare: that
+     * page was not asked for, and the batch is PARTIAL — nothing is removed, no mark is left.
+     * Only in a profile that declares its data origins (`pullVerdict`).
+     */
+    readonly cursorRefused: boolean;
     /**
      * How the source was asked. `"delta"` — only what changed since the last complete pull,
      * the layer declaring `offline.source.delta`; `"full"` — the whole collection (or extent),
@@ -268,6 +280,34 @@ function declaredDelta(source: NonNullable<OfflineDeclaration["source"]>): strin
 }
 
 /**
+ * True when the origin rule refuses the layer's source — and it says so, naming the origin.
+ *
+ * The rule is `pullVerdict` (`../data-origins.ts`): it bites only in a profile that declares
+ * data origins. It is applied HERE, before the first request, so every pull obeys it — the
+ * deliberate download and a direct `pullLayer()` alike — and again on each cursor the source
+ * renders for its next page: the first URL is the profile's word, the following ones are the
+ * server's.
+ *
+ * @param layerId - Layer being pulled, for the warning.
+ * @param url - Its `offline.source.url`, or the cursor to a following page.
+ * @returns Whether that URL must not be requested.
+ */
+function sourceOriginRefused(layerId: string, url: string): boolean {
+    const { allowed, origin } = pullVerdict(
+        url,
+        parseDataOrigins(coreConfigGet("modules.offline.dataOrigins", [])),
+        typeof location === "undefined" ? undefined : location.href
+    );
+    if (allowed) return false;
+    Log.warn(
+        `[Offline.Pull] "${layerId}": nothing pulled from ${origin} — the profile declares its ` +
+            "data origins and this one is not among them. Declare it in " +
+            "modules.offline.dataOrigins."
+    );
+    return true;
+}
+
+/**
  * Gathers the layer declaration and the write seam, or names what is missing.
  *
  * Extracted from {@link pullLayer} for a mechanical reason — the function exceeded the
@@ -291,8 +331,9 @@ function resolvePullPlan(layerId: string): PullPlan {
     const offline = config.offline as OfflineDeclaration | undefined;
     const source = offline?.source;
     if (!source?.url) return { ...inert, refused: "noSource" };
+    if (sourceOriginRefused(layerId, source.url)) return { ...inert, refused: "originUndeclared" };
 
-    const db = StorageContract.DB as FeatureWriter | null;
+    const db: FeatureWriter | null = StorageContract.DB;
     if (!db?.putLayerFeatures) return { ...inert, refused: "engineUnavailable" };
 
     const maxFeatures = typeof offline?.maxFeatures === "number" ? offline.maxFeatures : undefined;
@@ -631,6 +672,41 @@ async function recordFailure(ctx: RunContext, error: unknown): Promise<void> {
 }
 
 /**
+ * Has the layer DRAWN from the store read it again, now that a run wrote it.
+ *
+ * 🛑 A layer declaring `offline.enabled` displays its store, and reads it once — when it
+ * loads. Without this, a download changed the device and not the map: an entity the server
+ * had deleted stayed drawn, an edited one kept its old drawing, until the page was reloaded.
+ *
+ * Asked after EVERY run that reached the source, a run that wrote nothing included: a first
+ * pull that concludes on an empty collection changes what the store answers — « empty »,
+ * where it answered « never pulled » — and a reload would show an empty layer, not the
+ * display file. What the loader does with each case is its own business
+ * (`rereadOfflineLayer`): it leaves alone a layer that is not displayed.
+ *
+ * ⚠️ Never throws. A display that failed to follow must not turn a pull that succeeded into
+ * one that failed — the same reason the truncation notice sits outside the `try`.
+ *
+ * @param reread - The loader's re-read, from the barrel the pull imported; absent when that
+ *   import itself failed.
+ * @param layerId - The layer the run wrote.
+ */
+async function refreshDisplayedLayer(
+    reread: ((layerId: string) => Promise<boolean>) | undefined,
+    layerId: string
+): Promise<void> {
+    if (!reread) return;
+    try {
+        await reread(layerId);
+    } catch (error) {
+        Log.warn(
+            `[Offline.Pull] "${layerId}" — la couche affichée n'a pas été relue après le rapatriement :`,
+            error
+        );
+    }
+}
+
+/**
  * Pulls a declared layer, bounded by extent and cap, into the `features` store.
  *
  * Does not throw: every outcome is a report. An unreachable source, an unknown layer
@@ -646,6 +722,9 @@ async function recordFailure(ctx: RunContext, error: unknown): Promise<void> {
  * same source and extent has left a mark: only `datetime=<mark>/..` is asked, tombstones leave
  * the device, and nothing is swept. Otherwise the pull is complete, and converges by removing
  * what it did not return.
+ *
+ * When the layer is displayed, it is given what the store now holds as the run ends: the map
+ * follows the pull without a reload, and `geoleaf:layer:updated` announces it.
  *
  * @param layerId - Identifier of the layer to pull.
  * @param options - Extent and abort signal.
@@ -669,6 +748,7 @@ export async function pullLayer(
         skipped: 0,
         capped: false,
         aborted: false,
+        cursorRefused: false,
     };
 
     const plan = resolvePullPlan(layerId);
@@ -701,10 +781,15 @@ export async function pullLayer(
             (page) => consumePage(ctx, page),
             options.signal,
             options.bbox,
-            start === null ? undefined : `${start}/..`
+            start === null ? undefined : `${start}/..`,
+            // The rule judged `offline.source.url` once; a cursor is the server's word, and
+            // a declared server could continue the pull on an origin that is not.
+            (cursor) => !sourceOriginRefused(layerId, cursor)
         );
     } catch (error) {
         await recordFailure(ctx, error);
+        // The pages that landed before the failure are in the store: the layer shows them.
+        await refreshDisplayedLayer(geojson?.rereadOfflineLayer, layerId);
         return {
             ...nothing,
             written: run.written,
@@ -742,7 +827,11 @@ export async function pullLayer(
 
     // A delta answers only what changed: what it did not name has simply not changed, and
     // sweeping on it would empty the layer.
-    if (mode === "full" && !capped && !outcome.aborted) {
+    //
+    // 🛑 Nor on a run stopped at a refused cursor: its answer is the pages BEFORE the
+    // refusal, and reading it as the whole collection would remove everything after them.
+    const cursorRefused = outcome.cursorRefused === true;
+    if (mode === "full" && !capped && !outcome.aborted && !cursorRefused) {
         run.removed += await sweepAbsent(db, layerId, run.seen);
     }
     if (run.markUnreadable) {
@@ -756,12 +845,16 @@ export async function pullLayer(
         db,
         layerId,
         closingState(ctx, {
-            aborted: outcome.aborted,
+            // Partial for the same reason an abort is: the starting point is left as found.
+            aborted: outcome.aborted || cursorRefused,
             capped,
             mark: nextMark(plan, run, start),
             scope,
         })
     );
+
+    // After the state is written: what the store answers for an empty layer depends on it.
+    await refreshDisplayedLayer(geojson.rereadOfflineLayer, layerId);
 
     return {
         layerId,
@@ -776,6 +869,7 @@ export async function pullLayer(
         skipped: run.skipped,
         capped,
         aborted: outcome.aborted,
+        cursorRefused,
         mode,
         refused: null,
     };

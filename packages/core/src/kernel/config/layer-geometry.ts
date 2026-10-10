@@ -107,6 +107,34 @@ export function geometryKindToGeoJSONTypes(kind: unknown): Set<string> {
     return out;
 }
 
+/** The family each row of {@link _GEOMETRY_FAMILIES} is, in the row's order. */
+const _FAMILY_NAMES = ["point", "line", "polygon"] as const;
+
+/**
+ * The single family a declared kind names: point, line or polygon.
+ *
+ * For a reader that draws ONE thing per layer — a legend symbol — and so needs the family
+ * rather than the encodings. Both vocabularies are read: `multipolygon`, `fill-extrusion` and
+ * `MultiPolygon` are all polygons.
+ *
+ * `null` for a kind that names no single family — `mixed`, which a vector-tile layer may
+ * declare, or a token nobody defined. The caller owns what that means for it; a guess here
+ * would be indistinguishable from a declaration.
+ *
+ * @param kind - One declared value, in either vocabulary.
+ * @returns The family, or `null`.
+ * @example
+ * geometryFamily("multipolygon");  // "polygon"
+ * geometryFamily("LineString");    // "line"
+ * geometryFamily("mixed");         // null
+ */
+export function geometryFamily(kind: unknown): (typeof _FAMILY_NAMES)[number] | null {
+    if (typeof kind !== "string" || kind.length === 0) return null;
+    const lower = kind.toLowerCase();
+    const row = _GEOMETRY_FAMILIES.findIndex(([kinds]) => kinds.includes(lower));
+    return _FAMILY_NAMES[row] ?? null;
+}
+
 /**
  * The minimal shape this helper reads — any layer config satisfies it.
  *

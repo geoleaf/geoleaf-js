@@ -281,6 +281,67 @@ describe("une entité supprimée côté serveur quitte l'appareil", () => {
         expect(await readAll("features")).toHaveLength(5);
     });
 
+    test("🛑 un curseur vers une origine NON DÉCLARÉE n'est pas suivi — et la passe ne retire rien", async () => {
+        // The rule judged `offline.source.url`; the pages after the first are asked at the URL
+        // the SERVER renders. A declared server could continue the pull anywhere — and a walk
+        // stopped there must not be read as the whole collection: the sweep would remove every
+        // entity the unread pages hold.
+        serveSource([row(1), row(2), row(3), row(4), row(5)], 2);
+        await pullLayer("sites");
+
+        (globalThis as any).GeoLeaf.Config.get = (key: string, fallback: unknown) =>
+            key === "modules.offline.dataOrigins"
+                ? [{ origin: "https://backend.test", roles: ["layerData"], cacheable: false }]
+                : fallback;
+        const served = globalThis.fetch as unknown as (u: unknown) => Promise<any>;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) => {
+                const answer = await served(input);
+                const body = await answer.json();
+                const links = body.links.map((link: { rel: string; href: string }) =>
+                    link.rel === "next"
+                        ? { rel: "next", href: link.href.replace("backend.test", "ailleurs.test") }
+                        : link
+                );
+                return { ...answer, json: async () => ({ ...body, links }) };
+            })
+        );
+        requests = [];
+        const stopped = await pullLayer("sites");
+
+        expect(requests.map((url) => url.origin)).toEqual(["https://backend.test"]);
+        expect(stopped.cursorRefused).toBe(true);
+        expect(stopped.refused).toBeNull();
+        expect(stopped.removed).toBe(0);
+        expect(await readAll("features")).toHaveLength(5);
+    });
+
+    test("le même curseur est suivi dans un profil qui ne déclare rien — la règle ne mord pas", async () => {
+        serveSource([row(1), row(2), row(3)], 2);
+        const served = globalThis.fetch as unknown as (u: unknown) => Promise<any>;
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async (input: unknown) =>
+                served(String(input).replace("ailleurs.test", "backend.test")).then(
+                    async (answer) => {
+                        const body = await answer.json();
+                        const links = body.links.map((link: { rel: string; href: string }) => ({
+                            ...link,
+                            href: link.href.replace("backend.test", "ailleurs.test"),
+                        }));
+                        return { ...answer, json: async () => ({ ...body, links }) };
+                    }
+                )
+            )
+        );
+
+        const report = await pullLayer("sites");
+
+        expect(report.cursorRefused).toBe(false);
+        expect(report.written).toBe(3);
+    });
+
     test("un rapatriement EN ÉCHEC ne retire rien", async () => {
         serveSource([row(1), row(2), row(3)]);
         await pullLayer("sites");
@@ -464,5 +525,114 @@ describe("fraîcheur et suppressions DÉCLARÉES par couche — le delta", () =>
         const second = await pullLayer("sites");
         expect(requests.at(-1)?.searchParams.get("datetime")).toBeNull();
         expect(second.mode).toBe("full");
+    });
+});
+
+describe("la couche AFFICHÉE suit le rapatriement, sans rechargement", () => {
+    // 🛑 A layer declaring `offline.enabled` is drawn from the store, read once at load. The
+    // pull rewrote the store and told nobody: what the server had deleted left the device and
+    // stayed on the map. Here the REAL pull meets the REAL layer state — only the map adapter
+    // is a double, and it is what the pull must reach.
+    let GeoJSONShared: any;
+    let updateLayerData: ReturnType<typeof vi.fn>;
+
+    /** Puts `sites` on the map as a first load leaves it, drawn from a display file. */
+    function display(config: Record<string, unknown> = layer): void {
+        GeoJSONShared.state.layers.set("sites", {
+            id: "sites",
+            config,
+            features: [{ type: "Feature", geometry: null, properties: { title: "Fichier livré" } }],
+        });
+    }
+
+    /** The titles the layer holds — what a table or a filter would read. */
+    const held = (): string[] =>
+        (GeoJSONShared.getLayerById("sites")?.features ?? [])
+            .map((f: any) => String(f.properties?.title))
+            .sort();
+
+    beforeAll(async () => {
+        ({ GeoJSONShared } = await import("../../../src/kernel/geojson/shared.js"));
+    });
+
+    beforeEach(() => {
+        updateLayerData = vi.fn();
+        GeoJSONShared.state.layers = new Map();
+        GeoJSONShared.state.adapter = { updateLayerData };
+    });
+
+    afterEach(() => {
+        GeoJSONShared.state.layers = new Map();
+        GeoJSONShared.state.adapter = null;
+    });
+
+    test("🛑 la supprimée quitte la carte, la modifiée change de dessin", async () => {
+        const rows = serveSource([row(1), row(2), row(3)]);
+        display();
+
+        await pullLayer("sites");
+        expect(held()).toEqual(["Site 1", "Site 2", "Site 3"]);
+
+        rows.set(2, row(2, T2, "Renommé côté serveur"));
+        rows.delete(3);
+        await pullLayer("sites");
+
+        expect(held()).toEqual(["Renommé côté serveur", "Site 1"]);
+        // The SOURCE got it too, each time — the state alone would leave the old drawing.
+        expect(updateLayerData).toHaveBeenCalledTimes(2);
+        const drawn = updateLayerData.mock.calls.at(-1)?.[1] as { features: any[] };
+        expect(drawn.features.map((f) => f.properties.title).sort()).toEqual([
+            "Renommé côté serveur",
+            "Site 1",
+        ]);
+    });
+
+    test("🛑 un premier rapatriement qui ne rend RIEN vide la couche — le fichier livré n'est plus la réponse", async () => {
+        serveSource([]);
+        display();
+
+        const report = await pullLayer("sites");
+
+        expect(report.written).toBe(0);
+        expect(held()).toEqual([]);
+    });
+
+    test("un rapatriement en échec montre ce qui était déjà sur l'appareil", async () => {
+        serveSource([row(1), row(2)]);
+        await pullLayer("sites");
+        display();
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => {
+                throw new Error("network down");
+            })
+        );
+
+        const failed = await pullLayer("sites");
+
+        expect(failed.refused).toBe("sourceUnreachable");
+        expect(held()).toEqual(["Site 1", "Site 2"]);
+    });
+
+    test("une couche qui n'est pas affichée n'est pas touchée", async () => {
+        serveSource([row(1), row(2), row(3)]);
+
+        await pullLayer("sites");
+
+        expect(updateLayerData).not.toHaveBeenCalled();
+    });
+
+    test("🛑 une relecture qui échoue ne change pas le verdict du rapatriement", async () => {
+        serveSource([row(1), row(2), row(3)]);
+        display();
+        updateLayerData.mockImplementation(() => {
+            throw new Error("la source de la carte a disparu");
+        });
+
+        const report = await pullLayer("sites");
+
+        expect(report.refused).toBeNull();
+        expect(report.written).toBe(3);
+        expect(await readAll("features")).toHaveLength(3);
     });
 });

@@ -406,6 +406,17 @@ function _scanProfileNeeds(node) {
     return out;
 }
 
+// The GeoJSON worker's URL, with its content token.
+//
+// The core finds its worker by itself — `geojson-worker.js`, next to the bundle — and asks for
+// it under that one name, build after build. The folder it lives in is served `immutable` for a
+// year (`SERVEUR.md` §8): a visitor would keep a worker for a year, facing a core that moved on.
+// `scripts/build-deploy.cjs` replaces the line below, in each variant, by a call to
+// `GeoLeaf.GeoJSON.setWorkerUrl()` carrying the worker's URL and the token of its content.
+// Served from the sources, the line stays a comment and the worker keeps its default URL.
+//
+// 🛑 ONE line, exactly once, and BEFORE the boot: the build throws on anything else (APP-13).
+// __GEOLEAF_WORKER_URL__
 GeoLeaf.boot({
     beforeBoot: async ({ config }) => {
         const needs = _scanProfileNeeds(config);

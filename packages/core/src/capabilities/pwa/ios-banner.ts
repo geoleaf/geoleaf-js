@@ -134,7 +134,10 @@ function _createBanner(appName: string): HTMLElement {
             "padding:16px 16px 20px",
             "box-shadow:0 -2px 16px rgba(0,0,0,0.4)",
             "z-index:99999",
-            "font-family:inherit",
+            // On `document.body`, outside the application's root: `inherit` gave the banner
+            // the host page's default font. The stack is repeated as the fallback — an inline
+            // style is read by no gate, and the banner may show before the theme sheet.
+            "font-family:var(--gl-font-family,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif)",
             "font-size:13px",
             "border-top-left-radius:12px",
             "border-top-right-radius:12px",

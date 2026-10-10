@@ -47,7 +47,7 @@ export interface GeocodingConfig {
     resultLimit?: number;
     /** Control position on the map. Default "top-left". */
     position?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
-    /** Input placeholder text. Default "Rechercher une adresse…". */
+    /** Input placeholder text. Left unset, the translated label `geocoding.control.placeholder`. */
     placeholder?: string;
     /** Zoom level when flying to a point result. Default 15. */
     flyToZoom?: number;

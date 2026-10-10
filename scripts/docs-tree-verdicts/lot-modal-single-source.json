@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "modal-single-source",
+    "scope": ["packages/libs/field-renderer/src/ui/host-sheets.ts"],
+    "verdicts": {
+        "packages/libs/field-renderer/src/ui/host-sheets.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Adoption, à l'import, des deux feuilles de `host-runtime` sur lesquelles la modale du formulaire est bâtie — la coque et le dialogue",
+            "confidence": "haute",
+            "rationale": "Un importeur mesuré : `packages/libs/field-renderer/src/ui/responsive-modal.ts`, dont il est le premier import à effet de bord. Module à part pour l'ORDRE et pour rien d'autre : les feuilles du formulaire sont injectées à l'évaluation de leurs modules, et celui-ci doit être évalué avant eux pour que les règles empruntées précèdent dans la cascade celles que le formulaire ajoute. Né du retrait de la copie des dix-huit règles que la bibliothèque portait. Gardé par `modal-rules-single-source` (MRS-03), vue rouge quand l'import est déplacé sous les feuilles. Place canonique : `ui/`, à côté du module qui l'importe."
+        }
+    }
+}

@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * 40 — THE CORE DRAINS WITHOUT AN EDITING PLUGIN (R7 criterion, task 1.6)
+ * 40 — THE CORE DRAINS WITHOUT AN EDITING PLUGIN
  *
  * 🛑 THIS FILE RUNS ON THE `core` VARIANT, AND THAT IS THE WHOLE ASSERTION. `deploy-core`
  * does NOT ship `@geoleaf-plugins/editor` — measured: `dist/geoleaf-editor.plugin.js` is

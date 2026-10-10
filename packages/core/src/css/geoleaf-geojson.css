@@ -71,13 +71,13 @@
 
     /* Palette dérivée de l’accent du thème */
     background: var(--gl-color-accent-soft);
-    color: var(--gl-color-accent);
+    color: var(--gl-color-accent-text);
 }
 
 /* Badge accentué pour signaler une feature active / sélectionnée */
 
 .gl-geojson-badge--active {
-    border: 1px solid var(--gl-color-accent);
+    border: 1px solid var(--gl-color-accent-text, var(--gl-color-accent));
 }
 
 /* ========================================================================== 

@@ -60,3 +60,16 @@ export const DEFAULT_PERMALINK_FIELDS: readonly PermalinkField[] = [
  * panel, the mobile toolbar and the mobile sheet all query it the same way.
  */
 export const FILTER_PANEL_ID = "gl-filter-panel";
+
+/**
+ * Maximum length of a serialized text — a scalar, or one element of a list.
+ *
+ * Declared here, not in `permalink-url.ts` where it was born: the per-field filter grammar
+ * (`permalink-field-filters.ts`) caps with the same number, and the URL layer imports that
+ * grammar — two modules importing each other for one constant is a cycle. `permalink-url`
+ * re-exports it under the same name.
+ */
+export const MAX_TEXT_LEN = 200;
+
+/** Maximum number of elements in a serialized list (layer ids, filter values). */
+export const MAX_LIST_ITEMS = 100;

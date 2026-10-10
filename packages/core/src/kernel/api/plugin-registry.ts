@@ -148,9 +148,34 @@ export const PluginRegistry = {
     /**
      * Associates a toolbar action with a lazy plugin and its UI descriptor.
      * Call before `GeoLeaf.boot()` (e.g. from init.js) for each lazy plugin.
+     *
+     * Each descriptor carries `icon`, `labelKey`, `action`, the visibility keys `profileKey`
+     * and `legacyProfileKey` (read only when the first is absent from the configuration), and
+     * — on `desktopTabButton` — `variant`: `"icon"` (default) or `"tab"`.
+     *
      * @param {string} action - toolbar action id (e.g. "print")
      * @param {string} pluginName - plugin registry name (e.g. "print")
      * @param ui - optional UI descriptor { mobileIcon?, desktopTabButton? }
+     * @example
+     * // The print slot, as the reference application declares it.
+     * const icon = "<svg viewBox='0 0 24 24'></svg>";
+     * GeoLeaf?.plugins?.registerLazyForAction?.("print", "print", {
+     *     gateOnModuleEnabled: true,
+     *     mobileIcon: {
+     *         icon,
+     *         labelKey: "print.toolbar.button",
+     *         profileKey: "modules.print.showButton",
+     *         legacyProfileKey: "ui.showPrint",
+     *         action: "print",
+     *     },
+     *     desktopTabButton: {
+     *         icon,
+     *         labelKey: "print.toolbar.button",
+     *         profileKey: "modules.print.showButton",
+     *         legacyProfileKey: "ui.showPrint",
+     *         action: "print",
+     *     },
+     * });
      */
     registerLazyForAction(action: string, pluginName: string, ui?: PluginLazyUI) {
         _lazyUISlots.set(action, { id: String(action), pluginName: String(pluginName), ...ui });

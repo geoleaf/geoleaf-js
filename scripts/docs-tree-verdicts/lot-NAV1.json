@@ -106,7 +106,7 @@
             "severity": null,
             "description": "Orchestration d'une session : relevés, projection, progression, sortie, recalcul et son backoff",
             "confidence": "haute",
-            "rationale": "499 LOC — le plus gros fichier des deux paquets, sous la limite de 700 et sous la recommandation de 500 (la tâche 7.7 annonçait qu'il l'approchait : mesuré, c'est faux). 3 exports, 2 importeurs internes plus 6 hors src (tests, E2E). Session et Deps sont explicites plutôt qu'implicites — l'appelant fournit recompute et decodeGeometry en fermetures, ce qui garde le moteur ignorant du réseau ET du format de géométrie."
+            "rationale": "499 LOC — le plus gros fichier des deux paquets, sous la limite de 700 et sous la recommandation de 500 (il était annoncé comme l'approchant : mesuré, c'est faux). 3 exports, 2 importeurs internes plus 6 hors src (tests, E2E). Session et Deps sont explicites plutôt qu'implicites — l'appelant fournit recompute et decodeGeometry en fermetures, ce qui garde le moteur ignorant du réseau ET du format de géométrie."
         },
         "packages/plugins/navigation/src/engine/snap.ts": {
             "kind": "file",
@@ -134,7 +134,7 @@
             "severity": null,
             "description": "Cinq états du guidage et leurs transitions, dont waypoint-reached",
             "confidence": "haute",
-            "rationale": "161 LOC, 3 exports, 2 importeurs internes. suspend() existe, resume() N'EXISTE PAS — délibérément, et un test épingle son absence : une reprise doit repasser par un relevé réel, jamais restaurer l'état mémorisé. `arrived` est terminal, garde vue rougir. La tâche 7.7 l'annonçait « approchant 500-700 lignes » : 161."
+            "rationale": "161 LOC, 3 exports, 2 importeurs internes. suspend() existe, resume() N'EXISTE PAS — délibérément, et un test épingle son absence : une reprise doit repasser par un relevé réel, jamais restaurer l'état mémorisé. `arrived` est terminal, garde vue rougir. Il était annoncé « approchant 500-700 lignes » : 161."
         },
         "packages/plugins/navigation/src/platform": {
             "kind": "dir",
@@ -148,7 +148,7 @@
             "severity": null,
             "description": "Les seuls points de contact avec les API du navigateur — position, voix, verrou d'écran, réseau",
             "confidence": "haute",
-            "rationale": "4 fichiers, 443 LOC. Existence non seulement justifiée mais GATÉE : PLATFORM-ISO interdit navigator.geolocation, speechSynthesis et wakeLock partout ailleurs dans le paquet, gate posée au sprint 0 avant la première ligne et vue rougir sur ses trois jetons. C'est cette frontière qui rend un portage natif ultérieur équivalent au remplacement de quatre adaptateurs."
+            "rationale": "4 fichiers, 443 LOC. Existence non seulement justifiée mais GATÉE : PLATFORM-ISO interdit navigator.geolocation, speechSynthesis et wakeLock partout ailleurs dans le paquet, gate posée avant la première ligne et vue rougir sur ses trois jetons. C'est cette frontière qui rend un portage natif ultérieur équivalent au remplacement de quatre adaptateurs."
         },
         "packages/plugins/navigation/src/platform/geo.ts": {
             "kind": "file",
@@ -344,7 +344,7 @@
             "severity": null,
             "description": "Amène un itinéraire calculé dans le champ — SEULEMENT s'il n'y est pas déjà",
             "confidence": "haute",
-            "rationale": "196 LOC, 4 exports (routeBbox, bboxWithin, fitRouteIfOutOfView, Bbox), 1 importeur — itinerary.ts. E8 ne mord pas : racine de src/ comme model.ts, composition.ts, parse-point.ts — logique pure plus une seule couture de carte. 🛑 Son existence porte un ARBITRAGE rendu par Mattieu (tâche 3.3) : le cadrage est conditionnel à la vue et n'a AUCUNE clé de configuration, les trois autres règles étant écartées avec leur coût écrit dans l'en-tête. Séparé de itinerary.ts parce que la règle se teste sans contrôleur : `routeBbox` et `bboxWithin` sont pures et éprouvées seules."
+            "rationale": "196 LOC, 4 exports (routeBbox, bboxWithin, fitRouteIfOutOfView, Bbox), 1 importeur — itinerary.ts. E8 ne mord pas : racine de src/ comme model.ts, composition.ts, parse-point.ts — logique pure plus une seule couture de carte. 🛑 Son existence porte un ARBITRAGE rendu par Mattieu : le cadrage est conditionnel à la vue et n'a AUCUNE clé de configuration, les trois autres règles étant écartées avec leur coût écrit dans l'en-tête. Séparé de itinerary.ts parce que la règle se teste sans contrôleur : `routeBbox` et `bboxWithin` sont pures et éprouvées seules."
         },
         "packages/plugins/routing/src/geocode-seam.ts": {
             "kind": "file",

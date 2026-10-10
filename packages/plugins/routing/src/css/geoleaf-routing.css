@@ -94,7 +94,7 @@
 
 .gl-routing-panel__close:hover {
     background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
-    color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
 }
 
 .gl-routing-panel__body {
@@ -186,7 +186,7 @@
 .gl-routing-add__result:focus-visible,
 .gl-routing-steps__remove:focus-visible,
 .gl-routing-steps__move:focus-visible {
-    outline: 2px solid var(--gl-color-accent, #f97316);
+    outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
     outline-offset: 2px;
 }
 
@@ -310,7 +310,7 @@
 .gl-routing-steps__remove:hover:not(:disabled),
 .gl-routing-steps__move:hover:not(:disabled) {
     background: color-mix(in srgb, var(--gl-color-accent, #f97316) 15%, transparent);
-    color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
 }
 
 /* ⚠️ Kept in the flow rather than hidden when disabled: a control that disappears at the ends of
@@ -398,7 +398,7 @@
 
 .gl-routing-add__field:focus {
     outline: none;
-    border-color: var(--gl-color-accent, #f97316);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
     box-shadow: 0 0 0 3px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
 }
 

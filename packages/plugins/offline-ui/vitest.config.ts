@@ -272,7 +272,7 @@ export default defineConfig({
                 find: /^@core-offline\/(.+)\.js$/,
                 replacement: `${coreRoot}/src/capabilities/offline/$1.ts`,
             },
-            // ─── Relative-path aliases — 6 REMOVED, backlog R.23 (24/07/2026) ────────
+            // ─── Relative-path aliases — 6 REMOVED (24/07/2026) ────────
             //
             // Same class as the `@core/ui/notifications` removal noted further down
             // (PLUGINS S12): `.js`-only relative aliases that resolve nothing. Removed:

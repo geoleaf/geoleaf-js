@@ -512,6 +512,45 @@ describe("events bridge — persistence wiring (S10)", () => {
         expect(getUndoDepth()).toBe(0);
     });
 
+    // 🛑 THE ENGINE'S COPY IS AS OLD AS THE SELECTION. A photo delivered while the entity was
+    // selected rewrote the stored entity and the layer's copy; the move validated afterwards
+    // was built from the engine's, and sent the delivered photo's token back. A move changes a
+    // geometry: its attributes are those the LAYER holds when it is validated.
+    it("🛑 l'update d'un déplacement porte les attributs que la COUCHE tient à la validation", () => {
+        const getFeatureById = vi.fn(() => ({
+            id: "f1",
+            properties: {
+                id: "f1",
+                name: "n",
+                galerie: ["https://srv/a.png", "gl-img:b"],
+                _syncStatus: "pending",
+            },
+        }));
+        (globalThis as { GeoLeaf?: unknown }).GeoLeaf = { Layers: { getFeatureById } };
+        setSelection({
+            terradrawId: "td1",
+            featureId: "f1",
+            layerId: "L",
+            originalGeom: { type: "Point", coordinates: [0, 0] },
+        });
+        _mockDraw.getSnapshotFeature.mockReturnValue({
+            geometry: { type: "Point", coordinates: [2, 2] },
+            // As picked: both photos were still tokens.
+            properties: { id: "f1", mode: "point", name: "n", galerie: ["gl-img:a", "gl-img:b"] },
+        });
+        adapterCallbacks.onFinish("td1", "Point", "dragFeature");
+        adapterCallbacks.onDeselect("td1");
+        delete (globalThis as { GeoLeaf?: unknown }).GeoLeaf;
+
+        expect(getFeatureById).toHaveBeenCalledWith("L", "f1");
+        const [ef] = persist.update.mock.calls[0];
+        expect(ef.properties).toEqual({
+            id: "f1",
+            name: "n",
+            galerie: ["https://srv/a.png", "gl-img:b"],
+        });
+    });
+
     it("🛑 un update qui ÉCHOUE laisse le geste annulable — rien n'est parti", async () => {
         persist.update.mockRejectedValueOnce(new Error("réseau"));
         setSelection({

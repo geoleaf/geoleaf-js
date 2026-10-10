@@ -72,7 +72,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Declared data origins — routing by DECLARATION instead of by guesswork (task 3.9).",
+            "description": "Declared data origins — routing by DECLARATION instead of by guesswork.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -100,7 +100,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Local Edit Module — l'écriture optimiste, et le seul écrivain de l'`outbox` (tâche 4.4).",
+            "description": "Local Edit Module — l'écriture optimiste, et le seul écrivain de l'`outbox`.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -142,7 +142,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Bounded pull — the FIRST writer of the `features` store (tâche 4.1).",
+            "description": "Bounded pull — the FIRST writer of the `features` store.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -170,7 +170,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Le marqueur de rapatriement — ce qui rend `declaredNeverPulled` observable (tâche 4.8).",
+            "description": "Le marqueur de rapatriement — ce qui rend `declaredNeverPulled` observable.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -184,7 +184,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Le rapport de synchronisation par couche — l'implémentation de `LayerSyncReport` (tâche 4.8).",
+            "description": "Le rapport de synchronisation par couche — l'implémentation de `LayerSyncReport`.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -282,7 +282,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Optimistic write — the entry point every edit plugin goes through (tâche 4.4).",
+            "description": "Optimistic write — the entry point every edit plugin goes through.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },
@@ -310,7 +310,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Push — le drain de l'`outbox`, et la réconciliation d'identité (tâche 4.5).",
+            "description": "Push — le drain de l'`outbox`, et la réconciliation d'identité.",
             "confidence": "haute",
             "rationale": "Fichier du chantier hors-ligne v4 (write/db/report/pull de la capacité offline), livré par le run navigation clos le 24/08/2026 et mergé dans main. L'en-tête de module (dont la description ci-contre est dérivée) porte le contrat du fichier ; la structure suit le rangement canonique des capacités (RUBRIC §0 : justifié par défaut sur un périmètre sain — 3 arêtes inverses sur 2 451 dans le dépôt). Nom et emplacement prédisent le contenu : sous-répertoire par rôle (db/, write/, pull/, report/), un fichier par module d'état ou de flux."
         },

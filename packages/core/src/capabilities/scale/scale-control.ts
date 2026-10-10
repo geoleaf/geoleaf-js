@@ -12,11 +12,11 @@
  * ─── Deliberate re-implementation — do NOT replace with `maplibregl.ScaleControl` ───
  *
  * This control was flagged as duplicating MapLibre's built-in `ScaleControl`
- * (S4 LOW-50 → rapport de dette §6 → R.39). The measurement closed the question the
+ * by an audit. The measurement closed the question the
  * other way: the overlap is one 7-line helper, and the control does four things
  * MapLibre's cannot. Recording the verdict here so the question is not re-opened from
  * the surface resemblance alone — the same reason `utils/controls/focus-trap.ts`
- * carries its own non-fusion note (R.19).
+ * carries its own non-fusion note.
  *
  * What MapLibre's ScaleControl does NOT provide, and this one does:
  *  1. A NUMERIC scale (`1:X`) via `scaleAtZoom()`. MapLibre renders only the graphic bar.

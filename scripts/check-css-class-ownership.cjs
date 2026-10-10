@@ -48,20 +48,34 @@ const ASSUMED = {
     // field-renderer widgets only ever render inside a GeoLeaf page, where core's sheet is
     // loaded by construction — shared button/rating styles are usage, not a hidden edge.
     "gl-btn :: field-renderer": "shared button system — core sheet present by construction",
-    "gl-btn--primary :: field-renderer": "shared button system — idem",
+    "gl-btn--accent :: field-renderer": "shared button system — idem",
     "gl-rating :: field-renderer": "rating widget styles ship with core — idem",
     // editor BUNDLES field-renderer (declared devDependency, inlined at build): writing the
     // form system's classes is using the library it embeds.
     "gl-form-field :: editor": "field-renderer form system — editor bundles it",
     "gl-form-input :: editor": "field-renderer form system — editor bundles it",
     "gl-form-label :: editor": "field-renderer form system — editor bundles it",
-    "gl-form-modal-overlay :: editor": "field-renderer modal system — editor bundles it",
-    "gl-form-modal-panel :: editor": "field-renderer modal system — editor bundles it",
-    "gl-form-modal__btn :: editor": "field-renderer modal system — editor bundles it",
-    "gl-form-modal__delete-body :: editor": "field-renderer modal system — editor bundles it",
-    "gl-form-modal__delete-title :: editor": "field-renderer modal system — editor bundles it",
-    "gl-form-modal__footer :: editor": "field-renderer modal system — editor bundles it",
+    "gl-form-modal-overlay :: editor":
+        "modal system of host-runtime, extended by field-renderer — editor bundles both",
+    "gl-form-modal-panel :: editor":
+        "modal system of host-runtime, extended by field-renderer — editor bundles both",
+    "gl-form-modal__btn :: editor":
+        "modal system of host-runtime, extended by field-renderer — editor bundles both",
+    "gl-form-modal__delete-body :: editor": "host-runtime dialog system — editor bundles it",
+    "gl-form-modal__delete-title :: editor": "host-runtime dialog system — editor bundles it",
+    "gl-form-modal__footer :: editor": "host-runtime dialog system — editor bundles it",
     "gl-form-modal__layer :: editor": "field-renderer modal system — editor bundles it",
+    // field-renderer BUILDS ITS MODAL OUT OF host-runtime's dialog classes, and adopts the
+    // sheets that define them (`src/ui/host-sheets.ts`) instead of carrying a copy — the
+    // direction of the dependency it already declares (`createFocusTrap`, `confirmDialog`).
+    "gl-form-modal__btn-cancel :: field-renderer":
+        "host-runtime dialog system — its sheet is adopted by the form",
+    "gl-form-modal__btn-delete :: field-renderer":
+        "host-runtime dialog system — its sheet is adopted by the form",
+    "gl-form-modal__btn-save :: field-renderer":
+        "host-runtime dialog system — its sheet is adopted by the form",
+    "gl-form-modal__footer :: field-renderer":
+        "host-runtime dialog system — its sheet is adopted by the form",
     // host-runtime ships the tooltip helper AND its stylesheet: plugins writing the class
     // use the helper's design contract.
     "gl-tooltip :: editor": "host-runtime tooltip system",
@@ -87,10 +101,12 @@ const ASSUMED = {
  * ⚠️ **The instruction here said "own the styles under a host-runtime PREFIX", and that half
  * was NOT followed — deliberately.** Renaming would break consumers: the downstream
  * consumption manifest pins `.gl-form-modal-overlay` and `.gl-form-modal__btn-cancel` as DOM
- * anchors (v1.21.0). The rules are therefore owned under the SAME names, duplicated with
- * field-renderer rather than moved — `responsive-modal.ts` writes those classes on its own,
- * without going through `createModalShell`, so moving them would leave it depending on a
- * module its graph may tree-shake away. The two copies must stay byte-equivalent.
+ * anchors (v1.21.0). The rules are therefore owned under the SAME names. They were first
+ * DUPLICATED with field-renderer — whose `responsive-modal.ts` writes those classes without
+ * going through `createModalShell` — on the promise that "the two copies stay
+ * byte-equivalent", which nothing checked. Since 04/10/2026 there is one copy: field-renderer
+ * adopts host-runtime's sheets, a usage declared above, and a guard of the core's suite
+ * (`modal-rules-single-source`) refuses a selector written on both sides.
  *
  * Before/after DOM proof (C-D4): `position: static` → `fixed`, `z-index: auto` → `10000`,
  * y=720 → 0, on a page where `editor` was never loaded.

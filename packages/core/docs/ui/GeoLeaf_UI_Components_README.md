@@ -266,40 +266,46 @@ Every map control is now an **in-core capability**, enabled by configuration and
 its own `install.ts` (`capabilities/<id>/`). The `ui/controls.ts` aggregator file no longer
 exists.
 
-### API through `GeoLeaf.UI`
+### Reading a control from code
+
+No control is created by a call. Each capability installs its own control from its
+configuration block and exposes a read-only namespace:
 
 ```javascript
-// Geolocation — implemented by the `geolocation` capability
-GeoLeaf.UI.initGeolocationControl(map, {
-    position: "topleft",
-    enableHighAccuracy: true,
-});
+// Geolocation — `geolocation` capability, on unless `modules.geolocation.enabled` is false
+GeoLeaf.Geolocation.isEnabled();
+GeoLeaf.Geolocation.getState(); // → { active, watchId, userPosition }
 
-// Theme toggle — implemented by the `theme-toggle` capability
-GeoLeaf.UI.initThemeToggleControl(map, { position: "topright" });
+// Theme toggle — `theme-toggle` capability, off unless `modules.theme-toggle.enabled` is true
+GeoLeaf.ThemeToggle.isEnabled();
+GeoLeaf.ThemeToggle.getConfig(); // → { enabled, position }
 ```
 
-> **Removed from `GeoLeaf.UI` in v3.0.0** _(breaking)_: `initFullscreenControl()` (`fullscreen`
-> capability, enabled through `modules.fullscreen`) and `initPoiAddControl()`
-> (`@geoleaf-plugins/editor` plugin, driven through `GeoLeaf.Editor`). The scale, coordinates,
+> **Not on `GeoLeaf.UI`**: `initGeolocationControl()` and `initThemeToggleControl()` are internal
+> to their capabilities. `initFullscreenControl()` (fullscreen is now an action of the
+> toolbar) and `initPoiAddControl()` (`@geoleaf-plugins/editor` plugin, driven
+> through `GeoLeaf.Editor`) were removed in v3.0.0 _(breaking)_. The scale, coordinates,
 > branding and legend controls follow the same model: configuration, not calls.
 
 ### Configuration in profile.json
 
+Each control is a capability, read from its own `modules.<name>` block. The geolocation
+button, the coordinates readout and the scale are active unless their block says
+`enabled: false`; the theme toggle is off unless its block says `enabled: true`. Fullscreen is
+not a capability: it is an action of the toolbar.
+
 ```json
 {
-    "ui": {
-        "controls": {
-            "fullscreen": true,
-            "geolocation": true,
-            "themeToggle": true
-        },
-        "showCoordinates": true,
-        "showScale": true,
-        "scaleType": "numeric"
+    "modules": {
+        "geolocation": { "enabled": true },
+        "theme-toggle": { "enabled": true },
+        "coordinates": { "enabled": true },
+        "scale": { "scaleNumeric": true, "scaleNivel": false }
     }
 }
 ```
+
+The keys of the scale are listed on [its own page](../config/SCALE_CONFIG.md).
 
 ---
 

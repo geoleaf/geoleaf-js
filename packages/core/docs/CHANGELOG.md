@@ -11,6 +11,833 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`--gl-font-family`: the application's font stack, as a token** (`@geoleaf/core` 3.15.0,
+  `offline-ui` 1.6.4). The stack was set on the application's root, `.gl-page`. A node put on
+  `document.body` sits outside that root and inherited the host page's default instead — a
+  serif, in a document that declares none: measured, the share dialog and every toast were
+  drawn in Times New Roman. The stack is now declared on `:root` (`system-ui, -apple-system,
+BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share dialog, the
+  toasts, the two install banners, the filter panel when it mounts on `body`, and the offline
+  plugin's update banner. **A host may override it** to give those surfaces its own font; the
+  rest of the interface follows, since `.gl-page` reads the same token.
+
+- **`GeoLeaf.Utils` names five more members, and `GeoLeaf.Core.getMap()` says what it
+  returns** (`@geoleaf/core` 3.15.0). `Utils.applyCssText`, `validateUrl`, `getDistance`,
+  `Formatters` and `DOMSecurity` are mounted by the kernel and were reachable as `unknown`;
+  `Core.getMap()` and `Core.getAdapter()` returned `unknown` and now return
+  `IMapAdapter | null`. Types only. ⚠️ `Utils.validateUrl` returns the URL resolved, or `null`
+  — not a boolean; and `Utils.getDistance` answers in kilometres.
+
+- **`GeoLeaf.Storage.DB` names eleven more relays, typed from the engine** (`@geoleaf/core`
+  3.15.0): `getLayer`, `cacheLayer`, `removeLayer`, `getLayersByProfile`, `getStorageStats`,
+  `storeImageLocally`, `getLocalImage`, `getPendingImages`, `updateImageUploadStatus`,
+  `bindLocalImage` and `cleanUploadedImages`. They were reachable through the index signature of
+  `Storage.DB`, as `unknown` — so a caller declared its own view of them, and that view was
+  checked against nothing: a status passed as a string where the engine reads an object went
+  unreported once. Types only; nothing changes at run time. `getLayer` now returns the cached
+  record instead of `unknown`, and `cacheLayer` declares the `null` profile it has always been
+  given by the theme cache.
+
+- **`--gl-color-accent-text`: the accent as a text colour** (`@geoleaf/core` 3.15.0). The
+  accent is a fill. Written as a text or icon colour on a surface, it fell under WCAG AA in
+  seven theme contexts out of nine — 1.46:1 in the light theme, 2.80:1 with no theme class,
+  2.86:1 under the green palette. Each theme and each palette now declares the accent's text
+  counterpart, set to reach 4.5:1 on its surface, its muted surface and the accent's own soft
+  veil: `#b93b0b` by default and in the light theme, `#fb923c` in the dark theme, `#1d4ed8` and
+  `#38bdf8` under the blue palette, `#166534` and `#4ade80` under the green one. The forty-eight
+  declarations that wrote the accent as a text colour read it — the active entry of the mobile
+  toolbar, of the right panel and of the theme selector, links and counters of the feature
+  panel, and their counterparts in `editor`, `measure`, `navigation`, `offline-ui`, `print`,
+  `routing`, `connector` and `field-renderer`, which fall back on `--gl-color-accent` under an
+  older core. `--gl-color-accent` itself is unchanged: no accent background moves. **What you
+  may see**: those texts and icons turn a darker orange in the light theme and a lighter one
+  in the dark theme. A host that overrides `--gl-color-accent` should set
+  `--gl-color-accent-text` with it, or the text keeps the default orange.
+- **`GeoLeaf.<Plugin>` is typed for whoever installs the plugin** (`@geoleaf/core` 3.15.0 and the
+  fourteen plugins that mount a namespace: `cog` 1.0.6, `connector` 1.4.0, `editor` 1.6.0,
+  `file-import` 1.0.7, `flatgeobuf` 1.0.5, `geocoding` 1.1.4, `measure` 1.0.10, `navigation` 1.0.3,
+  `position-share` 1.0.3, `print` 1.3.5, `realtime-layer` 1.0.8, `routing` 1.0.3, `table` 1.1.4,
+  `websocket` 1.0.3). The core declared `GeoLeaf.Table`, `GeoLeaf.Editor` and the twelve others
+  as `unknown`: reachable, never callable from TypeScript without a cast. Each plugin's
+  published declarations now add its API to the `GeoLeafPluginApis` registry those namespaces
+  read, and export it as a named type (`TableApi`, `EditorApi`, `CogApi`, `WsApi`…). Importing the
+  package is enough; a namespace whose plugin is not installed stays `unknown`. A member the
+  plugin does not have is now a compile error, where it was silently `unknown`.
+  `PLUGIN_DEVELOPMENT_GUIDE.md` gives the recipe for a plugin written outside this repository.
+- **A `range` filter can offer its upper bound** (`@geoleaf/core` 3.15.0). The filter engine
+  has always applied `min ≤ value ≤ max`; the panel offered one slider, the lower bound, and
+  an upper bound could only come from a host's `GeoLeaf.Filter.applyFilter()`. A field of
+  `modules.filter.fields` now declares it — `"bounds": "both"` — and gets two sliders that
+  cannot cross, each named for a screen reader in the six languages. One slider stays the
+  default: a panel that declares nothing is unchanged.
+
+- **An entry set aside says why, and its exits are announced** (`@geoleaf/core` 3.15.0).
+  `GeoLeaf.Storage.DB.listPendingEdits()` now returns `quarantine` — the motive — and
+  `quarantineStatus` — the HTTP status of the refusal, when a server answer caused it — on an
+  entry in `state: "quarantined"`; both are absent from an entry the queue still holds. The
+  motive was only reachable through an internal member, so a host interface could not say why a
+  capture was stuck. And a new event, `geoleaf:offline:quarantine-exited`, is dispatched once
+  per gesture by `requeueQuarantined()`, `requeueAll()` and `discardQuarantined()`, with
+  `exit` (`"requeued"` or `"discarded"`) and the `entries` that left. A gesture that moves
+  nothing — a refusal, an empty batch — announces nothing.
+- **`GeoLeaf.Storage.prefetchVerdict(url)` — will the offline preparation download this, and if
+  not, why** (`@geoleaf/core` 3.15.0). The origin rule of `modules.offline.dataOrigins` was only
+  applied during the download, and its refusal was a console warning: an interface offering a
+  basemap could not know beforehand that it would be skipped. The member returns `allowed`, the
+  `origin` judged and, on a refusal, a `reason` — `undeclared`, `notPrefetchable`, `unparsable`,
+  or `engineUnavailable` when no offline engine is wired. A tile URL template is judged on the
+  concrete tile the preparation would request. And what a download left out is now kept:
+  `preparation.refusedOrigins`, in the result of `cacheProfile()` and in the cache manifest,
+  names each refused source with its origin (`TilePreparationTrace`).
+
+- **`GeoLeaf.plugins.registerLazyForAction()` is typed, and its descriptor takes what the
+  toolbars read** (`@geoleaf/core` 3.15.0). The member fell into the untyped tail of
+  `GeoLeaf.plugins`, although the API reference and a registry warning name it as the way to
+  declare a button that must exist before its bundle. Its descriptor refused two fields the
+  reference application declares and both toolbars read: `legacyProfileKey`, the visibility key
+  read when `profileKey` is absent, and `variant` on the desktop slot. Both are typed now, and
+  `legacyProfileKey` joins the published `IModuleUISlot` contract, where five plugins already
+  declared it. Nothing changes at run time.
+
+- **The package's front door is typed** (`@geoleaf/core` 3.15.0). `import GeoLeaf from
+"@geoleaf/core"` — what every guide teaches — handed over a value typed `unknown`: the import
+  compiled, its first dereference did not. The default export is now the namespace under its
+  ambient type. `ensureGeoLeaf()` is exported, for a module that mounts a member on the
+  namespace; it existed and no entry of the package exported it. And the plugin namespaces the
+  core declares (`GeoLeaf.Table`, `GeoLeaf.Editor`…) read a new augmentable interface,
+  `GeoLeafPluginApis`: a plugin's own declarations add its member there, and the namespace is
+  typed for whoever installs that plugin. A namespace nobody registered stays `unknown`, as
+  before. Nothing changes at run time.
+
+- **`map.target` and `map.id` are declared by the profile schema** (`@geoleaf/core` 3.15.0).
+  `GeoLeaf.boot()` reads both to find the element that hosts the map, and the guides teach
+  them — but the `map` block is closed, so a profile that declared either one failed
+  `validate:profiles`. They are now properties of the schema: `target` is the id of the
+  element, without `#`, and `id` is its alias, read when `target` is absent. Absent both, the
+  boot still looks for `geoleaf-map`. Nothing changes at run time.
+- **A profile may declare a vector-tile layer `mixed`** (`@geoleaf/core` 3.15.0). A tile
+  source-layer can hold points, lines and polygons at once; declared `geometry: "mixed"`, the
+  layer builds a fill, a line and a circle sub-layer over it, each confined to what it draws.
+  The value was reachable through `GeoLeaf.Layers.create()` only: both enumerations of the
+  layer schema refused it, so `validate:profiles` failed on a layer the engine renders. It is
+  now admitted — by `geometry` and by its alias `geometryType` — on a layer that names its
+  tiles (`data.vectorTiles.tilesUrl`), and still refused on any other, where it names no
+  geometry. The API reference now lists the spellings `Layers.create()` reads beyond the
+  profile vocabulary. Nothing changes at run time.
+- **`performance.themeBatchSize` is declared by the profile schema** (`@geoleaf/core` 3.15.0).
+  The theme applier reads it from the active profile — how many layers of a theme are revealed
+  at a time, `6` when absent — and the profile root, which is closed, did not declare
+  `performance`: a profile setting the one key the code reads there failed
+  `validate:profiles`. The block is declared with that key alone, an integer of at least 1.
+  Nothing changes at run time.
+
+- **`GeoLeaf.Editor.cancelDrawing()` — abandon a shape being traced** (`@geoleaf-plugins/editor`
+  1.6.0). A shape still in progress — vertices laid, not yet closed — had no public way out:
+  `setActiveTool(null)` clears the menu's highlight and leaves the drawing engine armed, so the
+  next click added a vertex, and `discardDraft()` only knows a finished shape. The new member
+  disarms the tool and removes the vertices already laid, as closing the menu does, and returns
+  whether a tool was armed. A finished shape waiting for its form is not touched.
+- **A refused sign-in says why** (`@geoleaf-plugins/connector` 1.4.0, typed by `@geoleaf/core`
+  3.15.0). The connector's login window read nothing of a refusal but its status: a `403`
+  showed "Authentication failed (403)", and a server's motive — a second factor required, an
+  account locked — never reached the user or the application. A non-2xx answer declared
+  `application/problem+json` (RFC 9457) is now read: the window shows its `detail`, or its
+  `title`, under its own message — as text, cut at 300 characters, in the server's language.
+  And a new event, `geoleaf:connector:login-failed`, carries `status` and `problem` (`type`,
+  `title`, `detail`, and the whole parsed `body`) to the host, for every sign-in that is
+  refused or cannot conclude; it is distinct from `:auth-error`, which says an established
+  session ended. Optional for the server: a refusal without that body reads as before. The
+  server contract (§3.2) says so.
+
+- **The offline window acts on the captures set aside** (`@geoleaf-plugins/offline-ui` 1.6.4).
+  Its sync block said how many captures the drain had set aside and offered nothing to do
+  about them — the two exits were reachable from the editor's window only, so an application
+  without the editor showed a red count and no gesture. Under that block, each motive now has
+  its row: how many captures, why, a **Retry** where the core says a retry can work
+  (`GeoLeaf.Storage.requeueableReasons()`), and a **Discard**, confirmed, which says how many
+  captures go. What a retry left aside because its cause is still there is said, not hidden
+  behind the success. Public facade only; the block repaints from what the core announces.
+
+- **« Export the log », from the offline window** (`@geoleaf-plugins/offline-ui` 1.6.4). The
+  journal the core keeps — bounded, redacted — was offered to the user by the boot failure
+  screen alone; once the application had started it took a console to read it. The offline
+  window now ends with a button that downloads `GeoLeaf.Log.exportDiagnostic()` as a JSON
+  file. No profile key, nothing added to the boot.
+
+- **`GeoLeaf.PWA.isUpdateWaiting()`, `GeoLeaf.PWA.applyUpdate()` and
+  `geoleaf:sw:update-waiting`** (`@geoleaf/core` 3.15.0). The application's updates now wait
+  for the user (see _Changed_): the event says a new version is installed and waits, the first
+  member reads the same fact at any time, and the second applies it — the new service worker
+  takes over, then the page reloads. `geoleaf:sw:update-waiting` is typed in
+  `GeoLeafEventMap`; `geoleaf:sw:updated` keeps its meaning, a worker activated.
+
+- **« A new version is ready », a banner in the offline plugin**
+  (`@geoleaf-plugins/offline-ui` 1.6.4). It appears when an update waits — at the top of the
+  page, without taking the focus — with **Reload**, which applies it, and **Later**, which
+  leaves it waiting until the next visit or the next update. No profile key. An application
+  that does not embed the plugin offers the gesture itself, with the two members above.
+
+### Changed
+
+- **A focus ring, and a border that is the only sign of a state, are drawn to be seen**
+  (`@geoleaf/core` 3.15.0, `offline-ui`, `routing`, `table`, `field-renderer`). The accent is a
+  fill: as a ring on the light theme's surface it reaches 1.46:1, where a graphical sign of a
+  state is held to 3:1. Eleven outlines wrote it — the tabs of the right panel, the popup's
+  action, a toast, the language, palette and profile selectors, the share link, the boot
+  failure button, the routing panel's buttons, the gallery's drop target. They read
+  `--gl-color-focus-ring`, the token each theme already sets and that the base-layer selector,
+  `print` and `offline-ui` already read. Nine form controls remove their outline and mark
+  focus by their border alone — the style selects of the layer manager and of the offline
+  window, the filter panel's controls, the table's search and select, the routing address
+  field, the form inputs, tags and image drop zone of `field-renderer`: that border reads the
+  same token. Three borders that are the only sign of a state outside focus — the active
+  gallery thumbnail, the active GeoJSON badge, the list row under a drag — read
+  `--gl-color-accent-text`. **What you may see**: those focus rings and borders turn from a
+  pale orange to the theme's focus blue (`#2684ff` by default). Accent backgrounds, hover
+  borders and borders that come with a fill do not move. Under the green palette with no theme
+  class, the ring itself went from `#16a34a` (2.86:1 on that surface) to `#15803d`. A host that
+  wants its own ring sets `--gl-color-focus-ring`.
+- **The boot frames the profile BEFORE it announces the application ready** (`@geoleaf/core`
+  3.15.0). At the reveal, the boot emitted `geoleaf:map:ready` then `geoleaf:app:ready`, and
+  re-fitted the profile bounds in a 120 ms timer — so a host setting its view at
+  `geoleaf:app:ready` saw the view it asked for, then saw it jump back. Measured: a zoom of 9.5
+  set at the announcement was read back at 4.23. The order is now: the engine is given its
+  container's size, the bounds are fitted — unless a permalink carries a view —, and only then
+  the two events leave. Nothing of the boot moves the camera after the announcement. **What you
+  may have to change**: code that waited some delay after `geoleaf:app:ready` before touching
+  the camera no longer needs to.
+- **A layer's entities are pulled only from a declared origin, in a profile that declares**
+  (`@geoleaf/core` 3.15.0). The pull of `offline.source.url` applied the origin rule to no
+  source: a profile listing its `modules.offline.dataOrigins` still pulled from an origin it had
+  not listed. From the first declaration on, a source is pulled when its origin is declared or
+  is the page's own; otherwise `pullLayer()` sends nothing and reports
+  `refused: "originUndeclared"`, and the offline preparation records it with the layer. Neither
+  `cacheable` nor `prefetch` is read — the layer naming its source is the request — so an
+  `authenticated` origin is pulled like any other. **A profile that declares no origin is
+  unchanged.** ⚠️ A profile that declares origins and pulls a layer from a third-party origin
+  it left out must add that origin to `dataOrigins`.
+- **The same rule now reaches what a profile names one by one, and the pages a source renders**
+  (`@geoleaf/core` 3.15.0). Three resources of the offline preparation took their URL as
+  written, third parties included: a layer's direct `url`, a field's `fetchOptions` list and
+  the icon sprite (`icons.spriteUrl`). And a pull judged `offline.source.url` once — the pages
+  after the first were asked at the URL the server rendered in its `next` link, or at the
+  cursor `cursorPath` names, whatever its origin. In a profile that declares
+  `modules.offline.dataOrigins`, all of them now obey the entities' rule: a declared origin or
+  the page's own, nothing else. A resource left out is named in the log and in
+  `preparation.refusedOrigins`. A pull whose next page names an undeclared origin stops there
+  and reports `cursorRefused: true`, a new member of `pullLayer()`'s report: the run is
+  partial, removes nothing from the device and leaves no delta mark.
+  `streamOgcApiFeatures()` takes the judge as an optional sixth argument, `followCursor`, and
+  reports a refusal in `cursorRefused`; the online display passes none and is unchanged. **A
+  profile that declares no origin is unchanged.** ⚠️ A profile that declares origins and
+  takes a sprite, an option list or a GeoJSON file from a third party it left out must add
+  that origin to `dataOrigins`.
+- **A capture that needs no session no longer waits behind one that does** (`@geoleaf/core`
+  3.15.0). The drain stopped at the first capture of a `write.auth: "bearer"` layer met with
+  no session open, and everything queued behind it waited too — a capture of a `"none"` layer
+  included. The pass now walks past the held captures and sends the rest. From the first one
+  held, every `bearer` capture of the pass waits, even if the session opens meanwhile: the
+  writes of one entity keep their order.
+- **The offline preparation presents what the display presents — vector tiles and glyphs carry
+  the connector's token** (`@geoleaf-plugins/connector` 1.4.0). The connector's `fetch` patch
+  left `.mvt` and `.pbf` URLs out, "because the MapLibre bridge handles them". It does, for the
+  map, whose tiles load in a worker the patch never sees; the exclusion only ever applied to
+  the offline preparation, which downloads tiles and glyphs on the main thread — an
+  authenticated vector source was prepared without its token, and refused. Every request under
+  `baseUrl` now carries the token, whatever its format. The server contract also says what was
+  true and unwritten: the preparation sets no `credentials` mode, so a request to the page's own
+  origin carries that origin's cookies, and no other request does.
+- **The defaults of `geocoding` and of the export keys of `table` are written once, in each
+  plugin's table** (`@geoleaf-plugins/geocoding` 1.1.4, `@geoleaf-plugins/table` 1.1.4).
+  `provider`, `debounceMs`, `minChars`, `resultLimit`, `position` and `flyToZoom` on one side,
+  `exportFormats`, `csvSeparator` and `csvIncludeGeometry` on the other, were applied where the
+  value was read — `resultLimit` and `flyToZoom` at two places each. Nothing changes for a
+  profile: the values are the same, and a key written `null` still keeps its default.
+
+- **The server recipes shipped with a deployable folder pin by folder, not by extension**
+  (`nginx.conf.example`, `.htaccess` and the server contract page of `deploy-core` and
+  `deploy-full`). Both
+  recipes sent `max-age=31536000, immutable` to every `.mjs`, `.js`, `.css`, `.png` and `.svg`,
+  wherever the file lived. Only `dist/` earns it: each of its files is named after its content
+  or requested with its token. Three families kept a stable name under that rule — the map
+  engine (`vendor/`), the application's icons (`icons/`) and the sprite sheet of each profile —
+  so a returning visitor kept the old engine for up to a year after an upgrade, and a sprite
+  you had just rewritten did not reach them, while `curl` returned the new file. The recipes
+  now send `no-cache` for `vendor/` (revalidated at each visit, a `304` when unchanged), a day
+  for `icons/`, and an hour for everything under `profiles/` but its root file — what the
+  table of the server contract page already promised for profile data, and what neither recipe delivered
+  for a `.svg`, a `.qml` or a `.fgb`. The Apache recipe now matches on the request line
+  (`<If "%{THE_REQUEST} …">`, Apache 2.4): it rewrites a request to its `.gz` twin, and a
+  `<FilesMatch>` judges the file served. It also types its precompressed files with `ForceType`:
+  measured on an Apache 2.4, the former `AddType text/javascript .mjs.gz .js.gz` typed nothing,
+  and every `.gz` twin left as `application/x-gzip` — a type a browser refuses for a module
+  script. **What to do**: if your server configuration was
+  copied from an earlier recipe, replace its per-extension cache block with the folder blocks
+  of the new one. Visitors who already received a pinned file keep it until it expires —
+  nothing sent now can shorten a header already stored.
+- **A new version no longer takes over a page that is in use** (`@geoleaf/core` 3.15.0). The
+  service worker skipped the wait at every install: a deployment replaced the worker under
+  whoever had the application open, and its activation purged the caches of the version that
+  page was running — the lazy chunks it had not loaded yet included, offline or not. It now
+  skips the wait at a **first** install only. At an update the new worker installs, then waits
+  until `GeoLeaf.PWA.applyUpdate()` is called or every tab of the application is closed — the
+  browser's own rule. **What changes for a deployment**: users on `@geoleaf-plugins/offline-ui`
+  are asked, by a banner; an application without it receives a new version at its next cold
+  start instead of mid-session, unless it offers the gesture
+  ([PWA — When a new version is deployed](./pwa.md#when-a-new-version-is-deployed)). A page
+  already open on the previous worker when this version is deployed shows no banner — its code
+  predates it — and gets the new version once closed and reopened.
+
+- **A permalink writes the filter one parameter per field** (`@geoleaf/core` 3.15.0). The
+  filter was ranged by kind, in four slots — `gl_filter`, `gl_cats`, `gl_tags`, `gl_rating`:
+  two fields of the same kind shared a slot and were restored with the same value, a range
+  kept its lower bound only, and a taxonomy field's sub-categories lost the category they
+  were checked under. Each constrained field now has its own parameter, `gl_f.<id>`, named by
+  its id in `modules.filter.fields` — `100..500` for a range, `a,b,c` for a list, the
+  sub-categories under `gl_f.<id>.sub` — and `GeoLeaf.Permalink.getState()` exposes them as
+  `fieldFilters`. **Links already shared keep working**: the four slots are still read, and
+  restored as they were. The application no longer writes them, so the filter of a link
+  copied from 3.15.0 is not read by an earlier version — its view still is. `permalink.fields` gates as before, its four
+  filter names now reading « the fields of that kind ». `boolean` and `proximity` fields are
+  still not carried.
+
+- **`write.auth` is read** (`@geoleaf/core` 3.15.0, `@geoleaf-plugins/connector` 1.4.0). The
+  key was declarative: the schema and the published type accepted `bearer` and `none`, and no
+  code read either — a layer could say its endpoint takes no token and still have the
+  session's token attached, or say it requires one and have its captures sent without. Both
+  values now have an effect. **`none`**: every request of the layer's writes carries the
+  declaration (the `geoleafWriteAuth` member of its `init`), and the connector attaches no
+  token to it, even under its `baseUrl`. **`bearer`**: while the session reader
+  (`GeoLeaf.Sync.registerSessionReader`) says no session is open, the capture is not sent — it
+  stays queued, untouched, and the pass counts it in a new member, `heldForSession`, of
+  `pushOutbox()`'s report and of `geoleaf:offline:outbox-drained`. The pass does not stop
+  there: a capture of a layer that needs no session, queued behind it, leaves. Unlike an
+  `authRequired` halt, a held capture does not pause the automatic triggers: it leaves on its
+  own once the session is back. A layer that declares nothing behaves as before, and so
+  does a `bearer` layer on a page where nobody registered a session reader.
+
+- **`geoleaf:layer:updated` is announced by every writer of a whole collection** (`@geoleaf/core`
+  3.15.0). The event left from the calls of `GeoLeaf.Layers` alone. A real-time layer's ticks,
+  an OGC layer's auto-refresh and a host's own `GeoLeaf.GeoJSON.updateLayerData()` rewrite the
+  same store around it, unannounced: an open table kept its rows, and an active filter did not
+  re-judge what arrived — a newcomer that passed stayed hidden — until the user's next gesture.
+  They are announced now, once per write, where they all converge; the calls of
+  `GeoLeaf.Layers` still announce once each. An OGC auto-refresh also resets the layer's
+  incremental-update verdict, which it left stale. A plugin that feeds its source without
+  writing the store is still not announced.
+- **A requeue out of quarantine asks for a pass** (`@geoleaf/core` 3.15.0).
+  `requeueQuarantined()` and `requeueAll()` used to put entries back in the queue and stop
+  there: on a calm queue nothing left before the next trigger, and the documentation said to
+  call `pushOutbox()` afterwards. The entries are now sent at once, a dead session included —
+  requeueing `authRequired` is saying the session is back. A `pushOutbox()` left after a
+  requeue is harmless: the two passes are serialised.
+
+- **A declared origin is judged on its declaration by the offline preparation — the page's own
+  included** (`@geoleaf/core` 3.15.0). The preparation of basemaps and tiled layers admitted the
+  page's own origin before reading `modules.offline.dataOrigins`: an own origin declared
+  `authenticated`, or `cacheable` without `prefetch`, was downloaded all the same. The
+  declarations are now read first. Left undeclared, the page's own origin is still prepared, so
+  a portable profile changes nothing. Declared, it is prepared only with `cacheable: true` and
+  `prefetch: true` — and since roles are not consulted there, declaring it for a same-origin
+  data API also decides for the tiles it serves. The contract said both things in two places
+  (`DataOriginDeclaration`); it now says this one.
+- **`Storage.DB` relays are checked against the module they forward to** (`@geoleaf/core`
+  3.15.0). Every sub-module of the IndexedDB engine was typed with one index signature that
+  accepted any argument for any method, so a relay could drift from its module without an error
+  — that is how a string once reached a parameter read as an object. The relays are now typed
+  from the module registry. Two of them tighten as a result: `Storage.DB.cacheLayer()` takes a
+  string, an `ArrayBuffer` or an object, and `Storage.DB.storeImageLocally()` takes the image
+  record — both were `unknown`. Nothing changes at run time for a JavaScript caller.
+- **The style loader no longer judges label keys the renderer does not read** (`@geoleaf/core`
+  3.15.0). Three checks ran at load on keys with no effect: `label.font.weight` had to be an
+  integer from 0 to 100, `label.buffer.opacity` a number from 0 to 1, and `label.background` an
+  object. A failed check refused the whole style — so a style written on the CSS scale
+  (`"weight": 700`), for a key that changed nothing, did not load. The three checks are gone;
+  the keys are ignored. `font.sizePt`, `color`, `opacity`, `buffer.color`, `buffer.sizePx` and
+  `offset.*` are judged as before. In the types, `background` leaves `LabelUserConfig` and the
+  resolved label style, and the font and buffer sub-objects name only what is read; they keep
+  their index signature, so an object that still carries the old keys compiles.
+
+- **BREAKING — the connector's HTTPS rule judges where the credential goes, and covers the
+  login endpoint** (`@geoleaf-plugins/connector` 1.4.0). `http://` was tolerated whenever the
+  PAGE was served from a development host, so a page on `localhost` could send its token in
+  cleartext to any host, remote ones included; and `auth.endpoint`, which receives the
+  password, was only checked for being non-empty. The rule now reads the URL itself: `baseUrl`,
+  `auth.endpoint`, `auth.signupUrl` and `auth.forgotPasswordUrl` must be `https://`, or
+  `http://` toward a development host — `localhost`, `*.localhost`, the loopback range, a
+  name under `.test`. **What breaks**: a local page whose connector targets a LAN address or a
+  remote host over `http://` no longer starts — `configure()` throws a `ConfigError`. To
+  migrate, serve that backend over HTTPS, or reach it through a name under `.test`. **What
+  loosens**: a URL toward a development host is tolerated whatever page asks. A relative URL
+  targets the page's own host, as before.
+
+- **The editor carries `@geoleaf/host-runtime` once** (`@geoleaf-plugins/editor` 1.6.0). Its
+  bundle held two copies of the dialog and modal-shell modules: its own, and the one inlined
+  in the built `@geoleaf/field-renderer` it bundles. The form library is now bundled from its
+  sources, so both sides resolve to the same modules — the entry chunk loses 5.4 KB (0.9 KB
+  gzipped), and a stylesheet adopted "once per key" is adopted once. Nothing changes in the
+  editor's API, nor for an integrator using `@geoleaf/field-renderer` on its own.
+
+### Removed
+
+- **A deliverable no longer carries a second copy of each profile sprite, nor the source logo**
+  (deployable application). The build flattened every profile's sprite into `icons/`, next to
+  the copy under `profiles/<profile>/icons/` — byte-identical, compressed twice, and referenced
+  by nothing: a profile's taxonomy names the copy inside the profile (`icons.spriteUrl`), and
+  that is the one the core fetches. `icons/logo.png`, the source the PWA icons are generated
+  from, was shipped and asked for by no page, manifest or worker. ⚠️ A host page that reads
+  `icons/sprite_<profile>.svg` at the root of a deliverable must read
+  `profiles/<profile>/icons/sprite_<profile>.svg`.
+- **The Profiles Guide and the Configuration Guide are gone** (`@geoleaf/core` 3.15.0). Both
+  taught the layout of a profile from before its files were reorganised, and were frozen with
+  thirty examples that the schemas refuse. Three pages replace them, each with something that
+  keeps it true: the [Quickstart Tutorial](QUICKSTART_TUTORIAL.md), replayed from its own
+  blocks; the [Profile JSON Reference](PROFILE_JSON_REFERENCE.md), a reading guide; and the
+  parameter reference generated from the schemas. Links to the two pages are rewritten across
+  the documentation; `/PROFILES_GUIDE` and `/CONFIGURATION_GUIDE` on the documentation site no
+  longer resolve.
+- **BREAKING (types only) — `GeoLeaf.Storage` no longer accepts any name as a member**
+  (`@geoleaf/core` 3.15.0). The ambient type of `GeoLeaf.Storage` ended with an index signature,
+  `[key: string]: unknown`: any name was a member, typed `unknown`. A misspelled call —
+  `pushOutBox()` for `pushOutbox()` — compiled down to a diagnostic that says nothing about the
+  name, and no gate could tell a real member from an invented one. Every member of the façade is
+  now named, typed from the façade itself, and the index signature is gone: a name the façade
+  does not carry is a compile error. **What breaks**: TypeScript code reading an undeclared
+  member of `GeoLeaf.Storage` through the ambient type — an underscore-prefixed internal, or a
+  property an application set on the façade itself. Nothing changes at run time, and a
+  JavaScript caller is unaffected. `GeoLeaf.Storage.DB` keeps its own index signature.
+
+    ⚠️ **Versioning exception.** This removal was not announced in an earlier published version,
+    as the [versioning policy](VERSIONING_POLICY.md) asks. An index signature is not a symbol an
+    editor can strike through, and no consumer follows a semver range today. The exception is
+    recorded here and in the policy; it is not a precedent.
+
+- **BREAKING (profile validation only) — six label keys that nothing rendered leave the
+  schemas** (`@geoleaf/core` 3.15.0). `font.family`, `font.weight`, `font.bold`, `font.italic`,
+  `buffer.opacity` and `buffer.noFill` were accepted in a style file's `label` object and in a
+  layer's `labels` block, and no renderer read them: the font stack of a label comes from the
+  map style the engine has loaded, and a text halo has a colour and a width, nothing else. A
+  profile could set `bold: true` and wait for a bolder text that never came. Both schemas now
+  declare only what is drawn — `font.sizePt`, `color`, `opacity`, `buffer.enabled`,
+  `buffer.color`, `buffer.sizePx`, `offset.*`. **What breaks**: `validate:profiles` refuses a
+  style or a layer that still declares one of the six. **What does not**: at run time such a
+  key is still ignored, and the rendering of a style that carried it is unchanged. To migrate,
+  delete the six keys.
+
+    ⚠️ **Versioning exception.** This removal was not announced in an earlier published version,
+    as the [versioning policy](VERSIONING_POLICY.md) asks. A JSON key has no `@deprecated` tag
+    to carry, the labels reference already said of each of them that it was not rendered, and
+    no consumer follows a semver range today. The exception is recorded here and in the policy;
+    it is not a precedent.
+
+### Fixed
+
+- **Four more surfaces are drawn in the application's font** (`@geoleaf/core` 3.15.0, `print`,
+  `connector`). Each was opened in a browser and read. The buttons of the two install banners
+  were drawn in Arial, next to a banner in the application's font: a button does not inherit
+  its font. The hint of the print extent selector took the map engine's font, the selector
+  living inside the map container. The close button of the print window, and the fields and
+  buttons of the sign-in window, were in the browser's own. All read the application's font
+  now.
+- **Both server recipes type a layer's data** (deployable application). Served by Apache
+  behind the shipped `.htaccess`, a `.geojson` left with **no** `Content-Type` while its
+  precompressed twin left as `application/json` — two answers for one file, depending on what
+  the client accepts; nginx sent it as `application/octet-stream`. Measured by serving a
+  deliverable behind each recipe in a real server. Both recipes now declare
+  `application/json` for the extension. An integrator who copied a recipe before this version
+  adds one line: `AddType application/json .geojson` for Apache, `application/json geojson;`
+  in the `types` block for nginx.
+- **The table panel is drawn in the application's font** (`table`). The panel sits on
+  `document.body`, outside the application's root, and set no font: measured, its buttons, its
+  search field and its selects were drawn in Arial, and its text in the host page's default —
+  a serif, in a document that declares none. It reads `--gl-font-family`, and its form
+  controls inherit it.
+- **Font stacks written by hand read `--gl-font-family`** (`@geoleaf/core` 3.15.0, `print`,
+  `connector`, `host-runtime`). The layer manager, the base-layer selector, the coordinates
+  display, the popup, the lightbox and the branding block each wrote a stack of their own —
+  two of them with `Roboto` and `Helvetica Neue` — and so did the print window, the login
+  window and the shared modal shell: a host overriding the token changed the rest of the
+  interface and not these. The offline badge reads it too.
+- **On a phone, what the network state shows stays in view** (`@geoleaf/core` 3.15.0,
+  `offline-ui` 1.6.4). Three surfaces, measured at 375 and 390 px. The offline badge the network
+  detector puts on the map sat on the row the theme selector takes below 768 px, half hidden
+  for as long as the network was down: it now sits below that row. The sync strip scrolls
+  sideways without a visible scrollbar and carried its action and its close button off-screen
+  — the action ended at 444 px of a 375 px screen; the status row of the offline window did the
+  same in each of the six languages. Both keep their buttons pinned to the end of the row, the
+  facts scrolling under them. A disabled action is dimmed by mixing its colours with the row's
+  ground instead of `opacity`, so nothing shows through it.
+- **The review form's submit button wears a variant the core defines** (`field-renderer`). It
+  wrote `gl-btn--primary`, a class only the offline plugin's sheet defines: without that plugin
+  the button had no fill. It writes `gl-btn--accent`, which the core's button system carries.
+- **The popup's link to the side panel is labelled in the interface language** (`@geoleaf/core`
+  3.15.0). "Voir plus" was written in the code and served to the six languages. It is now the
+  catalogue key `feature-info.popup.more`.
+- **The age of the last synchronisation names the day in the user's language** (`@geoleaf/core`
+  3.15.0, `offline-ui` 1.6.4). Past twenty-four hours, the sync strip and the status block of
+  the offline window wrote the count followed by `j`, in the code: an English interface read
+  "synced 4 j". The unit now comes from the catalogue, key `ui.sync.unit_day` — `j` in French,
+  `d` in English, Spanish and Portuguese, `g` in Italian, `Tg.` in German. `min` and `h` stay
+  as they are: they are the unit symbols, shared by the six languages. Under a core that does
+  not carry the key yet, the plugin keeps the unit it wrote before.
+- **A FlatGeobuf layer stops refreshing when it leaves the map, and draws the latest answer
+  only** (`flatgeobuf` 1.0.5). A layer loaded with `autoRefresh` kept its `moveend` listener
+  for the life of the page: after `removeLayer`, every map move still fetched the file for a
+  source that no longer existed. The plugin now asks the adapter before each refresh and
+  removes its listener once the layer is gone; a refresh still waiting on the debounce is
+  dropped with it. And two refreshes answering out of order could leave the older extent on
+  the map: only the answer to the latest request is drawn.
+- **A printed map asks for a drawing buffer it can read back** (`print` 1.3.5). The offscreen
+  map of the print flow passed `preserveDrawingBuffer: true` at the top level of its options.
+  MapLibre 6 reads the context attributes from `canvasContextAttributes` only, so the key was
+  ignored and the context was created with the default, `false` — measured in Chromium: asked
+  `false`, got `false`. The capture held because the canvas happened to be read before the
+  browser cleared it. The option is now passed where MapLibre reads it.
+- **An update of the service worker whose pre-cache fails no longer installs** (`@geoleaf/core`
+  3.15.0). The `install` handler logged the failure and went on. For a first install that is
+  intended. For an update, a worker with an empty static cache then waited, was announced and
+  was offered by the update banner: accepting it replaced a working worker by one that had
+  cached nothing, whose activation purged the caches of the one it replaced. When a worker
+  already holds the scope, the failure is now rethrown: the browser discards the new worker,
+  the one in place keeps serving, nothing is offered, and the next update check tries again.
+  The page logs a warning when a worker is discarded before it finished installing. ⚠️ A file
+  missing for good from the pre-cache list therefore holds every update back until a
+  deployment restores it.
+- **A capture discarded from the quarantine leaves the map, or loses its badge, at once**
+  (`@geoleaf/core` 3.15.0). `GeoLeaf.Storage.discardQuarantined()` returned the local record to
+  the server's truth and did not touch the layer: an abandoned creation stayed drawn, and an
+  abandoned edit kept the "pending" badge of a capture that would never leave, until the page
+  was reloaded. The entity now leaves its layer when the server has nothing to give back, and
+  loses its badge otherwise. An abandoned edit keeps its content on screen until the next pull
+  that carries the entity: the device holds no other version to draw. ⚠️ Reloading the page is
+  not enough on a layer that reads the device before the network — measured, the entity is
+  still drawn with the abandoned geometry after a reload.
+- **`mapOptions.preserveDrawingBuffer` declared by a profile reaches the engine**
+  (`@geoleaf/core` 3.15.0). The key — the only one of `config/core/features.json` — was
+  validated and read by nothing at boot: measured on a profile declaring `true`, the WebGL
+  context was created with `false`. Two things were wrong. The boot built the engine's options
+  from the `map` block alone and never read the key; and the adapter passed the option at the
+  top level of the engine's constructor, where MapLibre 6 ignores it — it reads
+  `canvasContextAttributes.preserveDrawingBuffer` — so the print plugin's own automatic
+  activation did nothing either. Both are fixed. The list stays closed: no other key of that
+  block reaches the engine. **What you may see**: a profile that declares `true` now gets a
+  context that keeps its buffer, which a canvas capture needs and which costs some rendering
+  performance.
+- **The automatic refresh of an OGC layer prepares its data like the first load**
+  (`@geoleaf/core` 3.15.0). On a map move, a layer declaring `autoRefresh` handed the source
+  what the network returned: no `data.mapping`, no conversion, no symbol ids. A layer drawing
+  icons lost them at the first move.
+- **A layer's declared geometry is read the same way by the legend and by the map**
+  (`@geoleaf/core` 3.15.0). The legend knew `line`, `polyline` and `polygon` and drew every
+  other value as a point — `multipolygon`, `multiline` and `fill-extrusion` included. And a
+  layer declaring `geometry` alone, served empty, got no sub-layer for the features it would
+  receive later: only `geometryType` was read when the layer was created. Both read the
+  kernel's family table now. `mixed` keeps the point symbol in the legend.
+- **Under writes closer together than their debounce, the table and an active filter follow**
+  (`@geoleaf/core` 3.15.0, `table` 1.1.4). Both waited for a quiet moment after
+  `geoleaf:layer:updated` — 150 ms and 300 ms — and each write pushed it back: a source
+  writing faster left them on the state from before the burst for as long as it lasted. The
+  wait is now bounded, 500 ms for the table and 1 s for the filter. Typing in the filter panel
+  is unchanged.
+- **A photo delivered while its form is open, or its entity selected, keeps its address**
+  (`editor` 1.6.0). Two paths gave an entity back the token of a photo already on the server.
+  The return of the network uploaded the photos of a form not yet saved; bound to no entity,
+  they were purged once delivered, and the save wrote tokens designating nothing. Such a photo
+  now waits for its form to be saved. And a move validated on an entity selected before its
+  photo landed was built from the attributes as they were at the selection; they are now read
+  from the layer when the move is validated.
+- **The offline window speaks the application's language** (`offline-ui` 1.6.4). The cache
+  panel and the export panel wrote some forty labels as literals, most of them in English,
+  four in French. They go through the plugin's catalogue, in the six languages.
+- **On a phone, the theme pills no longer cover the sync strip** (`@geoleaf/core` 3.15.0). The
+  strip publishes its height in `--gl-map-top-inset`, and every surface anchored at the top
+  adds it to its own `top` — except the two rules that place the theme pills under 768 px,
+  which restated `top` without it. With the strip shown, the pills painted over the count of
+  writes owed. Both rules now add the token; nothing moves while the strip is hidden.
+- **A capture waiting for a session says so, and is not forgotten by the periodic retry**
+  (`@geoleaf/core` 3.15.0). A layer declaring `write.auth: "bearer"` holds its captures while
+  no session is open. Two things were missing. **The sync strip** counted the capture among the
+  writes owed and said nothing else: online, one pending, a "Synchronise" button that changed
+  nothing. It now reads "sign-in required" for as long as the last pass held a capture
+  (`heldForSession > 0`) and something is owed, in the six languages; learning it brings
+  back a strip that was dismissed. It offers no sign-in button — who holds the session is not
+  the core's to know. **The periodic tick** read such a pass as "nothing to replay", because a pass
+  that holds everything makes no request and so reports `attempted: 0`: the tick went to sleep on a
+  queue that was not empty, and the capture then waited for a network change, a return to the
+  tab or a new write. The tick now stays lit under that halt, as the contract said.
+- **A text written on the theme accent is readable in every theme and palette** (`@geoleaf/core`
+  3.15.0, `offline-ui` 1.6.4, `print` 1.3.5, `geocoding` 1.1.4, `measure` 1.0.10, `table` 1.1.4,
+  `editor` 1.6.0). Fourteen controls painted their background with `--gl-color-accent` and
+  wrote on it a near-white — `--gl-color-text-inverse`, `--gl-color-bg-surface` or a literal
+  `#fff`. The light theme's accent is pale: the primary button of the offline window measured
+  1.39:1, where WCAG AA asks for 4.5:1. Each now reads `--gl-color-accent-contrast`, the colour
+  a theme declares readable on its own accent: the offline window (header, primary button,
+  sync and re-queue actions), the print footprint's confirm button, the search and proximity
+  submit buttons, the GPS dialog's primary button, the active tab of the right panel and of the
+  table, the editor's queue badge, the sync strip's action and the share dialog's copy button.
+  Three theme blocks were missing the tokens that make the pairing true: the dark theme now
+  declares its own `--gl-color-accent-hover` (`#9a4a07` — the root hover left white text at
+  2.1:1), the dark blocks of the blue and green palettes redeclare `--gl-color-accent-contrast`
+  and `--gl-color-accent-hover` (they inherited the base dark theme's white text on a light
+  accent, 2.1:1 and 1.7:1), and the green palette's hover becomes `#22c55e` (4.0:1 before).
+  In the offline window, three other texts fell under the threshold and are realigned: the
+  active tab no longer uses the accent as a text colour, the cache state reads the theme's
+  success and danger colours, and two columns lose a grey written inline. Its layer boxes and
+  style selects now carry an accessible name. **What you may see**: on those controls, the
+  text turns dark in the light theme, and the hover of an accent button darkens instead of
+  lightening in the dark theme. A host that overrides `--gl-color-accent` should set
+  `--gl-color-accent-contrast` with it.
+- **Sixteen declarations of the core's stylesheets read a colour token no theme defines**
+  (`@geoleaf/core` 3.15.0). An undefined custom property resolves to its hard-coded fallback —
+  the same value in every theme — or, written without one, drops the declaration altogether.
+  Four did: the hover of an accordion header in the gallery, the head of a table in the side
+  panel, and the hover border and the scrollbar thumb of the filter panel were never painted.
+  The others were pinned on their light value: in the dark theme the share dialog stayed white,
+  and the title of an inactive legend group was black at half opacity on a dark panel. Each
+  read is realigned on a token the themes set — `--gl-color-bg-surface`,
+  `--gl-color-bg-surface-muted`, `--gl-color-border-soft`, `--gl-color-border-strong`,
+  `--gl-color-text-muted`, `--gl-color-text-main`, `--gl-color-surface-elevated`. **What you
+  may see**: in the light theme, a few greys move by a shade (`#f7f7f7` becomes `#f9fafb`,
+  `#666` becomes `#6b7280`); in the dark theme, those surfaces follow the theme. **If you had
+  defined one of the old names in your own stylesheet** — `--gl-color-bg`, `--gl-color-bg-alt`,
+  `--gl-color-bg-subtle`, `--gl-color-bg-hover`, `--gl-color-bg-surface-elevated`,
+  `--gl-color-border-main`, `--gl-color-border-muted`, `--gl-color-text-disabled`,
+  `--gl-color-text-primary`, `--gl-color-legend-header-inactive-bg`,
+  `--gl-color-legend-text-inactive`, `--gl-radius-small`, `--gl-shadow-strong` — it is no
+  longer read: set the theme's token instead. `--gl-color-on-accent` is still read, as before.
+
+- **A list of the form can be reordered on a touch screen, and from the keyboard**
+  (`@geoleaf/field-renderer` 1.4.3, carried by `@geoleaf-plugins/editor` 1.6.0). Reordering a
+  `list` field relied on HTML5 drag-and-drop alone, which no mobile browser fires on touch:
+  on a phone the handle did nothing, in silence. Each row now carries two buttons, move up and
+  move down — 44 px targets on a touch screen, named for a screen reader in the six languages,
+  disabled at the end a row cannot cross. The focus follows the moved row, so the same entry
+  can be moved again without walking the form. The drag stays, for the mouse.
+
+- **A photo taken where the browser refuses to store a `Blob` is kept as a photo, not as base64
+  in the feature** (`@geoleaf/core` 3.15.0 with `@geoleaf-plugins/editor` 1.6.0). WebKit refuses
+  a `Blob` or a `File` in IndexedDB for an ephemeral session, on purpose — a private tab is one.
+  The local write failed, the editor fell back on a data-URL, and the whole photo went into the
+  feature's attribute: kept, but out of reach of the upload that runs when the network is back.
+  The write is now made in two steps — the `Blob`, and on its refusal the bytes with their
+  type, which the same session stores — and the editor's upload retry and preview read both
+  shapes. The attribute holds a `gl-img:` token in both cases. The second step is taken for a
+  caller that asks for it: `storeImageLocally({ …, acceptBytes: true })`, which the editor
+  passes. Without it a refused `Blob` rejects, as it always did.
+  No migration: a record already written keeps its `Blob`, and nothing changes where the
+  `Blob` is accepted. ⚠️ A record of the `local_images` store may now carry `bytes` (an
+  `ArrayBuffer`) in place of `blob`: code that reads that store directly must accept both.
+  ⚠️ The two packages go together to get the fix — an editor 1.6.0 on an older core still
+  falls back on the data-URL, and so does an older editor on core 3.15.0: it does not ask for
+  the bytes, so it is never handed a photo it cannot read.
+
+- **The offline window says which basemap will not be prepared**
+  (`@geoleaf-plugins/offline-ui` 1.6.4, with `@geoleaf/core` 3.15.0). A basemap marked
+  `offline: true` on an origin not declared for the preparation
+  (`modules.offline.dataOrigins`) was listed, ticked and counted in the size estimate, then
+  left out by the download with a console warning. Its row is now greyed, unticked and inert,
+  and its tooltip names the origin and the reason; and when a download still leaves an origin
+  out — the tiles a vector style names, for one — the closing notice says so and names it,
+  instead of announcing a success. The plugin asks the core's rule
+  (`GeoLeaf.Storage.prefetchVerdict`); on an older core the row is what it was.
+
+- **A confirmation dialog has finger-sized buttons wherever it opens**
+  (`@geoleaf-plugins/offline-ui` 1.6.4, `@geoleaf-plugins/editor` 1.6.0). Under a coarse
+  pointer the 44 px minimum of Cancel, Confirm and Delete came from the form library's touch
+  rules: a dialog opened by a plugin that does not carry the form — the offline panel's
+  confirmations — kept 36 px buttons. The rule now travels with the dialog itself.
+
+- **The form's close button keeps its shape after another plugin's dialog**
+  (`@geoleaf/field-renderer` 1.4.3, carried by `@geoleaf-plugins/editor` 1.6.0). Every bundle
+  adopts its copy of the dialog stylesheet at its first dialog; adopted after the form's own
+  sheet, it won a tie and the round close button of the form turned square and changed colour
+  for the rest of the page's life. The form library no longer carries a copy of the dialog's
+  rules — it adopts the dialog's sheets — and what it adds on those classes no longer ties.
+
+- **Moving a point no longer puts back the token of a photo already delivered**
+  (`@geoleaf-plugins/editor` 1.6.0). When a photo taken off-network is uploaded, its URL
+  replaces the token on the entity the device stores — and the layer drawing that entity kept
+  its own copy, token included, until the next reload. A geometry edit is built from that
+  copy: on a gallery holding one photo delivered and another still waiting, moving the point
+  sent the two tokens back, and the URL was replaced, on the device and on the server, by a
+  token whose file had been reclaimed. The upload now writes the URL onto the layer's copy
+  too, announced like any other change of the layer. A gallery whose photos were all delivered
+  was not affected; a gallery already damaged keeps its dead token — the file is no longer on
+  the device.
+
+- **`realtime-layer` loaded on demand stops with the application**
+  (`@geoleaf-plugins/realtime-layer` 1.0.8). Its lifecycle module was registered only before
+  the first boot. A host evaluating the bundle once the application runs got neither half:
+  after `unmount()` the sources kept polling their feed, for layers that no longer existed, and
+  the next `mount()` started a second set. The module is now registered on both loading paths.
+  As shipped the late path does not exist — the application preloads the plugin whenever its
+  profile declares a realtime layer. Requires `@geoleaf/core` ≥ 3.14.2 for the late path.
+
+- **The map follows a download** (`@geoleaf/core` 3.15.0). A layer declaring `offline.enabled`
+  is drawn from the device's store, which it read once, when it loaded. A pull —
+  `GeoLeaf.Storage.pullLayer()`, or the download window — rewrote that store and the layer was
+  not told: an entity the server had deleted left the device and stayed on the map, an edited
+  one kept its old drawing, and a first download left the display file on screen, until the
+  page was reloaded. The layer is now given what the store holds as its pull ends, through the
+  loader's own path, and `geoleaf:layer:updated` announces it — an open table and an active
+  filter follow. An entity still owed to the server keeps its pending mark. A layer that is
+  not on the map, or is drawn from the network, is not touched.
+
+- **An entity owed to the server shows it at once, whatever its geometry** (`@geoleaf/core`
+  3.15.0). The pending mark — an orange stroke — was set by the restore of pending edits alone,
+  at boot: an entity captured or edited since was drawn like any other until the page was
+  reloaded. And it was a point's circle stroke only: a line or a polygon owed to the server
+  never showed it. The mark is now set as the edit is queued, when the entity is on its layer,
+  and removed when the server accepts it; a line carries it on its stroke and a polygon on its
+  outline, after a theme switch too. The guide to the offline write cycle presents it.
+
+- **The declared-field diagnostic speaks again when a layer is written** (`@geoleaf/core`
+  3.15.0). A field a profile declares and the data does not carry is named in the log when the
+  layer loads, and when its style changes — and never again: an OGC refresh, a realtime tick,
+  `GeoLeaf.Layers.setData` or `mergeFeatures` could bring data without a declared field, and
+  its reader fell back to a default without a word. Every such write now has the layer judged
+  again, on what it holds and under the style it wears; a burst of writes is judged once, and
+  a field already reported is not reported twice. Nothing is blocked and nothing renders
+  differently — it is a line in `GeoLeaf.Log`.
+
+- **« Reset » puts the value shown beside a range slider back too** (`@geoleaf/core` 3.15.0).
+  The filter panel's reset moved the slider to its minimum and left the number beside it at
+  the value just cleared.
+
+- **A pane its plugin removed is no longer brought back by its host** (`@geoleaf/core` 3.15.0).
+  While it is open, a plugin's pane is moved into the mobile sheet or the desktop side panel,
+  and given back to its original parent when the host lets go of it. Both hosts gave back every
+  node they had moved, without checking that they still held it: a pane its plugin had just
+  removed — at `unmount()`, the itinerary pane of `routing` — was re-attached to the page, and
+  the next opening built a second pane beside it. A host now restores only what is still
+  inside it.
+
+- **A guidance session ends with the application** (`@geoleaf-plugins/navigation` 1.0.3). The
+  plugin registered no lifecycle module: after `unmount()` the guidance banner stayed in the
+  page, the position watch and the screen wake lock stayed held, and the session went on
+  following positions for a map that no longer existed. `unmount()` now stops the session, as
+  `GeoLeaf.Navigation.stop()` does, and the next mount does not resume it. Requires
+  `@geoleaf/core` ≥ 3.14.2 when the plugin is loaded on demand.
+
+- **The offline window closes with the application** (`@geoleaf-plugins/offline-ui` 1.6.4).
+  Open at `unmount()`, the window stayed over the page with its listeners, and covered the
+  next application. It is now closed and its listeners are returned; the toolbar button of the
+  next application opens a new one.
+
+- **`modules.pwa.offlineDetector.badgePosition` is read whatever the offline engine's state**
+  (`@geoleaf/core` 3.15.0). The corner of the connectivity badge was honoured when the offline
+  engine was enabled, and written `"topleft"` when it was not — the mode where the badge is all
+  the detector does. An application showing the badge alone can now place it.
+
+- **The offline preparation no longer stores a JSON resource that parses to `null` or to a bare
+  value** (`@geoleaf/core` 3.15.0). Such a body was written to the cache and handed back as the
+  resource. It is now a failed download, named `Nothing storable in the response`, counted with
+  the others in the preparation's summary.
+- **The schema states the default the code applies for `data.enableProfilePoiMapping`**
+  (`@geoleaf/core` 3.15.0). `geoleaf-config.schema.json` declared `false`; the loader has
+  always normalised the POI data unless the key is set to `false`, and the configuration
+  reference said so. An editor completing from the schema offered the wrong default. Nothing
+  changes at run time.
+
+### Documentation
+
+- **A typed read of `GeoLeaf.Table` from a page that is not the table plugin's is guarded**
+  (`@geoleaf/core` 3.15.0). The plugin configuration guide called `GeoLeaf.Table.exportLayer()`
+  unguarded; the namespace is mounted by the plugin and absent from a page that does not load
+  it. The ambient's own note on `GeoLeaf` being declared `| undefined` is rewritten: it said
+  what the choice cost this repository's documentation, which is no longer true, and now says
+  what it asks of an integrator.
+- **Three pages describe the keys the code reads** (`@geoleaf/core` 3.15.0). The scale page
+  documented a `scaleConfig` block nothing reads: the control reads `modules.scale`, and three
+  of its five defaults were announced `false` where the code applies `true`. Its "disable"
+  section turned nothing off — leaving the block out keeps the control, `enabled: false`
+  removes it. The table page showed a `tableConfig` block with `pageSize` and
+  `virtualScrolling`, two deprecated keys read by nothing, and a row limit of 1000 against
+  30000: it shows `modules.table` with the plugin's defaults. The UI components page declared
+  `ui.controls`, `showScale` and `scaleType`: each control is a capability with its own
+  `modules.<name>` block, and fullscreen is an action of the toolbar.
+- **The permalink page writes its configuration where the core reads it** (`@geoleaf/core`
+  3.15.0). Four blocks declared `ui.permalink`; the capability reads `modules.permalink`. The
+  section on "enabling" it is rewritten as what it is: the permalink is active unless a profile
+  turns it off. The path given for the validators named a directory that no longer exists.
+- **`attributes.titleField` says what it titles** (`@geoleaf/core` 3.15.0). The layer schema and
+  the contract said the key "titles the popup and the side panel". It names one entry of
+  `fields`, and titles the surfaces that entry is displayed on: a side panel whose
+  `display.surfaces` does not list the field opens without a title — measured.
+- **The plugins' READMEs and two core guides state the defaults the code applies**
+  (`@geoleaf/core` 3.15.0, `@geoleaf-plugins/editor` 1.6.0, `geocoding` 1.1.4, `measure` 1.0.10,
+  `print` 1.3.5, `table` 1.1.4). The `Default` column of a plugin README was read by nothing;
+  it is now checked against the plugin's own table of defaults, for the eight plugins that have
+  one, and so are the tables of the core guides that name the block they describe. What the
+  check found:
+    - `PLUGIN_CONFIGURATION_GUIDE.md` announced `'180px'` and `'80vh'` as the minimum and
+      maximum heights of the table panel; the plugin applies `"20%"` and `"60%"`.
+    - `ui/PERMALINK.md` said the permalink is disabled by default. It is enabled by default —
+      a profile turns it off with `modules.permalink.enabled: false` — and its `fields`
+      default is the list of seven facets, not "all fields" in prose.
+    - The geocoding README gave one French sentence as the default of `placeholder`; the
+      plugin applies its translated label `geocoding.control.placeholder`.
+    - The editor README had no row for `showAddPoi` and `poiAddDefaultPosition`, and the
+      table README none for `csvSeparator` and `csvIncludeGeometry`.
+    - Five defaults were written as prose or in a notation no program reads (`enabledTools`
+      of the editor and of measure, `tooltipDefaultSize`, `decimals`, the `margins` of print)
+      and are now the JSON value itself.
+    - `modules.table.exportFormats`, `csvSeparator` and `csvIncludeGeometry` enter the
+      parameter inventory.
+- **The routing plugin's travel mode enters the parameter inventory** (`@geoleaf/core` 3.15.0).
+  `modules.routing.profile` — `car`, `foot` or `bike`, `"car"` by default — was documented in
+  the plugin's README and missing from the inventory. The inventory's rows for the plugins are
+  now checked against each plugin's own table of defaults, which is how it was found; the same
+  check repaired the row of `modules.routing.labelField`, where an unescaped `|` in the type
+  cell had shifted every cell after it and made its default unreadable.
+- **Comments, messages and reference pages no longer cite internal task numbers**
+  (`@geoleaf/core` 3.15.0, `@geoleaf-plugins/editor` 1.6.0, `@geoleaf/field-renderer` 1.4.3,
+  `@geoleaf-plugins/table` 1.1.4). Source comments, TSDoc, test titles, schema descriptions
+  and several pages under `docs/` referred to the numbered tasks of a planning document that
+  is not part of this repository — a reference no reader could follow. Each one is replaced
+  by the reason it stood for, or removed where it only recorded when the line was written.
+  No behaviour changes: `@geoleaf-plugins/table` 1.1.4 differs from 1.1.3 by one test comment.
+- **The first example of the offline-ui README guards what is optional**
+  (`@geoleaf-plugins/offline-ui` 1.6.4). It called `GeoLeaf.Storage.isOffline()` and
+  `getStats()` unguarded, although the façade is inert until the offline engine loads and its
+  members are optional. The index signature removed above is what let it compile.
+- **The quickstart tutorial boots as written** (`@geoleaf/core` 3.15.0). Copied file for file,
+  the project of `QUICKSTART_TUTORIAL.md` drew its map and nothing else: no tooltip, no popup,
+  no side panel, no filter panel. Its layer declared `tooltip`, `popup` and `sidepanelConfig`,
+  three keys no code reads and the layer schema refuses; its taxonomy and its `ui.json` were
+  written in a layout that predates the current one; and two files it referenced — the style
+  and `cluster.json` — were never given, so the browser logged a style error. The steps are
+  rewritten in the form the code reads (`attributes` for the three information surfaces, a
+  named taxonomy, `modules.filter`), every file is given, and each block that is a whole
+  profile file is now validated against its schema when the documentation is checked. The
+  "Complete Example" of `config/LAYER_CONFIG.md` carried the same three keys and follows.
+- **Four parameters the code reads enter the configuration reference** (`@geoleaf/core`
+  3.15.0). `modules.offline.enabled` — the gate of the offline capability itself —,
+  `modules.offline.banner.enabled`, `modules.offline.drain.pollIntervalMs` and
+  `modules.pwa.offlineDetector.badgePosition` were declared by their capability and listed in
+  neither the configuration guide nor the parameter inventory. The inventory's rows for the
+  in-core capabilities are now checked against what each capability declares, which is how
+  the four were found; the same check corrected the default written for
+  `modules.permalink.fields`, announced as ten fields for a list of seven.
+- **Three `performance` keys that nothing reads leave the guides** (`@geoleaf/core` 3.15.0).
+  `maxConcurrentLayers`, `layerLoadDelay` and `fitBoundsOnThemeChange` were still shown in five
+  examples of the Profiles Guide and in a table of the Configuration Guide, and two
+  troubleshooting tips recommended them against slow loading — advice that changed nothing,
+  in a block `validate:profiles` refused. The examples are gone, the tips name the key that is
+  read, and `PROFILE_JSON_REFERENCE.md`, which said the whole block was removed, describes its
+  one key. `clusteringConfig` and `poiConfig`, two root blocks of an earlier layout, leave the
+  `profile.json` structure of the Configuration Guide.
+- **The configuration guide no longer calls `map.target` a CSS selector** (`@geoleaf/core`
+  3.15.0). It gave `"#geoleaf-map"` as the default and described both `map.target` and
+  `map.id` as selectors; the boot resolves them with `document.getElementById`, so the value
+  is a bare id and a leading `#` finds nothing. The guide also listed `map.mapOptions` as a
+  pass-through to the engine's constructor: no code reads that key from a profile, and the
+  row is gone.
+
 ## [3.14.2] - 2026-10-04
 
 ### Removed
@@ -3236,7 +4063,7 @@ an end-to-end authorisation model.
 
 ### Docs
 
-- **Complete geocoding guide**: `CONFIGURATION_GUIDE.md §12` extended with a provider selection guide (Addok = French local authorities, Nominatim = general worldwide use), a comparison table (coverage, quota, latency, attribution), the Nominatim usage policy (1 req/s, automatic User-Agent, automatic Accept-Language), the custom provider schema (fields read by the internal parser), the programmatic API (`GeoLeaf.Geocoding.search/selectResult/destroy`) and a security note. A new recipe in `COOKBOOK §11` (4 variants: minimal Addok, worldwide Nominatim, custom event, search without UI), a new `USER_GUIDE §7.6` section (keyboard navigation, `flyTo` versus `fitBounds`), and 6 `FAQ` entries (API key, provider choice, Nominatim 429, area filtering, result event, custom provider). Additional note in `API_REFERENCE`: silent fallback to Addok when not on HTTPS, `destroy()` behaviour.
+- **Complete geocoding guide**: the Configuration Guide (§12) extended with a provider selection guide (Addok = French local authorities, Nominatim = general worldwide use), a comparison table (coverage, quota, latency, attribution), the Nominatim usage policy (1 req/s, automatic User-Agent, automatic Accept-Language), the custom provider schema (fields read by the internal parser), the programmatic API (`GeoLeaf.Geocoding.search/selectResult/destroy`) and a security note. A new recipe in `COOKBOOK §11` (4 variants: minimal Addok, worldwide Nominatim, custom event, search without UI), a new `USER_GUIDE §7.6` section (keyboard navigation, `flyTo` versus `fitBounds`), and 6 `FAQ` entries (API key, provider choice, Nominatim 429, area filtering, result event, custom provider). Additional note in `API_REFERENCE`: silent fallback to Addok when not on HTTPS, `destroy()` behaviour.
 
 ### Fixed
 

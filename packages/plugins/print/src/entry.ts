@@ -31,6 +31,17 @@ getGeoLeaf()?.I18n?.registerDict?.("print", {
     de: langDe,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Print`. */
+export type PrintApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Print` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Print: PrintApi;
+    }
+}
+
 // 2 — Mount GeoLeaf.Print namespace (only when the core is present).
 const _gl = getGeoLeaf();
 if (_gl) {

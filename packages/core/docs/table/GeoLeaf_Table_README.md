@@ -39,53 +39,47 @@ GeoLeaf.Table has five main responsibilities:
 
 ## 2. Public API of GeoLeaf.Table
 
-### 2.1 `GeoLeaf.Table.init(options)`
+### 2.1 Initialization
 
-Initializes the Table module with a map instance and options.
+The plugin initializes itself: loading it mounts `GeoLeaf.Table`, and the panel is wired when the
+map is ready. There is no `init` call to make, and `GeoLeaf.Table` has no `init` member.
 
-```js
-GeoLeaf.Table.init(options);
-```
+The panel is built at startup when `modules.table.defaultVisible` is `true`, otherwise at the
+first click on the toolbar button.
 
-**Parameters:**
+**Configuration** — the `modules.table` block of the profile:
 
-- `options`: configuration object, **required**
-    - `options.map`: MapLibre GL JS map instance **(required)**
-    - `options.config`: `Object` — custom configuration (optional)
-        - `enabled`: `boolean` — enable the module (default: `true`)
-        - `defaultVisible`: `boolean` — visible on startup (default: `false`)
-        - `pageSize`: `number` — rows per page (default: `50`)
-        - `maxRowsPerLayer`: `number` — row limit (default: `1000`)
-        - `enableExportButton`: `boolean` — export button (default: `true`)
-        - `virtualScrolling`: `boolean` — virtual scrolling (default: `true`)
-        - `defaultHeight`: `string` — default height (default: `'40%'`)
-        - `minHeight`: `string` — minimum height (default: `'20%'`)
-        - `maxHeight`: `string` — maximum height (default: `'60%'`)
-        - `resizable`: `boolean` — resizable (default: `true`)
-
-**Returns:** `void`
+- `enabled`: `boolean` — enable the module (default: `true`)
+- `showButton`: `boolean` — toolbar button (default: `true`)
+- `defaultVisible`: `boolean` — visible on startup (default: `false`)
+- `maxRowsPerLayer`: `number` — row limit (default: `30000`)
+- `enableExportButton`: `boolean` — export button (default: `true`)
+- `defaultHeight`: `string` — default height (default: `'40%'`)
+- `minHeight`: `string` — minimum height (default: `'20%'`)
+- `maxHeight`: `string` — maximum height (default: `'60%'`)
+- `resizable`: `boolean` — resizable (default: `true`)
 
 #### Minimal example
 
 ```js
-const map = GeoLeaf.Core.getMap();
-
-GeoLeaf.Table.init({ map });
+// Nothing to initialize: pick a layer and show the panel
+GeoLeaf.Table.setLayer("restaurants");
+GeoLeaf.Table.show();
 ```
 
 #### Example with configuration
 
-```js
-GeoLeaf.Table.init({
-    map,
-    config: {
-        defaultVisible: true,
-        pageSize: 100,
-        maxRowsPerLayer: 2000,
-        defaultHeight: "50%",
-        resizable: true,
-    },
-});
+```json
+{
+    "modules": {
+        "table": {
+            "defaultVisible": true,
+            "maxRowsPerLayer": 2000,
+            "defaultHeight": "50%",
+            "resizable": true
+        }
+    }
+}
 ```
 
 ---
@@ -441,22 +435,29 @@ function downloadFile(content, filename, mimeType) {
 
 ### 3.1 Global module configuration
 
+The plugin reads the `modules.table` block of the profile. The values below are its defaults:
+a profile declares only what it changes.
+
 ```json
 {
-    "tableConfig": {
-        "enabled": true,
-        "defaultVisible": false,
-        "pageSize": 50,
-        "maxRowsPerLayer": 1000,
-        "enableExportButton": true,
-        "virtualScrolling": true,
-        "defaultHeight": "40%",
-        "minHeight": "20%",
-        "maxHeight": "60%",
-        "resizable": true
+    "modules": {
+        "table": {
+            "enabled": true,
+            "defaultVisible": false,
+            "maxRowsPerLayer": 30000,
+            "enableExportButton": true,
+            "defaultHeight": "40%",
+            "minHeight": "20%",
+            "maxHeight": "60%",
+            "resizable": true
+        }
     }
 }
 ```
+
+`pageSize` and `virtualScrolling` are not in this block: both are deprecated and read by
+nothing. The panel does not paginate, and it windows its rows by itself past a row-count
+threshold.
 
 ### 3.2 Per-layer configuration
 
@@ -602,7 +603,6 @@ map.on("click", (e) => {
 ### 6.1 Table with sorting
 
 ```js
-GeoLeaf.Table.init({ map });
 GeoLeaf.Table.setLayer("restaurants");
 GeoLeaf.Table.show();
 
@@ -633,22 +633,14 @@ map.on("geoleaf:table:exportSelection", (e) => {
 
 ### 6.3 Configuration for large tables
 
-```js
-GeoLeaf.Table.init({
-    map,
-    config: {
-        maxRowsPerLayer: 5000,
-        virtualScrolling: true,
-        pageSize: 100,
-    },
-});
-
-// Debounce frequent refreshes
-let refreshTimeout;
-map.on("geoleaf:filters:changed", () => {
-    clearTimeout(refreshTimeout);
-    refreshTimeout = setTimeout(() => GeoLeaf.Table.refresh(), 300);
-});
+```json
+{
+    "modules": {
+        "table": {
+            "maxRowsPerLayer": 5000
+        }
+    }
+}
 ```
 
 ---
@@ -673,8 +665,8 @@ GeoLeaf.Table (public API — table-api.ts)
 
 ```
 1. Initialization
-   GeoLeaf.Table.init({ map, config })
-   └── Merges config from GeoLeaf.Config.get('tableConfig') + options
+   The plugin wires itself when the map is ready
+   └── Reads the `modules.table` block, merged over the built-in defaults
    └── Creates the DOM container through TablePanel.create()
    └── Attaches map event listeners
 
@@ -735,15 +727,14 @@ GeoLeaf.Table (public API — table-api.ts)
 
 ### Recommendations for very large tables (10k+ rows)
 
-```js
-GeoLeaf.Table.init({
-    map,
-    config: {
-        maxRowsPerLayer: 5000,
-        virtualScrolling: true,
-        pageSize: 100,
-    },
-});
+```json
+{
+    "modules": {
+        "table": {
+            "maxRowsPerLayer": 5000
+        }
+    }
+}
 ```
 
 ---
@@ -753,7 +744,7 @@ GeoLeaf.Table.init({
 ### Issue: "Container not initialized"
 
 **Cause**: `TablePanel` not loaded, or the module was not initialized.
-**Solution**: check that `GeoLeaf.Table.init()` is called before `show()`.
+**Solution**: check that the plugin is loaded and that `modules.table.enabled` is not `false` — there is no `init` call to make.
 
 ### Issue: empty columns
 

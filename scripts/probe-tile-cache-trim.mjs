@@ -147,7 +147,7 @@ const run = async () => {
         say(
             "T2 — le cache durable survit à une ré-inscription du worker",
             survived === seeded
-                ? `oui — ${survived} entrée(s) intactes (le nom ne porte pas de version, tâche 3.5)`
+                ? `oui — ${survived} entrée(s) intactes (le nom ne porte pas de version)`
                 : `⚠️ ${survived} au lieu de ${seeded} — quelque chose a purgé un cache non versionné`
         );
 

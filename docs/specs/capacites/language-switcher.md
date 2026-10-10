@@ -4,8 +4,8 @@ title: language-switcher — le sélecteur de langue de l'interface
 capability_id: language-switcher
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1a7608c60
-date: 1er septembre 2026
+verifie_contre: 1673c0432
+date: 7 octobre 2026
 ---
 
 # language-switcher — le sélecteur de langue de l'interface

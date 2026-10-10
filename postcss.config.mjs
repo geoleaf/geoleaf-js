@@ -1,5 +1,5 @@
 // postcss.config.mjs — ROOT config.
-// GeoLeaf CSS Pipeline – Phase 3.3 / Phase 8.5.4
+// GeoLeaf CSS Pipeline
 // Handles @import + aggressive minification
 //
 // Scope: the SINGLE PostCSS config of the monorepo. postcss-load-config

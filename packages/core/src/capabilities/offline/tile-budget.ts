@@ -12,7 +12,7 @@
  * holds `outbox` / `features`, i.e. field captures that have no other copy. The Service
  * Worker's `CACHE_TILES` was capped by nothing. Under disk pressure an unbounded tile cache can
  * therefore get the WHOLE origin evicted, unsynced captures included. And the measurement taken
- * for task 1.1 settles the "surely persistence protects us" objection: `persist()` was REFUSED
+ * then settles the "surely persistence protects us" objection: `persist()` was REFUSED
  * on a fresh headless profile (~800 MB quota) and GRANTED on the same origin in real Chrome
  * (~10 GB). Persistence is obtainable, never guaranteed — a field device meeting a production
  * origin for the first time starts in `bestEffort`.

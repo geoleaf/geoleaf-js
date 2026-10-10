@@ -5,19 +5,23 @@
  *
  * WHY IT EXISTS. The editor keeps a photo taken off-network as a `Blob` in IndexedDB
  * (`packages/plugins/editor/src/persistence/image-store.ts`, `storeImageLocally`). In a
- * non-persistent WebKit context that `put` is refused, and the capture falls back to a data-URL
- * written into the feature's attribute — the very thing the `gl-img:` token exists to prevent.
- * WebKit's source says the refusal is deliberate for an ephemeral session
- * (`IDBTransaction::putOrAddOnServer`), which is what Safari's private browsing is.
+ * non-persistent WebKit context that `put` is refused. WebKit's source says the refusal is
+ * deliberate for an ephemeral session (`IDBTransaction::putOrAddOnServer`), which is what
+ * Safari's private browsing is. The capture used to fall back to a data-URL written into the
+ * feature's attribute — the very thing the `gl-img:` token exists to prevent. The core now
+ * writes in two steps, the `Blob` and on its refusal the bytes: this probe is what read the
+ * defect, and what reads that the second step is taken where — and only where — the first is
+ * refused.
  *
  * WHAT IT MEASURES, in three parts:
  *   1. the raw store — `scripts/probe-idb-blob-ephemeral.html`, the page meant for a real
  *      device, loaded here as it is: a Blob, a File, an ArrayBuffer, a Uint8Array and
  *      `{ bytes, type }`, each `put` in its own transaction, with the FORM of every refusal;
  *   2. the core — `GeoLeaf.Storage.DB.storeImageLocally()` handed a Blob: resolved, rejected,
- *      or never settled. The last would leave the editor's fallback unreachable;
- *   3. the product — a photo attached in the capture form of `deploy-full` as shipped, saved,
- *      and what the feature's attribute then holds on the device.
+ *      or never settled — and, resolved, the SHAPE of the record read back, `blob` or `bytes`;
+ *   3. the product — a photo attached in the capture form of `deploy-full` as shipped: whether
+ *      its preview paints, then, saved, what the feature's attribute holds on the device and
+ *      under which shape the file is kept.
  *
  * 🖐 WHAT IT CANNOT SAY: what a real Safari does in a private tab. The page of part 1 is the
  * instrument for that, opened on the device.
@@ -143,9 +147,19 @@ async function coreStore(context) {
     const outcome = await page.evaluate(async () => {
         const db = Reflect.get(window, "GeoLeaf").Storage.DB;
         const blob = new Blob([new Uint8Array([1, 2, 3, 4])], { type: "image/png" });
+        const id = `image_probe_${Date.now()}`;
+        // The shape is read from the record, never deduced from the context: it is the subject.
+        const shapeOf = async () => {
+            const record = await db.getLocalImage(id);
+            if (record?.blob instanceof Blob) return `gardée en Blob (${record.blob.size} octets)`;
+            if (record?.bytes instanceof ArrayBuffer) {
+                return `gardée en OCTETS (${record.bytes.byteLength} octets, ${record.type})`;
+            }
+            return "ENREGISTREMENT SANS IMAGE";
+        };
         const put = db
             .storeImageLocally({
-                id: `image_probe_${Date.now()}`,
+                id,
                 blob,
                 filename: "probe.png",
                 type: blob.type,
@@ -153,9 +167,12 @@ async function coreStore(context) {
                 timestamp: Date.now(),
                 endpoint: null,
                 uploaded: 0,
+                // What the editor passes. Without it the core rejects a refused Blob, and
+                // this probe would measure the rejection, not the fallback.
+                acceptBytes: true,
             })
             .then(
-                () => "résolue — le Blob est stocké",
+                async () => `résolue — ${await shapeOf()}`,
                 (/** @type {unknown} */ e) =>
                     `REJETÉE — ${e instanceof Error ? `${e.name} : ${e.message}` : String(e)}`
             );
@@ -212,6 +229,24 @@ async function productPath(context) {
         .locator("#gl-field-photo_principale-file")
         .setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: PNG_1PX });
     await page.locator(".gl-form-image__preview").first().waitFor({ timeout: 20_000 });
+    // The reader's half: a token paints only if the stored image can be turned back into a
+    // `Blob`, whichever shape the record carries.
+    const preview = await page
+        .waitForFunction(
+            () => {
+                const host = document.querySelector(".gl-form-image__preview");
+                const img = host instanceof HTMLImageElement ? host : host?.querySelector("img");
+                return img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0
+                    ? `aperçu peint (${img.src.slice(0, 5)})`
+                    : null;
+            },
+            null,
+            { timeout: 10_000 }
+        )
+        .then(
+            (handle) => handle.jsonValue(),
+            () => "APERÇU NON PEINT"
+        );
     await page.evaluate(() => {
         document.addEventListener("geoleaf:editor:feature-sync-queued", () => {
             Reflect.set(window, "__probeQueued", true);
@@ -224,6 +259,10 @@ async function productPath(context) {
     const features = await readStore(page, { db: GEOLEAF_DB, store: "features" });
     const images = await readStore(page, { db: GEOLEAF_DB, store: "local_images" });
     await page.close();
+    // A `Blob` and an `ArrayBuffer` do not cross to Node: the KEY the record carries does.
+    const shapes = images.map((/** @type {Record<string, unknown>} */ record) =>
+        "blob" in record ? "Blob" : "bytes" in record ? "octets" : "sans image"
+    );
     const record = features.find(
         (/** @type {{ layerId?: string }} */ f) => f.layerId === "sites_rosario"
     );
@@ -233,7 +272,7 @@ async function productPath(context) {
         : value.startsWith("gl-img:")
           ? "jeton gl-img:"
           : value.slice(0, 40);
-    return `l'attribut porte ${kind} ; ${images.length} fichier(s) au magasin d'images`;
+    return `${preview} ; l'attribut porte ${kind} ; ${images.length} fichier(s) au magasin d'images [${shapes.join(", ")}]`;
 }
 
 /**

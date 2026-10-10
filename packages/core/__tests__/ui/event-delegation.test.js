@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.17 - event-delegation */
+/* event-delegation */
 
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { error: vi.fn(), warn: vi.fn(), info: vi.fn() },
@@ -8,7 +8,7 @@ vi.mock("../../src/utils/log/index.js", () => ({
 
 import { _UIEventDelegation } from "../../src/kernel/ui/event-delegation.js";
 
-describe("ui/event-delegation (Phase 5.17)", () => {
+describe("ui/event-delegation", () => {
     it("attachTrackedListener returns null when element or handler missing", () => {
         expect(_UIEventDelegation.attachTrackedListener(null, "click", () => {})).toBeNull();
         expect(

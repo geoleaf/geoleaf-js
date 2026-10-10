@@ -1,6 +1,6 @@
 /**
  * fetch-helper-branches.test.js
- * Sprint T21.3 — Branch coverage for onTimeout, onRetry callbacks,
+ * Branch coverage for onTimeout, onRetry callbacks,
  * _parseResponse content types, get/post/head/exists, configure, getConfig, _delay
  */
 

@@ -6,7 +6,7 @@
  */
 
 /**
- * Capability installer for the in-core `route` capability — presets build (S2 Lot 5).
+ * Capability installer for the in-core `route` capability — presets build.
  *
  * Single self-sufficient anchor: importing THIS file is the only thing a preset does to
  * embark Route. Route owns **no layer B** (its namespace facade was dissolved in S11 —
@@ -24,7 +24,7 @@
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { ROUTE_CAPABILITY } from "./route-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { RouteModule } from "./module.js";
 

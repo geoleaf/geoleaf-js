@@ -35,12 +35,7 @@
         gap: 0.1rem;
         max-width: 300px;
         min-width: 260px;
-        font-family:
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Roboto",
-            sans-serif;
+        font-family: var(--gl-font-family);
         font-size: 0.875rem;
         line-height: 1.35;
     }
@@ -216,7 +211,7 @@
     .gl-rating__value {
         font-size: 0.85rem;
         font-weight: 600;
-        color: var(--gl-color-text-primary, var(--gl-color-text-main, #111));
+        color: var(--gl-color-text-main, #111);
     }
 
     /* ------------------------------------------------------------
@@ -244,7 +239,7 @@
         color: var(--gl-color-on-accent, var(--gl-color-accent-contrast, #fff));
         background: var(--gl-color-accent);
         border: 1px solid transparent;
-        border-radius: var(--gl-radius-small, 4px);
+        border-radius: 4px;
         cursor: pointer;
     }
 
@@ -253,7 +248,7 @@
     }
 
     .gl-poi-popup__action:focus-visible {
-        outline: 2px solid var(--gl-color-accent);
+        outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent));
         outline-offset: 2px;
     }
 
@@ -323,7 +318,7 @@
         font-weight: 500;
 
         /* Colour driven by the theme. */
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
 
         text-decoration: none;
         border-bottom: 1px solid currentColor;
@@ -338,7 +333,7 @@
    inherited styles or global rules also target links. */
     .maplibregl-popup-content .gl-poi-popup__body .gl-poi-popup__link,
     .maplibregl-popup-content .gl-poi-popup__body .gl-poi-popup__link:visited {
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
         border-bottom-color: currentColor;
     }
 

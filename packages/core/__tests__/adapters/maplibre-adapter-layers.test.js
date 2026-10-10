@@ -1,5 +1,5 @@
 /**
- * Unit tests for MaplibreAdapter — Sprints 4 + 5.
+ * Unit tests for MaplibreAdapter — layers.
  *
  * Layers, popups, sentinel, getLayerRegistry, markers, clusters, filtering.
  *
@@ -198,6 +198,28 @@ describe("MaplibreAdapter — Layers", () => {
                 expect.anything()
             );
         });
+
+        // 🛑 The sub-layer set is frozen at creation. A layer served EMPTY and declaring
+        // `geometry: "polyline"` — the spelling most profiles use — brought nothing to it:
+        // only `geometryType` was read, so its lines had no sub-layer to be drawn by.
+        it.each(["geometry", "geometryType"])(
+            "builds the declared family's sub-layer when the layer declares `%s`",
+            (key) => {
+                adapter.addGeoJSONLayer(
+                    "tracks",
+                    { type: "FeatureCollection", features: [{ geometry: { type: "Point" } }] },
+                    { [key]: "polyline" }
+                );
+                expect(mockMapInstance.addLayer).toHaveBeenCalledWith(
+                    expect.objectContaining({ id: "gl-tracks-line", type: "line" }),
+                    expect.anything()
+                );
+                expect(mockMapInstance.addLayer).toHaveBeenCalledWith(
+                    expect.objectContaining({ id: "gl-tracks-circle", type: "circle" }),
+                    expect.anything()
+                );
+            }
+        );
 
         it("adds circle sub-layer for Point data", () => {
             const data = {

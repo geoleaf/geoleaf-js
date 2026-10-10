@@ -77,6 +77,9 @@ function _buildInstallButton(): HTMLButtonElement {
             "padding:6px 12px",
             "font-weight:600",
             "cursor:pointer",
+            // A button does not inherit its font: without this it was drawn in the
+            // browser's own (Arial), next to a banner written in the application's.
+            "font-family:inherit",
             "font-size:13px",
             "white-space:nowrap",
             "flex-shrink:0",
@@ -113,6 +116,9 @@ function _buildCloseButton(): HTMLButtonElement {
             "border:none",
             "color:#fff",
             "cursor:pointer",
+            // A button does not inherit its font: without this it was drawn in the
+            // browser's own (Arial), next to a banner written in the application's.
+            "font-family:inherit",
             "font-size:16px",
             "padding:0 4px",
             "line-height:1",
@@ -145,7 +151,10 @@ function _createBanner(appName: string): HTMLElement {
             "gap:12px",
             "z-index:99999",
             "max-width:calc(100vw - 32px)",
-            "font-family:inherit",
+            // On `document.body`, outside the application's root: `inherit` gave the banner
+            // the host page's default font. The stack is repeated as the fallback — an inline
+            // style is read by no gate, and the banner may show before the theme sheet.
+            "font-family:var(--gl-font-family,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif)",
             "font-size:14px",
             "line-height:1.4",
         ].join(";")

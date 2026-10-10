@@ -23,12 +23,12 @@ import { ProfileManager } from "../../kernel/config/profile.js";
  * Represents the GeoLeaf configuration subsystem: helpers, validators,
  * renderers, data normalizers, and the Config singleton.
  *
- * Kept by Lot 6 (unlike `security`/`api`) for its teardown: four modules depend on it, and its
+ * Kept (unlike `security`/`api`) for its teardown: four modules depend on it, and its
  * `destroy()` carries real work — even though its `init()` no longer does.
  */
 export class ConfigModule implements ILifecycleModule {
     readonly id = "config" as const;
-    // S6 Lot 6: the `security` edge is pruned with SecurityModule. It only ever ordered two
+    // the `security` edge is pruned with SecurityModule. It only ever ordered two
     // facade setups against each other — and that ordering now lives where it belongs, in the
     // ESM import chain of `globals.ts` (core before config).
     readonly dependencies = [] as const;

@@ -20,12 +20,11 @@ title: "GeoLeaf Notifications — Public API"
 6. [Option details](#option-details)
 7. [Internal architecture — Priority queue](#internal-architecture--priority-queue)
 8. [DOM structure and CSS classes](#dom-structure-and-css-classes)
-9. [Telemetry integration](#telemetry-integration)
-10. [Integration examples](#integration-examples)
-11. [Accessibility](#accessibility)
-12. [Responsive (mobile)](#responsive-mobile)
-13. [Debugging](#debugging)
-14. [Security notes](#security-notes)
+9. [Integration examples](#integration-examples)
+10. [Accessibility](#accessibility)
+11. [Responsive (mobile)](#responsive-mobile)
+12. [Debugging](#debugging)
+13. [Security notes](#security-notes)
 
 ---
 
@@ -37,7 +36,7 @@ Since version 2.0.0 this system is publicly exposed to **integrators**:
 
 | Entry point                                     | Usage                               |
 | ----------------------------------------------- | ----------------------------------- |
-| `GeoLeaf.notify(msg, type, opts)`               | Top-level shortcut, simple usage    |
+| `GeoLeaf.notify(msg, level)`                    | Top-level shortcut, simple usage    |
 | `GeoLeaf.Notifications.success(msg)`            | Full namespace, typed methods       |
 | `import { Notifications } from "@geoleaf/core"` | ESM import for third-party bundlers |
 
@@ -75,7 +74,7 @@ Since version 2.0.0 this system is publicly exposed to **integrators**:
 
 ```js
 document.addEventListener("geoleaf:app:ready", () => {
-    GeoLeaf.notify("Map ready", "success", 2000);
+    GeoLeaf.Notifications.show("Map ready", "success", 2000);
 });
 ```
 
@@ -118,22 +117,21 @@ console.log(`${status.activeToasts} active toast(s)`);
 
 ## API reference
 
-### `GeoLeaf.notify(message, type, options?)` _(top-level shortcut)_
+### `GeoLeaf.notify(message, level?)` _(top-level shortcut)_
 
-Displays a toast notification. Available directly on the `GeoLeaf` namespace.
+Displays a toast notification. Available directly on the `GeoLeaf` namespace, including before the application has booted: a message sent early is buffered and shown once the toast system is ready.
 
 ```js
-GeoLeaf.notify(message, type, duration?)
-GeoLeaf.notify(message, type, options?)
-GeoLeaf.notify(message, options?)
+GeoLeaf.notify(message);
+GeoLeaf.notify(message, level);
 ```
 
-| Parameter  | Type            | Default            | Description                 |
-| ---------- | --------------- | ------------------ | --------------------------- |
-| `message`  | `string`        | —                  | Text displayed in the toast |
-| `type`     | `NotifyType`    | `"info"`           | Notification type           |
-| `duration` | `number`        | _(type-dependent)_ | Display duration in ms      |
-| `options`  | `NotifyOptions` | —                  | Options object (see below)  |
+| Parameter | Type          | Default  | Description                                     |
+| --------- | ------------- | -------- | ----------------------------------------------- |
+| `message` | `string`      | —        | Text displayed in the toast                     |
+| `level`   | `NotifyLevel` | `"info"` | `"info"`, `"success"`, `"warning"` or `"error"` |
+
+The shortcut takes neither a duration nor an options object: the toast uses the default duration of its level. To set a duration or options, use `GeoLeaf.Notifications` below.
 
 ---
 
@@ -387,28 +385,6 @@ GeoLeaf.Notifications.error("Critical error");
 
 ---
 
-## Telemetry integration
-
-The system records metrics automatically through `GeoLeaf.Storage.Telemetry` when that module is available.
-
-| Metric                          | Description                        | Type    |
-| ------------------------------- | ---------------------------------- | ------- |
-| `notification.shown.success`    | Success toasts displayed           | Counter |
-| `notification.shown.error`      | Error toasts displayed             | Counter |
-| `notification.shown.warning`    | Warning toasts displayed           | Counter |
-| `notification.shown.info`       | Info toasts displayed              | Counter |
-| `notification.dismissed.manual` | Manual close (× click)             | Counter |
-| `notification.dismissed.auto`   | Automatic close (timeout)          | Counter |
-| `notification.queued`           | Additions to the queue             | Counter |
-| `notification.dropped`          | Notifications evicted (queue full) | Counter |
-
-**Start-up buffer**: when `Telemetry` is not loaded yet, metrics are buffered for 30 seconds, then:
-
-- Flushed automatically if `Telemetry` becomes available
-- Discarded after 30 s if `Telemetry` never loads (avoids memory leaks)
-
----
-
 ## Integration examples
 
 ### Hook on a layer toggle event
@@ -417,7 +393,7 @@ The system records metrics automatically through `GeoLeaf.Storage.Telemetry` whe
 document.addEventListener("geoleaf:layer:toggle", (e) => {
     const { layerId, visible } = e.detail;
     if (visible) {
-        GeoLeaf.notify(`Layer "${layerId}" enabled`, "info", 2000);
+        GeoLeaf.Notifications.show(`Layer "${layerId}" enabled`, "info", 2000);
     }
 });
 ```
@@ -535,12 +511,6 @@ for (let i = 0; i < 20; i++) {
     GeoLeaf.Notifications.info(`Test ${i}`);
 }
 // Expected: 3 visible, 12 queued, 5 dropped
-
-// Check Telemetry metrics
-if (GeoLeaf.Storage?.Telemetry) {
-    const report = GeoLeaf.Storage.Telemetry.getMetricsReport();
-    console.log("Notification metrics:", report);
-}
 ```
 
 ---

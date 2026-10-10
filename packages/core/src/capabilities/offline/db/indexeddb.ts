@@ -23,14 +23,32 @@ import { presentRecordFeature, type PreservingPutTally } from "./features.js";
 import { mergeIdentityTwins } from "./identity-twins.js";
 import { reflagLocalImages } from "./local-images-v3.js";
 import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
-import type { FeatureRecord } from "../../../contracts/sync.contract.js";
+import type { FeatureRecord, QuarantineReason } from "../../../contracts/sync.contract.js";
 
 type StorageDBInstance = IDBDatabase | { _isStub: boolean };
 
-/** Module API returned by DB init() — methods vary by module */
-interface DBModuleAPI {
-    [key: string]: ((...args: unknown[]) => unknown) | undefined;
-}
+/** Canonical name of an IndexedDB sub-module — a key of {@link DBModulesRegistry}. */
+type DBModuleName = keyof typeof DBModulesRegistry;
+
+/**
+ * The instance each sub-module's `init()` returns, keyed by its registry name.
+ *
+ * Derived from the registry rather than declared: a relay below is then checked against the REAL
+ * signature of the module it forwards to. The index signature this replaces accepted any
+ * argument for any method, so a relay could drift from its module without a single error.
+ */
+type DBModuleInstances = {
+    [K in DBModuleName]: ReturnType<(typeof DBModulesRegistry)[K]["init"]>;
+};
+
+/** What `DB.Layers` stores — read off the module, so the relay cannot widen it again. */
+type LayerPayload = Parameters<DBModuleInstances["Layers"]["cacheLayer"]>[1];
+
+/** A cached layer as its module returns it — `getLayer` relays it without erasing it. */
+type CachedLayerRecord = NonNullable<Awaited<ReturnType<DBModuleInstances["Layers"]["getLayer"]>>>;
+
+/** What `DB.Images` stores — read off the module, for the same reason. */
+type LocalImageInput = Parameters<DBModuleInstances["Images"]["storeImageLocally"]>[0];
 
 /**
  * The storage report as `DB.Preferences` returns it — four stores counted.
@@ -95,31 +113,41 @@ const StorageDB = {
      * Initialized sub-modules
      * @private
      */
-    _modules: {} as Record<string, DBModuleAPI>,
+    _modules: {} as Partial<DBModuleInstances>,
+
+    /**
+     * Builds one sub-module on the open database and records it, replacing any earlier instance.
+     *
+     * @param moduleName - Registry name of the sub-module.
+     * @returns The instance, or `null` when no real database is open (closed, or the stub).
+     * @private
+     */
+    _initModule<K extends DBModuleName>(moduleName: K): DBModuleInstances[K] | null {
+        if (!this._db || "_isStub" in this._db) return null;
+        // A caller outside TypeScript — a plugin reading `GeoLeaf.Storage.DB` — may hand over any
+        // string: an unknown name answers `null`, it does not throw, and a prototype key never
+        // reaches the write below.
+        if (isUnsafeKey(moduleName)) return null;
+        const entry: { init(db: IDBDatabase): unknown } | undefined = DBModulesRegistry[moduleName];
+        if (typeof entry?.init !== "function") return null;
+        // The one assertion left: `init()` is reached through a registry entry picked by a
+        // generic key, which TypeScript cannot correlate with that key's instance type.
+        const api = entry.init(this._db) as DBModuleInstances[K];
+        this._modules[moduleName] = api;
+        return api;
+    },
 
     /**
      * Lazy initialize a specific module
      * @private
      */
-    _ensureModule(moduleName: string): DBModuleAPI | null {
-        if (this._modules[moduleName]) {
-            return this._modules[moduleName];
-        }
+    _ensureModule<K extends DBModuleName>(moduleName: K): DBModuleInstances[K] | null {
+        const known = this._modules[moduleName];
+        if (known) return known;
 
-        const moduleConfig = DBModulesRegistry[moduleName as keyof typeof DBModulesRegistry];
-        if (
-            moduleConfig &&
-            typeof moduleConfig.init === "function" &&
-            this._db &&
-            !("_isStub" in this._db)
-        ) {
-            const api = moduleConfig.init(this._db) as unknown as DBModuleAPI;
-            this._modules[moduleName] = api;
-            Log.debug(`[StorageDB] ${moduleName} module lazily initialized`);
-            return api;
-        }
-
-        return null;
+        const api = this._initModule(moduleName);
+        if (api) Log.debug(`[StorageDB] ${moduleName} module lazily initialized`);
+        return api;
     },
 
     /**
@@ -191,7 +219,7 @@ const StorageDB = {
                 // captures. Holding a connection open is the ONLY thing that can block a
                 // migration, so every holder must let go on request.
                 //
-                // ⚠️ This becomes load-bearing the moment the schema moves (task 3.4). Until
+                // ⚠️ This becomes load-bearing the moment the schema moves. Until
                 // then it costs nothing and is invisible — which is exactly why it has to be
                 // posted BEFORE the migration, not with it.
                 db.onversionchange = () => {
@@ -244,16 +272,8 @@ const StorageDB = {
      * @private
      */
     _initializeModules() {
-        for (const [name, module] of Object.entries(DBModulesRegistry)) {
-            if (
-                module &&
-                typeof module.init === "function" &&
-                this._db &&
-                !("_isStub" in this._db)
-            ) {
-                this._modules[name] = module.init(this._db) as unknown as DBModuleAPI;
-                Log.debug(`[StorageDB] ${name} module initialized`);
-            }
+        for (const name of Object.keys(DBModulesRegistry) as DBModuleName[]) {
+            if (this._initModule(name)) Log.debug(`[StorageDB] ${name} module initialized`);
         }
     },
 
@@ -449,8 +469,8 @@ const StorageDB = {
 
     async cacheLayer(
         id: string,
-        data: unknown,
-        profileId: string,
+        data: LayerPayload,
+        profileId: string | null,
         metadata: Record<string, unknown> = {}
     ): Promise<unknown> {
         if (!this._db) await this.init();
@@ -461,7 +481,7 @@ const StorageDB = {
         return undefined;
     },
 
-    async getLayer(id: string): Promise<unknown> {
+    async getLayer(id: string): Promise<CachedLayerRecord | null | undefined> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Layers");
         if (module) {
@@ -608,7 +628,7 @@ const StorageDB = {
     },
 
     /**
-     * Counts what the sync report needs, per layer, in one pass (tâche 4.8).
+     * Counts what the sync report needs, per layer, in one pass.
      *
      * 🛑 **ONE method rather than four.** Composing the report needs three per-layer
      * tallies; exposing them one by one (`countByLayer`, `listByState`…) would widen the
@@ -693,10 +713,17 @@ const StorageDB = {
      * still a capture owed to the server; silencing it in an export whose very role is
      * to get everything out would be losing it.
      *
+     * An entry SET ASIDE says why: `quarantine` carries the motive, and `quarantineStatus` the
+     * HTTP status of the refusal when a server answer caused it. Both are absent from an entry
+     * the drain still holds — an interface can tell "stuck, and for this reason" from "waiting".
+     *
      * @returns One entry per pending edit, oldest first; `[]` without the module.
      * @example
      * const pending = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.()) ?? [];
      * console.info(`${pending.length} edit(s) not yet accepted by the server`);
+     * for (const edit of pending) {
+     *     if (edit.state === "quarantined") console.warn(edit.localId, edit.quarantine);
+     * }
      */
     async listPendingEdits(): Promise<
         Array<{
@@ -707,6 +734,8 @@ const StorageDB = {
             state: string;
             createdAt: number;
             feature: unknown;
+            quarantine?: QuarantineReason;
+            quarantineStatus?: number;
         }>
     > {
         if (!this._db) await this.init();
@@ -724,6 +753,8 @@ const StorageDB = {
                 layerId?: string;
                 localId?: string;
                 createdAt?: number;
+                quarantine?: QuarantineReason;
+                quarantineStatus?: number;
             }>;
             for (const entry of entries) {
                 if (!entry.layerId || !entry.localId) continue;
@@ -738,6 +769,10 @@ const StorageDB = {
                     state,
                     createdAt: Number(entry.createdAt ?? 0),
                     feature: record?.feature ?? null,
+                    ...(entry.quarantine ? { quarantine: entry.quarantine } : {}),
+                    ...(typeof entry.quarantineStatus === "number"
+                        ? { quarantineStatus: entry.quarantineStatus }
+                        : {}),
                 });
             }
         }
@@ -888,10 +923,7 @@ const StorageDB = {
             outboxCount: 0,
             conflictsCount: 0,
         };
-        if (module) {
-            return (module?.getStorageStats?.() as StorageStatsReport | undefined) ?? empty;
-        }
-        return empty;
+        return module ? module.getStorageStats() : empty;
     },
 
     async setPreference(key: string, value: unknown): Promise<unknown> {
@@ -945,7 +977,7 @@ const StorageDB = {
     // IMAGE STORAGE METHODS (Delegated to DB.Images)
     // ========================================
 
-    async storeImageLocally(imageData: unknown): Promise<unknown> {
+    async storeImageLocally(imageData: LocalImageInput): Promise<unknown> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Images");
         if (module) {
@@ -999,7 +1031,9 @@ const StorageDB = {
      * record was rewritten as still pending and the URL was never stored — the same photo
      * left again on every reconnection and every boot, and `cleanUploadedImages` (a cursor
      * over the index at `1`) found nothing to purge, forever. Three layers declared it loose:
-     * this signature, the plugin's own local interface, and `DBModuleAPI`'s index signature.
+     * this signature, the plugin's own local interface, and the index signature every module
+     * was typed with (`(...args: unknown[]) => unknown`). That last one is gone: each relay is
+     * now checked against the module it forwards to (`DBModuleInstances`).
      *
      * @param id - Local image id.
      * @param status - `{ uploaded, url? }` — an OBJECT, never a string.

@@ -134,8 +134,12 @@ const DETAIL = process.argv.includes("--detail");
 // names, i.e. a few hundred bytes. 5 % is ~58 KB — nobody gets there without meaning
 // to. The budget is then edited BY HAND, with the matching history line.
 //
-//   deploy-core : 1,192.5 measured → warn 1,217, fail 1,253
-//   deploy-full : 1,223.9 measured → warn 1,249, fail 1,286
+//   deploy-core : 1,245.4 measured → warn 1,271, fail 1,308
+//   deploy-full : 1,286.4 measured → warn 1,313, fail 1,351
+//
+// ⚠️ These two lines read `1,192.5 → 1,217 / 1,253` and `1,223.9 → 1,249 / 1,286` from
+// 08/08 to 05/10/2026. The anchoring they describe is the LAST line of the history below
+// that says so, not the last line of the history.
 //
 // 📉 Ratchet history, so the descent is readable and a climb shows:
 //   07/08 — 1,195.2 / 1,326.4  (after the favicon removal: −171.6 KB gz)
@@ -145,6 +149,43 @@ const DETAIL = process.argv.includes("--detail");
 //   08/08 — 1,193.5 / 1,224.9  (after self-hosting MapLibre: +278.9 KB gz) 🔺 CLIMB
 //   08/08 — 1,192.5 / 1,223.9  (after the chunk-labels merge: −1.0 KB gz, one request fewer)
 //   08/08 — 1,199.9 / 1,231.2  (MapLibre 5.21.0 → 6.2.0: +4.9 KB gz) 🔺 climb, rationale below
+//   05/10 — 1,245.4 / 1,286.4  (two months of features: +45.5 / +55.2 KB gz) 🔺 CLIMB,
+//                              RE-ANCHORED — the only climb that spends margin, see below
+//
+// 🔺 **THIRD CLIMB, AND THE FIRST RE-ANCHORING FOR GROWTH — 05/10/2026, on the
+// maintainer's decision.**
+//
+// The first climb below brought weight INTO the measurement, and the second was the
+// engine's own, small enough to stay under the lines. This one is the product's: between
+// the 08/08 line and this one the page grew by 45.5 / 55.2 KB gz, `deploy-full` crossed
+// its fail line by 0.4 KB, and the budget was re-anchored on the measurement instead of
+// the growth being taken back. That is the gesture the retained rule names —
+// "edited BY HAND, with the matching history line" — and it is a DECISION, not a
+// calibration: it hands out a fresh 5 %, 62.6 / 64.6 KB.
+//
+// ⚠️ **THE RULE ABOVE SAYS "NOBODY GETS THERE WITHOUT MEANING TO". THIS CLIMB IS THE
+// COUNTER-EXAMPLE.** Nobody meant to. Under the fail line the gate is green, and it stayed
+// green for two months while the page gained its 5 % a few hundred bytes at a time: no
+// history line was written between 08/08 and 05/10, because nothing made anyone write
+// one. So the history cannot say what those 45.5 / 55.2 KB are. Only the last stretch was
+// read run by run, on 04/10: +4.7 KB on `deploy-full` in one lot — `offline-ui`, which
+// that variant loads at boot — then +0.2, +0.1, +0.1 and +0.1. The run that left the
+// variant 0.1 KB under its fail line was green.
+//
+// 🛑 **THE WARNING IS THE ONLY SIGNAL BETWEEN TWO ANCHORINGS, AND A WARNING PRINTED BY
+// EVERY RUN IS READ AS GREEN.** It was printed by every run of 04/10, the one 0.1 KB from
+// the wall included. Re-anchoring puts the measurement back UNDER it (1,245.4 < 1,271;
+// 1,286.4 < 1,313): from here a warning means 2 % was spent since this line. That is the
+// moment to itemise and write the next history line — not the fail line, 3 % later, when
+// the only question left is whether to raise it.
+//
+// What was re-measured on this anchoring, so the next reader does not take it on trust:
+//   · the five `vendor/maplibre-gl/*` entries are in the shell of both variants — the
+//     total is not the "drop that is a symptom" described below;
+//   · the split is shell 549.4 / 590.4, first-screen data 696.0 on both;
+//   · the heaviest plugin, `cog` (99.0 KB gz), was put back as an eager tag in the
+//     deployed shell: the gate went RED at 1,385.7 / 1,351. The regression it was
+//     calibrated on is still refused — seen, not computed.
 //
 // 🔺 Second climb, by far the smallest — but its MEANING is what matters here.
 //
@@ -192,8 +233,8 @@ const DETAIL = process.argv.includes("--detail");
 // `build-deploy.cjs`, at the `GEOJSON_TOLERANCE_DEG` comment. Do not "reclaim" those
 // 25 KB without re-reading that record.
 const BUDGETS = {
-    "deploy-core": { warn: 1217, fail: 1253 },
-    "deploy-full": { warn: 1249, fail: 1286 },
+    "deploy-core": { warn: 1271, fail: 1308 },
+    "deploy-full": { warn: 1313, fail: 1351 },
 };
 
 // Variants deliberately out of budget, with their reason. ⚠️ The reason is not

@@ -57,6 +57,18 @@ function _releaseCacheControl(body: HTMLElement): void {
  */
 const ExportLogic = {
     /**
+     * Releases the control mounted in the modal body, with everything it listens to.
+     *
+     * Called by the modal when it is destroyed — the application it belonged to is going
+     * away. Without it the control's listeners (the queue events, the network pair) stayed
+     * on `document` after the modal had left the page.
+     */
+    releaseCacheContent() {
+        const body = document.getElementById("gl-cache-modal-body");
+        if (body) _releaseCacheControl(body);
+    },
+
+    /**
      * Initialize cache content in modal (Import tab)
      */
     initializeCacheContent() {
@@ -91,7 +103,7 @@ const ExportLogic = {
         if (!CacheControl) {
             const p = document.createElement("p");
             p.className = "gl-cache-modal__placeholder";
-            p.textContent = "Module de cache non disponible";
+            p.textContent = t("storage.notif.offline.unavailable");
             body.appendChild(p);
             if (Log) Log.warn("[CacheButton.ExportLogic] CacheControl unavailable");
             return;
@@ -113,7 +125,7 @@ const ExportLogic = {
             if (!cacheControl) {
                 const p = document.createElement("p");
                 p.className = "gl-cache-modal__placeholder";
-                p.textContent = "Unable to create cache control";
+                p.textContent = t("storage.notif.offline.unavailable");
                 body.appendChild(p);
                 return;
             }
@@ -161,7 +173,7 @@ const ExportLogic = {
 
             const errorP = document.createElement("p");
             errorP.className = "gl-cache-modal__placeholder gl-cache-modal__placeholder--error";
-            errorP.textContent = "Erreur: " + (err as Error).message;
+            errorP.textContent = `${t("storage.download.error")} : ${(err as Error).message}`;
             body.appendChild(errorP);
         }
     },
@@ -189,13 +201,13 @@ const ExportLogic = {
         const h3 = document.createElement("h3");
         h3.className = "gl-cache-export__title";
 
-        h3.textContent = "📤 Export added POIs";
+        h3.textContent = `📤 ${t("storage.export.title")}`;
         header.appendChild(h3);
 
         const p = document.createElement("p");
         p.className = "gl-cache-export__subtitle";
 
-        p.textContent = "Export the POIs you have added locally to a JSON file.";
+        p.textContent = t("storage.export.hint");
         header.appendChild(p);
 
         exportContainer.appendChild(header);
@@ -254,7 +266,7 @@ const ExportLogic = {
                 const labelDiv = document.createElement("div");
                 labelDiv.className = "gl-cache-export__stats-label";
 
-                labelDiv.textContent = `POI${count > 1 ? "s" : ""} pending synchronization`;
+                labelDiv.textContent = t("storage.export.pending");
                 statsText.appendChild(labelDiv);
 
                 statsContainer.appendChild(statsText);
@@ -269,7 +281,7 @@ const ExportLogic = {
                     const exportJsonBtn = document.createElement("button");
                     exportJsonBtn.className = "gl-cache-export__btn gl-cache-export__btn--primary";
                     exportJsonBtn.type = "button";
-                    exportJsonBtn.textContent = "📥 Download as JSON";
+                    exportJsonBtn.textContent = `📥 ${t("storage.export.json")}`;
                     exportJsonBtn.onclick = () => this.exportPOIsAsJSON(pois as unknown[]);
                     actions.appendChild(exportJsonBtn);
 
@@ -277,7 +289,7 @@ const ExportLogic = {
                     const copyBtn = document.createElement("button");
                     copyBtn.className = "gl-cache-export__btn gl-cache-export__btn--secondary";
                     copyBtn.type = "button";
-                    copyBtn.textContent = "📋 Copy to clipboard";
+                    copyBtn.textContent = `📋 ${t("storage.export.copy")}`;
                     copyBtn.onclick = () => this.copyPOIsToClipboard(pois as unknown[]);
                     actions.appendChild(copyBtn);
 
@@ -285,7 +297,7 @@ const ExportLogic = {
                     const clearBtn = document.createElement("button");
                     clearBtn.className = "gl-cache-export__btn gl-cache-export__btn--danger";
                     clearBtn.type = "button";
-                    clearBtn.textContent = "🗑️ Clear local cache";
+                    clearBtn.textContent = `🗑️ ${t("storage.download.clearBtn")}`;
                     clearBtn.onclick = () => this.clearLocalPOIs();
                     actions.appendChild(clearBtn);
 
@@ -301,7 +313,7 @@ const ExportLogic = {
                     emptyState.appendChild(emptyIcon);
 
                     const emptyText = document.createElement("p");
-                    emptyText.textContent = "Aucun POI en attente d'export";
+                    emptyText.textContent = t("storage.sync.upToDate");
                     emptyState.appendChild(emptyText);
 
                     exportContainer.appendChild(emptyState);

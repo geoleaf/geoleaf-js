@@ -4,8 +4,8 @@ title: realtime-layer — les couches qui se mettent à jour toutes seules
 plugin_id: realtime-layer
 package: "@geoleaf-plugins/realtime-layer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 711ee88bd
-date: 1er octobre 2026
+verifie_contre: 7b846fbe3
+date: 5 octobre 2026
 ---
 
 # realtime-layer — les couches qui se mettent à jour toutes seules
@@ -92,13 +92,13 @@ et **ne démarre pas**, les autres couches continuant normalement.
 
 `entry.ts` est court — cinq gestes, pas les six du plugin d'interface complet :
 
-| Étape                 | Ce qu'elle fait ici                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------- |
-| Ré-exports de types   | `IDecoder`, `DecodedUpdate`, `IRealtimeSource`, `StaleActionHandler` — les **points d'extension**     |
-| Montage du namespace  | `GeoLeaf.RealtimeLayer = buildPublicApi()`                                                            |
-| Auto-enregistrement   | Le manifeste ci-dessus, avec un `healthCheck` qui vérifie la présence du namespace                    |
-| Démontage (1.0.6)     | `registry.register({ id, init, destroy })` avant le premier boot : le `destroy()` appelle `stopAll()` |
-| Démarrage automatique | Écoute `geoleaf:app:ready` → balaye le profil et démarre les couches déclarées                        |
+| Étape                 | Ce qu'elle fait ici                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------- |
+| Ré-exports de types   | `IDecoder`, `DecodedUpdate`, `IRealtimeSource`, `StaleActionHandler` — les **points d'extension** |
+| Montage du namespace  | `GeoLeaf.RealtimeLayer = buildPublicApi()`                                                        |
+| Auto-enregistrement   | Le manifeste ci-dessus, avec un `healthCheck` qui vérifie la présence du namespace                |
+| Démontage (1.0.6)     | `registerPluginModule({ id, destroy })` sur les deux chemins de chargement (1.0.8) : `stopAll()`  |
+| Démarrage automatique | Écoute `geoleaf:app:ready` → balaye le profil et démarre les couches déclarées                    |
 
 **Ni i18n, ni CSS, ni créneau de barre d'outils, ni action** : ce plugin n'a aucune interface.
 
@@ -106,10 +106,18 @@ et **ne démarre pas**, les autres couches continuant normalement.
 l'application en détruisant ce registre : le module que le plugin y inscrit arrête alors toutes les
 sources. Avant, rien ne les arrêtait — elles sondaient encore après `unmount()`, et le démarrage
 automatique en lançait un second jeu au montage suivant (mesuré par l'E2E `71-mount-remount`, un
-écouteur `visibilitychange` de plus par cycle). ⚠️ Le module ne s'inscrit qu'avant le premier boot :
-chargé plus tard, le plugin n'est pas arrêté par un démontage. Ce n'est plus une contrainte du
-registre — depuis le core 3.14.2 un module inscrit après `init()` y est démonté comme les autres —,
-c'est l'entrée de ce plugin qui s'abstient encore, sous `isInitialized() !== true`.
+écouteur `visibilitychange` de plus par cycle).
+
+**Le module s'inscrit sur les DEUX chemins de chargement depuis la 1.0.8**, par
+`registerPluginModule` (`@geoleaf/host-runtime`). Jusque-là il ne s'inscrivait qu'avant le premier
+boot, sous `isInitialized() !== true` : chargé plus tard — un hôte qui évalue le bundle à la demande
+—, le plugin n'était pas arrêté par un démontage. Mesuré en navigateur, préchargement vidé et bundle
+évalué une fois l'application montée, intervalle ramené à deux secondes : quatre requêtes du flux en
+neuf secondes APRÈS `unmount()`, pour une couche qui n'existait plus, et neuf après le `mount()`
+suivant — un second jeu de sources. Après le correctif : zéro, puis quatre.
+⚠️ Le chemin tardif n'existe pas tel que livré : `beforeBoot` précharge ce plugin dès que le profil
+déclare une couche temps réel. ⚠️ Un module inscrit après `init()` est démonté par un core ≥ 3.14.2 ;
+sur un core sans `GeoLeaf.mount()`, rien n'est inscrit — rien n'y démonte une application.
 
 ⚠️ **L'ordre de chargement des scripts est porteur** : le core, puis `websocket` s'il y a des
 couches qui en dépendent, puis ce plugin, puis les extensions qui enregistrent leurs décodeurs, puis

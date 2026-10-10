@@ -26,6 +26,13 @@ describe("kernel-exports — surface publique", () => {
         expect(kx.GeoLeafAPI).toBe(globalThis.GeoLeaf);
     });
 
+    test("🛑 `ensureGeoLeaf` est exportée, et rend le namespace vivant", () => {
+        // The typed way to the namespace for a module that must mount on it: the helper
+        // existed and no entry of the package exported it.
+        expect(typeof kx.ensureGeoLeaf).toBe("function");
+        expect(kx.ensureGeoLeaf()).toBe(globalThis.GeoLeaf);
+    });
+
     test("expose les utilitaires (Log, Errors, CONSTANTS, Utils, applyCssText)", () => {
         expect(kx.Log).toBeTruthy();
         expect(kx.Errors).toBeTruthy();

@@ -8,7 +8,8 @@
 ## Prerequisites
 
 1. Node.js ≥ 22
-2. `@geoleaf/core` ^3.0.0 already installed (peer dependency)
+2. `@geoleaf/core` v3 — a **peer dependency**: install it yourself, the plugin never brings a
+   second copy of it
 
 No account, no token, no registry configuration: the package is public on npmjs.
 
@@ -17,16 +18,16 @@ No account, no token, no registry configuration: the package is public on npmjs.
 ## Step 1 — Install
 
 ```bash
-npm install @geoleaf-plugins/offline-ui
+npm install @geoleaf/core @geoleaf-plugins/offline-ui
 ```
 
 ---
 
 ## Step 2 — Load the plugin
 
-### ESM (script tag)
+Load it **after** the core and **before** `GeoLeaf.boot()`.
 
-The plugin must be loaded **after** `@geoleaf/core`:
+### ESM (script tag)
 
 ```html
 <!-- Core first -->
@@ -39,64 +40,49 @@ The plugin must be loaded **after** `@geoleaf/core`:
 ></script>
 ```
 
-### ESM
+### ESM (bundler)
 
 ```javascript
+import "@geoleaf/core";
 import "@geoleaf-plugins/offline-ui";
-// The plugin registers itself automatically on import.
+// The plugin registers its interface on import.
 ```
 
 ---
 
-## Step 3 — Initialise
+## Step 3 — Enable the capability in the profile
 
-Call `Storage.init()` after GeoLeaf Core has loaded:
+There is **no call to make**. The offline engine belongs to the core: it is loaded on demand and
+initialised while the application boots, when the profile says so —
+`modules.offline.enabled: true` **and** `modules.pwa.enabled: true`. The keys, and what each
+changes, are in [CONFIGURATION.md](CONFIGURATION.md).
 
 ```javascript
 GeoLeaf.boot({
     config: { data: { activeProfile: "my-app", profilesBasePath: "./profiles/" } },
 });
-
-const ok = await GeoLeaf.Storage.init({
-    indexedDB: {
-        name: "geoleaf-app",
-        version: 1,
-    },
-    enableOfflineDetector: true,
-    enableServiceWorker: false,
-});
-
-if (!ok) {
-    console.warn("Storage plugin failed to initialise.");
-}
 ```
 
-### Full `StorageInitOptions`
-
-```typescript
-interface StorageInitOptions {
-    indexedDB?: {
-        name?: string; // Database name (default: 'geoleaf-storage')
-        version?: number; // Schema version (default: 1)
-    };
-    cache?: Record<string, unknown>; // CacheManager configuration
-    offline?: Record<string, unknown>; // OfflineDetector configuration
-    enableOfflineDetector?: boolean; // Enable network monitoring (default: false)
-    enableServiceWorker?: boolean; // Register service worker (default: false)
-}
-```
+Without those two keys the engine is never loaded: the plugin still registers its interface, and
+a download answers that offline storage is not available.
 
 ---
 
 ## Step 4 — Verify
 
-```javascript
-const available = GeoLeaf.Storage.isAvailable();
-console.log("Storage available:", available);
+`GeoLeaf.Storage` is the core's facade. Its members are optional in the types because the facade
+is inert until the engine has loaded:
 
-const offline = GeoLeaf.Storage.isOffline();
+```javascript
+const available = GeoLeaf.Storage?.isAvailable?.() ?? false;
+console.log("Offline engine ready:", available);
+
+const offline = GeoLeaf.Storage?.isOffline?.() ?? false;
 console.log("Currently offline:", offline);
 ```
+
+To wait for the engine rather than poll it, `GeoLeaf.Storage.whenReady()` resolves once it has
+announced itself. ⚠️ It never resolves on a profile that does not enable the capability.
 
 ---
 
@@ -113,15 +99,17 @@ Nothing specific to do — `npm install` works out of the box:
 
 ## Troubleshooting
 
-| Problem                        | Cause                             | Solution                                  |
-| ------------------------------ | --------------------------------- | ----------------------------------------- |
-| `Storage.init() returns false` | Sub-system init failure           | Check browser console for detailed errors |
-| IndexedDB unavailable          | Private/incognito mode or blocked | Some browsers block IDB in private mode   |
+| Problem                                  | Cause                                              | What to do                                                                 |
+| ---------------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------- |
+| A download says storage is not available | The profile does not enable the capability         | Set `modules.offline.enabled` and `modules.pwa.enabled`                    |
+| A basemap row is greyed                  | Its origin is not declared for offline preparation | Declare it in `modules.offline.dataOrigins` — its tooltip names the origin |
+| Storage refused or evicted               | A private window, or an origin without persistence | The "Can I leave?" block says which regime the browser granted             |
 
 ---
 
 ## See also
 
-- [OVERVIEW.md](OVERVIEW.md) — Plugin architecture
-- [API_REFERENCE.md](API_REFERENCE.md) — Full public API
-- [EXAMPLES.md](EXAMPLES.md) — Practical usage recipes
+- [OVERVIEW.md](OVERVIEW.md) — What the plugin is, and is not
+- [CONFIGURATION.md](CONFIGURATION.md) — Profile keys
+- [API_REFERENCE.md](API_REFERENCE.md) — What the window calls, and the events it follows
+- [EXAMPLES.md](EXAMPLES.md) — Practical recipes

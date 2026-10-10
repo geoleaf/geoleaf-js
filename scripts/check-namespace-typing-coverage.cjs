@@ -93,10 +93,29 @@ const C = {
  */
 const VACUOUS = new Set(["unknown", "any", "object", "{}", "Record<string, unknown>"]);
 
+/**
+ * A plugin namespace reading the augmentable registry — `GeoLeafPluginApi<"Table">`.
+ *
+ * Vacuous AS FAR AS THE CORE GOES: the type resolves to `unknown` until the plugin's own
+ * declarations augment `GeoLeafPluginApis`, and the core cannot see them. Counting these as
+ * typed raised the informative ratio by fourteen the day the registry was posed, for members
+ * whose typing had not changed for a reader of the core alone.
+ */
+const PLUGIN_REGISTRY_RE = /^GeoLeafPluginApi<"[A-Za-z_]+">$/;
+
 /** A member declared by an INLINE object carrying its own tail: typed, but open. */
 const OPEN_TAIL_RE = /\[\s*key\s*:\s*string\s*\]\s*:\s*unknown/;
 
 const normalise = (t) => t.replace(/\s+/g, " ").trim();
+
+/**
+ * A type's text without its comments.
+ *
+ * A member whose documentation NAMES the tail is not a member that carries one: `Storage` lost
+ * its own on 2026-10-04 and kept a comment recounting it, and this gate went on counting it.
+ * Stripped BEFORE `normalise`, which collapses the line end a `//` comment stops at.
+ */
+const withoutComments = (t) => t.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, " ");
 
 function loadBaseline() {
     if (!fs.existsSync(BASELINE)) {
@@ -176,12 +195,12 @@ const openTail = []; // typed yet carrying their own tail — informative
 
 for (const [name, type] of members) {
     const t = normalise(type);
-    if (t === "" || VACUOUS.has(t)) {
+    if (t === "" || VACUOUS.has(t) || PLUGIN_REGISTRY_RE.test(t)) {
         vacuous.set(name, t === "" ? "(aucun)" : t);
         continue;
     }
     typed.add(name);
-    if (OPEN_TAIL_RE.test(t)) openTail.push(name);
+    if (OPEN_TAIL_RE.test(withoutComments(type))) openTail.push(name);
 }
 
 /** Untyped = absent from the members, OR present but declared empty (HOST-06). */

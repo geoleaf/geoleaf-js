@@ -49,6 +49,19 @@
  * an empty sample, and at least one declared field of every family the repository's profiles use.
  * Without them this guard would come out green the day `profiles/` moves, a key is renamed, or the
  * sampler returns nothing — on zero features, every field is "found".
+ *
+ * ## A verdict over the whole scope — and « undecided » is a verdict
+ *
+ * A `text` descriptor ORs its `searchFields`, and a descriptor that lists no layer applies to
+ * every one: a field missing from ONE layer is normal there, and the runtime cannot say more — a
+ * page holds the layers of its active theme only. Here every layer of the profile is at hand, so
+ * the question can be asked whole: is the field carried by AT LEAST ONE layer in its scope?
+ *
+ * 🛑 Three answers, not two. Carried by one: fine. Carried by none, and every layer in scope was
+ * read: MISSING, and the guard is red. Carried by none of the layers that could be read, while
+ * another could not — a remote URL, an OGC API, vector tiles, a plugin loader: UNDECIDED, listed
+ * with the layers that kept the verdict open, never red. Calling it missing would accuse a field
+ * the unread layer may carry; passing it in silence would hide that nobody checked.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -74,7 +87,10 @@ import { layerDataPath } from "../../src/utils/general/layer-data-path.js";
 import { taxonomyDeclaredFields } from "../../src/capabilities/taxonomy/declared-fields.js";
 import { attributeDeclaredFields } from "../../src/capabilities/feature-info/declared-fields.js";
 import { labelDeclaredFields } from "../../src/capabilities/labels/declared-fields.js";
-import { filterDeclaredFields } from "../../src/capabilities/filter/declared-fields.js";
+import {
+    filterDeclaredFields,
+    filterScopedFields,
+} from "../../src/capabilities/filter/declared-fields.js";
 import type { TaxonomyConfig } from "../../src/capabilities/taxonomy/types.js";
 import type { FilterConfig } from "../../src/capabilities/filter/types.js";
 
@@ -104,6 +120,53 @@ interface Report {
     skipped: string[];
     families: Set<Family>;
     missing: string[];
+    /** Scoped fields whose verdict was reached — carried by a layer in scope, or missing. */
+    scopedDecided: number;
+    /** Scoped fields carried by no READ layer while another layer in scope could not be read. */
+    undecided: string[];
+}
+
+/**
+ * Judges the filter's scoped fields of one profile: each must be carried by at least one layer in
+ * its scope. See the header for the three verdicts.
+ *
+ * @param samples - The sample of every layer of the profile that was read.
+ * @param unread - Why each other layer of the profile was not.
+ */
+function judgeScopedFields(
+    profile: string,
+    modules: Json,
+    samples: ReadonlyMap<string, DeclaredFieldFeature[]>,
+    unread: ReadonlyMap<string, string>,
+    report: Report
+): void {
+    const everyLayer = [...samples.keys(), ...unread.keys()];
+    const scoped = filterScopedFields({
+        enabled: true,
+        ...(modules["filter"] as object),
+    } as FilterConfig);
+    for (const field of scoped) {
+        const scope = field.layers ?? everyLayer;
+        const read = scope.filter((id) => samples.has(id));
+        const carried = read.some((id) => (samples.get(id) ?? []).some((f) => field.present(f)));
+        const open = scope.filter((id) => !samples.has(id));
+        if (carried) {
+            report.scopedDecided += 1;
+            continue;
+        }
+        const line =
+            `${profile}: ${field.key} "${field.field}" — carried by none of the ` +
+            `${read.length} layer(s) read in its scope`;
+        if (open.length === 0) {
+            report.scopedDecided += 1;
+            report.missing.push(line);
+        } else {
+            const why = open.map(
+                (id) => `${id}: ${unread.get(id) ?? "not a layer of the profile"}`
+            );
+            report.undecided.push(`${line}; undecided — not read: ${why.join(", ")}`);
+        }
+    }
 }
 
 /** The `modules` bag the loader would build: `Files.modules` files, then the inline block. */
@@ -228,6 +291,8 @@ function judgeRepository(): Report {
         skipped: [],
         families: new Set(),
         missing: [],
+        scopedDecided: 0,
+        undecided: [],
     };
     const dirs = fs
         .readdirSync(PROFILES_DIR, { withFileTypes: true })
@@ -240,6 +305,8 @@ function judgeRepository(): Report {
         const profile = readJson(path.join(profileDir, "profile.json"));
         const modules = moduleBag(profileDir, profile);
         report.profiles.push(name);
+        const samples = new Map<string, DeclaredFieldFeature[]>();
+        const unread = new Map<string, string>();
 
         for (const layer of profileLayers(profileDir, profile)) {
             const dataFile = layerDataPath(layer.config);
@@ -247,15 +314,18 @@ function judgeRepository(): Report {
             const reason = skipReason(layer.config, dataFile, abs);
             if (reason) {
                 report.skipped.push(`${name}/${layer.id}: ${reason}`);
+                unread.set(layer.id, reason);
                 continue;
             }
             const collection = readJson(abs as string);
             const features = Array.isArray(collection["features"]) ? collection["features"] : [];
             if (features.length === 0) {
                 report.skipped.push(`${name}/${layer.id}: empty collection`);
+                unread.set(layer.id, "empty collection");
                 continue;
             }
             const sample = sampleFeatures(features).filter(isRecord) as DeclaredFieldFeature[];
+            samples.set(layer.id, sample);
             report.judged.push({ profile: name, layer: layer.id, sampled: sample.length });
 
             const styles = layerStyles(profileDir, layer.dir, layer.config);
@@ -273,9 +343,113 @@ function judgeRepository(): Report {
                 }
             }
         }
+        judgeScopedFields(name, modules, samples, unread, report);
     }
     return report;
 }
+
+describe("the scoped verdict, on a fixture — a guard never seen red guards nothing", () => {
+    // The repository's profiles may all be healthy: without this, a judge that called every
+    // field « carried » would come out as green as one that works.
+    const feature = (properties: Json): DeclaredFieldFeature =>
+        ({ type: "Feature", geometry: null, properties }) as unknown as DeclaredFieldFeature;
+    const modules = {
+        filter: {
+            fields: [
+                { id: "q", kind: "text", searchFields: ["properties.nom", "properties.adresse"] },
+                { id: "h", kind: "range", field: "properties.hauteur" },
+                // A text search that LISTS its layers: scoped too, over those layers only.
+                {
+                    id: "s",
+                    kind: "text",
+                    searchFields: ["properties.ref"],
+                    layers: ["voirie", "wfs"],
+                },
+                { id: "c", kind: "taxonomy", field: "categoryId", layers: ["voirie"] },
+                { id: "near", kind: "proximity" },
+            ],
+        },
+    };
+    const samples = new Map([
+        ["voirie", [feature({ nom: "Rue A", categoryId: "x" })]],
+        ["mobilier", [feature({ nom: "Banc" })]],
+    ]);
+    const blank = (): Report => ({
+        profiles: [],
+        judged: [],
+        skipped: [],
+        families: new Set(),
+        missing: [],
+        scopedDecided: 0,
+        undecided: [],
+    });
+
+    it("carried by one layer in scope: decided, and nothing is said", () => {
+        const report = blank();
+        judgeScopedFields(
+            "fixture",
+            { filter: { fields: [modules.filter.fields[0]] } },
+            samples,
+            new Map(),
+            report
+        );
+        // `nom` is carried; `adresse` is not, and every layer was read.
+        expect(report.missing).toEqual([
+            'fixture: modules.filter.fields[0].searchFields[1] "properties.adresse" — carried by none of the 2 layer(s) read in its scope',
+        ]);
+        expect(report.undecided).toEqual([]);
+        expect(report.scopedDecided).toBe(2);
+    });
+
+    it("🛑 carried by none, every layer read: MISSING", () => {
+        const report = blank();
+        judgeScopedFields("fixture", modules, samples, new Map(), report);
+        expect(report.missing.map((l) => l.split(" — ")[0])).toEqual([
+            'fixture: modules.filter.fields[0].searchFields[1] "properties.adresse"',
+            'fixture: modules.filter.fields[1].field "properties.hauteur"',
+            // Listed layers: `voirie` was read, `wfs` is no layer of the profile — see below.
+        ]);
+    });
+
+    it("🛑 carried by none of the layers read, another one unread: UNDECIDED — never missing", () => {
+        const report = blank();
+        const unread = new Map([["wfs", "OGC API"]]);
+        judgeScopedFields("fixture", modules, samples, unread, report);
+        // The profile-wide fields now have an unread layer in scope too.
+        expect(report.missing).toEqual([]);
+        expect(report.undecided.map((l) => l.split(" — ")[0])).toEqual([
+            'fixture: modules.filter.fields[0].searchFields[1] "properties.adresse"',
+            'fixture: modules.filter.fields[1].field "properties.hauteur"',
+            'fixture: modules.filter.fields[2].searchFields[0] "properties.ref"',
+        ]);
+        expect(report.undecided[2]).toContain("undecided — not read: wfs: OGC API");
+    });
+
+    it("a listed layer the profile does not have keeps the verdict open, and is named", () => {
+        const report = blank();
+        judgeScopedFields(
+            "fixture",
+            { filter: { fields: [modules.filter.fields[2]] } },
+            samples,
+            new Map(),
+            report
+        );
+        expect(report.missing).toEqual([]);
+        expect(report.undecided[0]).toContain("wfs: not a layer of the profile");
+    });
+
+    it("a descriptor listing its layers, and `proximity`, are not the scoped judge's", () => {
+        const report = blank();
+        judgeScopedFields(
+            "fixture",
+            { filter: { fields: [modules.filter.fields[3], modules.filter.fields[4]] } },
+            samples,
+            new Map(),
+            report
+        );
+        expect(report).toMatchObject({ missing: [], undecided: [], scopedDecided: 0 });
+    });
+});
 
 describe("guard — every field a repository profile declares is carried by its data", () => {
     const report = judgeRepository();
@@ -296,6 +470,26 @@ describe("guard — every field a repository profile declares is carried by its 
 
     it("names every skipped layer — nothing passes unseen", () => {
         for (const line of report.skipped) expect(line).toMatch(/^[^/]+\/[^:]+: .+/);
+    });
+
+    it("reaches a verdict on scoped filter fields too — anti-empty", () => {
+        // The repository's profiles declare text searches and descriptors without `layers`:
+        // none of them judged would mean the scoped pass reads nothing.
+        expect(report.scopedDecided).toBeGreaterThanOrEqual(3);
+    });
+
+    it("names every undecided verdict, with the layers that kept it open", () => {
+        for (const line of report.undecided) {
+            expect(line).toMatch(
+                /^[^:]+: modules\.filter\.fields\[\d+\]\.\S+ ".+" — .+; undecided — not read: .+/
+            );
+        }
+        if (report.undecided.length > 0) {
+            console.info(
+                `[profile-field-reconciliation] ${report.undecided.length} undecided verdict(s):\n  ` +
+                    report.undecided.join("\n  ")
+            );
+        }
     });
 
     it("finds every declared field in the data", () => {

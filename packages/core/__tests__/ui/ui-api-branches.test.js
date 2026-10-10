@@ -72,13 +72,24 @@ describe("ui-api — branch coverage", () => {
         UI.init({ enableEventDelegation: false });
     });
 
-    it("init calls _initThemeControl when Config available", () => {
+    it("init applies the declared `ui.theme`", () => {
         _g.GeoLeaf.Config = { get: vi.fn(() => ({ theme: "dark" })) };
         _g.GeoLeaf._UITheme = { initAutoTheme: vi.fn(), initThemeToggle: vi.fn() };
         _g.GeoLeaf.UI.initAutoTheme = _g.GeoLeaf._UITheme.initAutoTheme;
         _g.GeoLeaf.UI.initThemeToggle = _g.GeoLeaf._UITheme.initThemeToggle;
         UI.init({});
-        // initAutoTheme would be called with "dark"
+        expect(_g.GeoLeaf._UITheme.initAutoTheme).toHaveBeenCalledWith("dark");
+    });
+
+    // The default the user sees: this resolution runs last at boot, so an absent `ui.theme`
+    // follows the system — whatever the map option carried before it.
+    it("init resolves an absent `ui.theme` to `auto`", () => {
+        _g.GeoLeaf.Config = { get: vi.fn(() => ({})) };
+        _g.GeoLeaf._UITheme = { initAutoTheme: vi.fn(), initThemeToggle: vi.fn() };
+        _g.GeoLeaf.UI.initAutoTheme = _g.GeoLeaf._UITheme.initAutoTheme;
+        _g.GeoLeaf.UI.initThemeToggle = _g.GeoLeaf._UITheme.initThemeToggle;
+        UI.init({});
+        expect(_g.GeoLeaf._UITheme.initAutoTheme).toHaveBeenCalledWith("auto");
     });
 
     // ── cleanup ──────────────────────────────────────────────────────────

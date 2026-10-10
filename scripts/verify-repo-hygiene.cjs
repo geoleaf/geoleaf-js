@@ -9,14 +9,14 @@
  *   1c. SCRIPTS_ALLOWLIST entries naming a file that no longer exists — the register
  *      must describe the disk in BOTH directions, or it silently becomes a list of
  *      names designating nothing.
- *   1b. `.cjs`/`.mjs` files OUTSIDE root `scripts/` with no declared owner (T3.5).
+ *   1b. `.cjs`/`.mjs` files OUTSIDE root `scripts/` with no declared owner.
  *      Corpus is the index AND the untracked worktree — see getGitVisibleFiles().
  *   2. Build/test artifacts tracked in git (coverage*.txt, *_cov_run.txt, coverage-e2e/)
  *   3. Python bytecode tracked in git (__pycache__/, *.pyc)
  *   4. SOURCE files (.ts/.js/.css) exceeding 700 lines, across all 18 packages.
  *      Tests are OUT OF SCOPE — the limit constrains shipped code, not test suites
  *      (settled 24/07/2026). WARNING, non-blocking.
- *   5. GENERATED artifacts under git control (T4.1) — three assertions:
+ *   5. GENERATED artifacts under git control — three assertions:
  *      5a. no artifact path in the INDEX          → the T4 exit criterion
  *      5b. no artifact path untracked AND unignored → blocks the reconstitution
  *      5c. every DECLARED producer output is covered by a known form, and ignored
@@ -419,6 +419,8 @@ const SCRIPTS_ALLOWLIST = new Set([
     "verify-boot-subscription.cjs",
     // Every referenced `var(--gl-*)` must be defined, or set at runtime (allowlist).
     "verify-css-tokens.cjs",
+    // A text written on an accent background must reach 4.5:1 in every theme and palette.
+    "verify-css-accent-contrast.cjs",
     // The 3rd boundary: local re-definition of a canonical
     // `@geoleaf/host-runtime` utility instead of importing it.
     "verify-plugin-shared-fork.cjs",
@@ -551,6 +553,10 @@ const SCRIPTS_ALLOWLIST = new Set([
     // while new tooling is written in ESM.
     "check-fgb-index.mjs", // manual FlatGeobuf data-preparation tool (CDC_plugin-flatgeobuf §187)
     "probe-boot-contract.mjs", // manual Chromium probe — sole oracle of the boot marks' ORDER
+    // Manual probe — serves a deliverable behind its nginx and its Apache recipe, in
+    // containers, and reads the headers on the wire. Sole oracle of what the gate's model of
+    // each server does not model: it needs Docker, so it is neither in `ci:local` nor on a runner.
+    "probe-server-recipes.cjs",
     // Manual Chromium probe — `position-share`'s two transports, in a real
     // browser against the shipped bundle. The package's 78 tests run under
     // happy-dom against mocked seams; this one is the sole oracle of the
@@ -584,6 +590,13 @@ const SCRIPTS_ALLOWLIST = new Set([
     // that merely boots holds nothing of them. Prints its readings, asserts
     // nothing about the product.
     "probe-remount-plugins.mjs",
+    // Manual Chromium probe — the same question for the seven plugins the
+    // probe above does not reach, which declare no lazy toolbar slot. Half of
+    // what they hold is not in the DOM (a position watch, a screen wake lock,
+    // a socket, a request on a camera move): each gets its own fixture.
+    // `e2e/75` guards what it showed and what was fixed; the probe is what
+    // re-reads the seven at once, the three that leave nothing included.
+    "probe-remount-other-plugins.mjs",
     // Manual Chromium probe — does the cache-eviction notice reach the
     // screen, and on WHICH variant? Sole oracle of the eviction wiring:
     // `eviction-notice.ts`'s 10 unit tests exercise the listener's logic,
@@ -751,6 +764,11 @@ const SCRIPTS_ALLOWLIST = new Set([
     // would have left the other, and the line's wording insisted precisely
     // on that point.
     "md-fences.cjs",
+    // lib/ — reading a configuration default out of a Markdown table: the cell grammar and
+    // the inventory index. Extracted from `check-doc-config-defaults.cjs` when a second
+    // instrument — the capability guard of the core — had to read the same `Défaut`
+    // column: two readers of one column must share one grammar.
+    "config-defaults-read.cjs",
     // Decreasing ratchet on the typing of `scripts/`, `e2e/` and the root
     // configs. These three corpora were covered by NO tsconfig;
     // `tsconfig.tooling.json` covers them in `checkJs`, and the first run
@@ -1124,13 +1142,13 @@ for (const entry of SCRIPTS_ALLOWLIST) {
 // `packages/core/cov-check.cjs` and `cov-detail.cjs` at the PACKAGE ROOT, and three
 // under `packages/core/scripts/` — one of which (`fix-deferred-paths.js`) was bare
 // CommonJS inside a `"type": "module"` package, i.e. broken the moment anyone ran it.
-// They were found by an audit, not by a gate. This is the gate (T3.5).
+// They were found by an audit, not by a gate. This is the gate.
 //
 // The scope is the WHOLE repository minus `scripts/`, and not `<pkg>/scripts/`:
 //   - two of the five were at a package root, so a `scripts/`-shaped rule would have
 //     missed the majority of the very files it was written for;
 //   - `packages/core/scripts/` was the ONLY package-level `scripts/` in the repo, so
-//     that rule would have scanned zero files the day T3.2 deleted it, and stayed
+//     that rule would have scanned zero files the day it was deleted, and stayed
 //     vacuously green forever — green because it looked at nothing;
 //   - a repo-wide scope needs no package enumeration, so it also covers the two
 //     places `REGISTRY.all()` cannot see: `packages/_plugin-template/` (excluded by
@@ -1174,7 +1192,7 @@ for (const f of sourceFiles) {
     }
 }
 
-// ─── Check 5 — generated artifacts under git control (T4.1) ──────────────────
+// ─── Check 5 — generated artifacts under git control ──────────────────
 //
 // Check 2 above is called "Build/test artifacts tracked in git" and
 // carries `coverage-e2e/`, `.nyc_output/`. This one asks the SAME question

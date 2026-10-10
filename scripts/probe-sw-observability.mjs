@@ -181,7 +181,7 @@ const run = async () => {
     // ── The measurement that matters: root cause n°2, seen from inside the SW ───────────
     //
     // TWO opens, on purpose, because one alone proves nothing:
-    //  - VERSIONLESS is what the worker does since task 3.1. It must SUCCEED and expose the
+    //  - VERSIONLESS is what the worker does. It must SUCCEED and expose the
     //    `layers` store — that is the repair, observed rather than argued.
     //  - PINNED AT 2 is the historical witness. It must STILL fail with `VersionError`, which
     //    is what made `openIndexedDB()` resolve null in every deployment before 3.1. Drop it

@@ -59,7 +59,7 @@ export let _styleGeneration = 0;
  * `setBaseLayer` re-arms itself on the map's style-readiness events, capturing its
  * key in the closure. Nothing made that closure notice it had been superseded, so the
  * boot basemap could re-apply itself **on top of a basemap the user had since
- * chosen** — measured at R.7b on the `tourism` profile: `positron` applied, then
+ * chosen** — measured on the `tourism` profile: `positron` applied, then
  * ~500 ms later the map silently snapped back to `terrain-terrarium`, and the
  * layer labels were destroyed by the round trip without being rebuilt. No error
  * was logged on either side.

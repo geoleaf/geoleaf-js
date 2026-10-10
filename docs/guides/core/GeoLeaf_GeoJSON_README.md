@@ -213,7 +213,7 @@ Le module `vector-tiles.ts` ajoute le support des couches MVT via l'API native M
 {
     "id": "admin-boundaries",
     "label": "Limites administratives",
-    "geometryType": "Polygon",
+    "geometryType": "polygon",
     "data": {
         "directory": "data",
         "file": "admin.geojson",
@@ -310,7 +310,7 @@ map.on("geoleaf:geojson:layers-loaded", (e) => {
 
 Pour les exemples de configuration de profil avancés, voir
 [`GEOJSON_LAYERS_GUIDE.md`](../../../packages/core/docs/geojson/GEOJSON_LAYERS_GUIDE.md) et
-[`CONFIGURATION_GUIDE.md`](../../../packages/core/docs/CONFIGURATION_GUIDE.md).
+[`PROFILE_JSON_REFERENCE.md`](../../../packages/core/docs/PROFILE_JSON_REFERENCE.md).
 
 > ⚠️ **Cette ligne annonçait que `GEOJSON_LAYERS_GUIDE.md` « n'existe pas »** — il existe, à
 > `packages/core/docs/geojson/`. L'annotation qui le déclarait absent était fausse, et le

@@ -79,13 +79,61 @@ describe("sw-core (R4)", () => {
     });
 
     describe("install", () => {
-        it("appelle skipWaiting et ouvre le cache static", async () => {
+        // 🛑 WHO HOLDS THE PAGE DECIDES. The worker called `skipWaiting()` at every install:
+        // a deployment took the page over the moment it was downloaded, and `activate` then
+        // purged the caches of the version that page was running on. A FIRST install has
+        // nothing to protect and takes the page at once; an UPDATE waits for the gesture
+        // (`SKIP_WAITING`, in the `message` block below).
+
+        /** Runs the install handler with the registration a worker finds at that moment. */
+        async function install(registration) {
+            global.self.registration = registration;
             const waitUntil = vi.fn((p) => Promise.resolve(p));
-            const event = { waitUntil };
-            handlers.install(event);
+            handlers.install({ waitUntil });
             await waitUntil.mock.calls[0][0];
-            expect(mockSkipWaiting).toHaveBeenCalled();
+        }
+
+        afterEach(() => {
+            delete global.self.registration;
+        });
+
+        it("première installation : ouvre le cache static et prend la page sans attendre", async () => {
+            await install({ active: null });
             expect(mockCaches.open).toHaveBeenCalled();
+            expect(mockSkipWaiting).toHaveBeenCalledTimes(1);
+        });
+
+        it("🛑 mise à jour : le cache est préparé, et la page n'est PAS prise", async () => {
+            await install({ active: { state: "activated" } });
+            expect(mockCaches.open).toHaveBeenCalled();
+            expect(mockSkipWaiting).not.toHaveBeenCalled();
+        });
+
+        it("🛑 mise à jour dont le pré-cache échoue : l'installation ÉCHOUE", async () => {
+            // 🛑 IT USED TO SUCCEED. The failure was logged and swallowed: the worker with an
+            // empty static cache reached `installed`, waited, was announced, and the banner
+            // offered it — accepting it replaced a working worker by one that had cached
+            // nothing, whose activation then purged the caches of the one it replaced. A
+            // rejected install makes the browser discard the worker: the one in place keeps
+            // serving, nothing is announced, and the next update check tries again.
+            const error = vi.spyOn(console, "error").mockImplementation(() => {});
+            const failure = new Error("quota");
+            mockCaches.open.mockRejectedValueOnce(failure);
+            await expect(install({ active: { state: "activated" } })).rejects.toBe(failure);
+            expect(error).toHaveBeenCalled(); // the failure is still said
+            expect(mockSkipWaiting).not.toHaveBeenCalled();
+            error.mockRestore();
+        });
+
+        // The tolerance is the FIRST install's alone: a page with no worker has nothing to
+        // lose, and a worker with an incomplete cache still fills it as the page is used.
+        it("première installation dont le pré-cache échoue : la page est prise quand même", async () => {
+            const error = vi.spyOn(console, "error").mockImplementation(() => {});
+            mockCaches.open.mockRejectedValueOnce(new Error("quota"));
+            await install({ active: null });
+            expect(error).toHaveBeenCalled();
+            expect(mockSkipWaiting).toHaveBeenCalledTimes(1);
+            error.mockRestore();
         });
     });
 

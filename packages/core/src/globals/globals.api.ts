@@ -43,8 +43,8 @@ import { Baselayers } from "../api/geoleaf.baselayers.js";
 import { Core } from "../api/geoleaf.core.js";
 import { Helpers } from "../api/geoleaf.helpers.js";
 import { LayerManager } from "../api/geoleaf.layer-manager.js";
-// PWA + Sync (S2 Lot 7) / Permalink (Lot 6) / Filter (Lot 5) / Legend (Lot 4) /
-// Taxonomy, FeatureInfo, Cluster (Lot 3): mounted by their capability installers
+// PWA + Sync / Permalink / Filter / Legend /
+// Taxonomy, FeatureInfo, Cluster: mounted by their capability installers
 // (capabilities/<cap>/install.ts) — not from here.
 import { Layers } from "../api/geoleaf.layers.js";
 // Storage facade lives in the Storage plugin (Phase 7 — package separation)
@@ -307,7 +307,7 @@ export function setupAPIKernel(): void {
 //
 // Runs LAST by construction: `globals.ts` imports this file after core/config/geojson/ui/storage,
 // and ESM evaluation order is depth-first and deterministic. That order IS the dependency —
-// `setupAPIKernel()` reads facades posted upstream. It is also what let Lot 3 remove the stopgap
+// `setupAPIKernel()` reads facades posted upstream. It is also what let the stopgap be removed
 // from `kernel/api/controller.ts`: by the time anything reads `_APIController`, config and api
 // are already posted.
 setupAPIKernel();

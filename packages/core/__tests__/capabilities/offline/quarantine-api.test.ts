@@ -443,3 +443,180 @@ describe("discardQuarantined — l'entité revient à la vérité du serveur", (
         expect(records!.get("sites|loc:abc")).toEqual(record());
     });
 });
+
+// 🛑 THE STORE WENT BACK TO THE SERVER'S TRUTH AND THE MAP DID NOT. Nothing in the discard
+// touched the LAYER: an abandoned creation stayed drawn, and an abandoned edit kept the badge
+// that says "owed to the server" of a capture that would never leave — until the next reload.
+describe("discardQuarantined — la couche affichée suit l'abandon", () => {
+    const BADGE = "pending";
+    let held: Record<string, { id: string; properties: Record<string, unknown> }>;
+    const removeFeature = vi.fn((_layer: string, id: string | number) => {
+        delete held[String(id)];
+        return true;
+    });
+    const patchFeature = vi.fn(
+        (_layer: string, id: string | number, patch: Record<string, unknown>) => {
+            Object.assign(held[String(id)]!.properties, patch);
+        }
+    );
+
+    const record = (over: Partial<LocalRecord> = {}): LocalRecord => ({
+        layerId: "sites",
+        localId: "loc:abc",
+        serverId: "42",
+        syncState: "pending",
+        feature: { type: "Feature", properties: { name: "édité localement" } },
+        ...over,
+    });
+
+    /** Puts one badged entity on the displayed layer, under the identity given. */
+    function draw(id: string): void {
+        held = { [id]: { id, properties: { id, _syncStatus: BADGE } } };
+        (globalThis as { GeoLeaf?: unknown }).GeoLeaf = {
+            Layers: {
+                hasLayer: (layerId: string) => layerId === "sites",
+                getFeatureById: (_layer: string, fid: string | number) => held[String(fid)] ?? null,
+                removeFeature,
+                patchFeature,
+            },
+        };
+    }
+
+    beforeEach(() => {
+        removeFeature.mockClear();
+        patchFeature.mockClear();
+    });
+    afterEach(() => {
+        delete (globalThis as { GeoLeaf?: unknown }).GeoLeaf;
+    });
+
+    it("une création jamais arrivée quitte la couche, sous sa clé cliente", async () => {
+        mountOutbox(
+            [quarantined({ quarantine: "rejectedByServer" })],
+            [record({ serverId: null })]
+        );
+        draw("loc:abc");
+        await discardQuarantined("create:sites:loc:abc:1", "loc:abc");
+        expect(removeFeature).toHaveBeenCalledWith("sites", "loc:abc");
+        expect(held).toEqual({});
+    });
+
+    it("`deletedOnServer` : l'entité quitte la couche, sous l'identité du SERVEUR", async () => {
+        mountOutbox(
+            [quarantined({ id: "update:sites:loc:abc:1", quarantine: "deletedOnServer" })],
+            [record()]
+        );
+        draw("42");
+        await discardQuarantined("update:sites:loc:abc:1", "loc:abc");
+        expect(removeFeature).toHaveBeenCalledWith("sites", "42");
+    });
+
+    it("une modification abandonnée garde l'entité et perd son liseré", async () => {
+        mountOutbox(
+            [quarantined({ id: "update:sites:loc:abc:1", quarantine: "rejectedByServer" })],
+            [record()]
+        );
+        draw("42");
+        await discardQuarantined("update:sites:loc:abc:1", "loc:abc");
+        expect(removeFeature).not.toHaveBeenCalled();
+        expect(held["42"]?.properties["_syncStatus"]).toBeNull();
+    });
+
+    it("🛑 une autre saisie de la même entité reste en file : la couche n'est pas touchée", async () => {
+        mountOutbox(
+            [
+                quarantined({ id: "update:sites:loc:abc:1", quarantine: "rejectedByServer" }),
+                {
+                    id: "update:sites:loc:abc:2",
+                    layerId: "sites",
+                    localId: "loc:abc",
+                    state: "pending",
+                },
+            ],
+            [record()]
+        );
+        draw("42");
+        await discardQuarantined("update:sites:loc:abc:1", "loc:abc");
+        expect(removeFeature).not.toHaveBeenCalled();
+        expect(held["42"]?.properties["_syncStatus"]).toBe(BADGE);
+    });
+
+    it("la couche a déjà son état final quand l'abandon est annoncé", async () => {
+        mountOutbox(
+            [quarantined({ quarantine: "rejectedByServer" })],
+            [record({ serverId: null })]
+        );
+        draw("loc:abc");
+        let heldAtAnnouncement: number | null = null;
+        const onExit = (): void => {
+            heldAtAnnouncement = Object.keys(held).length;
+        };
+        document.addEventListener("geoleaf:offline:quarantine-exited", onExit);
+        await discardQuarantined("create:sites:loc:abc:1", "loc:abc");
+        document.removeEventListener("geoleaf:offline:quarantine-exited", onExit);
+        expect(heldAtAnnouncement).toBe(0);
+    });
+});
+
+describe("le signal — un événement par geste, jamais pour un geste sans effet", () => {
+    // 🛑 The three exits changed the queue and said nothing: a counter showing the entries set
+    // aside stayed stale until something else moved, and after a `requeueAll()` on a calm queue
+    // nothing left before the next trigger. Each gesture now announces what left quarantine.
+    const EVENT = "geoleaf:offline:quarantine-exited";
+    let heard: Array<{ exit: string; entries: Array<{ layerId: string; localId: string }> }>;
+    const listener = (event: Event): void => {
+        heard.push((event as CustomEvent).detail);
+    };
+
+    beforeEach(() => {
+        heard = [];
+        document.addEventListener(EVENT, listener);
+    });
+    afterEach(() => document.removeEventListener(EVENT, listener));
+
+    it("`requeueQuarantined` annonce l'entrée remise en file", async () => {
+        await requeueQuarantined("create:sites:loc:abc:1");
+        expect(heard).toEqual([
+            { exit: "requeued", entries: [{ layerId: "sites", localId: "loc:abc" }] },
+        ]);
+    });
+
+    it("🛑 `requeueAll` annonce UNE fois, pour toutes les entrées reparties", async () => {
+        mountOutbox([
+            quarantined({ id: "a", localId: "loc:a" }),
+            quarantined({ id: "b", localId: "loc:b", quarantine: "authRequired" }),
+            // Left where it is: replaying would recreate what the server deleted.
+            quarantined({ id: "c", localId: "loc:c", quarantine: "deletedOnServer" }),
+        ]);
+        await requeueAll();
+        expect(heard).toEqual([
+            {
+                exit: "requeued",
+                entries: [
+                    { layerId: "sites", localId: "loc:a" },
+                    { layerId: "sites", localId: "loc:b" },
+                ],
+            },
+        ]);
+    });
+
+    it("`discardQuarantined` annonce l'entrée détruite", async () => {
+        await discardQuarantined("create:sites:loc:abc:1", "loc:abc");
+        expect(heard).toEqual([
+            { exit: "discarded", entries: [{ layerId: "sites", localId: "loc:abc" }] },
+        ]);
+    });
+
+    it("un geste refusé n'annonce rien", async () => {
+        mountOutbox([quarantined({ quarantine: "deletedOnServer" })]);
+        await requeueQuarantined("create:sites:loc:abc:1");
+        await discardQuarantined("create:sites:loc:abc:1", "pas-le-bon");
+        expect(heard).toEqual([]);
+    });
+
+    it("un `requeueAll` qui ne remet rien en file n'annonce rien", async () => {
+        mountOutbox([quarantined({ quarantine: "deletedOnServer" })]);
+        expect(await requeueAll()).toEqual({ ok: true, requeued: 0, skipped: 0 });
+        expect(heard).toEqual([]);
+    });
+});

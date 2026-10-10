@@ -312,4 +312,74 @@ describe("4.5 — les déclencheurs du drain", () => {
 
         expect(listCalls).toBe(before + 2);
     });
+
+    // ── A requeue out of quarantine IS a request to send ───────────────────────────
+    const quarantineExited = (exit: string) =>
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:offline:quarantine-exited", {
+                detail: { exit, entries: [{ layerId: "l", localId: "loc0" }] },
+            })
+        );
+
+    test("🛑 une remise en file hors quarantaine draine — sans attendre un autre déclencheur", async () => {
+        armOutboxDrain(deps());
+        await settle();
+        const before = listCalls;
+
+        quarantineExited("requeued");
+        await settle();
+
+        expect(listCalls).toBe(before + 1);
+    });
+
+    test("une destruction ne draine pas — il ne reste rien à envoyer", async () => {
+        armOutboxDrain(deps());
+        await settle();
+        const before = listCalls;
+
+        quarantineExited("discarded");
+        await settle();
+
+        expect(listCalls).toBe(before);
+    });
+
+    test("🛑 session morte : un retour de réseau est retenu, une remise en file passe", async () => {
+        armOutboxDrain(deps());
+        await settle();
+        // A pass that stopped on a dead session pauses the automatic triggers.
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:offline:outbox-drained", {
+                detail: { haltedBy: "authRequired" },
+            })
+        );
+        const before = listCalls;
+
+        window.dispatchEvent(new Event("online"));
+        await settle();
+        expect(listCalls).toBe(before);
+
+        // `authRequired` is the main motive of a quarantine: requeueing it is the operator
+        // saying the session is back.
+        quarantineExited("requeued");
+        await settle();
+        expect(listCalls).toBe(before + 1);
+    });
+
+    // A capture HELD for want of a session (`write.auth: "bearer"`) sent nothing and was not
+    // set aside: pausing on it would leave it queued with nothing to send it once the session
+    // is back — no quarantine to requeue, hence no gesture to make.
+    test("session absente : la passe n'a rien envoyé, les déclencheurs automatiques continuent", async () => {
+        armOutboxDrain(deps());
+        await settle();
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:offline:outbox-drained", {
+                detail: { haltedBy: null, heldForSession: 1 },
+            })
+        );
+        const before = listCalls;
+
+        window.dispatchEvent(new Event("online"));
+        await settle();
+        expect(listCalls).toBe(before + 1);
+    });
 });

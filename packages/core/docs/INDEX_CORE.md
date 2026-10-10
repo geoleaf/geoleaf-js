@@ -19,7 +19,7 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 | [Getting Started](GETTING_STARTED.md)                   | Installation and first map — v3.0.0                       |
 | [Quickstart Tutorial](QUICKSTART_TUTORIAL.md)           | End-to-end project (store locator) — v3.0.0               |
 | [User Guide](USER_GUIDE.md)                             | Complete feature documentation — v3.0.0                   |
-| [Configuration Guide](CONFIGURATION_GUIDE.md)           | JSON configuration reference — v3.0.0                     |
+| [Profile JSON Reference](PROFILE_JSON_REFERENCE.md)     | Reading guide of a profile's files — v3.0.0               |
 | [API Reference](API_REFERENCE.md)                       | Public API — facades & ESM exports — v3.0.0               |
 | [Architecture Guide](ARCHITECTURE_GUIDE.md)             | Design, boot sequence, modules — v3.0.0                   |
 | [Direction](DIRECTION.md)                               | What GeoLeaf is for, and what it guarantees — v3.x        |
@@ -34,8 +34,6 @@ Documentation for the **GeoLeaf Core** library (MIT only). This index covers the
 - [Getting Started](GETTING_STARTED.md) — Installation, two initialization modes, first steps — v3.0.0
 - [Quickstart Tutorial](QUICKSTART_TUTORIAL.md) — Complete end-to-end project with a profile — v3.0.0
 - [User Guide](USER_GUIDE.md) — Features and usage — v3.0.0
-- [Configuration Guide](CONFIGURATION_GUIDE.md) — Profile and layer configuration — v3.0.0
-- [Profiles Guide](PROFILES_GUIDE.md) — Custom business profiles — v3.0.0
 - [Profile JSON Reference](PROFILE_JSON_REFERENCE.md) — Schema and fields (120+ parameters) — v3.0.0
 - [Plugin Configuration Guide](PLUGIN_CONFIGURATION_GUIDE.md) — Plugin-related profile keys (storage, addpoi) — v3.0.0
 - [CDN / ESM usage](usage-cdn.md) — NPM and CDN integration — v3.0.0

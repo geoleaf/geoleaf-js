@@ -33,7 +33,7 @@ const MAP_TIMEOUT = 20_000;
 // helpers/perf-gate.js for the GL-independence rationale.
 const gating = !useHardwareGl;
 
-// T6.4 — two orthogonal facts, two switches. Until now `E2E_HW_GL` carried BOTH:
+// two orthogonal facts, two switches. Until now `E2E_HW_GL` carried BOTH:
 // which GL to use (measurement fidelity) AND whether this run may rewrite a
 // git-tracked file (repo mutation). Consequence: on a GPU host a plain
 // `npm run test:e2e` silently dirtied perf-baseline.json — incident b3d85253,
@@ -101,11 +101,11 @@ function readBaseline() {
  * Write updated perf-baseline.json — ONLY when the operator asked for it
  * (PERF_BASELINE_WRITE=1, which implies E2E_HW_GL=1, checked at module load).
  *
- * T6.4 — every other run now leaves the committed baseline byte-identical, including
+ * every other run now leaves the committed baseline byte-identical, including
  * a plain `npm run test:e2e` on a GPU host. Before, `E2E_HW_GL=1` alone was enough to
  * rewrite it: the flag that says "use the real GPU" also said "you may commit over the
  * contract". A test must not regenerate its own reference as a side effect — same
- * family as the benchmark gate removed at T6.3, a device that makes itself true.
+ * family as the benchmark gate removed on 2026-07-25, a device that makes itself true.
  */
 function writeBaseline(data) {
     if (!captureBaseline) {
@@ -271,12 +271,18 @@ test.describe("6.2.2 — GeoJSON render time", () => {
             expect(results.avg).toBeGreaterThan(0);
 
             // Runtime regression gate (verify mode only) — geojsonRender is GL-independent.
+            //
+            // ⚠️ The MINIMUM of the iterations is judged, not their mean. Noise only ever ADDS
+            // time: a garbage collection or a busy core makes one iteration slow, and one slow
+            // iteration out of three was enough to carry the mean over the ceiling — measured
+            // on a shared runner, 0.5 to 12.5 ms within one run, 1.1 ms at the retry. A
+            // regression of the code is slower every time, and raises the fastest run too.
             if (gating && baselineIsCaptured(baseline)) {
                 const ceiling = geojsonCeilingMs(committed);
                 if (ceiling !== null) {
                     expect(
-                        results.avg,
-                        `geojsonRender ${label} regressed: ${results.avg.toFixed(2)}ms > ${ceiling.toFixed(2)}ms ceiling`
+                        results.min,
+                        `geojsonRender ${label} regressed: fastest of the iterations ${results.min.toFixed(2)}ms > ${ceiling.toFixed(2)}ms ceiling`
                     ).toBeLessThanOrEqual(ceiling);
                 }
             }
@@ -990,7 +996,7 @@ test.describe("6.2.7 — Web Vitals", () => {
 // natively. There is no `geoleaf:basemap-rebuild` measure to record anymore, so
 // the F-RENDER-1 spike is moot and the block was removed.
 
-// ─── 6.2.9 — Scale, through the REAL loader (R6, task 2.1) ──────────────────
+// ─── 6.2.9 — Scale, through the REAL loader ──────────────────
 //
 // WHAT THIS BLOCK MEASURES THAT NO OTHER ONE DOES. Every block above builds its
 // features and hands them to the map DIRECTLY: §6.2.2 calls native

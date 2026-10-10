@@ -41,11 +41,15 @@ const KEYBOARD_PX = 336;
  * `openAddForm` is not awaited: its promise settles when the form closes, not when it opens.
  *
  * @param {import("@playwright/test").Page} page
+ * @param {{ navigate?: boolean }} [options] - `navigate: false` opens the form on the page as
+ *   it stands, for a test that prepared it first.
  */
-async function openDrawer(page) {
-    await page.goto("/");
-    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
-    await expect(page.locator("#gl-loader")).toBeHidden({ timeout: 20000 });
+async function openDrawer(page, { navigate = true } = {}) {
+    if (navigate) {
+        await page.goto("/");
+        await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+        await expect(page.locator("#gl-loader")).toBeHidden({ timeout: 20000 });
+    }
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("editor"));
     await page.waitForFunction(
         () =>
@@ -425,4 +429,110 @@ test("[touch][layout] T4 — les panneaux pleine hauteur se mesurent en dvh", as
             `\`${selector}\` : ${values.join(" | ")}`
         ).toBe(true);
     }
+});
+
+test("[touch][dialog] T5 — hors formulaire, les boutons d'un dialogue font 44 px", async ({
+    page,
+}) => {
+    const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
+    expect(
+        coarse,
+        "(pointer: coarse) ne correspond pas : les règles tactiles ne peuvent pas s'appliquer"
+    ).toBe(true);
+
+    await page.goto("/");
+    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+    await expect(page.locator("#gl-loader")).toBeHidden({ timeout: 20000 });
+    // 🛑 THE FORM IS NOT ON THE PAGE, AND THAT IS THE SUBJECT. The 44px rule of these buttons
+    // lived in the form library's touch block: a dialog opened by a plugin that does not carry
+    // the form — the offline panel, here — kept its 36px buttons under a finger.
+    expect(
+        await page.evaluate(() => typeof (/** @type {any} */ (window).GeoLeaf?.Editor)),
+        "l'éditeur est chargé : le formulaire apporterait ses propres règles tactiles"
+    ).toBe("undefined");
+
+    await page.locator('[data-gl-toolbar-action="offline-ui"]').first().tap();
+    await expect(page.locator("#gl-cache-modal")).toBeVisible({ timeout: 8000 });
+    // ⚠️ INSTRUMENT. « Delete the cache » is disabled while nothing is cached — the window
+    // re-disables it at every refresh of its status — and filling a cache is not this test's
+    // subject. The button is enabled and pressed in ONE step, so no refresh falls in between.
+    // What opens is the real confirmation, built by the plugin's own handler.
+    const clear = page.locator("#gl-cache-clear");
+    await expect(clear).toBeVisible({ timeout: 8000 });
+    await clear.evaluate((button) => {
+        /** @type {HTMLButtonElement} */ (button).disabled = false;
+        /** @type {HTMLButtonElement} */ (button).click();
+    });
+    const confirm = page.locator(".gl-form-modal-confirm");
+    await expect(confirm).toBeVisible({ timeout: 8000 });
+
+    const tooSmall = await confirm
+        .locator(".gl-form-modal__btn-cancel, .gl-form-modal__btn-save, .gl-form-modal__btn-delete")
+        .evaluateAll((buttons) =>
+            buttons
+                .map((button) => {
+                    const r = button.getBoundingClientRect();
+                    return { label: button.textContent, w: r.width, h: r.height };
+                })
+                .filter((b) => b.w < 44 || b.h < 44)
+                .map((b) => `« ${b.label} » ${Math.round(b.w)}×${Math.round(b.h)}`)
+        );
+    expect(tooSmall, "boutons de dialogue sous 44 px").toEqual([]);
+    // The witness that buttons were measured at all: a dialog with none would pass on nothing.
+    expect(
+        await confirm.locator(".gl-form-modal__btn-cancel, .gl-form-modal__btn-delete").count()
+    ).toBe(2);
+});
+
+test("[touch][form] T6 — le dialogue d'un autre greffon, ouvert après le formulaire, ne lui retire rien", async ({
+    page,
+}) => {
+    // 🛑 EVERY BUNDLE CARRIES ITS OWN COPY OF THE DIALOG SHEET, and adopts it at its first
+    // dialog — which can be AFTER the form's sheet. A rule of the form that only ties with the
+    // dialog sheet then loses to it: T3 covers the drawer's anchoring against the editor's own
+    // dialog, this one covers a dialog the form's bundle never opened.
+    await page.goto("/");
+    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+    await expect(page.locator("#gl-loader")).toBeHidden({ timeout: 20000 });
+    // The offline window first, left open behind: the drawer will cover the toolbar.
+    await page.locator('[data-gl-toolbar-action="offline-ui"]').first().tap();
+    const clear = page.locator("#gl-cache-clear");
+    await expect(clear).toBeVisible({ timeout: 8000 });
+
+    const drawer = await openDrawer(page, { navigate: false });
+    // ⚠️ INSTRUMENT, measured: the drawer slides up for 0.22 s, and this test's dialog opens and
+    // closes inside that time. Read then, the drawer sat 15 px short of the bottom — its own
+    // animation, in flight — and the anchoring below read red on a drawer that was anchored.
+    await drawer.evaluate((panel) =>
+        Promise.all(panel.getAnimations().map((animation) => animation.finished))
+    );
+    const closeButton = () =>
+        drawer.locator(".gl-form-modal__btn--close").evaluate((button) => {
+            const style = getComputedStyle(button);
+            return { radius: style.borderTopLeftRadius, color: style.color };
+        });
+    const before = await closeButton();
+    expect(before.radius, "le bouton de fermeture n'est pas rond au départ").toBe("50%");
+
+    // The foreign dialog — the instrument of T5, pressed in the page: the drawer covers it.
+    await clear.evaluate((button) => {
+        /** @type {HTMLButtonElement} */ (button).disabled = false;
+        /** @type {HTMLButtonElement} */ (button).click();
+    });
+    const confirm = page.locator(".gl-form-modal-confirm");
+    await expect(confirm).toBeVisible({ timeout: 8000 });
+    await confirm.locator(".gl-form-modal__btn-cancel").evaluate((button) => {
+        /** @type {HTMLButtonElement} */ (button).click();
+    });
+    await expect(confirm).toBeHidden({ timeout: 5000 });
+
+    expect(await closeButton(), "le bouton de fermeture a changé de forme ou de couleur").toEqual(
+        before
+    );
+    const anchoring = await drawerAnchoring(page);
+    expect(anchoring.position, "le tiroir a perdu son positionnement").not.toBe("relative");
+    expect(
+        Math.abs(anchoring.gap),
+        "le tiroir ne touche plus le bas du visual viewport"
+    ).toBeLessThanOrEqual(1);
 });

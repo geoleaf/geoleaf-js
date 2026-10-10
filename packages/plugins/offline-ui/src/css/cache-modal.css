@@ -75,7 +75,7 @@ body.gl-theme-dark .gl-cache-modal__content {
     justify-content: space-between;
     padding: 20px 24px;
     border-bottom: 1px solid var(--gl-color-border-soft, #e5e5e5);
-    background: var(--gl-color-accent, linear-gradient(135deg, #667eea 0%, #764ba2 100%));
+    background: var(--gl-color-accent, #f97316);
     border-radius: 12px 12px 0 0;
     flex-shrink: 0;
 }
@@ -86,11 +86,18 @@ body.gl-theme-dark .gl-cache-modal__header {
     background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
 }
 
+/* The dark header is a fixed grey gradient, not the accent: its text is fixed with it.
+   The accent's own text colour is dark under the dark palettes, unreadable on this grey. */
+body.gl-theme-dark .gl-cache-modal__title,
+body.gl-theme-dark .gl-cache-modal__close {
+    color: #fff;
+}
+
 .gl-cache-modal__title {
     margin: 0;
     font-size: 20px;
     font-weight: 600;
-    color: #fff;
+    color: var(--gl-color-accent-contrast, #020617);
     display: flex;
     align-items: center;
 }
@@ -98,7 +105,7 @@ body.gl-theme-dark .gl-cache-modal__header {
 .gl-cache-modal__close {
     background: rgba(255, 255, 255, 0.2);
     border: none;
-    color: #fff;
+    color: var(--gl-color-accent-contrast, #020617);
     font-size: 24px;
     width: 32px;
     height: 32px;
@@ -155,8 +162,10 @@ body.gl-theme-dark .gl-cache-modal__tabs {
    `--gl-color-text-main`. The `body.gl-theme-dark` override that stood here is
    dropped: the base rule now carries the theme on its own. */
 
+/* The active tab is told by its weight and its bar, not by an accent-coloured text: the
+   light theme's accent is pale, and as a TEXT colour on the window's white it read 1.45:1. */
 .gl-cache-modal__tab--active {
-    color: var(--gl-color-accent, #667eea);
+    color: var(--gl-color-text-main, #111827);
     font-weight: 600;
 }
 
@@ -456,4 +465,23 @@ body.gl-theme-dark .gl-cache-warning__warning {
     display: block;
     margin-top: 4px;
     opacity: 0.85;
+}
+
+/* State of the profile cache. A class, not an inline colour: the green and the red that
+   read on the dark surface fall under 4.5:1 on the light one, and the reverse. Compounded
+   with the value's own class (`cache-control.css`), or that class's text colour wins. */
+.gl-cache-status__value.gl-cache-state--ok {
+    color: var(--gl-color-success, #2e7d32);
+}
+
+.gl-cache-status__value.gl-cache-state--missing {
+    color: var(--gl-color-danger, #d32f2f);
+}
+
+body.gl-theme-dark .gl-cache-status__value.gl-cache-state--ok {
+    color: #22c55e;
+}
+
+body.gl-theme-dark .gl-cache-status__value.gl-cache-state--missing {
+    color: #ef4444;
 }

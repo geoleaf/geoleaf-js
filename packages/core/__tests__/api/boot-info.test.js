@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.35 - api/boot-info */
+/* api/boot-info */
 
 import { showBootInfo, BootInfo } from "../../src/kernel/api/boot-info.js";
 
@@ -9,7 +9,7 @@ import { showBootInfo, BootInfo } from "../../src/kernel/api/boot-info.js";
 // before any test calls `showBootInfo`.
 const consoleSpy = vi.spyOn(console, "info").mockImplementation(() => {});
 
-describe("api/boot-info (Phase 5.35)", () => {
+describe("api/boot-info", () => {
     afterAll(() => {
         consoleSpy.mockRestore();
     });

@@ -52,6 +52,22 @@ import {
     cleanup,
 } from "../cache/cache-control-events.js";
 
+// 🛑 THE ENGLISH DICTIONARY IS PLANTED, for the whole file. Every label of this view goes
+// through the plugin's catalogue: without a dictionary each key echoes back, and an assertion
+// on a label would hold against a view that shows keys. The view used to write its labels as
+// English literals — a French application displayed them in English — and these assertions
+// then froze those literals. They now read what the catalogue says.
+let _fileI18n;
+beforeEach(async () => {
+    const dict = (await import("../lang/lang-en.js")).default;
+    globalThis.GeoLeaf = globalThis.GeoLeaf ?? {};
+    _fileI18n = globalThis.GeoLeaf.I18n;
+    globalThis.GeoLeaf.I18n = { getLabel: (key) => dict[key] ?? key };
+});
+afterEach(() => {
+    if (globalThis.GeoLeaf) globalThis.GeoLeaf.I18n = _fileI18n;
+});
+
 // The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
 // `StorageContract.init()`, i.e. a SECOND instance of the singleton the bundle
 // embedded and nothing initialised: they validated a dead channel.
@@ -154,7 +170,7 @@ describe("buildStructure — squelette", () => {
         const title = self._container.querySelector(".gl-cache-control__title");
 
         expect(title.querySelector(".gl-cache-control__icon")).not.toBeNull();
-        expect(title.textContent).toContain("Offline Cache");
+        expect(title.textContent).toContain("Offline cache");
     });
 
     test("un clic sur l'en-tête ne remonte pas jusqu'à la carte", () => {
@@ -173,7 +189,7 @@ describe("buildStructure — squelette", () => {
 
         expect(self._toggleBtn).not.toBeNull();
         expect(self._toggleBtn.type).toBe("button");
-        expect(self._toggleBtn.getAttribute("aria-label")).toBe("Toggle cache");
+        expect(self._toggleBtn.getAttribute("aria-label")).toBe("Offline cache");
     });
 
     test("collapsible:false ne le pose pas", () => {
@@ -252,7 +268,7 @@ describe("buildStructure — section STATUT", () => {
         expect(document.getElementById("gl-cache-profile").textContent).toBe("-");
         expect(document.getElementById("gl-cache-state").textContent).toBe("Not downloaded");
         expect(document.getElementById("gl-cache-size").textContent).toBe("0 MB");
-        expect(document.getElementById("gl-cache-quota").textContent).toBe("0 MB available");
+        expect(document.getElementById("gl-cache-quota").textContent).toBe("-");
     });
 
     test("le bloc de statut est ouvert par défaut", () => {
@@ -265,7 +281,7 @@ describe("buildStructure — section STATUT", () => {
     test("le bouton de repli du statut est accessible", () => {
         const self = mount(makeSelf());
 
-        expect(self._statusToggleBtn.getAttribute("aria-label")).toBe("Toggle status");
+        expect(self._statusToggleBtn.getAttribute("aria-label")).toBe("STATUS");
         expect(self._statusToggleBtn.textContent).toBe("▼");
     });
 });
@@ -278,9 +294,9 @@ describe("buildStructure — sections et actions", () => {
 
         expect(self._layersContent.style.display).toBe("block");
         expect(self._layersContent.querySelector(".gl-cache-layers__loading").textContent).toBe(
-            "Loading layers..."
+            "Loading..."
         );
-        expect(self._layersToggleBtn.getAttribute("aria-label")).toBe("Toggle configuration");
+        expect(self._layersToggleBtn.getAttribute("aria-label")).toBe("CONFIG");
     });
 
     test("pose l'accordéon ZONE", () => {
@@ -365,8 +381,8 @@ describe("updateStatus", () => {
         await updateStatus(self);
 
         const state = document.getElementById("gl-cache-state");
-        expect(state.textContent).toContain("Downloaded");
-        expect(state.style.color).toBe("#22c55e");
+        expect(state.textContent).toContain("Cached");
+        expect(state.classList.contains("gl-cache-state--ok")).toBe(true);
         expect(document.getElementById("gl-cache-size").textContent).toBe("5.00 MB");
         expect(self._clearBtn.disabled).toBe(false);
     });
@@ -385,7 +401,7 @@ describe("updateStatus", () => {
 
         const state = document.getElementById("gl-cache-state");
         expect(state.textContent).toContain("Not downloaded");
-        expect(state.style.color).toBe("#ef4444");
+        expect(state.classList.contains("gl-cache-state--missing")).toBe(true);
         expect(document.getElementById("gl-cache-size").textContent).toBe("0 MB");
         expect(self._clearBtn.disabled).toBe(true);
     });
@@ -524,7 +540,7 @@ describe("updateProgress", () => {
         updateProgress(self, { current: 3, total: 4 });
 
         expect(self._progressFill.style.width).toBe("75%");
-        expect(self._progressText.textContent).toBe("3 / 4 files");
+        expect(self._progressText.textContent).toBe("3 / 4 resources");
     });
 
     test("préfère les octets au compte de fichiers quand les deux sont fournis", () => {
@@ -564,7 +580,7 @@ describe("updateProgress", () => {
         updateProgress(self, {});
 
         expect(self._progressFill.style.width).toBe("0%");
-        expect(self._progressText.textContent).toBe("0 / 1 files");
+        expect(self._progressText.textContent).toBe("0 / 1 resources");
     });
 });
 
@@ -575,7 +591,7 @@ describe("updateClearProgress", () => {
         updateClearProgress(self, { current: 1, total: 4 });
 
         expect(self._progressFill.style.width).toBe("25.0%");
-        expect(self._progressText.textContent).toBe("Deleting: 1 / 4 files (25%)");
+        expect(self._progressText.textContent).toBe("Deleting... 1 / 4 resources (25%)");
     });
 
     test("bascule sur un message de fin à 100 %", () => {
@@ -584,7 +600,7 @@ describe("updateClearProgress", () => {
         updateClearProgress(self, { current: 4, total: 4 });
 
         expect(self._progressFill.style.width).toBe("100.0%");
-        expect(self._progressText.textContent).toContain("Deletion complete");
+        expect(self._progressText.textContent).toContain("Cache cleared");
     });
 
     test("ne fait rien quand la barre n'est pas construite", () => {

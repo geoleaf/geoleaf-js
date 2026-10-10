@@ -186,7 +186,7 @@
             "severity": null,
             "description": "Ancre d'embarquement unique de la capacité : importe les 5 CSS, monte `GeoLeaf.FeatureInfo` et fournit la fabrique de module",
             "confidence": "haute",
-            "rationale": "53 LOC, 1 importeur (`presets/manifest.full.ts`). `install.ts` est présent 18/18, invariant T5 §1. L'en-tête documente les deux mouvements qui l'ont créé — écriture sortie de `globals.api.ts` (B11) et wrapper de boot rapatrié depuis `app/boot-modules/` au backlog R.10, ce qui est exactement l'INV-CAPABILITY-MODULE de T6 §3.2."
+            "rationale": "53 LOC, 1 importeur (`presets/manifest.full.ts`). `install.ts` est présent 18/18, invariant T5 §1. L'en-tête documente les deux mouvements qui l'ont créé — écriture sortie de `globals.api.ts` (B11) et wrapper de boot rapatrié depuis `app/boot-modules/`, ce qui est exactement l'INV-CAPABILITY-MODULE de T6 §3.2."
         },
         "packages/core/src/capabilities/feature-info/lifecycle.ts": {
             "kind": "file",
@@ -214,7 +214,7 @@
             "severity": null,
             "description": "Wrapper `ICoreModule` de la capacité, dépendant de `geojson` ; `init()` branche le lifecycle, `destroy()` le débranche",
             "confidence": "haute",
-            "rationale": "50 LOC, 1 importeur (`install.ts`), exporte la classe éponyme `FeatureInfoModule` (N7 satisfaite). Sa présence dans la capacité plutôt que dans `app/boot-modules/` est l'état voulu par R.10 — INV-CAPABILITY-MODULE, 0 exception (T6 §3.2)."
+            "rationale": "50 LOC, 1 importeur (`install.ts`), exporte la classe éponyme `FeatureInfoModule` (N7 satisfaite). Sa présence dans la capacité plutôt que dans `app/boot-modules/` est l'état voulu par INV-CAPABILITY-MODULE, 0 exception (T6 §3.2)."
         },
         "packages/core/src/capabilities/feature-info/public-api.ts": {
             "kind": "file",

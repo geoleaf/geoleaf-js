@@ -243,10 +243,15 @@ function writeBase(layerId: string, features: StoreFeature[]): void {
  * `removeFeature` (when it removed something), `updateFeatureId`, `mergeFeatures`, and
  * `patchFeature` with `{ rerender: true }`. Not after a silent `patchFeature`, which changes
  * state only; not at a layer's load; not for a filter or a visible subset, which change what is
- * drawn and not what is held — and not for a writer of a whole collection around this API (a
- * real-time layer's ticks, an OGC layer's auto-refresh, `GeoJSONCore.updateLayerData`): the
- * store changes unannounced. The granularity is the call, not the feature: a merge of a
+ * drawn and not what is held. The granularity is the call, not the feature: a merge of a
  * thousand features is one event.
+ *
+ * 🛑 TWO EMITTERS SINCE 3.15.0, AND EXACTLY ONE SPEAKS PER WRITE. A write of the WHOLE
+ * collection — `setData`, `clear`, and the three unit mutations that fall back to one — is
+ * announced by the funnel every such writer goes through (`GeoJSONShared.setLayerCollection`),
+ * which is what covers a real-time layer's ticks, an OGC layer's auto-refresh and a host's own
+ * `GeoJSONCore.updateLayerData`: they used to rewrite the store unannounced. This function
+ * announces the DIFFS, which never reach that funnel.
  */
 function announce(layerId: string): void {
     if (!GeoJSONShared.state.layers.has(layerId)) return;
@@ -356,8 +361,9 @@ function updateFeatureIdImpl(
     // today's behaviour rather than inventing a new one.
     const collides = features.some((f) => f !== target && matchId(f, newId));
     if (previousId == null || collides) {
+        // Rewrites the collection: the funnel announces it.
         writeBase(layerId, features);
-        return true;
+        return false;
     }
     applyLayerDiff(layerId, { remove: [previousId], add: [toContractFeature(target)] }, features);
     return true;
@@ -384,8 +390,9 @@ function patchFeatureImpl(
     }
     const targetId = diffId(target);
     if (targetId == null) {
+        // Rewrites the collection: the funnel announces it.
         writeBase(layerId, features);
-        return true;
+        return false;
     }
     // ⚠️ `update` only touches what the source already holds: a patch on an id the source
     // does not carry is skipped without a word. The one way that arises is right after the
@@ -396,7 +403,7 @@ function patchFeatureImpl(
     return true;
 }
 
-function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]): void {
+function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]): boolean {
     const incoming = features as unknown as readonly StoreFeature[];
     const idIndex = new Map<string, number>();
     const result: StoreFeature[] = [];
@@ -428,11 +435,12 @@ function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]
     // entries again on coalescing.
     if (!incoming.every((f) => diffId(f) != null)) {
         // Mirrors the `upsert` branch that keeps id-less features: they cannot be
-        // addressed, so the whole collection is re-fed.
+        // addressed, so the whole collection is re-fed — and the funnel announces it.
         writeBase(layerId, result);
-        return;
+        return false;
     }
     applyLayerDiff(layerId, { add: features }, result);
+    return true;
 }
 
 /** The filter slot `hideFeatures` writes — never the panel's (`setLayerFilter`, `owner`). */
@@ -521,19 +529,22 @@ export function buildLayersPublicApi(): LayerDataApi {
 
         // ── base dataset write ──
 
+        // A whole-collection write is announced by the funnel it goes through
+        // (`GeoJSONShared.setLayerCollection`), not here.
+
         setData(layerId: string, features: GeoJSON.Feature[]): void {
             writeBase(layerId, features as unknown as StoreFeature[]);
-            announce(layerId);
         },
 
         clear(layerId: string): void {
             writeBase(layerId, []);
-            announce(layerId);
         },
 
         // ── unit mutations ──
         // Delegations: each implementation, with the reasoning for its diff, sits at module
-        // level above; the announcement is made here, once, when something changed.
+        // level above. A DIFF is announced here, once; a mutation that fell back to rewriting
+        // the whole collection was already announced by the funnel, and its implementation
+        // says so by returning `false`.
 
         addFeature(layerId: string, feature: GeoJSON.Feature): void {
             addFeatureImpl(layerId, feature);
@@ -594,8 +605,7 @@ export function buildLayersPublicApi(): LayerDataApi {
         // ── offline replay merge (dedup by id) ──
 
         mergeFeatures(layerId: string, features: readonly GeoJSON.Feature[]): void {
-            mergeFeaturesImpl(layerId, features);
-            announce(layerId);
+            if (mergeFeaturesImpl(layerId, features)) announce(layerId);
         },
     };
 }

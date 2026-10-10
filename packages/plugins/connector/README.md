@@ -144,15 +144,16 @@ and `configure()` on the same API share the stored token.
 
 ## DOM events
 
-| Event                                         | Detail                       | Fired when                   | Cancelable |
-| --------------------------------------------- | ---------------------------- | ---------------------------- | ---------- |
-| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal succeeded        | No         |
-| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Automatic renewal succeeded  | No         |
-| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | The session ended: refused   | No         |
-| `geoleaf:connector:signed-out`                | `{ baseUrl }`                | `logout()` ended the session | No         |
-| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Credential button clicked    | No         |
-| `geoleaf:connector:signup-requested`          | `{ url }`                    | "Create an account" clicked  | **Yes**    |
-| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | "Forgot password" clicked    | **Yes**    |
+| Event                                         | Detail                                  | Fired when                                                         | Cancelable |
+| --------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------ | ---------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                           | Login modal succeeded                                              | No         |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                           | Automatic renewal succeeded                                        | No         |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`                    | The session ended: refused                                         | No         |
+| `geoleaf:connector:login-failed`              | `{ baseUrl, error, status?, problem? }` | A sign-in from the login window was refused, or could not conclude | No         |
+| `geoleaf:connector:signed-out`                | `{ baseUrl }`                           | `logout()` ended the session                                       | No         |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }`            | Credential button clicked                                          | No         |
+| `geoleaf:connector:signup-requested`          | `{ url }`                               | "Create an account" clicked                                        | **Yes**    |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                               | "Forgot password" clicked                                          | **Yes**    |
 
 The `cancelable` events let the host application intercept the default behaviour through
 `preventDefault()`:
@@ -228,13 +229,51 @@ is reported unknown (`null`).
 
 ---
 
+### A layer that takes no credential — `write.auth: "none"`
+
+The token goes to every request under `baseUrl`, the offline queue's writes included. A layer
+whose write endpoint is public says so in its configuration — `"write": { "auth": "none", … }` —
+and the core marks each request of that write: the connector then attaches no token to it,
+resolves none, and leaves a `401` on it to the caller. The mark is the `geoleafWriteAuth` member
+of the request's `init`; `fetch` ignores it, and it reaches no server. Requires `@geoleaf/core`
+3.15.0 — an earlier core sends no mark, and the token is attached as before.
+
+### A refused sign-in says why
+
+When the server refuses a sign-in with an [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)
+body — `Content-Type: application/problem+json` — the login window shows its `detail`, or its
+`title` when there is no `detail`, under its own message: the server's text, as text, cut at 300
+characters, in the server's language. Nothing is asked of the server: a refusal without that
+body reads as it always did.
+
+`geoleaf:connector:login-failed` carries the same answer to the host — `status`, and `problem`
+with `type`, `title`, `detail` and the whole parsed `body` — for an application that wants its own
+wording, or its own next step:
+
+```js
+document.addEventListener("geoleaf:connector:login-failed", (e) => {
+    const { status, problem } = e.detail;
+    if (problem?.type === "https://example.com/problems/second-factor-required") {
+        askForSecondFactor();
+    } else if (status === undefined) {
+        showOfflineNotice(); // the server was never reached
+    }
+});
+```
+
+It is not `geoleaf:connector:auth-error`, which says an established session ended.
+
 ## Security
 
 - The token is **never** passed in a query string.
 - Passwords are wiped from memory after use (`OWASP A02`).
-- `baseUrl` must use HTTPS in production (an error is raised otherwise). `http://` is tolerated,
-  with a console warning, only when the page runs on a development host — `localhost`,
-  `*.localhost`, the loopback addresses, or a name under `.test`, reserved for testing (RFC 6761).
+- `baseUrl` and `auth.endpoint` must use HTTPS (an error is raised otherwise): the first
+  receives the token, the second the password. `http://` is tolerated, with a console warning,
+  only when the URL itself targets a development host — `localhost`, `*.localhost`, the
+  loopback addresses, or a name under `.test`, reserved for testing (RFC 6761). The page does
+  not matter: a page served on `localhost` may not send a credential over `http://` to a
+  remote host or to a LAN address. `auth.signupUrl` and `auth.forgotPasswordUrl` follow the
+  same rule.
 - The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
 - Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge); PMTiles
   archives through `window.fetch`, which the `pmtiles` library reads them with.

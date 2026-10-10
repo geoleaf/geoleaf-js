@@ -175,13 +175,13 @@ Maintenabilité / Évolution).
 >   `inlineConfig` qui — le TSDoc de `LayerRef`, dans le même fichier, l'écrit — « **skips the
 >   fetch entirely** ». Un `<id>_config.json`
 >   posé à côté d'une instance **n'est jamais lu**, et `scripts/check-template-layer-configs.cjs`
->   (**TPL-CFG**, posé à la tâche 7.1b③ le 06/08/2026) fait **échouer le build** s'il en trouve un.
+>   (**TPL-CFG**, posé le 06/08/2026) fait **échouer le build** s'il en trouve un.
 > - **Lecture à retenir, en attendant la RFC** : l'arborescence `layers/<id>/` (avec `data/` et
 >   `styles/<style>.json`) et l'égalité `id` ≡ nom du dossier valent pour **toute** couche ; le
 >   `<id>_config.json`, lui, est **requis pour une entrée directe de `layers[]`** et **proscrit pour
 >   une instance de `layerTemplates`**. Mesuré le 06/08/2026 : 24 fichiers de ce type avaient été
 >   écrits pour des couches templatées et n'étaient lus par personne — **16 104 octets** de
->   configuration fantôme, retirés à la tâche 7.1b①.
+>   configuration fantôme, retirés depuis.
 > - ⚠️ **Le danger n'est pas l'octet, c'est la divergence** : un fichier mort qui ressemble à un
 >   fichier vivant se fait éditer, et l'édition ne produit rien.
 
@@ -197,7 +197,7 @@ profiles/<id>/
 ├── profile.json                      ⬤  Manifest — id, label, version, map.*, Files  (PRF-MANIFEST, PRF-ID)
 ├── config/
 │   ├── core/                         ⬤  Fichiers core (référencés via Files.*File)
-│   │   ├── taxonomy.json             ⛔ RETIRÉ au Lot 2 — voir la note sous cet arbre
+│   │   ├── taxonomy.json             ⛔ RETIRÉ le 11/07/2026 — voir la note sous cet arbre
 │   │   ├── themes.json               ⬤  Préréglages de visibilité       → themes.schema.json
 │   │   ├── layers.json               ⬤  Index des couches + templates   → layers.schema.json
 │   │   ├── basemaps.json             ⬤  Fonds de carte                  → basemaps.schema.json
@@ -270,7 +270,7 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
 > ⚠️ **Deux entrées de l'arbre ci-dessus étaient périmées (relu contre le code le 27/07/2026).**
 > Le régime figé (§9) interdit de réécrire la Partie I sans RFC ; elles sont donc **annotées**, pas récrites.
 >
-> - **`config/core/taxonomy.json` n'existe plus** (retiré au Lot 2, 11/07/2026, avec `taxonomy.schema.json`
+> - **`config/core/taxonomy.json` n'existe plus** (retiré le 11/07/2026, avec `taxonomy.schema.json`
 >   et `Files.taxonomyFile`). Mesuré : `profiles/schemas/` ne contient **pas** `taxonomy.schema.json`, et
 >   `find profiles -name taxonomy.json` ne rend que des `config/plugins/taxonomy.json`. La taxonomie est un
 >   **module** — la note de §4 le disait déjà, l'arbre de §3 ne l'avait pas suivi.
@@ -298,7 +298,7 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
 
 - **`Files.*File`** : clés **fermées** (whitelist `additionalProperties:false`) — `themesFile`,
   `layersFile`, `basemapsFile`, `uiFile`, `featuresFile`, `mappingFile`. Tout autre `*File` est **refusé** (PRF-PATHS).
-  ⚠️ **`taxonomyFile` n'en fait plus partie** : la taxonomie est un **module** depuis le Lot 2 (11/07/2026),
+  ⚠️ **`taxonomyFile` n'en fait plus partie** : la taxonomie est un **module** depuis le 11/07/2026,
   déclaré sous `Files.modules.taxonomy` → `config/plugins/taxonomy.json`. Un profil qui déclare
   `Files.taxonomyFile` est **rejeté** par `npm run validate:profiles`.
 - **`Files.modules`** : dictionnaire `id → chemin` (clés dynamiques). La **présence** d'une entrée déclenche
@@ -321,7 +321,7 @@ Les **cinq** fichiers core décrivent le cœur. Chacun **DOIT** valider son sch�
 | `config/core/ui.json`       | Contrôles UI, recherche, gestionnaire de couches, table | `ui.schema.json`         |
 | `config/core/features.json` | Clustering, géocodage, performance, POI, options carte  | `features.schema.json` ⭑ |
 
-> ⚠️ **`config/core/taxonomy.json` ne fait plus partie du core** (retiré au Lot 2, 11/07/2026 —
+> ⚠️ **`config/core/taxonomy.json` ne fait plus partie du core** (retiré le 11/07/2026 —
 > supprimé des 9 profils, avec `taxonomy.schema.json` et `Files.taxonomyFile`). La taxonomie est
 > désormais un **module** : `config/plugins/taxonomy.json`, déclaré via `Files.modules.taxonomy`
 > (§PRF-MODULES). Sa source de vérité côté code est la capacité `modules.taxonomy`
@@ -507,7 +507,7 @@ projections** — `display` pour lire, `edit` pour capturer.
 `table.columns[].field` ou un `label.field` de style désigne une propriété qui **existe**. Une garde
 de **réconciliation** — le champ nommé doit résoudre vers un `attributes.fields[].field` **ou** une
 propriété réelle du GeoJSON — donnerait cette sûreté sans exiger une seule déclaration de plus.
-Versée en option à la tâche 7.1b.
+Versée en option.
 
 **Conséquence sur la règle de déclaration** : un descripteur ne portant **ni** `display` **ni**
 `edit` est refusé — un champ qui n'est ni lu ni capturé n'a pas de raison d'être déclaré.
@@ -780,7 +780,7 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 ### Processus RFC (léger)
 
 1. Créer `docs/specs/rfc/RFC_{NNN}_{slug}.md` (cycle : Brouillon → En revue → Acceptée / Rejetée → Appliquée).
-    > ⚠️ _Corrigé le 11/08/2026 (tâche 6.11) : ce chemin disait un répertoire d'atelier, répertoire
+    > ⚠️ _Corrigé le 11/08/2026 : ce chemin disait un répertoire d'atelier, répertoire
     > qui n'est pas dans ce dépôt. Les RFC vivent sous `docs/specs/rfc/` depuis la refonte
     > documentaire V3 du 27/07/2026 — [`PLUGIN_ARCHITECTURE_SPEC.md`](PLUGIN_ARCHITECTURE_SPEC.md) portait déjà la correction
     > pour son propre processus RFC ; celui-ci était resté en arrière. Le processus est inchangé,
@@ -799,12 +799,12 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 
 ### Journal des versions
 
-| Version | Contrat             | Date       | RFC | Changement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ------- | ------------------- | ---------- | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.0.3   | Profile Contract v1 | 2026-09-28 | —   | **Une phrase de §6 annotée, et l'arbre de §3**, sans invariant touché, donc pas de RFC (incrément `Z`, §9). « Le schéma de `config/plugins/<id>.json` est embarqué dans le plugin » : aucun plugin n'en embarque, et aucun ne signale une clé inconnue. `profile.schema.json` nommait onze blocs de plugin, dont six que rien ne lit ; il nomme désormais exactement les blocs lus, tenu par `PC-15`. Annexe A (vivante) récrite à l'avenant.                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 1.0.2   | Profile Contract v1 | 2026-09-25 | —   | **Une cellule annotée**, sans invariant touché, donc pas de RFC (incrément `Z`, §9). La politique `serverWinsPreserveLocal` promettait que l'entité quitte la carte et que la saisie n'est jamais détruite : le code garde l'entité sur l'appareil jusqu'à la destruction de la saisie, qui retire désormais aussi l'enregistrement local, et la destruction confirmée existe depuis le 07/08/2026. La cellule est annotée, pas récrite, comme le reste de la Partie I.                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| 1.0.1   | Profile Contract v1 | 2026-07-27 | —   | **Relecture contre le code** (refonte doc V3, aucun invariant touché → pas de RFC, incrément `Z` per §9). Partie I **annotée, non récrite** : l'arbre §3 gardait `config/core/taxonomy.json` (retiré au Lot 2) et `config/plugins/storage.json` (devenu `offline.json`, clé `Files.modules.offline`). Annexe A (vivante) réécrite contre `scripts/validate-profiles.cjs` : colonne « branché en S2 » fausse sur 11 lignes, compteur « 11 schémas » faux (12 sur disque), `detail-blocks.schema.json` absent du tableau. Les 7 clauses « tant que S2 n'est pas livré » corrigées — S2 EST livré (étape « Profile contract (validate:profiles) » de `scripts/ci-local.cjs`, plus `pre-commit` ; 9 profils / 234 fichiers verts à la date). Deux écarts mesurés versés au backlog, non corrigés : `geoleaf.config.json` a un schéma non appliqué, `detail-blocks.schema.json` n'était cartographié nulle part. |
-| 1.0.0   | Profile Contract v1 | 2026-06-13 | —   | **Gel initial** (Sprint S1, roadmap `config-contract`). 9 invariants `PRF-*`, cartographie fichier→schéma, règle de durcissement, `geoleaf-profile` tranché hors-contrat (ANO-002), création de `features.schema.json` (ANO-001).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Version | Contrat             | Date       | RFC | Changement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------- | ------------------- | ---------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0.3   | Profile Contract v1 | 2026-09-28 | —   | **Une phrase de §6 annotée, et l'arbre de §3**, sans invariant touché, donc pas de RFC (incrément `Z`, §9). « Le schéma de `config/plugins/<id>.json` est embarqué dans le plugin » : aucun plugin n'en embarque, et aucun ne signale une clé inconnue. `profile.schema.json` nommait onze blocs de plugin, dont six que rien ne lit ; il nomme désormais exactement les blocs lus, tenu par `PC-15`. Annexe A (vivante) récrite à l'avenant.                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 1.0.2   | Profile Contract v1 | 2026-09-25 | —   | **Une cellule annotée**, sans invariant touché, donc pas de RFC (incrément `Z`, §9). La politique `serverWinsPreserveLocal` promettait que l'entité quitte la carte et que la saisie n'est jamais détruite : le code garde l'entité sur l'appareil jusqu'à la destruction de la saisie, qui retire désormais aussi l'enregistrement local, et la destruction confirmée existe depuis le 07/08/2026. La cellule est annotée, pas récrite, comme le reste de la Partie I.                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 1.0.1   | Profile Contract v1 | 2026-07-27 | —   | **Relecture contre le code** (refonte doc V3, aucun invariant touché → pas de RFC, incrément `Z` per §9). Partie I **annotée, non récrite** : l'arbre §3 gardait `config/core/taxonomy.json` (retiré le 11/07/2026) et `config/plugins/storage.json` (devenu `offline.json`, clé `Files.modules.offline`). Annexe A (vivante) réécrite contre `scripts/validate-profiles.cjs` : colonne « branché en S2 » fausse sur 11 lignes, compteur « 11 schémas » faux (12 sur disque), `detail-blocks.schema.json` absent du tableau. Les 7 clauses « tant que S2 n'est pas livré » corrigées — S2 EST livré (étape « Profile contract (validate:profiles) » de `scripts/ci-local.cjs`, plus `pre-commit` ; 9 profils / 234 fichiers verts à la date). Deux écarts mesurés versés au backlog, non corrigés : `geoleaf.config.json` a un schéma non appliqué, `detail-blocks.schema.json` n'était cartographié nulle part. |
+| 1.0.0   | Profile Contract v1 | 2026-06-13 | —   | **Gel initial** (Sprint S1, roadmap `config-contract`). 9 invariants `PRF-*`, cartographie fichier→schéma, règle de durcissement, `geoleaf-profile` tranché hors-contrat (ANO-002), création de `features.schema.json` (ANO-001).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ---
 
@@ -846,7 +846,7 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 | `config/core/mapping.json` (légacy)       | `mapping.schema.json`           | ✅                                                                                                                                                                                                                                                                            |
 | `layers/<id>/<id>_config.json`            | `layer-config.schema.json`      | ✅                                                                                                                                                                                                                                                                            |
 | `layers/<id>/styles/<style>.json`         | `style.schema.json`             | ✅                                                                                                                                                                                                                                                                            |
-| ~~`config/core/taxonomy.json`~~           | ~~`taxonomy.schema.json`~~      | ⛔ **retiré au Lot 2** — ni le fichier ni le schéma n'existent                                                                                                                                                                                                                |
+| ~~`config/core/taxonomy.json`~~           | ~~`taxonomy.schema.json`~~      | ⛔ **retiré le 11/07/2026** — ni le fichier ni le schéma n'existent                                                                                                                                                                                                           |
 | racine `geoleaf.config.json`              | `geoleaf-config.schema.json`    | ✅ **appliqué depuis le 19/08/2026** — le 10ᵉ schéma est entré dans `SCHEMA_NAMES` ; il était sur le disque depuis sa création sans qu'aucun validateur ne le lise                                                                                                            |
 | `config/plugins/<id>.json`                | **aucun schéma JSON**           | ⏭️ **délibérément sauté** (§6 / scope B7) — un plugin n'a pour clés que celles que son code lit (son README) ; une capacité in-core déclare les siennes dans son `configSchema`. `profile.schema.json` nomme le bloc `modules.<id>`, ouvert, quand un plugin le lit (`PC-15`) |
 | ~~`profile.json → panels.detail.layout`~~ | `geoleaf-profile.schema.json`   | **hors-contrat / orphelin** (§7)                                                                                                                                                                                                                                              |
@@ -896,7 +896,7 @@ des schémas au-delà de la règle de durcissement, et l'état du **validateur**
 - [`MODULE_CONTRACT.md`](MODULE_CONTRACT.md) — contrats TypeScript du core.
 - [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) — inventaire **par valeur** (phases B/C).
 
-> ⚠️ **Liste ré-ancrée le 11/08/2026 (tâche 6.11) — elle portait quatre renvois, aucun atteignable.**
+> ⚠️ **Liste ré-ancrée le 11/08/2026 — elle portait quatre renvois, aucun atteignable.**
 > Les quatre visaient l'atelier interne, **qui n'est pas dans ce dépôt** : une liste
 > intitulée « Renvois » dont aucune entrée ne se suit est plus trompeuse qu'une liste vide.
 > Mesuré : [`inventaire_config_parametres.md`](../../reference/inventaire_config_parametres.md) existe bel et bien, mais sous `docs/reference/` — il est

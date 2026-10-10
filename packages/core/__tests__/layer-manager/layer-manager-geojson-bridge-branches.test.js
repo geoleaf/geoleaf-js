@@ -1,5 +1,5 @@
 /**
- * T10.3.9+10 — layer-manager-geojson-bridge-branches.test.js
+ * layer-manager-geojson-bridge-branches.test.js
  * Covers: src/kernel/geojson/layers/integration.ts
  * Strategy: await import() + mock GeoJSONShared, getLog, globalThis.GeoLeaf
  */
@@ -49,7 +49,7 @@ function makeLayerData(overrides = {}) {
     };
 }
 
-describe("LayerManager Integration (T10.3.9+10)", () => {
+describe("LayerManager Integration", () => {
     let LayerManagerIntegration;
     let mockGeoLeafLayerManager;
 

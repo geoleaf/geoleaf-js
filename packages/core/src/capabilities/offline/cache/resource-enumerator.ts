@@ -15,7 +15,7 @@ import { Log } from "../../../utils/log/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { layerDataPath } from "../../../utils/general/layer-data-path.js";
 import { coreConfigGet } from "../config-seam.js";
-import { parseDataOrigins, prefetchVerdict } from "../data-origins.js";
+import { parseDataOrigins, prefetchVerdict, pullVerdict } from "../data-origins.js";
 import { CacheStorage } from "./storage.js";
 import { CacheCalculator } from "./calculator.js";
 import { StyleResolver, type ResolverZone } from "./style-resolver.js";
@@ -110,6 +110,39 @@ function _tilesRequested(selection: LayerSelection | null | undefined): boolean 
     return selection?.includeTiles ?? true;
 }
 
+/** The page's URL — what resolves a relative resource and defines "own origin". */
+function _pageUrl(): string | undefined {
+    return typeof location === "undefined" ? undefined : location.href;
+}
+
+/**
+ * The origin rule's verdict for one URL, as the preparation will render it — for an interface
+ * that must say BEFORE the download that a basemap will be skipped, and why.
+ *
+ * Reads the profile's declarations (`modules.offline.dataOrigins`) and the page's URL, like
+ * {@link _keepPrefetchable} does. A tile URL TEMPLATE is judged on the concrete tile the
+ * preparation would request — `{s}` read as `a`, like the tile calculator: judging the template
+ * as written would compare `https://{s}.tile…` to a declared `https://a.tile…`.
+ *
+ * ⚠️ It judges ONE url. A vector basemap is judged twice by the preparation — its style, then
+ * the tiles, glyphs and sprite the style names, which may live on other origins: a favourable
+ * verdict on the style URL does not promise every resource behind it.
+ *
+ * @param url - A resource URL, a tile URL template, or a style URL.
+ * @returns The verdict; `reason` says why on a refusal.
+ * @example
+ * const verdict = prefetchVerdictOf("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png");
+ * if (!verdict.allowed) console.warn(`${verdict.origin}: ${verdict.reason}`);
+ */
+export function prefetchVerdictOf(url: string): ReturnType<typeof prefetchVerdict> {
+    const concrete = url.replace("{s}", "a").replace(/\{[xyz]\}/g, "0");
+    return prefetchVerdict(
+        concrete,
+        parseDataOrigins(coreConfigGet("modules.offline.dataOrigins", [])),
+        _pageUrl()
+    );
+}
+
 /**
  * Keeps the resources the offline preparation may download — the tile-origin rule.
  *
@@ -124,14 +157,22 @@ function _tilesRequested(selection: LayerSelection | null | undefined): boolean 
  * Refused resources are NAMED, once per origin per call — a preparation that skips a basemap
  * in silence sends a technician out with no background map.
  *
+ * And they are KEPT, in the preparation trace: a console on a device in the field is read by
+ * nobody, and the download used to end on a success toast.
+ *
  * @param resources - Resources enumerated for one basemap or one tiled layer.
  * @param source - What they belong to, for the warning (`basemap street`, `layer l1`).
+ * @param trace - The preparation trace, completed in place with what was refused.
  * @returns The resources whose origin allows the preparation.
  */
-function _keepPrefetchable<T extends { url: string }>(resources: T[], source: string): T[] {
+function _keepPrefetchable<T extends { url: string }>(
+    resources: T[],
+    source: string,
+    trace?: TilePreparationTrace
+): T[] {
     if (resources.length === 0) return resources;
     const origins = parseDataOrigins(coreConfigGet("modules.offline.dataOrigins", []));
-    const pageUrl = typeof location === "undefined" ? undefined : location.href;
+    const pageUrl = _pageUrl();
     const refused = new Set<string>();
     const kept = resources.filter((resource) => {
         const { allowed, origin } = prefetchVerdict(resource.url, origins, pageUrl);
@@ -139,11 +180,65 @@ function _keepPrefetchable<T extends { url: string }>(resources: T[], source: st
         return allowed;
     });
     for (const origin of refused) {
+        if (trace) {
+            const list = (trace.refusedOrigins ??= []);
+            if (!list.some((r) => r.source === source && r.origin === origin)) {
+                list.push({ source, origin });
+            }
+        }
         Log.warn(
             `[ResourceEnumerator] ${source}: nothing downloaded from ${origin} — the origin is ` +
                 "not declared for offline preparation. If its terms allow downloading ahead of " +
                 'use, declare it in modules.offline.dataOrigins with "cacheable": true and ' +
                 '"prefetch": true.'
+        );
+    }
+    return kept;
+}
+
+/**
+ * Keeps the resources a profile NAMES one by one — a layer's direct `url`, a field's
+ * `fetchOptions` list, the icon sprite — when their origin may be downloaded from.
+ *
+ * The rule is `pullVerdict` (`../data-origins.ts`), the one a layer's entity source obeys:
+ * it bites only in a profile that declares data origins, and then allows a declared origin
+ * or the page's own. NOT {@link _keepPrefetchable}: that one asks for `prefetch: true`,
+ * which is dropped from an `authenticated` declaration — an option list served by the data
+ * API would never be prepared. `pullVerdict` says why at length.
+ *
+ * Refusals are named and kept exactly as the tile rule's are, in the same trace member: one
+ * list tells the interface everything the preparation left out for an origin's sake.
+ *
+ * @param resources - Resources enumerated for one source.
+ * @param source - What they belong to, for the warning (`layer l1`, `icon sprite`).
+ * @param trace - The preparation trace, completed in place with what was refused.
+ * @returns The resources whose origin the profile allows.
+ */
+function _keepPullable<T extends { url: string }>(
+    resources: T[],
+    source: string,
+    trace?: TilePreparationTrace
+): T[] {
+    if (resources.length === 0) return resources;
+    const origins = parseDataOrigins(coreConfigGet("modules.offline.dataOrigins", []));
+    const pageUrl = _pageUrl();
+    const refused = new Set<string>();
+    const kept = resources.filter((resource) => {
+        const { allowed, origin } = pullVerdict(resource.url, origins, pageUrl);
+        if (!allowed) refused.add(origin);
+        return allowed;
+    });
+    for (const origin of refused) {
+        if (trace) {
+            const list = (trace.refusedOrigins ??= []);
+            if (!list.some((r) => r.source === source && r.origin === origin)) {
+                list.push({ source, origin });
+            }
+        }
+        Log.warn(
+            `[ResourceEnumerator] ${source}: nothing downloaded from ${origin} — the profile ` +
+                "declares its data origins and this one is not among them. Declare it in " +
+                "modules.offline.dataOrigins."
         );
     }
     return kept;
@@ -176,7 +271,7 @@ const ResourceEnumerator = {
 
         // 1. Mandatory resources (config + sprites)
         this._addConfigResources(resources, profile, profileId, profilesBasePath);
-        this._addSpriteResources(resources, profile);
+        this._addSpriteResources(resources, profile, trace);
 
         // 2. Selected layers
         await this._addLayerResources(
@@ -274,17 +369,21 @@ const ResourceEnumerator = {
      * a cache that never hits. The previous `basePath`/`profileId` prefixing was
      * unreachable (the early-return above always fired) and would have produced exactly
      * that mismatch on any profile whose spriteUrl is not `../`-relative.
+     *
+     * Taken verbatim, it can name any host: it is judged on its origin ({@link _keepPullable}).
      * @private
      */
-    _addSpriteResources(resources: CacheResource[], profile: ProfileLike) {
+    _addSpriteResources(
+        resources: CacheResource[],
+        profile: ProfileLike,
+        trace?: TilePreparationTrace
+    ) {
         const spriteUrl = profile.icons?.spriteUrl;
         if (typeof spriteUrl !== "string" || !spriteUrl) return;
 
-        resources.push({
-            url: spriteUrl,
-            type: "icon",
-            priority: 2,
-        });
+        resources.push(
+            ..._keepPullable([{ url: spriteUrl, type: "icon", priority: 2 }], "icon sprite", trace)
+        );
     },
 
     /**
@@ -330,7 +429,8 @@ const ResourceEnumerator = {
                     layer,
                     profileId,
                     basePath,
-                    layerIdPart
+                    layerIdPart,
+                    trace
                 );
             }
             // 🛑 THE MISSING BRANCH, AND THE DOWNSTREAM HALF OF THE DEFECT.
@@ -355,24 +455,39 @@ const ResourceEnumerator = {
                 // Extracted into a method for the same reason as `layerIdPart` just
                 // above: inline, this branch pushed `_addLayerResources`' complexity
                 // to 24 for an ESLint ceiling of 20. Seen red, not assumed.
-                this._addInlineConfigResource(resources, layer, profileId, basePath, layerIdPart);
+                this._addInlineConfigResource(
+                    resources,
+                    layer,
+                    profileId,
+                    basePath,
+                    layerIdPart,
+                    trace
+                );
             }
             // Add data file if direct URL
             else if (layer.url) {
-                const layerUrl = this._resolveUrl(layer.url, basePath, profileId);
-                resources.push({
-                    url: layerUrl,
+                const direct = {
+                    url: this._resolveUrl(layer.url, basePath, profileId),
                     type: layer.type || "data",
                     priority: 3,
                     ...layerIdPart,
-                });
+                };
+                // Judged on its origin — a direct `url` can name any host. A TILED layer's
+                // `url` is a template, not a file: its tiles are judged just below, by the
+                // tile rule, and the template itself would not even parse here.
+                resources.push(
+                    ...(layer.type === "tile"
+                        ? [direct]
+                        : _keepPullable([direct], `layer ${layer.id}`, trace))
+                );
             }
 
             // Add tiles if tiled layer — only those of an origin that allows the preparation
             if (layer.type === "tile" && _tilesRequested(selection)) {
                 const tiles = _keepPrefetchable(
                     await this._enumerateTiles(layer, profileId, trace),
-                    `layer ${layer.id}`
+                    `layer ${layer.id}`,
+                    trace
                 );
                 Log.info(`[ResourceEnumerator] Layer ${layer.id}: ${tiles.length} tiles`);
                 resources.push(...tiles);
@@ -393,6 +508,7 @@ const ResourceEnumerator = {
      * @param profileId - Identifier of the active profile.
      * @param basePath - Profiles URL base, the caller's convention.
      * @param layerIdPart - `{layerId}` object part, or empty.
+     * @param trace - The preparation trace, completed with the option lists refused.
      * @private
      */
     async _addConfigFileResources(
@@ -400,7 +516,8 @@ const ResourceEnumerator = {
         layer: { id?: string; configFile?: string },
         profileId: string,
         basePath: string,
-        layerIdPart: { layerId?: string }
+        layerIdPart: { layerId?: string },
+        trace?: TilePreparationTrace
     ): Promise<void> {
         if (!layer.configFile) return;
 
@@ -440,7 +557,7 @@ const ResourceEnumerator = {
                     type?: string;
                 };
                 const dataPath = layerDataPath(layerConfig);
-                this._addOptionListResources(resources, layerConfig, layerIdPart);
+                this._addOptionListResources(resources, layerConfig, layerIdPart, trace);
 
                 if (dataPath && layer.configFile) {
                     const configDir = layer.configFile.substring(
@@ -560,6 +677,7 @@ const ResourceEnumerator = {
      * @param profileId - Identifier of the active profile.
      * @param basePath - Profiles URL base, the caller's convention.
      * @param layerIdPart - `{layerId}` object part or empty — see its computation in the caller.
+     * @param trace - The preparation trace, completed with the option lists refused.
      * @private
      */
     _addInlineConfigResource(
@@ -567,10 +685,11 @@ const ResourceEnumerator = {
         layer: { id?: string; inlineConfig?: Record<string, unknown> },
         profileId: string,
         basePath: string,
-        layerIdPart: { layerId?: string }
+        layerIdPart: { layerId?: string },
+        trace?: TilePreparationTrace
     ): void {
         // Before the early return below: a template without a data file may still declare lists.
-        this._addOptionListResources(resources, layer.inlineConfig, layerIdPart);
+        this._addOptionListResources(resources, layer.inlineConfig, layerIdPart, trace);
         const dataPath = layerDataPath(layer.inlineConfig);
         if (!dataPath || !layer.id) {
             Log.debug(
@@ -605,27 +724,36 @@ const ResourceEnumerator = {
      * BOTH keys: a field's own `options.fetchOptions`, and `edit.options.fetchOptions`, which
      * the editor's projection substitutes for the field's bag.
      *
+     * A list's URL is whatever the field says, any host included: each one is judged on its
+     * origin ({@link _keepPullable}) before it is pushed.
+     *
      * @param resources - List under construction, mutated.
      * @param layerConfig - The layer's configuration, raw.
      * @param layerIdPart - `{layerId}` object part, or empty.
+     * @param trace - The preparation trace, completed with the lists refused.
      * @private
      */
     _addOptionListResources(
         resources: CacheResource[],
         layerConfig: unknown,
-        layerIdPart: { layerId?: string }
+        layerIdPart: { layerId?: string },
+        trace?: TilePreparationTrace
     ): void {
         const fields = (layerConfig as { attributes?: { fields?: unknown } } | null | undefined)
             ?.attributes?.fields;
         if (!Array.isArray(fields)) return;
         type Bag = { fetchOptions?: unknown } | undefined;
+        const lists: CacheResource[] = [];
         for (const field of fields as Array<{ options?: Bag; edit?: { options?: Bag } }>) {
             for (const url of [field?.options?.fetchOptions, field?.edit?.options?.fetchOptions]) {
                 if (typeof url === "string" && url.length > 0) {
-                    resources.push({ url, type: "optionList", priority: 2, ...layerIdPart });
+                    lists.push({ url, type: "optionList", priority: 2, ...layerIdPart });
                 }
             }
         }
+        resources.push(
+            ..._keepPullable(lists, `layer ${layerIdPart.layerId ?? "(unnamed)"}`, trace)
+        );
     },
 
     /**
@@ -668,8 +796,11 @@ const ResourceEnumerator = {
             if (
                 isVector &&
                 basemap.style &&
-                !_keepPrefetchable([{ url: basemap.style, type: "style" }], `basemap ${basemap.id}`)
-                    .length
+                !_keepPrefetchable(
+                    [{ url: basemap.style, type: "style" }],
+                    `basemap ${basemap.id}`,
+                    trace
+                ).length
             ) {
                 continue;
             }
@@ -677,7 +808,8 @@ const ResourceEnumerator = {
                 isVector
                     ? await this._addVectorBasemapResources(basemap, selection, trace)
                     : await this._enumerateTiles(basemap, profileId, trace),
-                `basemap ${basemap.id}`
+                `basemap ${basemap.id}`,
+                trace
             );
 
             Log.info(`[ResourceEnumerator] Basemap ${basemap.id}: ${tiles.length} resources`);

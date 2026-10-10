@@ -4,8 +4,8 @@ title: file-import — la conversion de fichiers géographiques vers GeoJSON
 plugin_id: file-import
 package: "@geoleaf-plugins/file-import"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 932f22a78
-date: 27 septembre 2026
+verifie_contre: 7b846fbe3
+date: 5 octobre 2026
 ---
 
 # file-import — la conversion de fichiers géographiques vers GeoJSON
@@ -180,9 +180,11 @@ réellement praticable : l'intégrateur type son convertisseur contre l'interfac
 
 ### Le namespace est déclaré — mais il ne l'était pas, et cette fiche l'a découvert
 
-`packages/core/src/global.d.ts` déclare `FileImport?: unknown`. Une faute de frappe sur le nom du
-namespace ne compile donc pas ; **la forme des appels, en revanche, n'est pas vérifiée** — c'est la
-traîne de membre encore ouverte.
+`packages/core/src/global.d.ts` déclare `FileImport`, et le type vient du greffon : `src/entry.ts`
+ajoute `FileImport: FileImportApi` au registre `GeoLeafPluginApis` que cette déclaration lit. Une
+faute de frappe sur le nom du namespace ne compile pas, **et la forme des appels est vérifiée** pour
+qui installe le paquet — un membre que l'API n'a pas, un argument de trop. Sans le greffon, le
+membre est `unknown`.
 
 ⚠️ **Ce n'était pas le cas quand cette fiche a été écrite, et c'est elle qui a levé le défaut.**
 L'interface `GeoLeafGlobal` n'a plus de traîne de premier niveau ; **cinq** namespaces

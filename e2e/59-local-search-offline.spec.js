@@ -29,7 +29,13 @@ import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 import { makeFeatureCollection } from "./helpers/feature-factory.js";
-import { assertZeroNetwork, goOffline, recordRequests } from "./helpers/offline.js";
+import {
+    assertZeroNetwork,
+    goOffline,
+    recordRequests,
+    settleNetwork,
+    trackInflight,
+} from "./helpers/offline.js";
 
 const ORIGIN = baseURL("core");
 test.use({ baseURL: ORIGIN });
@@ -72,6 +78,26 @@ async function armSearchableLayer(context) {
         const geocoding = bundle.modules.geocoding;
         if (!geocoding?.enabled) throw new Error("the bundle no longer enables geocoding");
         bundle.modules.geocoding = { ...geocoding, provider: ["layers", "nominatim"] };
+        // A realtime layer polls on its own clock — every 60 s in the profile this runs on —
+        // and, with the network cut, falls back to a snapshot served from the application's
+        // own origin: a request the zero-network window below would catch whenever a tick
+        // fell inside it. Seen at will by holding that window open 70 s. The clock is pushed
+        // out of the spec's reach; the layer keeps its source, and still loads at boot.
+        // ⚠️ Not `delete`: without its realtime block the layer has no source at all, loads
+        // nothing, and the icon sprite it used to bring in at boot is then fetched by the
+        // legend — offline, inside the window. Measured: three failures out of four.
+        for (const layer of Object.values(bundle.layerConfigs ?? {})) {
+            const realtime = /** @type {any} */ (layer).data?.realtime;
+            if (!realtime) continue;
+            realtime.intervalMs = 3_600_000;
+            // And its live feed is a third party: refused at once, so the layer takes its
+            // snapshot at boot, with the network up, the same way on every machine. On a
+            // runner with real connectivity that call was still in flight when the network
+            // was cut — see the test below.
+            if (/^https?:/.test(realtime.url ?? "")) {
+                await context.route(`${new URL(realtime.url).origin}/**`, (r) => r.abort());
+            }
+        }
         await route.fulfill({ json: bundle });
     });
 
@@ -118,9 +144,20 @@ test.describe("59 — a reference is found and recentred on, off-network", () =>
         page,
         context,
     }) => {
+        // Started BEFORE the navigation: it is what lets the wait below see a request that
+        // left during boot and has not come back yet.
+        const inflight = trackInflight(context);
         await armSearchableLayer(context);
         await page.goto("/");
         await waitReady(page);
+        // 🛑 The OTHER layers of the theme finish loading before the network is cut.
+        // `waitReady` only knows the searchable layer and the search box. A realtime layer
+        // whose first call was still in flight at that point failed with the network, fell
+        // back to its same-origin snapshot and brought the icon sprite in with it — both
+        // inside the window this spec asserts on, and both in the failure of the unstable
+        // night. `settleNetwork` documents the same race, met first on another spec.
+        await settleNetwork(context, { quietMs: 800, timeout: 30_000, inflight });
+        inflight.stop();
 
         // Where the feature is, read from the core — never guessed from the fixture.
         const target = await page.evaluate(

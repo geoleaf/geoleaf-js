@@ -72,7 +72,7 @@
     }
 
     .gl-lang-popover__item:focus-visible {
-        outline: 2px solid var(--gl-color-accent, #f97316);
+        outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
         outline-offset: -2px;
     }
 
@@ -80,6 +80,6 @@
      than a parallel class, so the visual state cannot drift from the accessible one. */
     .gl-lang-popover__item[aria-current="true"] {
         font-weight: 700;
-        color: var(--gl-color-accent, #f97316);
+        color: var(--gl-color-accent-text, #f97316);
     }
 }

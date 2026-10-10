@@ -43,6 +43,17 @@ getGeoLeaf()?.I18n?.registerDict?.("geocoding", {
     de: langDe,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Geocoding`. */
+export type GeocodingApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Geocoding` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Geocoding: GeocodingApi;
+    }
+}
+
 // 2 — Mount the GeoLeaf.Geocoding namespace.
 const _host = getGeoLeaf();
 if (_host) {

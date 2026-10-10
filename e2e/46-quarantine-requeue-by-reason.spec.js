@@ -185,3 +185,89 @@ test("[editor] « réessayer tout (motif X) » ne rejoue que ce motif, et l'envo
     await expect(page.locator(".gl-editor-queue-detail")).toBeVisible();
     await expect(page.locator(".gl-editor-queue-detail__requeue")).toHaveCount(0);
 });
+
+test("[offline] sans l'éditeur, la fenêtre hors-ligne relance un motif et abandonne une saisie", async ({
+    page,
+}) => {
+    // 🛑 THE SAME TWO EXITS, WITHOUT THE EDITOR. The offline window counted the set-aside
+    // captures and offered nothing: an application that does not ship the editor showed a red
+    // number with no gesture. Read red on the bundle built before the block existed.
+    /** @type {{ method: string, url: string }[]} */
+    const sent = [];
+    await page.route(`${ENDPOINT}**`, async (route) => {
+        const request = route.request();
+        sent.push({ method: request.method(), url: request.url() });
+        await route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify([{ id: "a1", nom: "vu", updated_at: WRITTEN_AT }]),
+        });
+    });
+
+    await armWritableLayer(page);
+    await page.goto("/");
+    await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
+    await page.waitForFunction(
+        (id) => {
+            const L = /** @type {any} */ (window).GeoLeaf?.Layers;
+            try {
+                return (L?.getFeatureCount?.(id) ?? 0) > 0;
+            } catch {
+                return false;
+            }
+        },
+        LAYER,
+        { timeout: 20000 }
+    );
+    await seedQuarantinedTour(page);
+    expect(
+        await page.evaluate(() => typeof (/** @type {any} */ (window).GeoLeaf?.Editor)),
+        "l'éditeur est chargé : ce test n'éprouverait plus la fenêtre hors-ligne seule"
+    ).toBe("undefined");
+
+    await page.locator('[data-gl-toolbar-action="offline-ui"]').first().click();
+    const block = page.locator(".gl-cache-quarantine");
+    await expect(block, "la fenêtre ne montre pas les saisies mises de côté").toBeVisible({
+        timeout: 15000,
+    });
+
+    // One row per motive; the retry is offered where the CORE says a retry can work.
+    const auth = block.locator('.gl-cache-quarantine__group[data-gl-reason="authRequired"]');
+    const rejected = block.locator(
+        '.gl-cache-quarantine__group[data-gl-reason="rejectedByServer"]'
+    );
+    await expect(auth).toContainText("2");
+    await expect(auth.locator(".gl-cache-quarantine__requeue")).toHaveCount(1);
+    await expect(rejected.locator(".gl-cache-quarantine__requeue")).toHaveCount(0);
+
+    const asideOnDevice = async () =>
+        (await readStore(page, { db: GEOLEAF_DB, store: "outbox" }))
+            .filter((r) => r.state === "quarantined")
+            .map((r) => r.quarantine);
+
+    // --- the first exit: the motive is requeued, and SENT ---------------------------------------
+    await auth.locator(".gl-cache-quarantine__requeue").click();
+    await expect
+        .poll(asideOnDevice, { timeout: 20000, message: "le motif n'a pas été remis en file" })
+        .toEqual(["rejectedByServer"]);
+    await expect
+        .poll(() => sent.filter((r) => r.method === "PATCH").length, {
+            timeout: 20000,
+            message: "les saisies remises en file ne sont jamais parties",
+        })
+        .toBe(2);
+    // The block repaints from the queue: the requeued motive is gone, the other stays.
+    await expect(auth).toHaveCount(0);
+
+    // --- the second exit: a discard, on confirmation --------------------------------------------
+    await rejected.locator(".gl-cache-quarantine__discard").click();
+    const confirm = page.locator(".gl-form-modal-confirm");
+    await expect(confirm).toBeVisible({ timeout: 5000 });
+    await confirm.locator(".gl-form-modal__btn-delete").click({ timeout: 10000 });
+    await expect
+        .poll(asideOnDevice, { timeout: 20000, message: "la saisie refusée est encore de côté" })
+        .toEqual([]);
+    // Nothing left aside: the block withdraws, and the discarded capture was never sent.
+    await expect(block).toBeHidden({ timeout: 10000 });
+    expect(sent.filter((r) => r.method === "PATCH")).toHaveLength(2);
+});

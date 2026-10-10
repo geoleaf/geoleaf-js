@@ -161,36 +161,93 @@ const _toolbarElement: HTMLElement = _toolbarDetail.element;
 // plugin — and the core does not depend on host-runtime either. A neutral third party is
 // required, and this fixture is one: type-only, never bundled, compiled through the `exports`
 // map of both packages.
-import type { PluginRegisterOptions } from "@geoleaf/host-runtime";
+import type { GeoLeafHost, PluginRegisterOptions } from "@geoleaf/host-runtime";
 
 /** `T` must be assignable to `U`; the compile error IS the assertion. */
 type AssertAssignable<T extends U, U> = T;
 
 /*
- * ⚠️ `GeoLeafGlobal` → `GeoLeafHost` is NOT asserted here, and the reason has changed.
+ * `GeoLeafGlobal` → `GeoLeafHost`, member by member.
  *
  * `GeoLeafGlobal` is an AMBIENT declaration (`declare global` in
- * `packages/core/src/global.d.ts`), and it IS in the program of whoever imports the
- * package: the published entry, `dist/types/bundle-esm-entry.d.ts`, opens on a reference
- * to it. This comment said the opposite until 01/10/2026 — that no published subpath led
- * there, and that `typeof globalThis.GeoLeaf` compiled to an implicit `any` — which
- * stopped being true the day the entry gained that reference.
+ * `packages/core/src/global.d.ts`), and it is in the program of whoever imports the package:
+ * the published entry, `dist/types/bundle-esm-entry.d.ts`, opens on a reference to it. So the
+ * comparison can be written — and the plain form of it, `GeoLeafGlobal` assignable to
+ * `GeoLeafHost`, can never hold: the host contract ends every member with a
+ * `[key: string]: unknown` tail, on purpose (an older core may lack a member and a plugin must
+ * degrade), and no closed interface of the core is assignable to a type that carries one.
  *
- * So the assertion can be written, and written today it FAILS (TS2344, measured on
- * 01/10/2026): `Core.getMap()` returns `unknown` on the ambient side, where the host
- * contract declares `HostMapAdapter | null | undefined`. That is the first of the
- * divergent shapes the name-based gate below cannot see; the compiler stops at the first
- * one, so there may be more.
+ * What is compared is therefore what each side NAMES. For every namespace member the host
+ * contract names, and every member it names under it, the core's declaration of that same
+ * member must be assignable to the host's. The tails are left out at each of the three levels
+ * the comparison reads — the namespace, its member, and the object a method returns.
  *
- * It is left out rather than forced through: the ambient shape is the one the API review
- * plans to rework (member promotion, then removal of the `[key: string]: unknown` trailer,
- * which is breaking), and pinning it here would freeze what is about to move.
+ * Measured the day it was written (06/10/2026), 45 named members, 9 refused: `Core.getMap()`
+ * returned `unknown` on the ambient side; five members of `Utils` the kernel mounts were not
+ * named there at all, so they came out of its tail as `unknown`; and the host named
+ * `GeoJSON.addData`, which the façade never carried. Those seven are corrected on the side
+ * that was wrong. The other two were not divergences but bags, below.
  *
- * Meanwhile, the two contracts' comparison is held by NAMES
- * (`scripts/verify-host-contract-sync.cjs`, HOST-01/02/03), not by shapes. The
- * hole is real and named: two homonym members with divergent shapes pass both
- * gates.
+ * ⚠️ What it does NOT compare: a member the host declares as a bag
+ * (`UI?: Record<string, unknown>`, `Utils.events`, `Legend`…). A bag names nothing, so there
+ * is nothing to hold the core to — its consumers narrow locally, and that narrowing is checked
+ * against nothing. Nor the ARGUMENTS of a member the host declares `(...args: unknown[])`
+ * (`registry.register`, `I18n.registerDict`…): such a signature says nothing about them, and
+ * a method's parameters are compared in either direction. And the name-based gate (`scripts/verify-host-contract-sync.cjs`,
+ * HOST-01/02/03) stays what tells a phantom FIRST-level member from a real one: this witness
+ * only reads the members the host names, it does not know what the runtime mounts.
  */
+type Ambient = NonNullable<typeof globalThis.GeoLeaf>;
+
+/** `T` without its index signatures — what `T` names. */
+type Named<T> = {
+    [K in keyof T as string extends K ? never : number extends K ? never : K]: T[K];
+};
+
+/** A method's result, reduced to what it names when it is an object. */
+type NamedResult<R> = R extends (...args: never[]) => unknown ? R : R extends object ? Named<R> : R;
+
+/**
+ * A member as the comparison reads it: a method by its parameters and named result, an object
+ * by its names.
+ *
+ * The method is rebuilt in METHOD syntax, deliberately: that is how both contracts declare
+ * theirs, and TypeScript compares the parameters of a method in either direction. A function
+ * type here would be stricter than the language is for the members it is fed.
+ */
+type Compared<M> = M extends (...args: infer A) => infer R
+    ? { call(...args: A): NamedResult<R> }["call"]
+    : M extends object
+      ? Named<M>
+      : M;
+
+/** The members the host contract names, as IT declares them. */
+type HostNamedView = {
+    [N in keyof Named<GeoLeafHost>]-?: {
+        [S in keyof Named<NonNullable<GeoLeafHost[N]>>]-?: Compared<
+            NonNullable<NonNullable<GeoLeafHost[N]>[S]>
+        >;
+    };
+};
+
+/**
+ * The same members, as the core's ambient declaration has them.
+ *
+ * ⚠️ Written out a second time rather than as one generic view instantiated twice: two
+ * instances of ONE alias are compared by their type argument first, which skips the very
+ * reduction this fixture exists for — the tails came back, measured.
+ */
+type AmbientNamedView = {
+    [N in keyof Named<GeoLeafHost>]-?: {
+        [S in keyof Named<NonNullable<GeoLeafHost[N]>>]-?: Compared<
+            NonNullable<
+                S extends keyof NonNullable<Ambient[N]> ? NonNullable<Ambient[N]>[S] : never
+            >
+        >;
+    };
+};
+
+type _HostShapeConformance = AssertAssignable<AmbientNamedView, HostNamedView>;
 
 /**
  * The registration metadata seam — the duplication the API-publique audit named.

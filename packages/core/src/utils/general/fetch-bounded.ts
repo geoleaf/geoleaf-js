@@ -18,7 +18,7 @@
  * `host-runtime`'s `fetchWithTimeout` is the sibling to check — and vice versa.
  * Duplication risk, motive written down.
  *
- * WHY IT MATTERS AT ALL (task 3.8). Sixteen production `fetch` calls on the offline perimeter
+ * WHY IT MATTERS AT ALL. Sixteen production `fetch` calls on the offline perimeter
  * had neither an `AbortController` nor a deadline. A slow server does not fail them — it
  * holds them, forever. On the critical path of a Service Worker `FetchEvent` that means the
  * resource never resolves and the page waits, with no error to show and nothing to retry.

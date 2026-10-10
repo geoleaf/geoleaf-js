@@ -221,7 +221,7 @@ describe("setupReveal — la carte", () => {
         expect(d._nativeMap.resize).toHaveBeenCalledTimes(1);
     });
 
-    test("les bornes du profil sont réappliquées après 120 ms", () => {
+    test("les bornes du profil sont réappliquées À la révélation, sans délai", () => {
         const d = deps({
             profileBounds: [
                 [0, 0],
@@ -230,10 +230,34 @@ describe("setupReveal — la carte", () => {
         });
         setupReveal(d);
         document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
-        expect(d.map.fitBounds).not.toHaveBeenCalled();
-
-        vi.advanceTimersByTime(120);
         expect(d.map.fitBounds).toHaveBeenCalledTimes(1);
+
+        // …and nothing is left armed to frame again later.
+        vi.advanceTimersByTime(5000);
+        expect(d.map.fitBounds).toHaveBeenCalledTimes(1);
+    });
+
+    // 🛑 THE FRAMING CAME 120 ms AFTER THE ANNOUNCEMENT. A host setting its view at
+    // `geoleaf:app:ready` — the event that says "ready" — had it undone: the requested view
+    // showed, then jumped back to the profile's. The order is the contract: resize, frame,
+    // then announce.
+    test("🛑 le recadrage PRÉCÈDE les annonces : resize, fitBounds, map:ready, app:ready", () => {
+        const order = [];
+        const d = deps({
+            profileBounds: [
+                [0, 0],
+                [1, 1],
+            ],
+        });
+        d._nativeMap.resize.mockImplementation(() => order.push("resize"));
+        d.map.fitBounds.mockImplementation(() => order.push("fitBounds"));
+        dispatchGeoLeafEvent.mockImplementation((name) => order.push(name));
+        setupReveal(d);
+        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+        dispatchGeoLeafEvent.mockReset();
+
+        const steps = ["resize", "fitBounds", "geoleaf:map:ready", "geoleaf:app:ready"];
+        expect(order.filter((step) => steps.includes(step))).toEqual(steps);
     });
 
     test("un état de permalink INTERDIT le recadrage — l'URL fait autorité", () => {
@@ -275,9 +299,12 @@ describe("setupReveal — la carte", () => {
             throw new Error("bornes invalides");
         });
         setupReveal(d);
-        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
-        expect(() => vi.advanceTimersByTime(120)).not.toThrow();
+        expect(() =>
+            document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"))
+        ).not.toThrow();
         expect(AppLog.warn).toHaveBeenCalled();
+        // A framing that failed does not cost the announcement.
+        expect(readyCount()).toBe(1);
     });
 
     test("sans bornes de profil, aucun recadrage", () => {

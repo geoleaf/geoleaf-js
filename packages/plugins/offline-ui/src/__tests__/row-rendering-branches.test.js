@@ -115,6 +115,105 @@ describe("createBasemapRow", () => {
         expect(row.querySelector(".gl-cache-layers__status--missing")).toBeTruthy();
     });
 
+    // 🛑 A BASEMAP THE ORIGIN RULE WILL REFUSE WAS OFFERED, TICKED, AND SKIPPED. The core
+    // downloads ahead of use only from an origin declared for it; the selector did not know
+    // the rule, so the row looked like any other and the download left the basemap out with a
+    // console warning. The row now asks the core (`Storage.prefetchVerdict`, core ≥ 3.15.0).
+    describe("la règle d'origine", () => {
+        const osm = {
+            id: "osm",
+            label: "OSM",
+            offline: true,
+            url: "https://{s}.tiles.example/{z}/{x}/{y}.png",
+            offlineBounds: { north: 1, south: 0, east: 1, west: 0 },
+            cacheMinZoom: 10,
+            cacheMaxZoom: 11,
+        };
+        /** Plants a core whose origin rule answers `verdict` — or has no rule at all. */
+        function coreAnswering(verdict) {
+            const prefetchVerdict = verdict === undefined ? undefined : vi.fn(() => verdict);
+            _installGeoLeafStorage({
+                isAvailable: () => true,
+                CacheManager: { getCacheStatus: vi.fn(async () => ({ resources: [] })) },
+                Cache: { Storage: { loadLayerSelection: vi.fn(async () => null) } },
+                ...(prefetchVerdict && { prefetchVerdict }),
+            });
+            return prefetchVerdict;
+        }
+
+        test("🛑 origine non déclarée → ligne grisée, motif écrit, case décochée et inerte", async () => {
+            const asked = coreAnswering({
+                allowed: false,
+                origin: "https://a.tiles.example",
+                reason: "undeclared",
+            });
+            // Even a selection saved BEFORE the rule existed does not tick it back.
+            await LS.createBasemapRow(tbody, osm, { basemaps: ["osm"] }, true);
+
+            expect(asked).toHaveBeenCalledWith(osm.url);
+            const row = tbody.querySelector(".gl-cache-layers__row");
+            expect(row.style.opacity).toBe("0.5");
+            expect(row.title).toContain("https://a.tiles.example");
+            const cb = row.querySelector('input[type="checkbox"]');
+            expect(cb.disabled).toBe(true);
+            expect(cb.checked).toBe(false);
+            expect(row.querySelector(".gl-cache-layers__status--missing")).toBeTruthy();
+        });
+
+        test("déclarée sans préparation → le motif n'est pas celui d'une origine inconnue", async () => {
+            coreAnswering({
+                allowed: false,
+                origin: "https://a.tiles.example",
+                reason: "notPrefetchable",
+            });
+            await LS.createBasemapRow(tbody, osm, null, true);
+            const row = tbody.querySelector(".gl-cache-layers__row");
+            expect(row.querySelector('input[type="checkbox"]').disabled).toBe(true);
+            expect(row.dataset.originRefused).toBe("notPrefetchable");
+        });
+
+        test("origine admise → la ligne est celle de toujours", async () => {
+            coreAnswering({ allowed: true, origin: "https://a.tiles.example" });
+            await LS.createBasemapRow(tbody, osm, null, true);
+            const row = tbody.querySelector(".gl-cache-layers__row");
+            expect(row.style.opacity).toBe("");
+            const cb = row.querySelector('input[type="checkbox"]');
+            expect(cb.disabled).toBe(false);
+            expect(cb.checked).toBe(true);
+            expect(row.dataset.originRefused).toBeUndefined();
+        });
+
+        test("core sans le membre (antérieur) → aucun verdict, la ligne est celle de toujours", async () => {
+            coreAnswering(undefined);
+            await LS.createBasemapRow(tbody, osm, null, true);
+            const cb = tbody.querySelector('input[type="checkbox"]');
+            expect(cb.disabled).toBe(false);
+            expect(cb.checked).toBe(true);
+        });
+
+        test("moteur non câblé → ce n'est pas un refus d'ORIGINE, la ligne ne le dit pas", async () => {
+            coreAnswering({ allowed: false, origin: "", reason: "engineUnavailable" });
+            await LS.createBasemapRow(tbody, osm, null, true);
+            const row = tbody.querySelector(".gl-cache-layers__row");
+            expect(row.dataset.originRefused).toBeUndefined();
+            expect(row.querySelector('input[type="checkbox"]').disabled).toBe(false);
+        });
+
+        test("un fond sans URL déclarée n'est pas jugé", async () => {
+            const asked = coreAnswering({ allowed: false, origin: "x", reason: "undeclared" });
+            await LS.createBasemapRow(tbody, { ...osm, url: undefined }, null, true);
+            expect(asked).not.toHaveBeenCalled();
+        });
+
+        test("le cache de tuiles coupé l'emporte : c'est lui que la ligne dit", async () => {
+            const asked = coreAnswering({ allowed: false, origin: "x", reason: "undeclared" });
+            await LS.createBasemapRow(tbody, osm, null, false);
+            const row = tbody.querySelector(".gl-cache-layers__row");
+            expect(asked).not.toHaveBeenCalled();
+            expect(row.dataset.originRefused).toBeUndefined();
+        });
+    });
+
     test("fond sans config offline → cellule « aucune config »", async () => {
         const basemap = { id: "plain" }; // ni offline ni offlineBounds
         await LS.createBasemapRow(tbody, basemap, null, true);

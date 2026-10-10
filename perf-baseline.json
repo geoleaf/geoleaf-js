@@ -10,8 +10,8 @@
     },
     "_notes": {
         "runtime": "Captured 2026-06-26 (F-TOOL-1) under E2E_HW_GL=1, Playwright --headed on WSLg (virtualized GPU). initTime / memory / geojsonRender are trustworthy; FPS are NOT representative — see runtime.fps._note. Historical snapshots kept as runtime.*_pre_r4.",
-        "previous_baseline": "Sprint R4 (2026-03-28): esm_flat 580.67 KB / 127.42 KB gzip — delta +30.2 KB raw / +6.8 KB gzip for Sprints 1-5 features",
-        "bundle_removed": "Le bloc `bundle` a ete RETIRE le 02/08/2026. Il n'avait NI lecteur NI ecrivain : le seul consommateur de ce fichier, e2e/06-performance-baseline.spec.js, ne touche que `runtime.*` et recopiait `bundle` tel quel a chaque capture, et scripts/benchmark.cjs a perdu son `--perf-baseline` au T6.3. Ses chiffres dataient donc du 14/04/2026 et etaient faux : addpoi_raw_kb 628.3 contre 330.2 mesures, deux `*_gzip_kb` a null, et une cle `storage_*` nommant un paquet renomme `offline-ui` depuis le 26/07. Le poids des bundles a UN proprietaire, scripts/check-bundle-size.cjs, qui pese desormais TOUS les fichiers emis et porte des budgets qui peuvent rougir. Une seconde copie non lue de ces chiffres ne pouvait que fossiliser."
+        "previous_baseline": "2026-03-28: esm_flat 580.67 KB / 127.42 KB gzip — delta +30.2 KB raw / +6.8 KB gzip for the features added since the previous measure",
+        "bundle_removed": "Le bloc `bundle` a ete RETIRE le 02/08/2026. Il n'avait NI lecteur NI ecrivain : le seul consommateur de ce fichier, e2e/06-performance-baseline.spec.js, ne touche que `runtime.*` et recopiait `bundle` tel quel a chaque capture, et scripts/benchmark.cjs a perdu son `--perf-baseline` le 25/07/2026. Ses chiffres dataient donc du 14/04/2026 et etaient faux : addpoi_raw_kb 628.3 contre 330.2 mesures, deux `*_gzip_kb` a null, et une cle `storage_*` nommant un paquet renomme `offline-ui` depuis le 26/07. Le poids des bundles a UN proprietaire, scripts/check-bundle-size.cjs, qui pese desormais TOUS les fichiers emis et porte des budgets qui peuvent rougir. Une seconde copie non lue de ces chiffres ne pouvait que fossiliser."
     },
     "runtime": {
         "_status": "captured",

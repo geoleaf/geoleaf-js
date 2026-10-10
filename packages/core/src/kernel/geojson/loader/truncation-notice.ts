@@ -9,7 +9,7 @@
  * @file truncation-notice.ts
  * @description The single place that TELLS a user their layer was cut short.
  *
- * 🛑 WHY THIS FILE EXISTS (R9, tâche 2.4). `ogc-api-loader.ts` has signalled its cap
+ * 🛑 WHY THIS FILE EXISTS. `ogc-api-loader.ts` has signalled its cap
  * through a `truncated` member since 19/08/2026, with an explicit motive: *"a truncated
  * collection was INDISTINGUISHABLE from a complete one […] a silent subset is a wrong map
  * that looks correct."* The member then had **one reader in the whole repository** — the

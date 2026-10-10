@@ -160,7 +160,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` de la capacité : capte l'adaptateur carte créé au boot, déclare la dépendance `geojson` et délègue init/destroy au lifecycle",
             "confidence": "haute",
-            "rationale": "48 LOC, 1 importeur (`install.ts`). Wrapper de boot co-localisé dans la capacité conformément à INV-CAPABILITY-MODULE (`capabilities/ ⊄ app/`, 0 exception depuis R.10) ; l'en-tête le dit mot pour mot dans `install.ts:25-26`."
+            "rationale": "48 LOC, 1 importeur (`install.ts`). Wrapper de boot co-localisé dans la capacité conformément à INV-CAPABILITY-MODULE (`capabilities/ ⊄ app/`, 0 exception) ; l'en-tête le dit mot pour mot dans `install.ts:25-26`."
         },
         "packages/core/src/capabilities/coordinates/public-api.ts": {
             "kind": "file",
@@ -300,7 +300,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` de la capacité : capte l'adaptateur carte du boot, déclare la dépendance `geojson` et délègue init/destroy au lifecycle",
             "confidence": "haute",
-            "rationale": "46 LOC, 1 importeur (`install.ts`) ; wrapper de boot co-localisé conformément à INV-CAPABILITY-MODULE (0 exception depuis R.10). Aucun effet sur l'ordre B1→B11 (ADR-08) : l'ordonnancement vient du tri topologique du `ModuleRegistry` (ADR-04)."
+            "rationale": "46 LOC, 1 importeur (`install.ts`) ; wrapper de boot co-localisé conformément à INV-CAPABILITY-MODULE (0 exception). Aucun effet sur l'ordre B1→B11 (ADR-08) : l'ordonnancement vient du tri topologique du `ModuleRegistry` (ADR-04)."
         },
         "packages/core/src/capabilities/geolocation/public-api.ts": {
             "kind": "file",
@@ -538,7 +538,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` de la capacité : capte l'adaptateur carte du boot, déclare la dépendance `geojson` et délègue init/destroy au lifecycle",
             "confidence": "haute",
-            "rationale": "47 LOC, 1 importeur (`install.ts`) ; wrapper de boot co-localisé conformément à INV-CAPABILITY-MODULE (0 exception depuis R.10). L'en-tête trace la reclassification depuis `modules/built-in/map/scale-control.ts`."
+            "rationale": "47 LOC, 1 importeur (`install.ts`) ; wrapper de boot co-localisé conformément à INV-CAPABILITY-MODULE (0 exception). L'en-tête trace la reclassification depuis `modules/built-in/map/scale-control.ts`."
         },
         "packages/core/src/capabilities/scale/public-api.ts": {
             "kind": "file",

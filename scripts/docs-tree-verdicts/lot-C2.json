@@ -101,7 +101,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Cœur IndexedDB : ouverture de la base geoleaf-db, schéma déclaré par _dbVersion (v4 depuis la tâche 3.4, huit magasins) et initialisation paresseuse des sous-modules",
+            "description": "Cœur IndexedDB : ouverture de la base geoleaf-db, schéma déclaré par _dbVersion et initialisation paresseuse des sous-modules",
             "confidence": "haute",
             "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026) — N3. Le répertoire `offline/core/` portait un nom de la liste fourre-tout et cachait DEUX sujets : le moteur de persistance (IndexedDB, sa façade validée, son registre de modules) et l'orchestrateur de cache. Les trois premiers rejoignent `offline/db/`, qui contenait déjà les 6 modules qu'ils enregistrent ; le quatrième rejoint `offline/cache/`, dont il orchestre les 11 fichiers. Le répertoire `core/` disparaît. `indexeddb.ts` rejoint les 6 modules de `db/`."
         },

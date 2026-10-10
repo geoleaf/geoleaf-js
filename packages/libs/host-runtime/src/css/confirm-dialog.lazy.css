@@ -1,11 +1,12 @@
 /* @geoleaf/host-runtime — confirm dialog
    Injected at runtime by rollup-plugin-postcss. */
 
-/* The eight classes `confirmDialog()` writes, styled where they are written — see the note in
-   `modal-shell.css` for why this package carries its own copy rather than borrowing
-   field-renderer's. Split from that file on purpose: a caller that only uses
-   `createModalShell` (the editor's conflict dialogs, for one) should not carry the confirm
-   dialog's rules, and rollup drops this module with the function when nothing calls it. */
+/* The eight classes `confirmDialog()` writes, styled where they are written — and nowhere
+   else: the form's footer and buttons are these same classes, and the form adopts this sheet
+   (`adoptConfirmDialogSheet`) instead of carrying a copy. Split from `modal-shell.lazy.css`
+   on purpose: a caller that only uses `createModalShell` (the editor's conflict dialogs, for
+   one) should not carry the confirm dialog's rules, and rollup drops this module with the
+   function when nothing calls it. */
 
 /* Compact panel — without this the shell's `width: 100%` makes a yes/no question span the
    whole viewport. */
@@ -118,4 +119,17 @@
 
 .gl-form-modal__btn-delete:hover:not(:disabled) {
     background: rgba(220, 38, 38, 0.08);
+}
+
+/* A finger needs 44px, whoever opened the dialog. This block lived in the form library's touch
+   sheet: a dialog opened by a bundle that does not carry the form kept its 36px buttons.
+   A MINIMUM, never `height`: it wins over the `height: 36px` above whatever the order of the
+   sheets, and leaves a longer label free to grow. */
+@media (pointer: coarse) {
+    .gl-form-modal__btn-cancel,
+    .gl-form-modal__btn-save,
+    .gl-form-modal__btn-delete {
+        min-width: 44px;
+        min-height: 44px;
+    }
 }

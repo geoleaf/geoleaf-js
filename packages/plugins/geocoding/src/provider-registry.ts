@@ -39,12 +39,13 @@ import {
     type IGeocodingProvider,
 } from "./provider.js";
 import { getGeoLeaf, Log } from "@geoleaf/host-runtime";
+import { DEFAULTS, withDefaults } from "./config.js";
 
 /** Builds a provider from the plugin's configuration. */
 export type GeocodingProviderFactory = (config: GeocodingConfig) => IGeocodingProvider;
 
-/** The name a missing `provider` resolves to. */
-const DEFAULT_PROVIDER = "addok";
+/** The name a missing `provider` resolves to — the table's. */
+const DEFAULT_PROVIDER = DEFAULTS.provider;
 
 /**
  * The `layers` provider — the features the map holds, searched by `GeoLeaf.Layers.search`.
@@ -150,7 +151,7 @@ function _nameUnknown(value: unknown, inList: boolean): void {
  * @internal
  */
 export function createProvider(config: GeocodingConfig): IGeocodingProvider {
-    const value = config.provider ?? DEFAULT_PROVIDER;
+    const value = withDefaults(config).provider;
     if (Array.isArray(value)) {
         const providers: IGeocodingProvider[] = [];
         for (const entry of value) {

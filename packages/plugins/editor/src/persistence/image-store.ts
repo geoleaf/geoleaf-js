@@ -21,32 +21,31 @@
  */
 import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
 import { setImageUploadStrategy, setImagePreviewResolver } from "@geoleaf/field-renderer";
-import { readStoredEntity, storageFacade } from "./storage-seam.js";
+import { reconcileDeliveredImage } from "./image-reconcile.js";
 
-/** The core's image store, read at call time — the plugin does not depend on `offline-ui`. */
-interface ImagesDb {
-    storeImageLocally?(data: unknown): Promise<unknown>;
-    getPendingImages?(): Promise<unknown>;
-    /**
-     * ⚠️ **`status` IS AN OBJECT, and this line said `string`.** The core reads
-     * `status.uploaded` and `status.url`; this plugin passed the literal `"uploaded"`.
-     * `("uploaded").uploaded` is `undefined`, so the record came back written as still
-     * pending and the server URL was never stored — the same photo left again on every
-     * reconnection and every boot, and the purge (a cursor over the index at `1`) found
-     * nothing to reclaim, forever. Three layers declared it loose and none of them could
-     * complain: this interface, the core's relay, and `DBModuleAPI`'s index signature.
-     */
-    updateImageUploadStatus?(
-        id: string,
-        status: { uploaded: boolean; url?: string }
-    ): Promise<unknown>;
-    /** Reads one stored image back, for the preview — see {@link _resolveImagePreview}. */
-    getLocalImage?(id: string): Promise<unknown>;
-    /** Records which feature an image belongs to — see {@link claimImages}. */
-    bindLocalImage?(id: string, owner: { layerId: string; localId: string }): Promise<unknown>;
-    /** Reclaims the space of entries the server has acknowledged. See {@link retryPendingImages}. */
-    cleanUploadedImages?(): Promise<unknown>;
-}
+/**
+ * The core's image store, read at call time — the plugin does not depend on `offline-ui`.
+ *
+ * A `Pick` of `GeoLeafStorageDB`, the declaration `@geoleaf/core` publishes for
+ * `GeoLeaf.Storage.DB`, where each relay is typed from the engine itself.
+ *
+ * ⚠️ **It was an interface written here, and it lied once.** It declared the `status` of
+ * `updateImageUploadStatus` as a `string`; the core reads `status.uploaded` and `status.url`,
+ * and this plugin passed the literal `"uploaded"`. `("uploaded").uploaded` is `undefined`, so
+ * the record came back written as still pending and the server URL was never stored — the
+ * same photo left again on every reconnection and every boot, and the purge found nothing to
+ * reclaim, forever. A view declared locally is checked against nothing: this one no longer
+ * declares anything.
+ */
+type ImagesDb = Pick<
+    GeoLeafStorageDB,
+    | "storeImageLocally"
+    | "getPendingImages"
+    | "updateImageUploadStatus"
+    | "getLocalImage"
+    | "bindLocalImage"
+    | "cleanUploadedImages"
+>;
 
 /**
  * Prefix of the stable token a locally-stored image is represented by.
@@ -74,10 +73,40 @@ function _imagesDb(): ImagesDb | null {
     return g?.Storage?.DB ?? null;
 }
 
+/**
+ * The image a stored record carries, in either of the two shapes the core writes.
+ *
+ * The core stores the `Blob` whenever the engine accepts one, and its bytes with their type
+ * when it refuses — WebKit refuses a `Blob` in IndexedDB for an ephemeral session, a private
+ * tab being one (core ≥ 3.15.0). A record written before, or by an older core, carries
+ * `blob`. No reader may assume which.
+ */
+interface StoredImageBody {
+    blob?: Blob;
+    bytes?: ArrayBuffer;
+    /** MIME type — what turns `bytes` back into a `Blob` a server accepts. */
+    type?: string;
+}
+
+/**
+ * The `Blob` of a stored image, whichever shape the record carries — `null` when it
+ * carries neither.
+ */
+function _blobOf(record: StoredImageBody | null | undefined): Blob | null {
+    if (record?.blob) return record.blob;
+    // Through a VIEW over the buffer — same bytes, no copy of them here. A DOM implemented in
+    // JavaScript tells a buffer by `instanceof`, which fails for one born in another realm: the
+    // part is then stringified, twenty characters whatever the photo. `ArrayBuffer.isView`
+    // holds across realms. A browser accepts both; a test environment did not.
+    if (record?.bytes) {
+        return new Blob([new Uint8Array(record.bytes)], { type: record.type || "image/jpeg" });
+    }
+    return null;
+}
+
 /** A pending image, as `getPendingImages` returns it. */
-interface PendingImage {
+interface PendingImage extends StoredImageBody {
     id: string;
-    blob: Blob;
     filename?: string;
     /** `null` when the field declared no `uploadEndpoint` — display only, never retried. */
     endpoint?: string | null;
@@ -160,17 +189,19 @@ function _toDataUrl(file: File): Promise<string> {
 }
 
 /**
- * Sets the image aside locally and returns an **immediately displayable** URL.
+ * Sets the image aside locally and returns the TOKEN that designates it.
  *
- * Writes two things, and both count: a data-URL returned to the caller, so the
- * preview paints without re-reading the database; and the database record, so
- * the retry can upload it later.
+ * The record is what the retry uploads later and what the preview is painted from; the
+ * token (`gl-img:<id>`) is what the feature's attribute holds in the meantime. The core
+ * keeps the `Blob`, or its bytes where the engine refuses a `Blob` — WebKit does, for a
+ * private tab. The bytes are kept because this call asks for them (`acceptBytes`,
+ * core ≥ 3.15.0; an older core rejects there, and the data-URL below returns).
  *
- * ⚠️ **`uploaded: 0`, NEVER `false`** — a boolean is not a valid IndexedDB key,
- * and the store carries an `uploaded` index: a record written with `false`
- * stays **out** of that index, hence invisible to `getPendingImages()`, hence
- * never uploaded and never cleaned. The defect fixed once in `addpoi`; it does
- * not get reintroduced here.
+ * ⚠️ **The pending flag and the timestamp are the core's to write, not this call's.** This
+ * function passed `uploaded: 0` and `timestamp` for as long as its view of the store was
+ * declared here; the engine builds the record field by field and read neither. The flag matters — a boolean is not a valid
+ * IndexedDB key, and a record written with `false` stays out of the `uploaded` index, hence
+ * invisible to `getPendingImages()` — but it is decided in one place, on the other side.
  *
  * ⚠️ **`crypto.randomUUID()`, never `Math.random()`**: this identifier is a
  * field photo's primary key, and a collision overwrites a capture.
@@ -179,7 +210,8 @@ function _toDataUrl(file: File): Promise<string> {
  * @param endpoint  - Endpoint to retry later, or `null` when the field declared none.
  * @param fieldPath - Schema path of the field holding the token, so the upload that
  *   eventually succeeds knows which attribute to reconcile.
- * @returns a stable token, or a data-URL when the store could not be reached.
+ * @returns a stable token, or a data-URL when the store could not be reached or refused
+ *   the image.
  */
 export async function storeImageLocally(
     file: File,
@@ -196,10 +228,11 @@ export async function storeImageLocally(
                 filename: file.name,
                 type: file.type,
                 size: file.size,
-                timestamp: Date.now(),
                 endpoint,
                 ...(fieldPath !== undefined && { fieldPath }),
-                uploaded: 0,
+                // This plugin reads both shapes (`_blobOf`), so it asks for the bytes where
+                // the engine refuses the `Blob`. The core writes them for no other caller.
+                acceptBytes: true,
             });
             return `${_TOKEN_PREFIX}${id}`;
         } catch (e) {
@@ -208,9 +241,10 @@ export async function storeImageLocally(
     }
     // 🛑 THE DATA-URL IS NOW THE FALLBACK, NOT THE RETURN VALUE. It used to be handed back
     // always, so the base64 of the photo went into the feature's attribute and travelled to
-    // the server inside the create. It survives here for the one case where the store is
-    // unreachable: losing the capture to protect a queue would be the wrong arbitration on a
-    // field device — but the capture is then unreconcilable, which is why it is a last resort.
+    // the server inside the create. It survives here for the case where the store is
+    // unreachable, or refuses the image whatever its shape: losing the capture to protect a
+    // queue would be the wrong arbitration on a field device — but the capture is then
+    // unreconcilable, which is why it is a last resort.
     return _toDataUrl(file);
 }
 
@@ -257,11 +291,12 @@ export async function claimImages(
  * The properties an EDIT may send, without the image tokens already delivered.
  *
  * 🛑 **A DELIVERED TOKEN WOULD OVERWRITE ITS OWN URL.** Once an upload succeeds, the URL is
- * written onto the stored entity (`_reconcile`) — but the copy its host layer holds, which the
- * form and the geometry commit read back, still carries the token. Sent back with an edit, the
- * token REPLACED the URL on the stored entity (an edit's attributes win key by key), and left
- * for the server with it. Leaving the key out keeps what the entity holds: the URL, or the
- * token itself while its upload is pending.
+ * written onto the stored entity and onto the copy its host layer holds (`image-reconcile.ts`) — but
+ * a copy taken before that still carries the token: a feature already selected for a geometry
+ * edit, or a layer the reconciliation could not reach. Sent back with an edit, the token
+ * REPLACED the URL on the stored entity (an edit's attributes win key by key), and left for
+ * the server with it. Leaving the key out keeps what the entity holds: the URL, or the token
+ * itself while its upload is pending.
  *
  * A token is delivered when its image is marked uploaded, or no longer held at all — the purge
  * reclaims an image once its upload is acknowledged. A token whose image is still pending is
@@ -361,6 +396,30 @@ export interface RetryReport {
 
 let _retrying = false;
 
+/** Whether a capture form is open — the plugin's entry tells, this module asks. */
+let _isFormOpen: () => boolean = () => false;
+
+/**
+ * Whether an image belongs to no entity yet while a capture form is open — i.e. to that form.
+ *
+ * 🛑 UPLOADED THEN, IT WAS LOST. An image is bound to its entity when the form is SAVED
+ * ({@link claimImages}); until then its record names no owner. The return of the network
+ * orders a pass whether or not anything is queued: the photos of a form still open were
+ * uploaded, found no entity to reconcile, were marked delivered and purged — and the save
+ * that followed wrote the entity with tokens designating nothing, which the create carried
+ * to the server. The files had arrived; their addresses were gone.
+ *
+ * Held back, the image waits for its form: the save binds it and asks for a drain, whose
+ * retry sends it. A form CANCELLED leaves it unbound with no form open: it goes at the next
+ * pass and is purged, as before.
+ *
+ * @param img - The stored image.
+ * @returns whether the retry must leave it for the save.
+ */
+function _awaitsItsForm(img: PendingImage): boolean {
+    return !img.layerId && !img.localId && _isFormOpen();
+}
+
 /**
  * Decides whether one pending image can be retried, and counts it when it cannot.
  *
@@ -375,7 +434,7 @@ let _retrying = false;
  * @returns whether the caller should attempt an upload.
  */
 function _isRetryable(img: PendingImage, report: RetryReport): boolean {
-    if (!img?.blob) return false;
+    if (!_blobOf(img)) return false;
     if (img.endpoint === null) {
         report.skipped += 1;
         return false;
@@ -389,76 +448,6 @@ function _isRetryable(img: PendingImage, report: RetryReport): boolean {
         return false;
     }
     return true;
-}
-
-/**
- * Replaces an image token by the URL the server gave the file, on the owning feature.
- *
- * 🛑 A SECOND OUTBOX ENTRY, NOT AN EDIT OF THE FIRST. The create may already be in flight,
- * and rewriting an entry under a drain is how a queue loses work. An `update` is the
- * contract's own way of saying "this attribute is now that" — and while the create is still
- * `pending` or `failed` the core COALESCES the two, so the server never even sees the token.
- * ⚠️ That coalescence also resets the create's retry budget (`_rearmAbsorber`): it is the
- * behaviour we want, and it is written here so nobody rediscovers it under a drain.
- *
- * A photo whose feature was never bound cannot be reconciled — it is uploaded and kept, and
- * says so, rather than silently patching the wrong record.
- *
- * 🛑 THE TOKEN IS REPLACED WHERE IT STANDS, AND ONLY IF IT STILL STANDS THERE. The entity is
- * read first, and the edit carries the attribute's current value with this one token turned
- * into its URL. A gallery holds a list, so writing the URL onto the key would have replaced
- * the list by a string; and its entries are reordered and removed while a photo waits, so the
- * token is found by VALUE, never by position. A token the attribute no longer holds — the
- * photo was removed, or replaced, before its upload landed — is not written back at all:
- * the URL would overwrite what the user put there since.
- *
- * @param img - The stored image, carrying its return address.
- * @param url - The URL the server returned.
- */
-async function _reconcile(img: PendingImage, url: string): Promise<void> {
-    if (!img.layerId || !img.localId || !img.fieldPath) {
-        Log?.debug?.("[editor/image] Uploaded image has no owning feature to reconcile:", img.id);
-        return;
-    }
-    const facade = storageFacade();
-    if (!facade?.applyEdit) return;
-    const entity = await readStoredEntity(img.layerId, img.localId);
-    const value = _withUrl(
-        entity?.feature?.properties?.[img.fieldPath],
-        `${_TOKEN_PREFIX}${img.id}`,
-        url
-    );
-    if (value === undefined) {
-        Log?.debug?.("[editor/image] The owning feature no longer holds this image:", img.id);
-        return;
-    }
-    // ⚠️ Method call on the facade, never detached: it reads `this._modules` to reach the
-    // engine. The same mistake once made every offline save write nothing, silently.
-    const report = await facade.applyEdit({
-        layerId: img.layerId,
-        kind: "update",
-        localId: img.localId,
-        feature: { type: "Feature", properties: { [img.fieldPath]: value } },
-    });
-    if (report.refused) {
-        Log?.warn?.("[editor/image] Reconciling edit refused:", img.id, report.refused);
-    }
-}
-
-/**
- * An attribute's value with one image token turned into its URL.
- *
- * @param current     - What the attribute holds: a token, a list holding it, or anything else.
- * @param placeholder - The image token to replace.
- * @param url         - The URL to put in its place.
- * @returns the new value, or `undefined` when `current` does not hold the token.
- */
-function _withUrl(current: unknown, placeholder: string, url: string): unknown {
-    if (current === placeholder) return url;
-    if (Array.isArray(current) && current.includes(placeholder)) {
-        return current.map((entry: unknown) => (entry === placeholder ? url : entry));
-    }
-    return undefined;
 }
 
 /**
@@ -531,11 +520,13 @@ export async function retryPendingImages(): Promise<RetryReport | null> {
         const pending = ((await db.getPendingImages()) ?? []) as PendingImage[];
         const report: RetryReport = { attempted: 0, uploaded: 0, failed: 0, skipped: 0 };
         for (const img of pending) {
-            if (!_isRetryable(img, report)) continue;
+            if (_awaitsItsForm(img) || !_isRetryable(img, report)) continue;
             report.attempted += 1;
             try {
-                const file = new File([img.blob], img.filename ?? "image.jpg", {
-                    type: img.blob.type || "image/jpeg",
+                // `_isRetryable` vouched for it: the record carries a blob, or its bytes.
+                const blob = _blobOf(img) as Blob;
+                const file = new File([blob], img.filename ?? "image.jpg", {
+                    type: blob.type || "image/jpeg",
                 });
                 // 🛑 THE URL IS KEPT. It used to be thrown away — `await _postToServer(...)`
                 // with no assignment — so the file reached the server and the feature never
@@ -546,7 +537,7 @@ export async function retryPendingImages(): Promise<RetryReport | null> {
                 // URL was never stored and the purge never found anything to reclaim. The same
                 // photo therefore left again on every reconnection and every boot, forever.
                 await db.updateImageUploadStatus(img.id, { uploaded: true, url });
-                await _reconcile(img, url);
+                await reconcileDeliveredImage(img, `${_TOKEN_PREFIX}${img.id}`, url);
                 report.uploaded += 1;
             } catch (e) {
                 // The entry STAYS pending — a failure destroys nothing.
@@ -588,9 +579,10 @@ async function _resolveImagePreview(value: string): Promise<string | null> {
     const db = _imagesDb();
     if (!db?.getLocalImage) return null;
     try {
-        const record = (await db.getLocalImage(id)) as { blob?: Blob } | null | undefined;
-        if (!record?.blob) return null;
-        const url = URL.createObjectURL(record.blob);
+        const record = (await db.getLocalImage(id)) as StoredImageBody | null | undefined;
+        const blob = _blobOf(record);
+        if (!blob) return null;
+        const url = URL.createObjectURL(blob);
         _previewUrls.set(id, url);
         return url;
     } catch (e) {
@@ -600,11 +592,17 @@ async function _resolveImagePreview(value: string): Promise<string | null> {
 }
 
 /**
- * Wires the upload strategy and **arms the retry on network return**.
+ * Wires the upload strategy and the preview resolver, and learns how to tell whether a capture
+ * form is open.
  *
- * Idempotent: a second call does not stack a listener.
+ * The retry itself is armed elsewhere: the core's drain runs {@link retryPendingImages} as a
+ * step before each pass. Idempotent: a second call replaces the wiring, it stacks nothing.
+ *
+ * @param isFormOpen - Whether a capture form is open now. While it is, an image no entity owns
+ *   yet is left to that form's save instead of being uploaded. Defaults to "never open".
  */
-export function initImageUpload(): void {
+export function initImageUpload(isFormOpen: () => boolean = () => false): void {
+    _isFormOpen = isFormOpen;
     setImageUploadStrategy(uploadImage);
     // An offline capture is held as an opaque token, so the library cannot paint it on its
     // own — only this plugin can read the local store the token points into.
@@ -619,6 +617,7 @@ export function initImageUpload(): void {
 /** Removes the listener and returns the strategy to the library's default `fetch`. */
 export function destroyImageUpload(): void {
     _retrying = false;
+    _isFormOpen = () => false;
     setImageUploadStrategy(null);
     setImagePreviewResolver(null);
     for (const url of _previewUrls.values()) URL.revokeObjectURL(url);

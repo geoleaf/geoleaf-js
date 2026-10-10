@@ -478,7 +478,7 @@ export type ConflictPolicy = "lastWriteWins";
  * give back. This sentence read « the entity leaves the map » until 25/09/2026: no code did that
  * on the push, and the destruction removed only the queue entry.
  *
- * ⚠️ **This sentence read « It is never destroyed » until task 8.4, and the absolute form had
+ * ⚠️ **This sentence used to read « It is never destroyed », and the absolute form had
  * a cost that was measured rather than argued.** A quarantined entry had NO exit at all: not
  * the drain (`REPLAYABLE_STATUSES` is `failed` + `pending`), not the purge, not any UI
  * gesture. On a field device the class only grew — visible, counted, unresolvable. « Never
@@ -616,12 +616,27 @@ export interface LayerSyncConfig {
 export type WriteDialect = "rest" | "collection";
 
 /**
- * How a write endpoint is authenticated — DECLARATIVE ONLY.
+ * How a write endpoint is authenticated — what the layer declares, and what the drain does
+ * with it.
  *
- * ⚠️ No code reads this value: the drain sends no authentication header of its own, and a
- * write is authenticated by the connector plugin, which adds its bearer token to the requests
- * it intercepts. `"csrf"` was removed in 3.4.0 with the core's CSRF module, which no server
- * could verify.
+ * The drain still sends no authentication header of its own: a write is authenticated by
+ * whoever intercepts `fetch` — the connector plugin, which adds its bearer token to the
+ * requests under its base URL. The declaration is what tells the two apart from a layer that
+ * says nothing:
+ *
+ * - `"none"` — the endpoint takes no credential. Every request of the write carries the
+ *   declaration as the `geoleafWriteAuth` member of its `init`, and the connector attaches
+ *   no token to it, even under its base URL.
+ * - `"bearer"` — the endpoint requires a session. While the session reader
+ *   (`GeoLeaf.Sync.registerSessionReader`) answers `absent`, the capture is not sent: it
+ *   stays queued, counted in the pass's `heldForSession`, and the pass goes on with the
+ *   captures of the other layers. With no reader
+ *   registered, or one that answers `valid`, `expired` or nothing, the capture leaves as it
+ *   always did.
+ * - absent — unchanged: the request goes out, and gets a token if it falls under the
+ *   connector's base URL.
+ *
+ * `"csrf"` was removed in 3.4.0 with the core's CSRF module, which no server could verify.
  */
 export type WriteAuth = "bearer" | "none";
 
@@ -687,6 +702,26 @@ export type DataOriginRole = "layerData" | "tiles" | "sprites" | "glyphs" | "api
  * the application shell is not data. Enforced in `kernel/storage/sw-core.js` (`routeRequest`),
  * which is a standalone worker and cannot import this file — the parity is held by the source
  * guard in `__tests__/storage/sw-core.test.js`.
+ *
+ * The offline PREPARATION (`prefetch`) reads the same delimitation from the other side, and **a
+ * declaration prevails**. Left undeclared, the application's own origin is prepared — the
+ * exception above. Declared, it is judged on its declaration like any other origin
+ * (`prefetchVerdict`, `capabilities/offline/data-origins.ts`). Roles are not consulted there, so
+ * declaring the application's origin for a same-origin data API also decides for the tiles it
+ * serves: `prefetch: true` keeps them prepared, its absence refuses them.
+ *
+ * The PULL of a layer's entities (`offline.source.url`) obeys a narrower reading of the same
+ * invariant: in a profile that declares, a source is pulled from a declared origin or from the
+ * application's own, and refused otherwise (`pullVerdict`, same file; the pull reports
+ * `originUndeclared`). `cacheable` and `prefetch` are not read — the layer naming its source is
+ * the request, and what a pull writes is the `features` store, not the Service Worker's cache —
+ * so an `authenticated` origin is pullable. A profile that declares nothing pulls as it always
+ * did.
+ *
+ * **The preparation presents what the display presents.** Every request it makes goes through
+ * the page's `fetch` with the browser's default `credentials` mode: the cookies of the
+ * application's own origin and no other, plus whatever header the host's `fetch` adds — the
+ * connector's `Bearer` under its `baseUrl`, vector tiles and glyphs included.
  */
 export interface DataOriginDeclaration {
     /** Origin in `scheme://host[:port]` form. Never a substring, never a bare hostname. */
@@ -704,8 +739,9 @@ export interface DataOriginDeclaration {
      * policy: "Offline use is not permitted on tile.openstreetmap.org". Only operate or license
      * an origin before declaring it here.
      *
-     * Honoured only with `cacheable: true`; dropped from an `authenticated` declaration. The
-     * application's own origin needs no declaration.
+     * Honoured only with `cacheable: true`; dropped from an `authenticated` declaration. An
+     * UNDECLARED application origin is prepared without it; once declared, that origin is
+     * judged on this flag like any other.
      */
     readonly prefetch?: boolean;
 }
@@ -728,8 +764,8 @@ export type LayerOfflineStatus =
     | "declaredNeverPulled"
     | "pulled"
     /**
-     * A pull reached the source and wrote, but did not finish — the caller aborted, or the
-     * page closed mid-run.
+     * A pull reached the source and wrote, but did not finish — the caller aborted, the page
+     * closed mid-run, or the source's next page named an origin the profile does not declare.
      *
      * ⚠️ A run the hard cap cuts short is NOT this: it went to its end and is reported
      * `pulled`. What the cap left out is said elsewhere — by the truncation notice the pull
@@ -807,6 +843,13 @@ export interface TilePreparationTrace {
     skippedZooms: TileZoomSkip[];
     /** `true` when the enumeration stopped at the total tile cap — the rest was never listed. */
     capped: boolean;
+    /**
+     * What the origin rule refused: one entry per source and origin — `source` names the basemap
+     * or the tiled layer (`basemap street`, `layer l1`), `origin` the origin not declared for
+     * the preparation. Empty when nothing was refused; absent from a manifest written before
+     * 3.15.0, which only logged it.
+     */
+    refusedOrigins?: Array<{ source: string; origin: string }>;
 }
 
 /**

@@ -59,9 +59,9 @@
  *   require("./check-bundle-size.cjs").checkBundleSize({ log })       # from build-deploy
  *   require("./check-bundle-size.cjs").checkPluginBundles({ log })    # from build-deploy
  *
- * ## Sole size gate of the repo (T6.3, 2026-07-25)
+ * ## Sole size gate of the repo (2026-07-25)
  *
- * Until T6.3 a SECOND device called itself a size gate: `benchmark.cjs --ci`, wired
+ * Until that date a SECOND device called itself a size gate: `benchmark.cjs --ci`, wired
  * twice (ci.yml:147, ci-local.cjs). Its three assertions were all inert — the
  * tracked baseline `.benchmark-baseline.json` dated 2026-02-27 (Leaflet era) recorded
  * `geoleaf.esm.js` at 1 928 560 B against ~948 B measured today, i.e. −99.95 % against
@@ -74,9 +74,9 @@
  *   1. `npm run size`                                → ci.yml step + ci-local.cjs step
  *   2. `require()` from build-deploy.cjs   → every deploy variant build
  *   3. `require()` from golden-master.cjs         → the boot snapshot (bootGz)
- * Path (1) was ADDED by T6.3 and is not redundant with (2): before it, the budget sat
+ * Path (1) was ADDED on that date and is not redundant with (2): before it, the budget sat
  * behind a deploy build, i.e. reachable only under `ci:local --e2e` and only at the
- * LAST step of the CI job. That blind spot is exactly what T6.3 closed — do not
+ * LAST step of the CI job. That blind spot is exactly what that change closed — do not
  * "simplify" the step away as already covered.
  *
  * @version 2.4.0
@@ -256,7 +256,16 @@ const PLUGIN_BUDGETS_GZ_KB = {
     // French labels, and in the offline plugin of all places. Loading locales on demand is a
     // platform mechanism — the core carries the same weight in its boot chunk — not a
     // one-plugin trim.
-    "offline-ui": { boot: { warn: 40, fail: 45 }, total: { warn: 40, fail: 45 } }, // 34.09
+    // 🛑 RE-ANCHORED UPWARD on 2026-10-06, 34.1 → 40.2, by decision. The growth since the last
+    // anchor is features again — the quarantine block, the log export, the update banner, the
+    // write-session line — and it had brought the bundle to 39.8, 0.2 KB from the warn. What
+    // crossed it is 0.4 KB of labels: the cache window and the export panel wrote some forty
+    // texts as literals, most of them in English, and they now go through the catalogue in six
+    // languages, twelve keys being new. Decomposed through the sourcemap the same day (remove
+    // a class of modules, re-gzip, read the gap): the window 18.8 KB gz, 23.0 with its style
+    // sheets, the six dictionaries 12.9. Taking the window out of the boot stays a platform
+    // matter, for the reason written above.
+    "offline-ui": { boot: { warn: 47, fail: 53 }, total: { warn: 47, fail: 53 } }, // 40.2
     // measure — Turf. ⚠️ Was measured at 44.5 against a warn of 45: 0.5 KB from firing, on
     // no regression at all. Re-anchored like the rest.
     measure: { boot: { warn: 25, fail: 28 }, total: { warn: 25, fail: 28 } }, // 21.5
@@ -832,15 +841,80 @@ function checkOrphanStylesheets(name, file, log) {
 }
 
 /**
+ * Fails when a plugin's output carries a module TWICE: once on its own, and once more inside
+ * the built file of a library the plugin also bundles.
+ *
+ * ## What this catches, measured
+ *
+ * A workspace library that inlines its own dependencies ships them inside its built file. A
+ * plugin that bundles that file AND imports one of those dependencies directly gets two copies
+ * — two module scopes for code written as one (a deduplicating `Set`, a registry, a stylesheet
+ * adopted "once" per key), and its bytes paid twice. The editor carried the dialog module of
+ * `@geoleaf/host-runtime` that way, through the built `@geoleaf/field-renderer`: 5.4 KB of its
+ * entry chunk. The remedy is `fromSource` in the plugin's rollup config
+ * (`packages/build-config/rollup.mjs`), which takes the library from its sources.
+ *
+ * ## The oracle
+ *
+ * The sourcemaps, as in {@link listEagerSources}: a minified chunk says nothing of what went
+ * into it. A source of the plugin's maps that is itself a built file — a `.js` with a map
+ * beside it — is opened in turn; any source of THAT map the plugin's maps also name was
+ * bundled twice. No package is named here: the rule reads whatever the build produced.
+ *
+ * ⚠️ **The budgets cannot see this.** The second copy weighed under one kilobyte gzipped, far
+ * inside the margin of the boot budget — and the weight was never the defect.
+ *
+ * @param {string} name - The plugin's name, for the message.
+ * @param {string} file - Path to its built entry; every map of its directory is read.
+ * @param {typeof defaultLog} log - Where to report.
+ * @returns {boolean} true when no module is bundled twice.
+ */
+function checkTwiceBundled(name, file, log) {
+    const dir = path.dirname(file);
+    /** Sources of one map, as absolute paths; empty when the map is missing or unreadable. */
+    const sourcesOf = (mapFile) => {
+        try {
+            const map = JSON.parse(fs.readFileSync(mapFile, "utf8"));
+            const base = path.resolve(path.dirname(mapFile), map.sourceRoot || "");
+            return (map.sources || []).map((source) => path.resolve(base, source));
+        } catch {
+            return [];
+        }
+    };
+    let maps;
+    try {
+        maps = fs.readdirSync(dir).filter((f) => f.endsWith(".js.map"));
+    } catch {
+        return true;
+    }
+    const carried = new Set(maps.flatMap((f) => sourcesOf(path.join(dir, f))));
+    let ok = true;
+    for (const built of carried) {
+        if (!built.endsWith(".js") || !fs.existsSync(`${built}.map`)) continue;
+        const again = sourcesOf(`${built}.map`).filter((source) => carried.has(source));
+        for (const module of again) {
+            ok = false;
+            log.err(
+                `${name}: \`${path.relative(ROOT, module)}\` est dans la sortie du greffon DEUX fois — ` +
+                    `une fois seul, une fois dans \`${path.relative(ROOT, built)}\`, qui l'embarque déjà. ` +
+                    `Prendre cette bibliothèque par ses sources (\`fromSource\`). Voir checkTwiceBundled.`
+            );
+        }
+    }
+    return ok;
+}
+
+/**
  * Checks each plugin against its per-plugin budgets — BOOT (the entry plus every chunk it
  * imports statically, walked by {@link measureEagerBootAt}; dynamic `import()` is not followed)
  * and TOTAL (every `.js` file in the entry's directory). See PLUGIN_BUDGETS_GZ_KB for why both
  * are needed. It also fails on an orphaned host-runtime stylesheet anywhere in the plugin's
- * output ({@link checkOrphanStylesheets}, over the same files as TOTAL). A plugin with no built
- * entry is skipped with a warning.
+ * output ({@link checkOrphanStylesheets}, over the same files as TOTAL), and on a module the
+ * output carries twice ({@link checkTwiceBundled}). A plugin with no built entry is skipped
+ * with a warning.
  * @param {{ log?: typeof defaultLog }} [opts]
- * @returns {boolean} true if no hard budget is breached and no orphaned stylesheet is found
- *   (build may proceed)
+ * @returns {boolean} true if no hard budget is breached, no orphaned stylesheet is found and
+ *   no module is bundled twice (build may proceed)
  */
 function checkPluginBundles(opts = {}) {
     const log = opts.log || defaultLog;
@@ -872,6 +946,7 @@ function checkPluginBundles(opts = {}) {
         // A correctness check, not a budget: an orphaned stylesheet is weight the bundle should
         // not carry AT ALL, so it fails rather than warns — a warn would leave it in place.
         if (!checkOrphanStylesheets(name, file, log)) allOk = false;
+        if (!checkTwiceBundled(name, file, log)) allOk = false;
 
         // A split plugin gets its chunk list printed on breach: "the total is over" is not
         // actionable on its own — which chunk grew is.

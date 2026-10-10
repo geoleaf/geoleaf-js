@@ -127,14 +127,14 @@ casing: `Point`, `LineString`, `Polygon`. A lowercase value matches nothing.
 
 ### `write` — where the edits go
 
-| Key                | Meaning                                                                                                                                                         |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`          | `false` gives the layer no write target. Its captures are still held on the device, and set aside as `layerNoLongerWritable` when the queue reaches them        |
-| `endpoint`         | **Required** once `enabled` is `true`: the URL the queue writes to, without a query string — the requests are §2.1 of the [server contract](SERVER_CONTRACT.md) |
-| `dialect`          | `collection`, the default, is the only dialect the queue sends. A layer declaring `rest` has its queued edits set aside as `dialectNotSupported`                |
-| `geometryProperty` | The key the geometry is sent under — `geom` by default                                                                                                          |
-| `properties`       | The properties sent, as a whitelist: a property not listed is never sent. **Absent, every property of the entity is sent**                                      |
-| `auth`             | Declarative only — nothing reads it. Whether a request carries a token is the connector's decision, see [Authentication](#authentication)                       |
+| Key                | Meaning                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled`          | `false` gives the layer no write target. Its captures are still held on the device, and set aside as `layerNoLongerWritable` when the queue reaches them                       |
+| `endpoint`         | **Required** once `enabled` is `true`: the URL the queue writes to, without a query string — the requests are §2.1 of the [server contract](SERVER_CONTRACT.md)                |
+| `dialect`          | `collection`, the default, is the only dialect the queue sends. A layer declaring `rest` has its queued edits set aside as `dialectNotSupported`                               |
+| `geometryProperty` | The key the geometry is sent under — `geom` by default                                                                                                                         |
+| `properties`       | The properties sent, as a whitelist: a property not listed is never sent. **Absent, every property of the entity is sent**                                                     |
+| `auth`             | `none`: the endpoint takes no credential, and the connector attaches none. `bearer`: it requires a session, and a capture waits for one. See [Authentication](#authentication) |
 
 ### Editable fields — `attributes.fields[].edit`
 
@@ -247,14 +247,17 @@ one motive:
   `requeueQuarantined(entryId)` puts one entry back in the queue, `requeueAll(motive?)` every
   requeueable one. For `layerNoLongerWritable` and `dialectNotSupported` they first check that the
   cause is gone: `requeueQuarantined()` refuses with `causeStillPresent`, `requeueAll()` counts
-  what it leaves in `skipped`. **A requeue starts no pass**: call `pushOutbox()` after it.
+  what it leaves in `skipped`. **A requeue asks for a pass**: the entries it brought back are sent
+  without waiting for another trigger, a dead session included — requeueing `authRequired` is
+  saying the session is back.
 - `discardQuarantined(entryId, localId)` destroys one entry. The second argument is the entry's own
   `localId`, a value the caller only knows by having listed the entry: nothing is discarded unseen.
   The entity's local copy then goes back to the server's truth — removed if the server never had
   it, otherwise replaced at the next pull.
 - `GeoLeaf.Storage.DB.listPendingEdits()` lists every entry still owed or set aside, oldest first,
-  with its `state` — `"quarantined"` for these. It does not give the motive, and no public member
-  does today. `getSyncStatus().quarantined` counts them.
+  with its `state` — `"quarantined"` for these, which also carry `quarantine`, the motive, and
+  `quarantineStatus`, the HTTP status of the refusal when a server answer caused it.
+  `getSyncStatus().quarantined` counts them.
 
 ```ts
 const storage = GeoLeaf?.Storage;
@@ -284,6 +287,11 @@ overwrites or removes an entity holding an edit the server has not accepted, set
 included, and it never makes a layer writable. What a pull asks of the server is §1 of the
 [server contract](SERVER_CONTRACT.md).
 
+A layer that is on the map when its pull ends is given what the device now holds — an entity
+the server deleted leaves the map, an edited one is redrawn — without a reload, and
+`geoleaf:layer:updated` announces it (since 3.15.0; a reload was needed before). The layer must
+declare `offline.enabled`: one that is drawn from the network is not touched by a pull.
+
 ## Watching the queue
 
 ### The sync bar
@@ -295,6 +303,17 @@ how many are set aside (`2 blocked`), when the server last accepted an edit, a *
 — offered when something is owed and the network is up — and a close button. It hides itself when
 nothing is owed, nothing is set aside and the network is up; closed, it comes back if the
 situation gets worse.
+
+### The pending mark on the map
+
+An entity holding an edit the server has not accepted is drawn with an orange stroke: around a
+point, along a line, around a polygon. It is set as the edit is queued — when the entity reaches
+its layer — and removed when the server accepts it; it survives a reload and a pull. Since
+3.15.0: before, the mark appeared only after a reload, and only on points.
+
+It is the `_syncStatus: "pending"` property of the layer's copy of the entity
+(`GeoLeaf.Layers.getFeatures(layerId)`), never written to the server. An application drawing
+its own mark can read it; it should not set it — the write cycle owns it.
 
 ### Reading the state
 
@@ -311,20 +330,25 @@ registers a reader in `auth.endpoint` mode; a host that holds its own token can 
 
 Dispatched on `document`, and typed in `GeoLeafEventMap`:
 
-| Event                            | When                                                                  | Payload                                                              |
-| -------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `geoleaf:offline:outbox-queued`  | an edit entered the queue, was absorbed by an entry, or cancelled one | `layerId`, `localId`, `kind`, `queued`, `annulled`                   |
-| `geoleaf:offline:outbox-drained` | a pass ended — every pass, the empty one included                     | `attempted`, `pushed`, `failed`, `deferred`, `conflicts`, `haltedBy` |
-| `geoleaf:offline:write-conflict` | a conflict was settled — once per conflict                            | the fields of a `listConflicts()` record                             |
-| `geoleaf:offline:pull-progress`  | one page of a pull landed                                             | `layerId`, `current`, `total`, `totalIsKnown`, `percentage`          |
+| Event                               | When                                                                  | Payload                                                                                |
+| ----------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `geoleaf:offline:outbox-queued`     | an edit entered the queue, was absorbed by an entry, or cancelled one | `layerId`, `localId`, `kind`, `queued`, `annulled`                                     |
+| `geoleaf:offline:outbox-drained`    | a pass ended — every pass, the empty one included                     | `attempted`, `pushed`, `failed`, `deferred`, `conflicts`, `haltedBy`, `heldForSession` |
+| `geoleaf:offline:quarantine-exited` | entries set aside left — requeued, or discarded on confirmation       | `exit`, `entries` (`layerId`, `localId` of each)                                       |
+| `geoleaf:offline:write-conflict`    | a conflict was settled — once per conflict                            | the fields of a `listConflicts()` record                                               |
+| `geoleaf:offline:pull-progress`     | one page of a pull landed                                             | `layerId`, `current`, `total`, `totalIsKnown`, `percentage`                            |
 
 `outbox-drained` carries the numbers of the pass, not what is left: read `getSyncStatus()` for
-that. Nothing is dispatched when an entry is set aside, requeued or discarded.
+that. Nothing is dispatched when an entry is set aside — the pass that set it aside says so in its
+own `outbox-drained`. `quarantine-exited` is dispatched once per gesture, never for one that moved
+nothing: a refusal, or a `requeueAll()` with nothing to bring back.
 
 ```ts
 GeoLeaf?.Events?.on("geoleaf:offline:outbox-drained", (event) => {
     if (event.detail.haltedBy === "authRequired") {
         console.warn("The session is over: sign in again to send the queue.");
+    } else if (event.detail.heldForSession > 0) {
+        console.warn("A layer requires a session and none is open: its captures wait.");
     }
 });
 ```
@@ -346,5 +370,30 @@ side is §3 of the [server contract](SERVER_CONTRACT.md) and whose setup is the
 ```ts
 const storage = GeoLeaf?.Storage;
 await storage?.requeueAll?.("authRequired");
-await storage?.pushOutbox?.();
 ```
+
+The requeue asks for the pass itself; before 3.15.0 a `pushOutbox()` had to follow it.
+
+### What a layer says of its own writes — `write.auth`
+
+Absent, nothing changes: the request goes out, with the connector's token when it falls under
+its `baseUrl`. Two values say more, since 3.15.0:
+
+- **`"none"`** — the endpoint takes no credential. Every request of the write carries the
+  declaration, and the connector attaches no token to it, even under its `baseUrl`. Use it for
+  a public collection served by the same API as the authenticated ones: without it, the
+  session's token was sent to an endpoint that never asked for it.
+- **`"bearer"`** — the endpoint requires a session. While nobody is signed in, the capture is
+  not sent without a token: it stays in the queue, untouched, and the pass counts it in
+  `heldForSession` and goes on with the rest of the queue — a capture of a `"none"` layer
+  behind it leaves. The automatic triggers keep running — a held capture costs no request —
+  so it leaves on its own once the session is back. Meanwhile the sync strip
+  says so: next to the count of writes owed, it reads "sign-in required" for as long as the
+  last pass held one. It offers no sign-in of its own — that belongs to whoever holds the
+  session. "No session" is what
+  the session reader says (`GeoLeaf.Sync.registerSessionReader`): the connector registers one
+  in `auth.endpoint` mode; in `getToken` mode the host registers its own, and without a reader
+  the capture leaves as it always did.
+
+A held capture is not an `authRequired` halt: the first says nothing was sent and the pass went
+on, the second that a server answered 401, the capture was set aside and the pass stopped.

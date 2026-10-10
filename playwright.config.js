@@ -121,6 +121,13 @@ export default defineConfig({
         // closed here.
         ["html", { outputFolder: "artifacts/playwright/report", open: "never" }],
         ["list"],
+        // The TIMELINE of the run: for every attempt of every test, the worker that ran it
+        // and when. `list` prints tests in the order they finish and names no worker, so a
+        // test killed by its predecessor's teardown could be told from a test unstable by
+        // itself only by guessing who ran before it. A SIBLING of the two paths above, for
+        // the reason written there. The CI uploads it on green runs too: a flaky test leaves
+        // the run green, and that is exactly the run whose order needs reading.
+        ["json", { outputFile: "artifacts/playwright/timeline.json" }],
     ],
     timeout: 60 * 1000,
 

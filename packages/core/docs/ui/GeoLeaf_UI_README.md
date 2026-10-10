@@ -67,11 +67,12 @@ active tags) belongs to the **`filter`** capability and is driven through **`Geo
 
 ### 4. MapLibre controls
 
-- Geolocation control (`initGeolocationControl`)
-- Theme-toggle control embedded in the map (`initThemeToggleControl`)
+- Geolocation control — `geolocation` capability, configured by `modules.geolocation`
+- Theme-toggle control embedded in the map — `theme-toggle` capability, configured by
+  `modules.theme-toggle`
 
-> These two methods are still exposed on `GeoLeaf.UI`, but the implementation lives in the
-> `geolocation` and `theme-toggle` capabilities. Fullscreen and POI creation are no longer
+> Neither control is created through `GeoLeaf.UI`: each capability installs its own from its
+> configuration. Fullscreen and POI creation are no longer
 > `GeoLeaf.UI` controls: the former belongs to the `fullscreen` capability, the latter to the
 > `@geoleaf-plugins/editor` plugin (`GeoLeaf.Editor`).
 
@@ -123,18 +124,19 @@ GeoLeaf.UI.initAutoTheme("auto"); // detects prefers-color-scheme
 
 ### Controls API
 
-| Function                               | Description                       | Parameters                             |
-| -------------------------------------- | --------------------------------- | -------------------------------------- |
-| `initGeolocationControl(map, options)` | Initialises geolocation           | `map`: maplibre.Map, `options`: Object |
-| `initThemeToggleControl(map, options)` | Theme control embedded in the map | `map`: maplibre.Map, `options`: Object |
+`GeoLeaf.UI` creates no map control. The two controls below are installed by their capability
+and read through their own namespace:
+
+| Namespace             | Configuration block    | Read members                               |
+| --------------------- | ---------------------- | ------------------------------------------ |
+| `GeoLeaf.Geolocation` | `modules.geolocation`  | `isEnabled()`, `getConfig()`, `getState()` |
+| `GeoLeaf.ThemeToggle` | `modules.theme-toggle` | `isEnabled()`, `getConfig()`               |
 
 **Example:**
 
 ```js
-import * as maplibregl from "maplibre-gl";
-const map = new maplibregl.Map({ container: "map", style: "..." });
-
-GeoLeaf.UI.initGeolocationControl(map, {});
+// Is the user currently located?
+const { active, userPosition } = GeoLeaf.Geolocation.getState();
 ```
 
 > **Removed in v3.0.0** _(breaking)_: `initFullscreenControl()` and `initPoiAddControl()` no
@@ -324,7 +326,7 @@ import { _UITheme } from "ui/theme.ts"; // use GeoLeaf.UI.applyTheme()
 | Category          | Main functions                                                                               | Documentation                        |
 | ----------------- | -------------------------------------------------------------------------------------------- | ------------------------------------ |
 | **Theme**         | `getCurrentTheme()`, `applyTheme()`, `toggleTheme()`, `initThemeToggle()`, `initAutoTheme()` | This README                          |
-| **Controls**      | `initGeolocationControl()`, `initThemeToggleControl()`                                       | This README                          |
+| **Controls**      | none on `GeoLeaf.UI` — see `GeoLeaf.Geolocation`, `GeoLeaf.ThemeToggle`                      | This README                          |
 | **Notifications** | `notify()`, `Notifications.success()`, `.error()`, `.warning()`, `.info()`, `.clearAll()`    | This README                          |
 | **Mobile**        | `initMobileToolbar()`, `destroyMobileToolbar()`                                              | This README                          |
 | **Init**          | `init()`                                                                                     | This README                          |

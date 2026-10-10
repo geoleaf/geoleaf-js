@@ -139,9 +139,12 @@ const JS_TS_RULES = [
         severity: "error",
     },
     {
-        pattern: /GeoLeaf\.ThemeSelector/,
+        // This rule used to refuse `GeoLeaf.ThemeSelector` and recommend `GeoLeaf.Themes`:
+        // the reverse of the package since 3.0.0, where the `Themes` facade was removed
+        // and the selector is the mounted, typed namespace.
+        pattern: /GeoLeaf\.Themes\b/,
         message:
-            "Stale API: GeoLeaf.ThemeSelector does not exist. Use GeoLeaf.Themes or UI.toggleTheme().",
+            "Stale API: GeoLeaf.Themes was removed in 3.0.0. Use GeoLeaf.ThemeSelector.setTheme(id) for a layer theme, or GeoLeaf.UI.toggleTheme() for light/dark.",
         severity: "error",
     },
     // ── The POI dissolution, documented but not gated ──

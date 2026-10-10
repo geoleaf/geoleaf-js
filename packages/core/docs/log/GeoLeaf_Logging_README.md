@@ -279,9 +279,7 @@ GeoLeaf.Log.error("Critical error.");
 ### B. Through JSON configuration
 
 ```js
-GeoLeaf.loadConfig("./data/config.json", {
-    autoInit: true,
-});
+GeoLeaf.loadConfig("./data/config.json");
 ```
 
 In that case, no `GeoLeaf.Log.setLevel()` call needs to be written in external code.

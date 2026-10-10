@@ -1,372 +1,108 @@
 # @geoleaf-plugins/offline-ui — API Reference
 
 **Package:** `@geoleaf-plugins/offline-ui`  
-**Version:** 2.0.0  
-**Namespace:** `GeoLeaf.Storage`
+**Namespace:** none — see below
 
 ---
 
-## Table of contents
+## This plugin has no API of its own
 
-- [Storage (main facade)](#storage-main-facade)
-- [DB — IndexedDB adapter](#db--indexeddb-adapter)
-    - [DB.Layers](#dblayers)
-    - [DB — the write queue](#db--the-write-queue-outbox)
-    - [DB.Images](#dbimages)
-    - [DB.Backups (retirée)](#dbbackups--retirée)
-- [CacheManager](#cachemanager)
-- [OfflineDetector](#offlinedetector)
-- [CacheButton (UI control)](#cachebutton-ui-control)
-- [Types & interfaces](#types--interfaces)
+`@geoleaf-plugins/offline-ui` mounts **no namespace** and exports no function. It is an
+interface: loading it registers a toolbar button, a window and six dictionaries, and nothing is
+called on it afterwards.
 
----
+`GeoLeaf.Storage`, which earlier versions of this page documented as the plugin's namespace, is a
+facade of **`@geoleaf/core`**. It exists without this plugin, and its reference is the core's:
 
-## Storage (main facade)
+- [the core's API reference](../../../core/docs/API_REFERENCE.md) — what erases what, the log;
+- [the offline write cycle](../../../core/docs/OFFLINE_WRITE_CYCLE.md) — the write queue, the
+  entries set aside and their exits, the pre-departure check.
 
-The primary entry point. Available globally as `GeoLeaf.Storage`.
-
-### `Storage.init(options?)`
-
-Initialises all storage sub-systems.
-
-```typescript
-async init(options?: StorageInitOptions): Promise<boolean>
-```
-
-| Parameter | Type                 | Description                       |
-| --------- | -------------------- | --------------------------------- |
-| `options` | `StorageInitOptions` | Initialisation options (optional) |
-
-**Returns:** `Promise<boolean>` — `true` on success, `false` if any sub-system failed to initialise.
-
-```typescript
-interface StorageInitOptions {
-    indexedDB?: {
-        name?: string; // Database name
-        version?: number; // Schema version
-    };
-    cache?: Record<string, unknown>; // CacheManager config passthrough
-    offline?: Record<string, unknown>; // OfflineDetector config passthrough
-    enableOfflineDetector?: boolean; // Default: false
-    enableServiceWorker?: boolean; // Default: false
-}
-```
+What follows is the **list of what the window calls**, so that an integrator who wants the same
+information in an interface of their own knows where it comes from. The signatures are the
+core's; they are not repeated here, where they would drift.
 
 ---
 
-### `Storage.isAvailable()`
+## What the window reads
 
-```typescript
-isAvailable(): boolean
-```
+| The window shows                           | It reads                                                      |
+| ------------------------------------------ | ------------------------------------------------------------- |
+| Whether the engine is ready                | `GeoLeaf.Storage.isAvailable()`, `whenReady()`                |
+| A profile's cache: state, size             | `GeoLeaf.Storage.CacheManager.getCacheStatus(profileId)`      |
+| The browser's quota                        | `GeoLeaf.Storage.CacheManager.getStorageQuota()`              |
+| The layers and basemaps chosen last time   | `GeoLeaf.Storage.Cache.Storage.loadLayerSelection(profileId)` |
+| Whether a basemap can be prepared at all   | `GeoLeaf.Storage.prefetchVerdict(url)` (core ≥ 3.15.0)        |
+| Network, captures owed, captures set aside | `GeoLeaf.Storage.getSyncStatus()`                             |
+| The captures set aside, with their motive  | `GeoLeaf.Storage.DB.listPendingEdits()`                       |
+| Which motives a retry can lift             | `GeoLeaf.Storage.requeueableReasons()`                        |
+| "Can I leave?"                             | `GeoLeaf.Storage.preflight()` (core ≥ 3.10.0)                 |
+| The tallies of the Export tab              | `GeoLeaf.Storage.getStats()`                                  |
+| The application's journal                  | `GeoLeaf.Log.exportDiagnostic()`                              |
+| Whether an update of the application waits | `GeoLeaf.PWA.isUpdateWaiting()` (core ≥ 3.15.0)               |
 
-Returns `true` if all required browser APIs (IndexedDB, Cache API) are available.
+## What the window does
 
----
+| The gesture                            | It calls                                                           |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| Save the selection of layers           | `GeoLeaf.Storage.Cache.Storage.saveLayerSelection(profileId, sel)` |
+| Download the profile                   | `GeoLeaf.Storage.CacheManager.cacheProfile(profileId, options)`    |
+| Stop a download                        | `GeoLeaf.Storage.CacheManager.cancelDownload()`                    |
+| Delete a profile's cache               | `GeoLeaf.Storage.CacheManager.clearCache(profileId)`               |
+| Retry the captures of one motive       | `GeoLeaf.Storage.requeueAll(motive)`                               |
+| Discard a capture set aside, confirmed | `GeoLeaf.Storage.discardQuarantined(entryId, localId)`             |
 
-### `Storage.isOffline()`
+⚠️ **A discard takes the entry's `localId` as it was LISTED.** That is the core's rule, not a
+detail of this window: a capture cannot be destroyed by something that never enumerated it.
 
-```typescript
-isOffline(): boolean
-```
-
-Returns `true` if the application is currently operating in offline mode.
-
----
-
-### `Storage.getStats()`
-
-Returns comprehensive statistics about current storage usage.
-
-```typescript
-async getStats(): Promise<{
-  storage: { used: number; quota: number; percentage: number };
-  layers: { count: number; byProfile: Record<string, number> };
-  sync: { pending: number; failed: number };
-  cache: { profiles: string[] };
-  online: boolean;
-}>
-```
-
----
-
-### `Storage.DB`
-
-```typescript
-get DB(): DBLike | undefined
-```
-
-Getter providing access to the IndexedDB adapter. Returns `undefined` if not yet initialised.
+⚠️ **Deleting a cache does not delete field work.** `clearCache(profileId)` removes what can be
+downloaded again. The captures still owed to the server are in the write queue, which no gesture
+of the cache tab touches.
 
 ---
 
-### `Storage.CacheManager`
+## Events the window follows
 
-```typescript
-get CacheManager(): CacheManagerLike | undefined
-```
+All are dispatched on `document` by the core.
 
-Getter providing access to the cache manager. Returns `undefined` if not yet initialised.
+| Event                               | The window then                                          |
+| ----------------------------------- | -------------------------------------------------------- |
+| `geoleaf:cache:progress`            | Moves the progress bar                                   |
+| `geoleaf:offline:pull-progress`     | Says which layer's entities are being pulled             |
+| `geoleaf:cache:completed`           | Refreshes the cache state                                |
+| `geoleaf:cache:cancelled`           | Shows the download as stopped, and hands the button back |
+| `geoleaf:cache:cleared`             | Refreshes the cache state and the "Can I leave?" block   |
+| `geoleaf:offline:outbox-queued`     | Re-reads the write queue                                 |
+| `geoleaf:offline:outbox-drained`    | Re-reads the write queue                                 |
+| `geoleaf:offline:quarantine-exited` | Re-reads the captures set aside                          |
+| `geoleaf:storage:quota-exceeded`    | Raises a notice — whether the window is open or not      |
 
----
+It also listens to the browser's own `online` and `offline` events, not to `geoleaf:online` /
+`geoleaf:offline`: those come from the core's connectivity detector, which a profile may switch
+off (see [offline-detector.md](offline-detector.md)).
 
-### `Storage.OfflineDetector`
+Outside the window, the « A new version is ready » banner follows three more:
 
-```typescript
-get OfflineDetector(): OfflineDetectorLike | undefined
-```
+| Event                       | The banner then                                                        |
+| --------------------------- | ---------------------------------------------------------------------- |
+| `geoleaf:sw:update-waiting` | Appears — again, even after « Later »: it is another update            |
+| `geoleaf:app:ready`         | Appears if an update still waits and « Later » was not answered        |
+| `geoleaf:sw:updated`        | Leaves, unless the update was applied from another tab and still waits |
 
-Getter providing access to the offline detector. Returns `undefined` if not yet initialised.
-
----
-
-## DB — IndexedDB adapter
-
-Accessed via `GeoLeaf.Storage.DB`.
-
-### Base methods
-
-```typescript
-interface DBLike {
-    init(): Promise<unknown>;
-    close?(): void;
-
-    getStorageStats(): Promise<{
-        used: number;
-        quota: number;
-        percentage: number;
-        layersCount?: number;
-        syncQueueCount?: number;
-    }>;
-
-    getLayersByProfile(profileId: string): Promise<unknown[]>;
-}
-```
+Its **Reload** button calls `GeoLeaf.PWA.applyUpdate()`; the core reloads the page.
 
 ---
 
-### DB.Layers
+## Published types
 
-Layer metadata storage.
-
-```typescript
-interface LayersDBInstance {
-    // Store or update layer metadata
-    saveLayer(layerId: string, metadata: LayerMetadata): Promise<void>;
-
-    // Retrieve all layers for a profile
-    getLayersByProfile(profileId: string): Promise<LayerMetadata[]>;
-
-    // Delete a layer record
-    deleteLayer(layerId: string): Promise<void>;
-}
-
-interface LayerMetadata {
-    id: string;
-    profileId: string;
-    name?: string;
-    cachedAt?: number;
-    tileCount?: number;
-    sizeBytes?: number;
-}
-```
-
----
-
-### DB — the write queue (`outbox`)
-
-The queue of edits made offline belongs to the core — declaring it, draining it, listing and
-releasing the entries set aside: see its [offline write cycle](../../../core/docs/OFFLINE_WRITE_CYCLE.md).
-
-### DB.Images
-
-Local image storage for offline mode.
-
-```typescript
-interface ImagesDBInstance {
-    storeImage(imageData: LocalImageRecord): Promise<string>;
-    getImage(id: string): Promise<LocalImageRecord | null>;
-    getImagesByPoi(poiId: string): Promise<LocalImageRecord[]>;
-    deleteImage(id: string): Promise<void>;
-    updateImageStatus(id: string, status: ImageUploadStatus): Promise<void>;
-    getImageStats(): Promise<ImageStats>;
-}
-
-interface LocalImageData {
-    poiId: string;
-    layerId: string;
-    fileName: string;
-    mimeType: string;
-    size: number;
-    base64Data?: string;
-    url?: string;
-}
-
-interface LocalImageRecord extends LocalImageData {
-    id: string;
-    timestamp: number;
-    status: "pending" | "synced" | "failed";
-}
-
-interface ImageUploadStatus {
-    status: "pending" | "synced" | "failed";
-    error?: string | null;
-}
-
-interface ImageStats {
-    totalCount: number;
-    pendingCount: number;
-    syncedCount: number;
-    failedCount: number;
-    totalSize: number;
-}
-```
-
----
-
-### DB.Backups — RETIRÉE
-
-🛑 **La chaîne de sauvegarde est supprimée — fermée par retrait.**
-Trois mesures l'ont décidé, et aucune n'était « c'est du code mort » :
-
-1. **Elle n'avait plus de producteur** — aucun appelant de production depuis que 4.4b a
-   redirigé le rejeu vers `pushOutbox`. Le magasin ne recevait plus rien, et le panneau
-   affichait « aucune sauvegarde » par construction.
-2. **Son motif était faux sur le mécanisme** — elle se justifiait comme rempart contre une
-   purge d'origine, alors qu'elle vivait DANS la base que cette purge détruit.
-3. **Son rôle est couvert deux fois** — l'outbox interdit contractuellement de détruire une
-   entrée, et l'export JSON (onglet Export/Synchro) sort du navigateur, donc lui survit.
-
----
-
-## CacheManager
-
-Accessed via `GeoLeaf.Storage.CacheManager`. Manages offline caching of entire GeoLeaf profiles (tiles, GeoJSON, images).
-
-```typescript
-interface CacheManagerLike {
-    init(config: Record<string, unknown>): void;
-
-    // List all currently cached profile IDs
-    listCachedProfiles(): Promise<string[]>;
-
-    // Remove all cached resources for a profile
-    clearProfile(profileId: string): Promise<number>;
-
-    // Estimate total cache size for a profile (before downloading)
-    estimateProfileSize(profileId: string): Promise<{
-        totalSize: number;
-        totalSizeFormatted?: string;
-    }>;
-
-    // Get browser storage quota info
-    getStorageQuota(): Promise<{ available?: number }>;
-
-    // Cache all resources for a profile
-    cacheProfile(profileId: string): Promise<unknown>;
-
-    // Check if a profile is already cached
-    isProfileCached(profileId: string): Promise<boolean>;
-}
-```
-
----
-
-## OfflineDetector
-
-Accessed via `GeoLeaf.Storage.OfflineDetector`. Monitors network connectivity.
-
-```typescript
-interface OfflineDetectorLike {
-    init(opts: Record<string, unknown>): void;
-
-    // Returns true if currently online
-    isOnline(): boolean;
-
-    // Tear down event listeners
-    destroy?(): void;
-}
-```
-
----
-
-## CacheButton (UI control)
-
-A MapLibre map control that provides a UI for managing offline cache. Added automatically when the plugin is loaded.
-
-The button allows users to:
-
-- View which profiles are cached
-- Download a profile for offline use
-- Monitor download progress
-- Clear cached profiles
-- View storage usage statistics
-
-The control integrates with `CacheManager` internally and does not require manual initialisation.
-
----
-
-## Types & interfaces
-
-### StorageInitOptions
-
-```typescript
-interface StorageInitOptions {
-    indexedDB?: { name?: string; version?: number };
-    cache?: Record<string, unknown>;
-    offline?: Record<string, unknown>;
-    enableOfflineDetector?: boolean;
-    enableServiceWorker?: boolean;
-}
-```
-
-### CacheControlOptions
-
-```typescript
-interface CacheControlOptions {
-    position?: string; // MapLibre control position
-    title?: string; // Button tooltip
-    className?: string; // Custom CSS class
-}
-```
-
-### CacheProgressDetail
-
-```typescript
-interface CacheProgressDetail {
-    profileId: string;
-    downloaded: number; // Resources downloaded so far
-    total: number; // Total resources to download
-    percentage: number; // 0–100
-    currentResource?: string;
-}
-```
-
-### Bounds (geographic)
-
-```typescript
-interface Bounds {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-}
-```
-
-### TileCoord
-
-```typescript
-interface TileCoord {
-    x: number;
-    y: number;
-    z: number;
-}
-```
+The package's entry re-exports types only: `StorageContractShape` and its members — the view
+this plugin takes of the core's `GeoLeaf.Storage` facade. They describe what the plugin READS of
+the core, not an API it offers.
 
 ---
 
 ## See also
 
-- [OVERVIEW.md](OVERVIEW.md) — Plugin architecture and key concepts
-- [INSTALLATION.md](INSTALLATION.md) — Authentication and npm setup
-- [EXAMPLES.md](EXAMPLES.md) — Practical usage recipes
+- [OVERVIEW.md](OVERVIEW.md) — What the plugin is, and is not
+- [CONFIGURATION.md](CONFIGURATION.md) — Profile keys
+- [EXAMPLES.md](EXAMPLES.md) — Practical recipes

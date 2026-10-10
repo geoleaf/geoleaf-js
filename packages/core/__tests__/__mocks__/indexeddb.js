@@ -4,7 +4,7 @@
  */
 const store = new Map();
 const metadataStore = new Map();
-// COUVERTURE R.31 (suite) — store « layers » + curseur, pour couvrir `CacheStorage.getCachedUrls`
+// Store « layers » + curseur, pour couvrir `CacheStorage.getCachedUrls`
 // (parcours par curseur). Additif : aucun autre test ne lit ce store par curseur.
 const layersStore = new Map();
 

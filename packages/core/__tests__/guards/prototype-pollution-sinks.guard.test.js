@@ -75,6 +75,10 @@ const EXPECTED_SINK_FILES = [
     "capabilities/offline/report/pull-state.ts",
     // Profile property names copied into the HTTP body pushed upstream.
     "capabilities/offline/write/push-engine.ts",
+    // The per-field filter entries of a permalink: their KEYS are the `gl_f.<id>` parameter
+    // names of a URL — or the keys of a decoded compact payload — and the map built from
+    // them is kept on the permalink state and handed back by `Permalink.getState()`.
+    "capabilities/permalink/permalink-field-filters.ts",
 ];
 
 function walkTs(dir, out = []) {

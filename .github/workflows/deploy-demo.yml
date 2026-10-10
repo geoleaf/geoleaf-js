@@ -10,7 +10,7 @@ name: Deploy demo
 #
 # 🛑 L'alternative (Actions envoie par SSH) donnerait au compte GitHub un accès en ÉCRITURE
 # sur la prod : si le compte tombe, le serveur tombe avec. Le PULL n'expose rien. C'est le
-# sens inverse de ce que la tâche 11.3 prescrivait (« clé SSH en secret ») — et c'est la
+# sens inverse de ce qui était d'abord prescrit (« clé SSH en secret ») — et c'est la
 # bascule publique du 12/08 qui l'a rendu possible, un dépôt privé exigeant une auth pour
 # être cloné.
 #
@@ -32,7 +32,7 @@ name: Deploy demo
 #
 # Deux raisons qui vont dans le même sens :
 #
-#   ① La tâche 11.1 le veut ainsi — « la démo suit les versions, pas les brouillons ». Un
+#   ① C'est la règle retenue — « la démo suit les versions, pas les brouillons ». Un
 #     serveur de prod qui rejoue chaque commit de `main` montre des états intermédiaires.
 #   ② `scripts/lib/ci-parity.cjs` classe les workflows VALIDATION/LIVRAISON par leur
 #     déclencheur : `tags:` **sans** `branches:`. Un `push: branches: [main]` ici serait donc
@@ -76,7 +76,7 @@ jobs:
             - run: npx turbo run build
             - run: npm run build:deploy
 
-            # 🛑 LA VÉRIFICATION PRÉCÈDE LE TRANSFERT, jamais l'inverse — c'est la tâche 11.2,
+            # 🛑 LA VÉRIFICATION PRÉCÈDE LE TRANSFERT, jamais l'inverse,
             # et la mettre ici la rend automatique au lieu d'être un geste à ne pas oublier.
             # Cinq invariants : motifs de secrets, absence du bootstrap de poste, `.env`, scan
             # non vide, backend de preuve retiré.

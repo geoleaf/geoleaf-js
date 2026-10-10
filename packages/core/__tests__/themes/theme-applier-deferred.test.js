@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.32 - theme-applier/deferred */
+/* theme-applier/deferred */
 
 const mockSetVisibilityAndStyle = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const mockLayers = new Map();
@@ -47,7 +47,7 @@ vi.mock("../../src/utils/log/index.js", () => ({ Log: { warn: vi.fn() } }));
 import { ThemeApplierDeferred as TA } from "../../src/kernel/themes/theme-applier/deferred.js";
 import { LoaderSingleLayer } from "../../src/kernel/geojson/loader/single-layer.js";
 
-describe("theme-applier/deferred (Phase 5.32)", () => {
+describe("theme-applier/deferred", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.useFakeTimers();

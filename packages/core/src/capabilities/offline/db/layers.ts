@@ -121,7 +121,13 @@ interface CompressionResult {
 
 interface LayerRecord {
     id: string;
-    profileId: string;
+    /**
+     * The owner profile, or `null` for a record that belongs to none — the theme cache
+     * writes such records. ⚠️ `null` is not a valid IndexedDB key: a profile-less record
+     * is in the store and NOT in the `profileId` index, so `getLayersByProfile` never
+     * returns it and the eviction walks the store instead.
+     */
+    profileId: string | null;
     data: string | ArrayBuffer | object;
     timestamp: number;
     size: number;
@@ -167,7 +173,7 @@ export interface LayersDBInstance {
     cacheLayer(
         id: string,
         data: string | ArrayBuffer | object,
-        profileId: string,
+        profileId: string | null,
         metadata?: LayerMetadata
     ): Promise<void>;
     getLayer(id: string): Promise<LayerRecord | null>;
@@ -455,7 +461,7 @@ const LayersDB: LayersDBInstance = {
      *
      * @param {string} id - Unique layer identifier
      * @param {Object} data - Data to cache
-     * @param {string} profileId - Owner profile ID
+     * @param {string | null} profileId - Owner profile ID, or `null` for a record owned by none
      * @param {Object} [metadata] - Optional metadata (etag, lastModified, contentLength)
      * @returns {Promise<void>}
      * @example
@@ -467,7 +473,7 @@ const LayersDB: LayersDBInstance = {
     cacheLayer: async function (
         id: string,
         data: string | ArrayBuffer | object,
-        profileId: string,
+        profileId: string | null,
         metadata: LayerMetadata = {}
     ) {
         const db = this._db;

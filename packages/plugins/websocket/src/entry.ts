@@ -33,6 +33,17 @@ const _g = globalThis as {
 
 // ─── Mount GeoLeaf.Ws ─────────────────────────────────────────────────────────
 
+/** The API this plugin mounts as `GeoLeaf.Ws`. */
+export type WsApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Ws` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Ws: WsApi;
+    }
+}
+
 if (_g.GeoLeaf) {
     _g.GeoLeaf.Ws = buildPublicApi();
 }

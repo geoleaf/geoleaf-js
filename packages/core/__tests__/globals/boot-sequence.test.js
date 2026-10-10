@@ -1,6 +1,6 @@
 /**
  *
- * T4.5 — globals.ts orchestrator coverage
+ * globals.ts orchestrator coverage
  *
  * Targets:
  *   - globals.ts (0% → covered): the B1→B11 import chain and _g export

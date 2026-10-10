@@ -307,7 +307,7 @@ document.addEventListener("DOMContentLoaded", () => {
 JSON profile and accessed via `GeoLeaf.LayerManager`.
 
 If you need layers loaded at runtime, define them in your profile or use the
-configuration API — see [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
+configuration API — see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md).
 
 ### `GeoLeaf.BaseLayers` vs `GeoLeaf.Baselayers`
 

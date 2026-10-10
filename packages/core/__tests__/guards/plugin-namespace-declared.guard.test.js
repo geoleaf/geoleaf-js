@@ -48,6 +48,18 @@
  * in a comment, a member over two lines or a quoted name, and a silent
  * failure yields an INCOMPLETE set, hence a guard that exempts.
  *
+ * ## Declared is not typed (05/10/2026)
+ *
+ * A declared namespace was `unknown`: reachable, never callable. The core cannot type it — it
+ * never imports a plugin — so each plugin now adds its own API to `GeoLeafPluginApis`, the
+ * registry the fourteen declarations read. Two things would undo that in silence, and the
+ * last case below holds both: a plugin that mounts a namespace and does not register its
+ * type, and a namespace the compiler is never asked about. The second is checked against the
+ * consumer fixture (`examples/consumer/published-types.ts`), the one place where the published
+ * declarations of every plugin are resolved as an integrator resolves them: it must import
+ * each plugin, and carry both assertions for each mounted namespace. Its import list was
+ * written by hand and had lost three plugins — which is why this guard reads it.
+ *
  * ## A guard never seen red guards nothing
  *
  * Two anti-empty-guard assertions, and **no silent fallback**: if
@@ -65,6 +77,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
 const PLUGINS_DIR = path.join(REPO_ROOT, "packages/plugins");
 const GLOBAL_DTS = path.join(REPO_ROOT, "packages/core/src/global.d.ts");
+const CONSUMER_FIXTURE = path.resolve(__dirname, "../../examples/consumer/published-types.ts");
 
 // The list of plugins without their own facade is SHARED with
 // `doc-plugin-manifest.guard.test.js`: it states a repo fact belonging to
@@ -153,6 +166,47 @@ describe("test-garde — tout namespace monté par un plugin est déclaré dans 
             mountedCount,
             "aucun namespace monté n'a été confronté à global.d.ts"
         ).toBeGreaterThan(0);
+        expect(missing, missing.join("\n")).toEqual([]);
+    });
+
+    it("chaque namespace monté est typé par son greffon, et éprouvé à travers ses types publiés", () => {
+        const fixture = fs.readFileSync(CONSUMER_FIXTURE, "utf8");
+        const missing = [];
+        let typed = 0;
+        for (const plugin of PLUGINS) {
+            const dir = path.join(PLUGINS_DIR, plugin);
+            const { name } = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8"));
+            if (!fixture.includes(`import("${name}")`)) {
+                missing.push(
+                    `${plugin} : la fixture consommateur ne résout pas \`${name}\` — ses types publiés ne sont compilés par personne.`
+                );
+            }
+            const entry = fs.readFileSync(path.join(dir, "src/entry.ts"), "utf8");
+            const ns = extractMountedNamespace(entry);
+            if (ns === null) continue;
+            // The registry member is written in the entry, or in a module the entry
+            // re-exports a type from — which is as far as the published declarations reach.
+            const reExported = [...entry.matchAll(/export type \{[^}]*\} from "(\.[^"]+)\.js"/g)]
+                .map((m) => path.join(dir, "src", `${m[1]}.ts`))
+                .filter((file) => fs.existsSync(file))
+                .map((file) => fs.readFileSync(file, "utf8"));
+            const registry = /declare global\s*\{\s*interface GeoLeafPluginApis\s*\{([^}]*)\}/.exec(
+                [entry, ...reExported].join("\n")
+            );
+            if (!registry || !new RegExp(`\\b${ns}\\s*:`).test(registry[1])) {
+                missing.push(
+                    `${plugin} : monte \`GeoLeaf.${ns}\` sans ajouter \`${ns}\` à \`GeoLeafPluginApis\`, ni dans son entry.ts ni dans un module dont elle ré-exporte un type → le namespace reste \`unknown\` pour qui installe le greffon.`
+                );
+                continue;
+            }
+            typed += 1;
+            if (!fixture.includes(`Typed<"${ns}">`) || !fixture.includes(`_mounted.${ns}?.`)) {
+                missing.push(
+                    `${plugin} : la fixture consommateur n'éprouve pas \`GeoLeaf.${ns}\` — il lui faut \`Typed<"${ns}">\` ET la ligne \`@ts-expect-error\` sur \`_mounted.${ns}?.\`.`
+                );
+            }
+        }
+        expect(typed, "aucun namespace typé n'a été confronté à la fixture").toBeGreaterThan(0);
         expect(missing, missing.join("\n")).toEqual([]);
     });
 

@@ -1,5 +1,5 @@
 /**
- * Unit tests — S2 Lot 4 multi-layer capability installers (legend, toast-renderer).
+ * Unit tests — multi-layer capability installers (legend, toast-renderer).
  *
  * These two are the first installers whose layer-B writes were split across TWO files:
  *   - legend         → globals.ui.ts (`_Legend*`) + globals.api.ts (`Legend`) ;

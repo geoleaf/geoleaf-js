@@ -423,7 +423,7 @@ describe("basemaps/registry (MapLibre native)", () => {
     // itself without ever checking that a later request replaced it. The
     // module already had `_styleGeneration` for exactly this race class, but
     // it only guarded `style.load` and the WMTS path — not this deferral.
-    it("un report différé n'écrase PAS une activation plus récente (R.7b)", () => {
+    it("un report différé n'écrase PAS une activation plus récente", () => {
         const map = makeMockMap({ styleLoaded: false });
         setMap(map);
         registerBaseLayer("boot", { tiles: ["https://tile.example/boot/{z}/{x}/{y}.png"] });
@@ -444,7 +444,7 @@ describe("basemaps/registry (MapLibre native)", () => {
 
         expect(
             getActiveKey(),
-            "le report du boot a écrasé le choix de l'utilisateur — c'est le défaut R.7b"
+            "le report du boot a écrasé le choix de l'utilisateur — c'est le défaut que le ticket ferme"
         ).toBe("choix");
         // And it lets go: a stale deferral that stays subscribed wakes up on every later style
         // change, for the lifetime of the map.

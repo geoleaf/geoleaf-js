@@ -1,5 +1,5 @@
 /**
- * Phase 4.10 — src/renderer.ts (TableRenderer)
+ * src/renderer.ts (TableRenderer)
  *
  * Ported from the core suite (`__tests__/table/table-renderer.test.js`), split
  * for the 700-line cap: this file keeps the `TableRenderer` describe; the
@@ -67,7 +67,7 @@ import * as viewModel from "../view-model.js";
 
 const { getLayerById, setSelection, clearSelection, getSelectedIds, sortByField } = h;
 
-describe("modules/table/renderer (Phase 4.10)", () => {
+describe("modules/table/renderer", () => {
     let container;
 
     beforeEach(() => {

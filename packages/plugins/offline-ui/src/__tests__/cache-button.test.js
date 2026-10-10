@@ -50,9 +50,28 @@ describe("ButtonControl (map capture)", () => {
 // ─── Toolbar registration (registry slot + dispatch) ─────────────────────────────
 
 describe("registerCacheToolbar", () => {
-    test("registers an 'offline-ui' slot with mobileIcon + desktopTabButton", () => {
+    // The lifecycle module goes to the registry of the PAGE's `GeoLeaf`: that is the one an
+    // unmount destroys. The cases plant it there — ON TOP of the namespace the suite's setup
+    // mounted, which the cases below this block still need, and which is put back after each.
+    let mounted;
+    function plantRegistry({ initialized = false, mount = true } = {}) {
         const register = vi.fn();
-        registerCacheToolbar({ GeoLeaf: { registry: { register } } });
+        mounted = globalThis.GeoLeaf;
+        globalThis.GeoLeaf = {
+            ...(mounted ?? {}),
+            registry: { register, isInitialized: () => initialized },
+            ...(mount && { mount: () => undefined }),
+        };
+        return register;
+    }
+
+    afterEach(() => {
+        globalThis.GeoLeaf = mounted;
+    });
+
+    test("registers an 'offline-ui' slot with mobileIcon + desktopTabButton", () => {
+        const register = plantRegistry();
+        registerCacheToolbar({});
         expect(register).toHaveBeenCalledTimes(1);
         const arg = register.mock.calls[0][0];
         expect(arg.id).toBe("offline-ui");
@@ -71,11 +90,53 @@ describe("registerCacheToolbar", () => {
         }
     });
 
+    test("🛑 registers a TEARDOWN: the window leaves the page with the application", () => {
+        // Measured in a browser: opened, then `unmount()` — the window stayed open over the
+        // page, its control still listening, and covered the next application.
+        const register = plantRegistry();
+        registerCacheToolbar({});
+        const module = register.mock.calls[0][0];
+        expect(typeof module.destroy).toBe("function");
+
+        ModalManager.openModal();
+        // The REAL export logic from here on: it is what releases the body's control, and
+        // the double this suite opens the modal with has no such member.
+        ModalManager._setExportLogic(ExportLogic);
+        const body = document.getElementById("gl-cache-modal-body");
+        const onRemove = vi.fn();
+        body._cacheControl = { onRemove };
+        expect(document.getElementById("gl-cache-modal")).not.toBeNull();
+
+        module.destroy();
+
+        expect(
+            document.getElementById("gl-cache-modal"),
+            "the window is still in the page"
+        ).toBeNull();
+        expect(onRemove, "the control in its body was not released").toHaveBeenCalledTimes(1);
+        // And it can be opened again, on the next application.
+        ModalManager.openModal();
+        expect(document.getElementById("gl-cache-modal")).not.toBeNull();
+    });
+
+    test("the teardown is safe when the window was never opened", () => {
+        const register = plantRegistry();
+        registerCacheToolbar({});
+        expect(() => register.mock.calls[0][0].destroy()).not.toThrow();
+    });
+
+    test("loaded AFTER the boot: the teardown is registered, the slot is not — the toolbar is built", () => {
+        const register = plantRegistry({ initialized: true });
+        registerCacheToolbar({});
+        const module = register.mock.calls[0][0];
+        expect(typeof module.destroy).toBe("function");
+        expect(module.ui).toBeUndefined();
+    });
+
     test("opens the modal on geoleaf:toolbar:action with action 'offline-ui'", () => {
         const openModal = vi.fn();
-        registerCacheToolbar({
-            GeoLeaf: { registry: { register: vi.fn() }, UI: { CacheButton: { openModal } } },
-        });
+        plantRegistry();
+        registerCacheToolbar({ GeoLeaf: { UI: { CacheButton: { openModal } } } });
         document.dispatchEvent(
             new CustomEvent("geoleaf:toolbar:action", { detail: { action: "offline-ui" } })
         );
@@ -84,9 +145,8 @@ describe("registerCacheToolbar", () => {
 
     test("ignores toolbar actions other than 'offline-ui'", () => {
         const openModal = vi.fn();
-        registerCacheToolbar({
-            GeoLeaf: { registry: { register: vi.fn() }, UI: { CacheButton: { openModal } } },
-        });
+        plantRegistry();
+        registerCacheToolbar({ GeoLeaf: { UI: { CacheButton: { openModal } } } });
         document.dispatchEvent(
             new CustomEvent("geoleaf:toolbar:action", { detail: { action: "print" } })
         );

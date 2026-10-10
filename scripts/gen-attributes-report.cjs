@@ -176,7 +176,7 @@ diverger de sa source.
 
 ${
     notMigrated === 0
-        ? "✅ **Aucune couche ne reste sur le bloc legacy.** Le compteur de migration de la tâche 2.10 est à zéro."
+        ? "✅ **Aucune couche ne reste sur le bloc legacy.** Le compteur de migration est à zéro."
         : `⚠️ **${notMigrated} couche(s) restent sur le bloc legacy** — voir les lignes « NON MIGRÉE » ci-dessous.`
 }
 

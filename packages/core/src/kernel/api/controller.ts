@@ -345,12 +345,12 @@ let _apiControllerInstance: APIController | null = null;
 function _getAPIController(): APIController {
     if (_apiControllerInstance) return _apiControllerInstance;
 
-    // S6 Lot 3 — the rustine is gone.
+    // The stopgap is gone.
     //
     // This used to run `runModuleSetup("security"/"config"/"api")` before building the
     // controller: a local compensation for the micro-core split, which had made those setups
     // lazy while `boot-core.ts` still calls `loadConfig()` — which needs `GeoLeaf.Config.init`
-    // and the `GeoLeaf.API.*` manager classes — BEFORE `registry.init()`. Phase A (Lot 2) posts
+    // and the `GeoLeaf.API.*` manager classes — BEFORE `registry.init()`. Phase A posts
     // every kernel facade at import, so by the time anything reads this accessor the chain it
     // used to force is already in place. Re-running it here would be dead weight.
     const instance = new APIController();

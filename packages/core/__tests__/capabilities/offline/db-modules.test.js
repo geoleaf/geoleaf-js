@@ -156,7 +156,7 @@ function makeIDB() {
              * ⚠️ THIS MOCK USED TO MODEL `add` AS "autoIncrement, always" — it overwrote
              * `item.id` with an integer whatever the store was. That was written when the
              * only caller was `sync_backups`, and it silently made a fiction of any store
-             * with an INLINE key. Task 3.10 moved `sync_queue` from `put` to `add`, and the
+             * with an INLINE key. `sync_queue` then moved from `put` to `add`, and the
              * mock answered with an integer key instead of the minted one: six tests went
              * red on the instrument, not on the code.
              *

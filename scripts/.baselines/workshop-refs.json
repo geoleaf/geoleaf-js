@@ -1,10 +1,13 @@
 {
-    "_comment": "WREF-01/02 — jetons d'atelier (B-nnn, D-nn, Sprint N, Sx.y, roadmap_*, _docs_projet/) par fichier PUBLIC, gelés à la pose. DÉCROISSANT uniquement : trier un fichier (trois seaux — traçabilité pure : retirer le jeton ; le renvoi porte le motif : réécrire la phrase ; la phrase n'existe que pour le renvoi : la retirer), puis --update-baseline. Jamais de sed : la roadmap code-autonome porte l'avertissement mesuré.",
+    "_comment": "WREF-01/02 — jetons d'atelier (B-nnn, D-nn, Sprint N, Sx.y, task N.N, tâche N.N, TN.N, roadmap_*, _docs_projet/) par fichier PUBLIC, gelés à la pose. DÉCROISSANT uniquement : trier un fichier (trois seaux — traçabilité pure : retirer le jeton ; le renvoi porte le motif : réécrire la phrase ; la phrase n'existe que pour le renvoi : la retirer), puis --update-baseline. Jamais de sed : la roadmap code-autonome porte l'avertissement mesuré.",
     "_generated": "node scripts/check-workshop-refs.cjs --update-baseline",
-    "files": 36,
-    "tokens": 139,
+    "files": 39,
+    "tokens": 153,
     "entries": {
         ".github/workflows/ci.yml": 1,
+        ".gitignore": 8,
+        ".gitleaks.toml": 5,
+        ".prettierignore": 1,
         "docs/reference/ARBORESCENCE_QUALIFIEE.html": 1,
         "docs/reference/DOCS_SOURCE_AND_SYNC.md": 2,
         "docs/reference/GEOLEAF-JS_GUIDE_CONFIGURATIONS_COMPLET.md": 1,

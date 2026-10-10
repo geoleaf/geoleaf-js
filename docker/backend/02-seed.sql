@@ -1,4 +1,4 @@
--- GeoLeaf — dev proof backend seed (task 4.H)
+-- GeoLeaf — dev proof backend seed
 --
 -- Derived from `profiles/tourism/layers/sites_rosario/data/sites_rosario.geojson`,
 -- the file the layer already ships. Inventing rows here would let the pull prove
@@ -6,7 +6,7 @@
 --
 -- `local_id` is left NULL: these rows were created server-side and have never had a
 -- client identity. That is precisely the state `serverId != null, localId == null`
--- that task 4.1 must be able to store, and it is not the same shape as a row created
+-- that the bounded pull must be able to store, and it is not the same shape as a row created
 -- offline -- which arrives with a local_id and no id.
 
 BEGIN;

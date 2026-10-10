@@ -225,7 +225,7 @@
             "severity": null,
             "description": "Enveloppe ICoreModule de la capacité legend : dépendance geojson, icône de barre d'outils mobile, délégation d'init et de destroy à LegendLifecycle",
             "confidence": "haute",
-            "rationale": "58 LOC, 1 importeur (install.ts), exporte LegendModule — famille <id>.module.ts conforme 6/6 (T5 §0) ; INV-CAPABILITY-MODULE : depuis R.10 le wrapper de boot vit dans la capacité, 0 exception, proposer un retour vers app/ contredirait la gate"
+            "rationale": "58 LOC, 1 importeur (install.ts), exporte LegendModule — famille <id>.module.ts conforme 6/6 (T5 §0) ; INV-CAPABILITY-MODULE : le wrapper de boot vit dans la capacité, 0 exception, proposer un retour vers app/ contredirait la gate"
         },
         "packages/core/src/capabilities/legend/public-api.ts": {
             "kind": "file",

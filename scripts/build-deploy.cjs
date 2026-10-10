@@ -12,7 +12,7 @@
  * flatgeobuf, geocoding, print, measure, table). Only three are variant-gated — storage,
  * cog, editor — and that is the whole of the matrix below.
  *
- * ✅ A-27 asked for "5 variants → 2", and it is **2** since task 5.5. It was 3 for one
+ * ✅ The ask was "5 variants → 2", and it is **2**. It was 3 for one
  * reason only: AddPOI and Editor were mutually exclusive BY DESIGN, so a single variant
  * could never have exercised the AddPOI form — merging them would have DELETED that
  * coverage, not consolidated it. **The editor merge removed the premise, not the
@@ -724,6 +724,127 @@ function ensureDir(p) {
  */
 function contentTag(absPath) {
     return crypto.createHash("sha256").update(fs.readFileSync(absPath)).digest("hex").slice(0, 8);
+}
+
+/**
+ * Removes the `sourceMappingURL` comment closing each `.js` / `.css` under a directory.
+ *
+ * The deploy ships no sourcemap, so the comment would name a file that is not there — a
+ * devtools 404 at every opening.
+ *
+ * 🛑 IT REWRITES FILES, SO IT RUNS BEFORE ANY CONTENT TOKEN IS COMPUTED. It used to run once,
+ * after `index.html` was written: every `?v=` in the page was the fingerprint of bytes the
+ * deploy did not serve — the file WITH its comment. Harmless as long as nothing else rewrote
+ * a file in between, and unverifiable: a gate recomputing the token from the served bytes
+ * could only disagree. `verify-deploy-server-contract.cjs` (SC-07) now does exactly that.
+ *
+ * @param {string} dir Directory to sweep, recursively.
+ * @returns {string[]} The files rewritten, relative to `dir`.
+ */
+function stripSourceMapComments(dir) {
+    /** @type {string[]} */
+    const stripped = [];
+    /** @param {string} current */
+    const sweep = (current) => {
+        if (!fs.existsSync(current)) return;
+        for (const e of fs.readdirSync(current, { withFileTypes: true })) {
+            const p = path.join(current, e.name);
+            if (e.isDirectory()) {
+                sweep(p);
+                continue;
+            }
+            if (!/\.(js|css)$/.test(e.name)) continue;
+            const before = fs.readFileSync(p, "utf8");
+            // `//# sourceMappingURL=…` (JS) and `/*# sourceMappingURL=… */` (CSS),
+            // at end of file, with or without a final newline.
+            const after = before.replace(
+                /\s*(?:\/\/|\/\*)#\s*sourceMappingURL=[^\s*]+\s*(?:\*\/)?\s*$/,
+                "\n"
+            );
+            if (after !== before) {
+                fs.writeFileSync(p, after);
+                stripped.push(path.relative(dir, p));
+            }
+        }
+    };
+    sweep(dir);
+    return stripped;
+}
+
+/** The line `apps/geoleaf-app/init.js` carries where the worker's URL is to be set. */
+const WORKER_URL_MARKER = "// __GEOLEAF_WORKER_URL__";
+
+/** The GeoJSON worker, as the variant serves it. */
+const GEOJSON_WORKER_DEPLOY_PATH = "dist/geojson-worker.js";
+
+/**
+ * Makes a variant's `init.js` ask for what it loads BY CONTENT.
+ *
+ * 🛑 `index.html` was stamped, `init.js` never was. The page's two `<script>` plugins carried a
+ * `?v=`; every plugin `init.js` loads on demand — `import("./dist/geoleaf-<id>.plugin.js")` —
+ * and the GeoJSON worker, whose URL the core builds at run time, were asked for under a STABLE
+ * name. The server contract this folder ships with pins `dist/**` for a year, `immutable`: a
+ * visitor who had loaded one of them kept it for a year, facing a core that had moved on.
+ *
+ * Two gestures, and a refusal:
+ *
+ *   · every on-demand import of a plugin bundle gets the token of the bundle the variant
+ *     ships — ONE URL per plugin, so one module instance, wherever it is imported from;
+ *   · the marker line becomes `GeoLeaf.GeoJSON.setWorkerUrl("…?v=<token>")`, set before the
+ *     boot. The URL is relative to the PAGE, which is what `new Worker()` resolves against;
+ *   · it THROWS when an import names a bundle the variant does not ship, or when the marker is
+ *     not there exactly once: a silent skip is how `init.js` stayed unstamped.
+ *
+ * @param {string} js `init.js`, gated blocks already stripped for the variant.
+ * @param {string} outDir The variant's directory — where the bundles are read.
+ * @param {string} variantLabel For error messages.
+ * @returns {{ js: string, plugins: number, worker: string | null }} The stamped script, the
+ *   number of imports stamped, and the worker URL set (`null` when the variant ships no worker).
+ */
+function stampInitScript(js, outDir, variantLabel) {
+    let plugins = 0;
+    let out = js.replace(
+        /(import\(\s*["'])\.\/(dist\/geoleaf-[\w-]+\.plugin\.js)(["']\s*\))/g,
+        (_, head, rel, tail) => {
+            const abs = path.join(outDir, rel);
+            if (!fs.existsSync(abs)) {
+                throw new Error(
+                    `build-deploy: ${variantLabel} init.js imports \`${rel}\`, which the variant ` +
+                        `does not ship — its registration belongs in a GEOLEAF-DEPLOY:GATED-BLOCK.`
+                );
+            }
+            plugins += 1;
+            return `${head}./${rel}?v=${contentTag(abs)}${tail}`;
+        }
+    );
+    const left = out.match(/import\(\s*["']\.\/dist\/geoleaf-[\w-]+\.plugin\.js["']/g);
+    if (left) {
+        throw new Error(
+            `build-deploy: ${variantLabel} init.js still imports ${left.length} plugin bundle(s) ` +
+                `without a content token — ${left.join(", ")}`
+        );
+    }
+
+    const markerLine = new RegExp(
+        `^([ \\t]*)${WORKER_URL_MARKER.replace(/[/]/g, "\\/")}[ \\t]*$`,
+        "gm"
+    );
+    const found = out.match(markerLine) ?? [];
+    if (found.length !== 1) {
+        throw new Error(
+            `build-deploy: ${variantLabel} init.js carries the line \`${WORKER_URL_MARKER}\` ` +
+                `${found.length} time(s), expected exactly 1 — without it the GeoJSON worker is ` +
+                `asked for under a stable name the server pins for a year.`
+        );
+    }
+    const workerAbs = path.join(outDir, GEOJSON_WORKER_DEPLOY_PATH);
+    if (!fs.existsSync(workerAbs)) return { js: out, plugins, worker: null };
+    const worker = `${GEOJSON_WORKER_DEPLOY_PATH}?v=${contentTag(workerAbs)}`;
+    out = out.replace(
+        markerLine,
+        (_, indent) => `${indent}GeoLeaf.GeoJSON.setWorkerUrl(${JSON.stringify(worker)});`
+    );
+    return { js: out, plugins, worker };
 }
 
 /**
@@ -1620,27 +1741,18 @@ function main() {
         log.section("🖼️  Copying icons → icons/");
         if (fs.existsSync(SRC_ICONS)) {
             copyDir(SRC_ICONS, path.join(outDir, "icons"));
+            // `logo.png` is the SOURCE the PWA icons are generated from (`generate-pwa-icons`):
+            // no page, manifest or worker of the deliverable asks for it.
+            fs.rmSync(path.join(outDir, "icons", "logo.png"), { force: true });
             log.ok("icons/ copied");
         } else {
             log.warn(`${path.relative(ROOT, SRC_ICONS)} not found`);
         }
 
-        // 5b — Copy profile-specific sprites → icons/ (e.g. sprite_guyane.svg, sprite_rail.svg…)
-        log.section("🖼️  Copying profile sprites → icons/");
-        const profilesRoot = PROFILES;
-        if (fs.existsSync(profilesRoot)) {
-            for (const profileName of fs.readdirSync(profilesRoot)) {
-                const profileIconsDir = path.join(profilesRoot, profileName, "icons");
-                if (fs.existsSync(profileIconsDir)) {
-                    for (const f of fs.readdirSync(profileIconsDir)) {
-                        const src = path.join(profileIconsDir, f);
-                        const dest = path.join(outDir, "icons", f);
-                        fs.copyFileSync(src, dest);
-                        log.ok(`icons/${f} (from profiles/${profileName}/icons/)`);
-                    }
-                }
-            }
-        }
+        // A profile's sprite ships ONCE, under `profiles/<profile>/icons/`: that is the path its
+        // taxonomy names (`icons.spriteUrl`) and the only one the core fetches. A second copy
+        // used to be flattened into `icons/` here — byte-identical, referenced by nothing in the
+        // deliverable, and precompressed twice for it.
 
         // 5a — Generate PWA manifest.json (merged from template + geoleaf.config.json pwa.*)
         log.section("📱 Generating PWA manifest.json");
@@ -1807,6 +1919,14 @@ function main() {
         }
 
         // 7 — Generate patched index.html
+        // Sourcemap comments go BEFORE anything is fingerprinted — see `stripSourceMapComments`.
+        // The pass after the bootstrap copy stays: it is then the guard that nothing rewritable
+        // entered the variant behind the tokens' back.
+        {
+            const early = stripSourceMapComments(outDir);
+            log.ok(`sourceMappingURL retirés avant empreinte — ${early.length} fichier(s)`);
+        }
+
         log.section("📄 Generating index.html");
         // This was the ONLY unguarded read of an app template in this file. Every other one
         // degrades gracefully because its artefact is optional (manifest → PWA skipped,
@@ -1855,7 +1975,12 @@ function main() {
             .replace(/dist\/geoleaf\.esm\.js/g, () => tagFor("dist/geoleaf.esm.js"))
             .replace(/dist\/geoleaf-([\w-]+)\.plugin\.js/g, (m) => tagFor(m))
             // Use minified CSS instead of source CSS (fallback)
-            .replace(/css\/geoleaf-main\.css/g, "dist/geoleaf-main.min.css");
+            .replace(/css\/geoleaf-main\.css/g, "dist/geoleaf-main.min.css")
+            // …and ask for it by content, like the bundles: it is rewritten at every build
+            // under this one name, in a folder the server contract pins for a year. LAST, once
+            // both rewrites above have produced the path. The pre-cache reads its key off this
+            // markup (`lib/boot-assets.cjs`), so the two cannot disagree again.
+            .replace(/dist\/geoleaf-main\.min\.css/g, () => tagFor("dist/geoleaf-main.min.css"));
 
         // 7a — Preload block, generated from the entry's STATIC import graph.
         const eagerChunks = extractEagerChunks(path.join(outDir, "dist", "geoleaf.esm.js"));
@@ -1941,8 +2066,14 @@ function main() {
                 initContent = stripGatedInitBlock(initContent, "cog", variantLabel);
                 log.ok("init.js — gated block `cog` stripped (variant ships no cog bundle)");
             }
-            fs.writeFileSync(path.join(outDir, "init.js"), initContent, "utf-8");
-            log.ok("init.js copied");
+            const stamped = stampInitScript(initContent, outDir, variantLabel);
+            fs.writeFileSync(path.join(outDir, "init.js"), stamped.js, "utf-8");
+            log.ok(
+                `init.js — ${stamped.plugins} import(s) de greffon demandé(s) par contenu, worker ` +
+                    (stamped.worker
+                        ? `GeoJSON sous ${stamped.worker}`
+                        : "GeoJSON absent de la variante")
+            );
         } else {
             log.warn(`${path.relative(ROOT, initSrc)} not found — skipped`);
         }
@@ -2132,31 +2263,19 @@ function main() {
         // what nginx serves (`gzip_static on`). The defect would thus be
         // invisible reading the deploy.
         {
-            const stripped = [];
-            const sweep = (dir) => {
-                if (!fs.existsSync(dir)) return;
-                for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-                    const p = path.join(dir, e.name);
-                    if (e.isDirectory()) {
-                        sweep(p);
-                        continue;
-                    }
-                    if (!/\.(js|css)$/.test(e.name)) continue;
-                    const before = fs.readFileSync(p, "utf8");
-                    // `//# sourceMappingURL=…` (JS) and `/*# sourceMappingURL=… */` (CSS),
-                    // at end of file, with or without a final newline.
-                    const after = before.replace(
-                        /\s*(?:\/\/|\/\*)#\s*sourceMappingURL=[^\s*]+\s*(?:\*\/)?\s*$/,
-                        "\n"
-                    );
-                    if (after !== before) {
-                        fs.writeFileSync(p, after);
-                        stripped.push(path.relative(outDir, p));
-                    }
-                }
-            };
-            sweep(outDir);
-            log.ok(`sourceMappingURL retirés — ${stripped.length} fichier(s)`);
+            // 🛑 A file rewritten HERE was fingerprinted before: its `?v=` in the page would be
+            // the token of bytes the deploy does not serve. The early pass took them all; this
+            // one finding any means a later step copied a bundle in behind the tokens' back.
+            const stripped = stripSourceMapComments(outDir);
+            if (stripped.length) {
+                throw new Error(
+                    `build-deploy: ${v.name || path.relative(ROOT, outDir)} — ` +
+                        `${stripped.length} fichier(s) portaient encore un sourceMappingURL après ` +
+                        `le calcul des jetons de contenu : ${stripped.join(", ")}. Les copier ` +
+                        `AVANT la génération d'index.html, là où passe \`stripSourceMapComments\`.`
+                );
+            }
+            log.ok("sourceMappingURL — aucun fichier réécrit après empreinte");
 
             // The guard. It is NOT circular with what precedes: nothing
             // here deleted a `.map`, the copy sites filtered them upstream.
@@ -2199,7 +2318,6 @@ function main() {
             "init.js",
             "dist/geoleaf.esm.js",
             "dist/geoleaf-main.min.css",
-            "icons/logo.png",
             "icons/fav.png",
             ROOT_CONFIG_DEPLOY_PATH,
             "profiles/tourism/profile.json",
@@ -2527,6 +2645,10 @@ if (require.main === module) {
 // the constant — that produces it HERE.
 module.exports = {
     stripPluginScript,
+    stampInitScript,
+    stripSourceMapComments,
+    WORKER_URL_MARKER,
+    GEOJSON_WORKER_DEPLOY_PATH,
     resolvePluginMode,
     buildsAllVariants,
     DEV_CONNECTOR_MARKERS,

@@ -6,7 +6,7 @@
 
 /**
  * The handler the editor registers on `GeoLeaf.Sync` so `offline-ui` can drive its replay
- * button. Task 5.1-b.
+ * button.
  *
  * 🛑 **THIS IS NOT A PORT OF `addpoi`'S 689 LINES, and measurement turned the
  * line around.** The pre-flight found that `offline-ui` consumes only **two

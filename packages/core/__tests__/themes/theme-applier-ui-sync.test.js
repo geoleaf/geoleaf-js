@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.33 - theme-applier/ui-sync */
+/* theme-applier/ui-sync */
 
 const mockLoadLayerLegend = vi.hoisted(() => vi.fn());
 const mockSetLayerVisibility = vi.hoisted(() => vi.fn());
@@ -41,7 +41,7 @@ const legend = {
 };
 provideLegend(legend);
 
-describe("theme-applier/ui-sync (Phase 5.33)", () => {
+describe("theme-applier/ui-sync", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         document.body.innerHTML = "";

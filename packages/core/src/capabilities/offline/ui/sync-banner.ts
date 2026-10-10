@@ -36,7 +36,12 @@
  * ## What it shows, and what it deliberately does not
  *
  * Network · how many writes are owed · when the server last accepted something · how many
- * entries are set aside. Two actions: drain now, and dismiss.
+ * entries are set aside · and, when the last pass held writes for want of a session, that
+ * signing in is what they are waiting for. Two actions: drain now, and dismiss.
+ *
+ * ⚠️ **It SAYS a session is required; it offers no way to open one.** Who holds the session is
+ * not the core's to know — a plugin, or the host — and a sign-in button here would make the
+ * core reach for one of them.
  *
  * 🛑 **The per-entry DETAIL is not here, and that is a boundary rather than a shortcut.**
  * The audit asked for "one press for the detail". The list of pending entries, with its
@@ -66,6 +71,7 @@ let _els: {
     net: HTMLElement;
     pending: HTMLElement;
     quarantine: HTMLElement;
+    session: HTMLElement;
     last: HTMLElement;
     action: HTMLButtonElement;
     close: HTMLButtonElement;
@@ -87,7 +93,27 @@ let _again = false;
  * nothing about today's queue, and storing it would open a session silent about owed
  * captures — the exact failure this strip was built to end.
  */
-let _dismissed: { owed: number; quarantined: number; offline: boolean } | null = null;
+let _dismissed: {
+    owed: number;
+    quarantined: number;
+    offline: boolean;
+    sessionRequired: boolean;
+} | null = null;
+
+/**
+ * `true` while the LAST pass held captures because their layer requires a session and none is
+ * open (`heldForSession > 0`).
+ *
+ * 🛑 **WITHOUT IT THE STRIP SHOWED A WRITE THAT WOULD NOT LEAVE, AND NOTHING SAID WHY.** A
+ * capture held for want of a session stays counted among the writes owed — it is owed — so the
+ * operator read "1 pending", online, pressed "send", and read "1 pending" again.
+ *
+ * ⚠️ **Read from the pass's own announcement**, like the triggers' pause: the passes to learn
+ * from include the ones this strip did not ask for. Any later pass that holds nothing drops
+ * it, which is what makes signing in enough. Module state, never persisted — a write held
+ * yesterday says nothing about today's session.
+ */
+let _sessionRequired = false;
 
 /** Where the strip goes: the app shell, else the map's own parent, else nowhere. */
 function _host(): HTMLElement | null {
@@ -98,10 +124,13 @@ function _host(): HTMLElement | null {
 }
 
 /**
- * "3 min", "2 h", "hier" — a duration, not a clock reading.
+ * "3 min", "2 h", "4 d" — a duration, not a clock reading.
  *
  * ⚠️ A timestamp answers "at 14:02", which a technician must then subtract from now, on a
  * device whose clock they did not set. The question being asked is "how long ago".
+ *
+ * `min` and `h` are written here: they are the unit symbols, the same in the six languages.
+ * The day has none in common use — `j`, `d`, `g`, `Tg.` — so it comes from the catalogue.
  */
 function _ago(at: number, now: number): string {
     const minutes = Math.max(0, Math.round((now - at) / 60_000));
@@ -109,7 +138,10 @@ function _ago(at: number, now: number): string {
     if (minutes < 60) return getLabel("ui.sync.last_at", `${minutes} min`);
     const hours = Math.round(minutes / 60);
     if (hours < 24) return getLabel("ui.sync.last_at", `${hours} h`);
-    return getLabel("ui.sync.last_at", `${Math.round(hours / 24)} j`);
+    return getLabel(
+        "ui.sync.last_at",
+        getLabel("ui.sync.unit_day", String(Math.round(hours / 24)))
+    );
 }
 
 /**
@@ -162,10 +194,12 @@ function _worseThanDismissed(status: SyncStatus): boolean {
     if (!_dismissed) return true;
     if (status.owed > _dismissed.owed) return true;
     if (status.quarantined > _dismissed.quarantined) return true;
+    // Learning that the owed writes wait for a session is news, whatever the count.
+    if (_sessionRequired && !_dismissed.sessionRequired) return true;
     return !status.online && !_dismissed.offline;
 }
 
-/** Writes the four facts, the action's state, and whether the strip takes any room. */
+/** Writes the five facts, the action's state, and whether the strip takes any room. */
 function _paint(status: SyncStatus): void {
     if (!_root || !_els) return;
     const { online, owed, quarantined, lastSyncAt } = status;
@@ -186,6 +220,11 @@ function _paint(status: SyncStatus): void {
     _els.quarantine.textContent =
         quarantined > 0 ? getLabel("ui.sync.quarantined", String(quarantined)) : "";
     _els.quarantine.hidden = quarantined === 0;
+    // Shown only while something is owed: the mention is a fact about a write that waits, and
+    // with nothing owed there is no write for it to be about.
+    const sessionRequired = _sessionRequired && owed > 0;
+    _els.session.textContent = sessionRequired ? getLabel("ui.sync.session_required") : "";
+    _els.session.hidden = !sessionRequired;
     _els.last.textContent =
         lastSyncAt === null ? getLabel("ui.sync.last_never") : _ago(lastSyncAt, Date.now());
     // Offered only when there is something to send AND a network to send it on: a button
@@ -265,6 +304,9 @@ function _build(): HTMLElement {
     const quarantine = document.createElement("span");
     quarantine.className = "gl-sync-banner__quarantine";
     quarantine.hidden = true;
+    const session = document.createElement("span");
+    session.className = "gl-sync-banner__session";
+    session.hidden = true;
     const last = document.createElement("span");
     last.className = "gl-sync-banner__last";
     const action = document.createElement("button");
@@ -280,8 +322,8 @@ function _build(): HTMLElement {
     close.setAttribute("aria-label", getLabel("ui.sync.dismiss"));
     close.title = getLabel("ui.sync.dismiss");
 
-    root.append(dot, net, sep, pending, quarantine, last, action, close);
-    _els = { dot, net, pending, quarantine, last, action, close };
+    root.append(dot, net, sep, pending, quarantine, session, last, action, close);
+    _els = { dot, net, pending, quarantine, session, last, action, close };
     return root;
 }
 
@@ -318,7 +360,15 @@ export function mountSyncBanner(options: { enabled?: boolean } = {}): void {
     // the only such signal was the editor plugin's, so an indicator had to depend on a
     // plugin to know that a write had happened.
     _on(document, "geoleaf:offline:outbox-queued", () => void refreshSyncBanner());
-    _on(document, "geoleaf:offline:outbox-drained", () => void refreshSyncBanner());
+    _on(document, "geoleaf:offline:outbox-drained", (event) => {
+        const detail = (event as CustomEvent<{ heldForSession?: number } | null>).detail;
+        _sessionRequired = (detail?.heldForSession ?? 0) > 0;
+        void refreshSyncBanner();
+    });
+    // And the third: an entry set aside left — requeued or discarded. The count of entries set
+    // aside is one of the strip's states, and a discard is followed by no pass that would
+    // repaint it.
+    _on(document, "geoleaf:offline:quarantine-exited", () => void refreshSyncBanner());
     // Native events, not `geoleaf:online` — the detector that emits those is opt-in, and a
     // strip that goes blind because a profile turned a badge off would be worse than none.
     _on(window, "online", () => void refreshSyncBanner());
@@ -330,7 +380,12 @@ export function mountSyncBanner(options: { enabled?: boolean } = {}): void {
             // writer of these three facts, so the strip on screen IS the acknowledged
             // situation. A parallel copy would be a second truth updated on another path.
             void readSyncStatus().then((s) => {
-                _dismissed = { owed: s.owed, quarantined: s.quarantined, offline: !s.online };
+                _dismissed = {
+                    owed: s.owed,
+                    quarantined: s.quarantined,
+                    offline: !s.online,
+                    sessionRequired: _sessionRequired,
+                };
                 _paint(s);
             });
             return;
@@ -359,4 +414,5 @@ export function unmountSyncBanner(): void {
     _inFlight = null;
     _again = false;
     _dismissed = null;
+    _sessionRequired = false;
 }

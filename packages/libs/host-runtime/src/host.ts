@@ -69,8 +69,13 @@ export interface HostDeclaredStyleIds {
  * (`Measure`, `Print`, `Editor`, …) live in the `[key: string]: unknown`
  * tail and are narrowed locally by their consumers.
  *
- * @remarks Kept in sync (loosely) with the core source of truth `GeoLeafGlobal`
- * in `packages/core/src/global.d.ts`. This is the client-side subset plugins use.
+ * @remarks The client-side subset plugins use of the core's own description,
+ * `GeoLeafGlobal` (`packages/core/src/global.d.ts`). Nothing links the two in this file — it
+ * may not import from the core, not even a type — so two instruments hold them together from
+ * outside: `scripts/verify-host-contract-sync.cjs` for the NAMES of the namespace members, and
+ * a compile-time witness in the core's consumer fixture (`extension-contract.ts`) for the
+ * SHAPE of every member named under them. A member declared here as a bag
+ * (`Record<string, unknown>`) or with `(...args: unknown[])` is compared to nothing.
  */
 export interface GeoLeafHost {
     /** Configuration façade (`GeoLeaf.Config`). */
@@ -166,7 +171,9 @@ export interface GeoLeafHost {
         getLayerById?(id: string): unknown;
         getAllLayers?(): unknown;
         getLayerData?(id: string): unknown;
-        addData?(...args: unknown[]): unknown;
+        // `addData` was named here and the façade never carried it: the core withdrew it
+        // from its own declaration on 09/08/2026, this copy kept it. A contract member for a
+        // thing the runtime does not mount — writing data goes through `Layers.setData`.
         [key: string]: unknown;
     };
 
@@ -178,7 +185,9 @@ export interface GeoLeafHost {
             ...children: unknown[]
         ): HTMLElement;
         applyCssText?(el: HTMLElement, css: string): void;
-        validateUrl?(url: unknown): boolean;
+        // Returns the URL resolved, or `null` when its protocol is refused — NOT a boolean,
+        // which is what this line declared until the compiler compared the two contracts.
+        validateUrl?(url: string | null | undefined, allowedProtocols?: string[]): string | null;
         getDistance?(...args: unknown[]): number;
         Formatters?: Record<string, unknown>;
         DOMSecurity?: Record<string, unknown>;

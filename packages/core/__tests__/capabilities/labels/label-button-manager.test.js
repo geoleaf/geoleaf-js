@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.25 - label-button-manager */
+/* label-button-manager */
 
 const logMock = vi.hoisted(() => ({
     error: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock("../../../src/utils/i18n/i18n.ts", () => ({
 import { domCreateDouble } from "../../_helpers/dom-create-double.js";
 import { LabelButtonManager } from "../../../src/capabilities/labels/label-button-manager.js";
 
-describe("label-button-manager (Phase 5.25)", () => {
+describe("label-button-manager", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetLayerById.mockReturnValue(null);

@@ -8,7 +8,7 @@
 /**
  * @description Public barrel for the GeoJSON sub-system.
  *
- * Mediated entry point for the `capabilities/ → kernel/` boundary (backlog R.8) —
+ * Mediated entry point for the `capabilities/ → kernel/` boundary (rule R.8) —
  * the busiest edge of that boundary (9 of the 25 mediated imports).
  *
  * ⚠️ **Types are NOT re-exported here.** The domain type hubs (`core-types.ts`,
@@ -62,3 +62,13 @@ export type { OgcApiPage, OgcApiStreamOutcome } from "./loader/ogc-api-loader.js
  * that dynamic import buys.
  */
 export { announceTruncation, resetTruncationNotices } from "./loader/truncation-notice.js";
+
+/**
+ * The re-read of a displayed layer — mediated for the offline pull, like the transport above.
+ *
+ * A pull rewrites the store a layer declaring `offline.enabled` is drawn from, and that layer
+ * reads it at load only. The pull reaches this through the dynamic import it already makes.
+ * `loader/single-layer.js` is the layer loader itself: it has always been in this chunk, so
+ * the re-export adds no module to it.
+ */
+export { rereadOfflineLayer } from "./loader/single-layer.js";

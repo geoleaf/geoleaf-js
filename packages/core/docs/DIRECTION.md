@@ -66,12 +66,16 @@ write profiles. The public API is what the versioning policy protects.
 - **One GeoLeaf application per page.** Configuration, state and events are shared by the whole
   page. The application can be unmounted and mounted again (`GeoLeaf.mount()`, since 3.13.0), not
   duplicated: a `mount()` while an application is alive unmounts it first.
-- **Not every plugin is proven across a remount.** `connector`, `editor`, `geocoding`, `measure`,
-  `position-share`, `print` and `table` are taken down by `unmount()` and work again on the next
-  application, whether they were loaded before the boot or on demand — with `@geoleaf/core`
-  3.14.2 and the plugin versions its changelog names. `realtime-layer` stops with the application
-  only when it was loaded before the boot. The other plugins have not been measured through a
-  remount.
+- **A remount needs recent versions, and two things outlive it on purpose.** `connector`,
+  `editor`, `geocoding`, `measure`, `position-share`, `print` and `table` are taken down by
+  `unmount()` and work again on the next application, whether they were loaded before the boot
+  or on demand — with `@geoleaf/core` 3.14.2 and the plugin versions its changelog names.
+  `realtime-layer` stops with the application on both loading paths from its 1.0.8, a guidance
+  session of `navigation` ends with it from its 1.0.3, the offline window of `offline-ui` closes
+  with it from its 1.6.4, and the itinerary pane of `routing` leaves with it from
+  `@geoleaf/core` 3.15.0. `cog`, `file-import` and `flatgeobuf` leave nothing behind. What
+  stays is the host's own: the session of `connector`, and the connection `websocket` opened —
+  both are set once for the page, not for one application.
 
 ## Versions
 

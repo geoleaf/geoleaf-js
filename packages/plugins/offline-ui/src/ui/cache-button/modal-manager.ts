@@ -20,6 +20,8 @@ import { tLabel as t } from "@geoleaf/host-runtime";
 interface ExportLogicLike {
     initializeCacheContent(): void;
     initializeExportContent(): void;
+    /** Releases the control mounted in the modal body. Optional: test doubles omit it. */
+    releaseCacheContent?(): void;
 }
 
 /**
@@ -222,6 +224,9 @@ const ModalManager = {
      * Removes the modal from the DOM and releases its event listeners.
      */
     destroy() {
+        // The control the body holds, while the body is still in the document: its listeners
+        // are on `document`, and removing the node does not remove them.
+        _ExportLogic?.releaseCacheContent?.();
         // Cleanup event listeners
         if (this._eventCleanups && this._eventCleanups.length > 0) {
             this._eventCleanups.forEach((cleanup: () => void) => {

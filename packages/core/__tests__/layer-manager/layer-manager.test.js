@@ -33,7 +33,7 @@ describe("layer-manager", () => {
             globalThis.GeoLeaf = prevGeoLeaf;
         });
 
-        it("Phase 9.12 — init returns control when map and _LayerManagerControl provided", () => {
+        it("init returns control when map and _LayerManagerControl provided", () => {
             const fakeControl = { addTo: vi.fn() };
             const prevGeoLeaf = globalThis.GeoLeaf;
             globalThis.GeoLeaf = globalThis.GeoLeaf || {};

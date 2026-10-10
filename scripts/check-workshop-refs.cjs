@@ -15,7 +15,19 @@
  * Workshop tokens in PUBLIC files (the boundary is DERIVED from `lib/public-partition.cjs`
  * — never a hand-written glob, the divergence would cost more than the glob):
  * backlog/debt ids (`B-nnn`, `D-nn`), sprint markers (`Sprint N`, `S4.3`), roadmap names
- * (`roadmap_*`), and workshop paths (`_docs_projet/`). Markdown counts too: `docs/` ships.
+ * (`roadmap_*`), roadmap TASKS in both languages and in their short form (`task N.N`,
+ * `tâche N.N`, `TN.N`), and workshop
+ * paths (`_docs_projet/`). Markdown counts too: `docs/` ships.
+ *
+ * ## What it reads
+ *
+ * ⚠️ **Every public file that is TEXT — decided on its bytes, never on its extension.**
+ * The corpus used to be a list of eleven extensions, and a list is silent about what it
+ * leaves out: measured the day it was replaced, the commit hook, the ignore files, the
+ * secret-scanner configuration, the dev server configuration and the SQL of the proof
+ * backend carried forty tokens between them and had never been read. An unknown
+ * extension is now JUDGED by default; only a binary is skipped, and the run prints how
+ * many were.
  *
  * ✅ **And, since 02/09/2026, the names of NEIGHBOURING REPOSITORIES and of the backend a
  * consumer happens to run.** This library is standalone and knows no backend: naming one
@@ -76,9 +88,31 @@ const BASELINE_PATH = path.join(__dirname, ".baselines", "workshop-refs.json");
 const UPDATE = process.argv.includes("--update-baseline");
 
 // One pattern per token family. `S4.3`-style sprint-task markers require the dot so a
-// lone `S3` (storage, AWS) never matches; `Sprint N` requires the capital word.
+// lone `S3` (storage, AWS) never matches. `sprint N` matches in either case since 07/10/2026:
+// the lowercase form was seventeen lines, every one a workshop reference.
+//
+// A numbered PHASE and a numbered LOT joined the same day, once cleaned (62 and 88 lines).
+// ⚠️ Two phases are NOT workshop references and are excepted BY NUMBER: 1.5 and 7.5 are
+// phases of the boot sequence, named so in `docs/specs/contrats/`. A pattern cannot tell a
+// boot phase from a roadmap phase; the list is closed, and a third boot phase with a decimal
+// number has to be added here.
+//
+// A former roadmap ROW — `R.` and a number — joined too (158 lines, cleaned the same day).
+// ⚠️ `R.8` is excepted, and it is the same case as the two boot phases: it is the NAME of the
+// ESLint boundary rule between `capabilities/` and `kernel/`, written so in `eslint.config.mjs`
+// and in the public specs. Seventy-nine of the 158 were that rule.
+//
+// The TASK family requires the NUMBER: the word alone is ordinary English and ordinary
+// French. Measured over the whole public corpus before it was written — followed by a
+// number, the word occurred nowhere but in a workshop reference, in either language, and
+// the French form alone was two thirds of the deposit.
+//
+// The SHORT task form — one capital letter, two numbers — joined on 07/10/2026, once its
+// deposit was cleaned: 116 lines in 43 files, every one read, every one a workshop reference
+// (test titles, headers, comments, verdict rationales). The capital and the dot are both
+// required: measured on the cleaned corpus, the pattern matches nothing else.
 const TOKEN =
-    /\bB-[0-9]{2,3}\b|\bD-[0-9]{2}\b|\bSprint [0-9]+\b|\bS[0-9]+\.[0-9]+\b|\broadmap_[a-z0-9-]+|_docs_projet\/|geoleaf-(?:maintenance|shared)|\bgeoleaf_(?:core|itinerary|realtime|contribution|review|website)\b|\b[Oo]doo\b|\bODOO\b/g;
+    /\bB-[0-9]{2,3}\b|\bD-[0-9]{2}\b|\b[Ss]prints? [0-9]+\b|\b[Pp]hase (?!1\.5\b|7\.5\b)[0-9]+\.[0-9]+|\b[Ll]ots? [0-9]+\b|\bR\.(?!8\b)[0-9]+[a-z]?\b|\bS[0-9]+\.[0-9]+\b|\b[Tt]asks? [0-9][0-9.]*|\bT[0-9]+\.[0-9]+\b|\b[Tt]âches? [0-9][0-9.]*|\broadmap_[a-z0-9-]+|_docs_projet\/|geoleaf-(?:maintenance|shared)|\bgeoleaf_(?:core|itinerary|realtime|contribution|review|website)\b|\b[Oo]doo\b|\bODOO\b/g;
 
 /**
  * WREF-04 — the FRAMING, not the name.
@@ -120,12 +154,23 @@ const isDemoData = (rel) => rel.startsWith("profiles/") && path.extname(rel) !==
  * Named exemptions for WREF-04, each with a WITNESS.
  *
  * Same regime as `WPATH`: an exemption without a witness is a hole that outlives its reason.
- * Empty today — `SELF` and `isDemoData` are structural, not exemptions — and kept so the
- * first real case has a shape to follow rather than inventing one under pressure.
+ * `SELF` and `isDemoData` are structural, not exemptions.
  *
  * @type {{file: string, token: string, witness: string, needle: string, why: string}[]}
  */
-const DOMAIN_EXEMPTIONS = [];
+const DOMAIN_EXEMPTIONS = [
+    {
+        file: "docker/backend/02-seed.sql",
+        token: "patrimoine",
+        witness: "profiles/tourism/layers/sites_rosario/data/sites_rosario.geojson",
+        needle: '"patrimoine"',
+        why:
+            "The seed of the dev proof backend is a COPY of that demonstration layer's rows " +
+            "— its header says so — and the term is one of a row's keyword tags. Same content " +
+            "as `isDemoData`, living outside `profiles/` because a database reads it. The " +
+            "witness is the layer: the day its data drops the tag, the copy has no reason.",
+    },
+];
 
 function trackedFiles() {
     return execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
@@ -143,35 +188,47 @@ if (publicFiles.length < 2000) {
     process.exit(1);
 }
 
-const TEXT_EXT = new Set([
-    ".ts",
-    ".js",
-    ".cjs",
-    ".mjs",
-    ".tsx",
-    ".md",
-    ".json",
-    ".html",
-    ".css",
-    ".yml",
-    ".yaml",
-]);
+/**
+ * The text of a public file, or `null` for a binary.
+ *
+ * A NUL byte in the first 8000 is git's own test for "binary" — the same one that decides
+ * whether `git diff` prints a file. Borrowed rather than invented: the gate and the tool
+ * that shows a reviewer the change then agree on what is readable.
+ *
+ * @param {string} rel
+ * @returns {string | null | undefined} `undefined` when the file cannot be read at all.
+ */
+function readText(rel) {
+    let buf;
+    try {
+        buf = fs.readFileSync(path.join(ROOT, rel));
+    } catch {
+        return undefined;
+    }
+    return buf.subarray(0, 8000).includes(0) ? null : buf.toString("utf8");
+}
+
 const observed = new Map(); // file -> count
+/** @type {Map<string, string[]>} */
+const tokensOf = new Map();
 let total = 0;
+let read = 0;
+let binaries = 0;
 /** @type {{rel: string, line: number, token: string}[]} */
 let domainHits = [];
 for (const rel of publicFiles) {
-    if (!TEXT_EXT.has(path.extname(rel))) continue;
-    let src;
-    try {
-        src = fs.readFileSync(path.join(ROOT, rel), "utf8");
-    } catch {
+    const src = readText(rel);
+    if (src === undefined) continue;
+    if (src === null) {
+        binaries++;
         continue;
     }
-    const n = (src.match(TOKEN) ?? []).length;
-    if (n > 0) {
-        observed.set(rel, n);
-        total += n;
+    read++;
+    const found = src.match(TOKEN) ?? [];
+    if (found.length > 0) {
+        observed.set(rel, found.length);
+        tokensOf.set(rel, [...new Set(found.map((t) => t.replace(/\.$/, "")))].sort());
+        total += found.length;
     }
     // WREF-04 keeps LINE NUMBERS where WREF-01/02 keep a count: with zero tolerance there
     // is no baseline to drift against, so the precise site is free and worth printing.
@@ -183,7 +240,8 @@ for (const rel of publicFiles) {
 
 console.log(`\x1b[2m── WREF — aucun renvoi d'atelier neuf dans ce que le public reçoit ──\x1b[0m`);
 console.log(
-    `  ${publicFiles.length} fichiers publics · ${observed.size} porteurs · ${total} jeton(s)`
+    `  ${publicFiles.length} fichiers publics · ${read} lus, ${binaries} binaire(s) sauté(s) · ` +
+        `${observed.size} porteurs · ${total} jeton(s)`
 );
 
 // ── WREF-05 — an exemption whose witness has fallen ──────────────────────────────────
@@ -245,7 +303,7 @@ if (UPDATE) {
         JSON.stringify(
             {
                 _comment:
-                    "WREF-01/02 — jetons d'atelier (B-nnn, D-nn, Sprint N, Sx.y, roadmap_*, _docs_projet/) par fichier PUBLIC, gelés à la pose. DÉCROISSANT uniquement : trier un fichier (trois seaux — traçabilité pure : retirer le jeton ; le renvoi porte le motif : réécrire la phrase ; la phrase n'existe que pour le renvoi : la retirer), puis --update-baseline. Jamais de sed : la roadmap code-autonome porte l'avertissement mesuré.",
+                    "WREF-01/02 — jetons d'atelier (B-nnn, D-nn, Sprint N, sprint N, Sx.y, phase N.N, lot N, R.N, task N.N, tâche N.N, TN.N, roadmap_*, _docs_projet/) par fichier PUBLIC, gelés à la pose. DÉCROISSANT uniquement : trier un fichier (trois seaux — traçabilité pure : retirer le jeton ; le renvoi porte le motif : réécrire la phrase ; la phrase n'existe que pour le renvoi : la retirer), puis --update-baseline. Jamais de sed : la roadmap code-autonome porte l'avertissement mesuré.",
                 _generated: "node scripts/check-workshop-refs.cjs --update-baseline",
                 files: observed.size,
                 tokens: total,
@@ -271,14 +329,15 @@ let failed = false;
 const grown = [];
 for (const [file, n] of observed) {
     const frozen = baseline[file] ?? 0;
-    if (n > frozen) grown.push(`${file} — ${frozen} → ${n}`);
+    if (n > frozen)
+        grown.push(`${file} — ${frozen} → ${n} · ${(tokensOf.get(file) ?? []).join(", ")}`);
 }
 if (grown.length) {
     failed = true;
     console.error(`❌ [WREF-01] ${grown.length} fichier(s) dont le compte de jetons AUGMENTE :`);
     for (const g of grown.slice(0, 15)) console.error(`   + ${g}`);
     console.error(
-        `   Deux familles, deux gestes — le jeton fautif est imprimé ci-dessus.\n` +
+        `   Deux familles, deux gestes — les jetons du fichier sont imprimés ci-dessus.\n` +
             `   • Renvoi d'ATELIER : mort pour le lecteur public, qui n'a pas le document.\n` +
             `     Écrire le motif en clair à sa place.\n` +
             `   • NOM d'un dépôt voisin ou d'un backend : inscrit une dépendance qui n'existe\n` +

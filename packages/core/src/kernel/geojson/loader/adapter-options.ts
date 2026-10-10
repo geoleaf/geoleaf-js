@@ -85,8 +85,8 @@ export function buildSingleLayerAdapterOptions(
     // Pass geometry type so the adapter creates the correct MapLibre layer type
     // (e.g. "fill-extrusion" instead of the default "fill" for polygon GeoJSON sources).
     if (def.geometry) adapterOptions.geometry = def.geometry;
-    // Forward a config-declared GeoJSON geometry type so the adapter can skip the
-    // per-feature scan (dormant unless the profile declares "Point"/"Polygon"/…).
+    // The alias is forwarded as declared: the adapter unites both spellings with the
+    // geometry types the data shows when it freezes the layer's sub-layers.
     if (def.geometryType) adapterOptions.geometryType = def.geometryType;
     if (def.showIconsOnMap) adapterOptions.showIconsOnMap = true;
     if (Array.isArray(def.styleRules) && def.styleRules.length) {

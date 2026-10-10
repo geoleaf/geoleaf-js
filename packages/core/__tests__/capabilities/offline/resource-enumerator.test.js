@@ -21,6 +21,8 @@ vi.mock("../../../src/capabilities/offline/config-seam.js", () => ({
         if (key === "basemaps") return globalThis.__basemaps ?? {};
         // The flag `_tilesRequested()` reads — drivable per test.
         if (key === "modules.offline.cache.enableTileCache") return globalThis.__tileFlag ?? true;
+        // The profile's declared origins — absent by default, like a profile declaring none.
+        if (key === "modules.offline.dataOrigins") return globalThis.__dataOrigins ?? fallback;
         return fallback;
     }),
 }));
@@ -68,6 +70,7 @@ afterEach(() => {
     delete globalThis.fetch;
     delete globalThis.__basemaps;
     delete globalThis.__selection;
+    delete globalThis.__dataOrigins;
 });
 
 describe("_addConfigResources — reads the Files manifest (the v2 layout)", () => {
@@ -665,5 +668,107 @@ describe("enumerateAll — the whole shopping list", () => {
             // other than what it announced.
             expect(resources.some((r) => r.url === "t/1.png")).toBe(false);
         });
+    });
+});
+
+describe("les ressources NOMMÉES par le profil sont jugées sur leur origine", () => {
+    // A direct layer `url`, a `fetchOptions` list and the icon sprite took their URL as
+    // written, third parties included. They now obey the rule a layer's entity source obeys
+    // (`pullVerdict`): silent in a profile that declares nothing, and from the first
+    // declaration on, a declared origin or the page's own — nothing else.
+    const THIRD = "https://tiers.example";
+    const API = "https://api.example";
+    const DECLARED = [{ origin: API, roles: ["data"], cacheable: false, authenticated: true }];
+    const fieldsWith = (url) => ({
+        attributes: { fields: [{ options: { fetchOptions: url } }] },
+    });
+
+    /** Enumerates the three kinds at once, each served by `host`. */
+    const enumerate = async (host, trace) => {
+        const resources = [];
+        ResourceEnumerator._addSpriteResources(
+            resources,
+            { icons: { spriteUrl: `${host}/sprite.svg` } },
+            trace
+        );
+        await ResourceEnumerator._addLayerResources(
+            resources,
+            {
+                layers: [
+                    { id: "direct", type: "geojson", url: `${host}/data.geojson` },
+                    { id: "form", inlineConfig: fieldsWith(`${host}/options.json`) },
+                ],
+            },
+            "p",
+            "../profiles",
+            null,
+            trace
+        );
+        return resources.map((r) => r.url);
+    };
+    const three = (host) => [`${host}/sprite.svg`, `${host}/data.geojson`, `${host}/options.json`];
+
+    test("sans déclaration, rien ne change : un tiers est préparé comme avant", async () => {
+        expect(await enumerate(THIRD)).toEqual(three(THIRD));
+    });
+
+    test("🛑 dans un profil qui déclare, un tiers non déclaré n'est pas préparé — et il est nommé", async () => {
+        globalThis.__dataOrigins = DECLARED;
+        const trace = {};
+
+        expect(await enumerate(THIRD, trace)).toEqual([]);
+        expect(trace.refusedOrigins).toEqual([
+            { source: "icon sprite", origin: THIRD },
+            { source: "layer direct", origin: THIRD },
+            { source: "layer form", origin: THIRD },
+        ]);
+    });
+
+    test("🛑 une origine déclarée `authenticated` reste préparable — ce n'est pas la règle des tuiles", async () => {
+        // `prefetch` is dropped from an authenticated declaration: under the tile rule the
+        // option list of the data API would never be prepared.
+        globalThis.__dataOrigins = DECLARED;
+        const trace = {};
+
+        expect(await enumerate(API, trace)).toEqual(three(API));
+        expect(trace.refusedOrigins).toBeUndefined();
+    });
+
+    test("l'origine de la page reste implicite dans un profil qui déclare", async () => {
+        globalThis.__dataOrigins = DECLARED;
+        const resources = [];
+        ResourceEnumerator._addSpriteResources(resources, {
+            icons: { spriteUrl: "../profiles/p/icons/sprite.svg" },
+        });
+        await ResourceEnumerator._addLayerResources(
+            resources,
+            { layers: [{ id: "direct", type: "geojson", url: "data/d.geojson" }] },
+            "p",
+            "../profiles",
+            null
+        );
+
+        expect(resources.map((r) => r.url)).toEqual([
+            "../profiles/p/icons/sprite.svg",
+            "../profiles/p/data/d.geojson",
+        ]);
+    });
+
+    test("le gabarit d'une couche tuilée n'est pas jugé ici : ses tuiles le sont, par leur règle", async () => {
+        globalThis.__dataOrigins = DECLARED;
+        const resources = [];
+        const trace = {};
+
+        await ResourceEnumerator._addLayerResources(
+            resources,
+            { layers: [{ id: "t", type: "tile", url: `${THIRD}/{z}/{x}/{y}.png` }] },
+            "p",
+            "../profiles",
+            { includeTiles: false },
+            trace
+        );
+
+        expect(resources.map((r) => r.url)).toEqual([`${THIRD}/{z}/{x}/{y}.png`]);
+        expect(trace.refusedOrigins).toBeUndefined();
     });
 });

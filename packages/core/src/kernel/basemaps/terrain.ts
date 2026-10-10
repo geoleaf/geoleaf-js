@@ -87,7 +87,8 @@ function _applyTerrainToMap(map: NativeMap, config: TerrainConfig, basemapKey: s
     map.setTerrain({ source: TERRAIN_SOURCE_ID, exaggeration });
     // 🛑 POSTED INSTANTLY, NOT ANIMATED — an animated tilt gets CUT, and it was. `easeTo` is
     // cancelled by any later camera command, and the application posts one at reveal
-    // (`app/init-reveal.ts` re-frames the profile bounds ~120 ms after the veil lifts). Measured
+    // (`app/init-reveal.ts` re-frames the profile bounds as the veil lifts — some 120 ms after it,
+    // when this was measured). Measured
     // on a plain boot with nothing acting on the page, basemap asking for `pitch: 60`:
     //
     //     618 fitBounds  →  629 easeTo{60}   final 60 ✅  — the tilt came last

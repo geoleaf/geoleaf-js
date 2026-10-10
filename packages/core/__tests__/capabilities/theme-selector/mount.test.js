@@ -1,7 +1,7 @@
 /**
- * Deterministic MOUNT test for the theme-selector capability — S2 Lot 8.
+ * Deterministic MOUNT test for the theme-selector capability.
  *
- * This is the prerequisite posed when theme-selector was pulled out of Lot 2: its DOM
+ * This is the prerequisite posed when theme-selector was pulled out of the batch of simple UI capabilities: its DOM
  * facade spans 6 files and its coverage came from a fragile, incidental full-boot path.
  * Here the bar is mounted for real in happy-dom, so the mount code is covered
  * deterministically — a precondition for moving `GeoLeaf.ThemeSelector` out of

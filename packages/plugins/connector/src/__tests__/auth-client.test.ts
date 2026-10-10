@@ -38,6 +38,29 @@ function mockBody(readBody: () => Promise<string>) {
     );
 }
 
+/** A response of `status` whose body is `body`, declared as `contentType`. */
+function mockDeclared(status: number, body: unknown, contentType: string | null) {
+    vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+            ok: status >= 200 && status < 300,
+            status,
+            headers: { get: (name: string) => (/^content-type$/i.test(name) ? contentType : null) },
+            text: () => Promise.resolve(typeof body === "string" ? body : JSON.stringify(body)),
+        })
+    );
+}
+
+/** The error a sign-in rejects with. */
+async function refusal(): Promise<AuthError> {
+    return AuthClient.login(ENDPOINT, "u", "p").then(
+        () => {
+            throw new Error("the sign-in should have been refused");
+        },
+        (err: AuthError) => err
+    );
+}
+
 // ─── AuthClient.login ─────────────────────────────────────────────────────────
 
 describe("AuthClient.login", () => {
@@ -77,6 +100,93 @@ describe("AuthClient.login", () => {
     it("throws AuthError on non-ok status other than 401/404/500", async () => {
         mockFetch(403, {});
         await expect(AuthClient.login(ENDPOINT, "u", "p")).rejects.toThrow(AuthError);
+    });
+
+    // ── What a refusal SAYS (RFC 9457) ─────────────────────────────────────────────────────
+    // A server that answers `application/problem+json` names its motive — a second factor
+    // required, an account locked. It used to be dropped: a 403 read "Authentication failed
+    // (403)" and nothing else reached the window or the host.
+
+    const PROBLEM = {
+        type: "https://example.com/problems/second-factor-required",
+        title: "Second factor required",
+        detail: "Un second facteur est exigé pour ce compte.",
+        status: 403,
+        method: "totp",
+    };
+
+    it("a refusal carries its status and the problem the server declared", async () => {
+        mockDeclared(403, PROBLEM, "application/problem+json");
+        const err = await refusal();
+        expect(err).toBeInstanceOf(AuthError);
+        expect(err.message).toBe("Authentication failed (403)");
+        expect(err.status).toBe(403);
+        expect(err.problem).toEqual({
+            type: PROBLEM.type,
+            title: PROBLEM.title,
+            detail: PROBLEM.detail,
+            body: PROBLEM,
+        });
+    });
+
+    it("reads the problem whatever the status, and with a charset parameter", async () => {
+        mockDeclared(
+            401,
+            { title: "Compte verrouillé" },
+            "application/problem+json; charset=utf-8"
+        );
+        const err = await refusal();
+        expect(err.message).toBe("Invalid credentials");
+        expect(err.status).toBe(401);
+        expect(err.problem?.title).toBe("Compte verrouillé");
+        expect(err.problem?.detail).toBeUndefined();
+    });
+
+    it("a refusal without a declared problem carries its status alone", async () => {
+        mockDeclared(403, PROBLEM, "application/json");
+        const err = await refusal();
+        expect(err.status).toBe(403);
+        expect(err.problem).toBeUndefined();
+    });
+
+    it.each([
+        ["a body that does not parse", "<html>403</html>"],
+        ["a body that is not an object", "[1, 2]"],
+        ["an empty body", ""],
+    ])("drops %s, and keeps the status", async (_what: string, body: string) => {
+        mockDeclared(403, body, "application/problem+json");
+        const err = await refusal();
+        expect(err.message).toBe("Authentication failed (403)");
+        expect(err.status).toBe(403);
+        expect(err.problem).toBeUndefined();
+    });
+
+    it("keeps only the members that are strings", async () => {
+        mockDeclared(
+            403,
+            { title: 42, detail: { a: 1 }, type: "about:blank" },
+            "application/problem+json"
+        );
+        const err = await refusal();
+        expect(err.problem?.type).toBe("about:blank");
+        expect(err.problem?.title).toBeUndefined();
+        expect(err.problem?.detail).toBeUndefined();
+    });
+
+    it("a problem body cut in transit does not change the refusal", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 403,
+                headers: { get: () => "application/problem+json" },
+                text: () => Promise.reject(new Error("cut")),
+            })
+        );
+        const err = await refusal();
+        expect(err.message).toBe("Authentication failed (403)");
+        expect(err.status).toBe(403);
+        expect(err.problem).toBeUndefined();
     });
 
     it("throws AuthError when JSON is malformed", async () => {

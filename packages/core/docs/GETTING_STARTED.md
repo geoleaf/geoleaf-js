@@ -305,7 +305,7 @@ The map is created in the element the loaded configuration names — `map.target
 > only `map` and `ui`: a `data` key passed to it is ignored without a word, and `boot()` creates
 > the map itself.
 
-> For the full structure of a profile and a step-by-step tutorial, see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md) and [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
+> For the full structure of a profile and a step-by-step tutorial, see [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md) and [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md).
 
 ---
 
@@ -376,7 +376,6 @@ See [ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md) for the detailed architecture
 | Goal                                    | Document                                                       |
 | --------------------------------------- | -------------------------------------------------------------- |
 | Full project from scratch               | [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md)               |
-| Configuring a profile                   | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                         |
 | Complete JSON reference                 | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)         |
 | Contributing a plugin to the repository | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)     |
 | Configuring plugins (Storage, AddPOI)   | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) |

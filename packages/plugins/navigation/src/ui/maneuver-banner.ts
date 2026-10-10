@@ -24,7 +24,7 @@ import type { RouteStep } from "@geoleaf-plugins/routing";
  * ## Why the phrase is composed LOCALLY rather than taken from the provider
  *
  * `RouteStep.instruction` is optional, and its absence is not an edge case: the public OSRM
- * instance emits **no narrative at all** — measured on the captured corpus in sprint 1. A
+ * instance emits **no narrative at all** — measured on the captured corpus. A
  * banner built on it would be blank for every user of that engine.
  *
  * ⚠️ And when a provider DOES give a sentence, it is in the language the provider was asked

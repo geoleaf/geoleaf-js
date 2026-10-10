@@ -211,19 +211,12 @@ The `label` property in a style file can be either a string (display name) or an
         "enabled": true,
         "visibleByDefault": false,
         "field": "nom",
-        "font": {
-            "family": "Arial",
-            "sizePt": 11,
-            "weight": 50,
-            "bold": false,
-            "italic": false
-        },
+        "font": { "sizePt": 11 },
         "color": "#333333",
         "opacity": 1,
         "buffer": {
             "enabled": true,
             "color": "#ffffff",
-            "opacity": 0.8,
             "sizePx": 2
         },
         "offset": {
@@ -235,7 +228,7 @@ The `label` property in a style file can be either a string (display name) or an
 ```
 
 `field` names a feature property as it is (`"nom"`), not a `properties.` path. The keys the object
-accepts, and which of them are rendered, are listed in the
+accepts are listed in the
 [labels documentation](../labels/GeoLeaf_Labels_README.md#label-configuration-in-style-files).
 
 ---
@@ -262,5 +255,4 @@ The keys are MapLibre GL paint property names (`fill-color`, `line-width`, `circ
 ## Links
 
 - [Schema sources](https://github.com/geoleaf/geoleaf-js/tree/main/profiles/schemas) — single source of truth
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — profile structure
-- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — complete configuration guide
+- [PROFILE_JSON_REFERENCE.md](../PROFILE_JSON_REFERENCE.md) — reading guide of a profile's files

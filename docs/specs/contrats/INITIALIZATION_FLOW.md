@@ -133,7 +133,7 @@ sequenceDiagram
     deactivate Boot
 
     Note over Boot,Core: PHASE 6.1 — Permalink (pré-carte)
-    Boot->>Boot: Permalink.readAndStore() si ui.permalink.enabled
+    Boot->>Boot: Permalink.readAndStore() sauf modules.permalink.enabled = false
 
     Note over Boot,Core: PHASE 6.2 — Création carte MapLibre
     Boot->>Core: GeoLeaf.init({ map: { target, center, zoom, mapOptions }, ui: { theme } })
@@ -167,12 +167,10 @@ sequenceDiagram
     Boot->>UI: UI.initFilterToggle() + initProximityFilter()
     Boot->>UI: UI._UINotifications.init()
 
-    %% Phase 9: await modules secondaires
-    Boot->>Boot: await secondaryModulesPromise
-    Boot->>Boot: Table.init() + Legend.init() + LayerManager.init()
-    Boot->>Boot: BaseLayers.init()
-    Boot->>Boot: POI.init() + Route.init() + GeoJSON.init()
-    Boot->>Boot: Labels.init() + CoordinatesDisplay.init()
+    %% Phase 9: un seul orchestrateur — le registre de modules
+    Note over Boot,Registry: PHASE 9 — registry.init(adapter, config), ordre topologique
+    Boot->>Registry: modules du preset, puis les capacités enregistrées (legend, labels, coordinates, route…)
+    Note over Registry: Aucun appel direct à un init() de capacité depuis le boot
 
     %% Phase 10: Permalink (post-modules)
     Boot->>Boot: Permalink.applyStoredState(map) + startSync(map)
@@ -228,23 +226,24 @@ GeoLeaf.boot();
 
 ### Événements DOM
 
-| Événement                     | Émetteur        | Quand                                | Utilisation         |
-| ----------------------------- | --------------- | ------------------------------------ | ------------------- |
-| `geoleaf:plugin:loaded`       | PluginRegistry  | Plugin enregistré via `register()`   | Détection plugins   |
-| `geoleaf:config:loaded`       | Config          | Config + profil chargés              | Init carte          |
-| `geoleaf:profile:loaded`      | Profile         | Profil actif chargé                  | Toast notification  |
-| `geoleaf:theme:applying`      | ThemeApplier    | Début chargement thème               | Toast loading       |
-| `geoleaf:theme:applied`       | ThemeApplier    | Toutes les couches visibles chargées | Reveal + fitBounds  |
-| `geoleaf:map:ready`           | app/init.ts     | Carte + couches prêtes               | Analytics, hooks    |
-| `geoleaf:app:ready`           | app/init.ts     | Application entièrement initialisée  | Boot toast, metrics |
-| `geoleaf:poi:click`           | POI             | Clic sur marqueur                    | Panneau latéral     |
-| `geoleaf:basemap:change`      | Baselayers      | Changement fond de plan              | Analytics           |
-| `geoleaf:storage:initialized` | Storage         | Storage initialisé                   | Cache ready         |
-| `geoleaf:offline`             | OfflineDetector | Connexion perdue                     | Mode offline        |
-| `geoleaf:online`              | OfflineDetector | Connexion rétablie                   | Synchronisation     |
-| `geoleaf:sw:updated`          | sw-register     | Nouvelle version SW                  | Prompt reload       |
-| `geoleaf:map:move`            | MaplibreAdapter | Fin de déplacement carte             | Permalink sync      |
-| `geoleaf:map:zoom`            | MaplibreAdapter | Fin de zoom carte                    | Permalink sync      |
+| Événement                     | Émetteur        | Quand                                     | Utilisation           |
+| ----------------------------- | --------------- | ----------------------------------------- | --------------------- |
+| `geoleaf:plugin:loaded`       | PluginRegistry  | Plugin enregistré via `register()`        | Détection plugins     |
+| `geoleaf:config:loaded`       | Config          | Config + profil chargés                   | Init carte            |
+| `geoleaf:profile:loaded`      | Profile         | Profil actif chargé                       | Toast notification    |
+| `geoleaf:theme:applying`      | ThemeApplier    | Début chargement thème                    | Toast loading         |
+| `geoleaf:theme:applied`       | ThemeApplier    | Toutes les couches visibles chargées      | Reveal + fitBounds    |
+| `geoleaf:map:ready`           | app/init.ts     | Carte + couches prêtes                    | Analytics, hooks      |
+| `geoleaf:app:ready`           | app/init.ts     | Application entièrement initialisée       | Boot toast, metrics   |
+| `geoleaf:poi:click`           | POI             | Clic sur marqueur                         | Panneau latéral       |
+| `geoleaf:basemap:change`      | Baselayers      | Changement fond de plan                   | Analytics             |
+| `geoleaf:storage:initialized` | Storage         | Storage initialisé                        | Cache ready           |
+| `geoleaf:offline`             | OfflineDetector | Connexion perdue                          | Mode offline          |
+| `geoleaf:online`              | OfflineDetector | Connexion rétablie                        | Synchronisation       |
+| `geoleaf:sw:updated`          | sw-register     | Un worker neuf s'est activé               | Journal, métriques    |
+| `geoleaf:sw:update-waiting`   | sw-register     | Une version neuve est installée et attend | Bandeau « Recharger » |
+| `geoleaf:map:move`            | MaplibreAdapter | Fin de déplacement carte                  | Permalink sync        |
+| `geoleaf:map:zoom`            | MaplibreAdapter | Fin de zoom carte                         | Permalink sync        |
 
 ---
 
@@ -277,7 +276,7 @@ _registry.destroy(); // teardown en ordre inverse
 
 > ⚠️ **Ce bloc décrivait l'état d'AVANT le S6, et il le décrivait au présent — corrigé le
 > 11/08/2026.** Il annonçait **huit** modules noyau ; il y en a **six**, et `boot-install.ts:110`
-> le dit sur place : _« S6 Lot 6: 6 kernel modules, not 8. `SecurityModule` and `APIModule` were
+> le dit sur place : _« 6 kernel modules, not 8. `SecurityModule` and `APIModule` were
 > wrappers whose init()/destroy() had become empty »_. Aux deux retirés s'ajoutaient trois
 > classes qui **n'existent pas** (`POIModule`, dissous au S9 ; `TableModule` ; `SearchModule`)
 > et une qui existe mais **manquait** (`ThemeEngineModule`). Les six identifiants et leurs
@@ -332,7 +331,7 @@ GeoLeaf.boot()
             ├── GeoLeaf._loadAllSecondaryModules() [fire & await]
             ├── BaseLayers.init() → thème par défaut appliqué
             │       └── → dispatch geoleaf:theme:applying
-            ├── ... (POI, Route, GeoJSON, UI panels)
+            ├──... (POI, Route, GeoJSON, UI panels)
             ├── [attend geoleaf:theme:applied]
             │       ↓ (ou timeout 5s de secours)
             └── revealApp()
@@ -366,14 +365,11 @@ GeoLeaf.boot()
 
 **Flux :** Config → Profile → GeoJSON.loadFromProfile() → MapLibre
 
-### Mode legacy (pre-V1, rétrocompatibilité)
+### Le mode « legacy » n'existe plus
 
-```javascript
-// config.data.useLegacyProfileData = true
-// poi.json + routes.json chargés séparément
-```
-
-**Flux :** Config → Profile → POI.init() → Route.draw() → MapLibre
+`config.data.useLegacyProfileData`, qui chargeait `poi.json` et `routes.json` séparément puis
+appelait `POI.init()` et `Route.draw()`, n'a plus aucun lecteur : un point est une entité d'une
+couche GeoJSON ordinaire, et un itinéraire relève de la capacité `route`.
 
 ---
 
@@ -484,7 +480,7 @@ interface, et une page sans voile ne reçoit aucun DOM. S'abonner **avant** `Geo
 
 ### Breakpoints recommandés
 
-> ⚠️ **Re-situés le 11/08/2026 (tâche 6.11).** Les cinq points portaient des numéros de ligne
+> ⚠️ **Re-situés le 11/08/2026.** Les cinq points portaient des numéros de ligne
 > dans `app/boot.ts` et `app/init.ts` : `packages/core/src/app/boot.ts` **fait 35 lignes** depuis que la séquence en
 > est sortie (c'est « une liaison, pas un boot », dit son propre en-tête), et `app/init.ts`
 > **n'existe plus** — ce que l'encart de tête de ce document annonçait déjà, en demandant de

@@ -19,7 +19,7 @@ import "./css/scale.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { SCALE_CAPABILITY } from "./scale-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { ScaleModule } from "./module.js";
 import { Scale } from "../../api/geoleaf.scale.js";

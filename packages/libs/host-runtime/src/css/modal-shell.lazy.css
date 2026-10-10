@@ -15,12 +15,13 @@
    confirmations was invisible — and each is awaited, so the action simply hung on a button
    nobody could see. Same defect the routing panel had, reached from another side.
 
-   📌 The rules are DUPLICATED with field-renderer's `form-modal-base.css` rather than moved,
-   and that is deliberate. `responsive-modal.ts` writes these same classes on its own, without
-   going through `createModalShell`: moving them here would leave it depending on a module its
-   graph may tree-shake away. The repository already made this call for `@keyframes gl-spin`,
-   duplicated three times with the same reasoning — coupling independently-shippable bundles to
-   one host stylesheet is the costlier mistake. The two copies must stay byte-equivalent. */
+   📌 THESE RULES HAVE ONE HOME, AND IT IS HERE. They were duplicated in field-renderer's
+   `form-modal-base.css` until 04/10/2026, "to stay byte-equivalent" — which nothing checked,
+   and the copy adopted LAST won every tie: a drawer lost its anchoring to it once. The form's
+   `responsive-modal.ts` writes these same classes without going through `createModalShell`,
+   so it adopts this sheet itself (`adoptModalShellSheet`) BEFORE its own; what it adds on top
+   is written at a higher specificity, because another bundle's copy of this sheet can still
+   be adopted after it. */
 
 .gl-form-modal-overlay {
     position: fixed;
@@ -50,12 +51,14 @@
     border-radius: 10px;
     box-shadow: var(--gl-shadow-medium, 0 4px 16px rgba(15, 23, 42, 0.18));
     animation: gl-modal-fade-in 0.18s ease;
-    font-family:
+    font-family: var(
+        --gl-font-family,
         system-ui,
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
-        sans-serif;
+        sans-serif
+    );
     color: var(--gl-color-text-main, #0f172a);
 }
 

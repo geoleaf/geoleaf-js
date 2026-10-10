@@ -24,7 +24,7 @@ The authoritative parameter reference is [`PROFILE_SCHEMA_REFERENCE.md`](https:/
 
 7. [basemaps section](#basemaps-section)
 
-8. [performance section — **REMOVED** (dead key)](#performance-section--removed-dead-key)
+8. [performance section — one key](#performance-section--one-key)
 
 9. [search section — **REMOVED** (dead key)](#search-section--removed-dead-key)
 
@@ -1655,12 +1655,26 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 ---
 
-## performance section — **REMOVED** (dead key)
+## performance section — one key
+
+```json
+{
+    "performance": {
+        "themeBatchSize": 6
+    }
+}
+```
+
+`performance.themeBatchSize` is how many layers of a theme are revealed at a time when a theme
+is applied — an integer of at least 1, `6` when absent. A lower value spreads the layers out;
+a higher one brings them in together. It is declared in `profile.json`.
 
 ::: warning
-**`performance` no longer exists, and nothing replaces it — the whole block is gone.**
+**Three other keys were documented here, and none of them does anything.**
 
-The three keys it declared (`layerLoadDelay`, `maxConcurrentLayers`, `fitBoundsOnThemeChange`) have no reader in `packages/*/src`, and no schema declares them. The setting disappeared together with the loader it drove.
+`layerLoadDelay`, `maxConcurrentLayers` and `fitBoundsOnThemeChange` have no reader in
+`packages/*/src`; the setting they described disappeared together with the loader it drove.
+The block is closed, so a profile that still declares one of them fails `validate:profiles`.
 
 Up-to-date reference, derived from the schemas: [`PROFILE_SCHEMA_REFERENCE.md`](https://github.com/geoleaf/geoleaf-js/blob/main/docs/reference/PROFILE_SCHEMA_REFERENCE.md).
 :::

@@ -1,8 +1,8 @@
 ---
-title: "Scale control configuration (scaleConfig)"
+title: "Scale control configuration (modules.scale)"
 ---
 
-# Scale control configuration (scaleConfig)
+# Scale control configuration (`modules.scale`)
 
 ## Description
 
@@ -10,25 +10,37 @@ The `ScaleControl` module displays the map scale in several forms: the graphic s
 
 ## Code location
 
-- **Module**: `packages/core/src/modules/built-in/ui/scale-control.ts`
-- **Initialisation**: `GeoLeaf.UI.ScaleControl.init(map, options)`
-- **Loading**: `packages/core/src/bundle-esm-entry.ts` (imported in Rollup order)
+- **Module**: `packages/core/src/capabilities/scale/scale-control.ts`
+- **Initialisation**: automatic — the capability installs the control when the application is ready. The control is reachable as `GeoLeaf.Scale`.
+- **Configuration**: `packages/core/src/capabilities/scale/config.ts` — the block read, and its defaults
 
 ## Configuration structure
 
+The control reads the `modules.scale` block of the profile. It is active without it: every key
+below has a default, and a profile declares only what it changes.
+
+> `modules.scale` is not the `scaleConfig` block of a **layer**, which bounds the scales at which
+> that layer is drawn (`minScale`, `maxScale`).
+
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": true,
-        "scaleNumeric": true,
-        "scaleNumericEditable": false,
-        "scaleNivel": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleGraphic": true,
+            "scaleNumeric": true,
+            "scaleNumericEditable": false,
+            "scaleNivel": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
 
 ## Available parameters
+
+### enabled (boolean)
+
+Turns the control on or off as a whole. **Default value:** `true`.
 
 ### scaleGraphic (boolean)
 
@@ -45,9 +57,11 @@ Enables or disables the MapLibre GL JS graphic scale (horizontal bar with gradua
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleGraphic": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
@@ -56,7 +70,7 @@ Enables or disables the MapLibre GL JS graphic scale (horizontal bar with gradua
 
 Enables or disables the numeric scale, displayed in the "1:250 000" format.
 
-**Default value:** `false`
+**Default value:** `true`
 
 **Behaviour:**
 
@@ -69,9 +83,11 @@ Enables or disables the numeric scale, displayed in the "1:250 000" format.
 
 ```json
 {
-    "scaleConfig": {
-        "scaleNumeric": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleNumeric": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
@@ -82,7 +98,7 @@ Enables or disables the numeric scale, displayed in the "1:250 000" format.
 
 Turns the numeric scale into an editable input field. A target scale can be typed in, and the map adjusts to the matching zoom level.
 
-**Default value:** `false`
+**Default value:** `true`
 
 **Prerequisite:** `scaleNumeric` must be `true`
 
@@ -102,10 +118,12 @@ Turns the numeric scale into an editable input field. A target scale can be type
 
 ```json
 {
-    "scaleConfig": {
-        "scaleNumeric": true,
-        "scaleNumericEditable": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleNumeric": true,
+            "scaleNumericEditable": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
@@ -120,7 +138,7 @@ Turns the numeric scale into an editable input field. A target scale can be type
 
 Enables or disables the display of the MapLibre GL JS zoom level (for example "Zoom: 12").
 
-**Default value:** `false`
+**Default value:** `true`
 
 **Behaviour:**
 
@@ -131,9 +149,11 @@ Enables or disables the display of the MapLibre GL JS zoom level (for example "Z
 
 ```json
 {
-    "scaleConfig": {
-        "scaleNivel": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleNivel": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
@@ -157,23 +177,30 @@ Sets the position of the scale control on the map.
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": true,
-        "scaleNumeric": true,
-        "scaleNivel": true,
-        "position": "bottomright"
+    "modules": {
+        "scale": {
+            "scaleGraphic": true,
+            "scaleNumeric": true,
+            "scaleNivel": true,
+            "position": "bottomright"
+        }
     }
 }
 ```
 
 ## Usage examples
 
-### Minimal configuration (graphic scale only)
+### Graphic scale only
+
+The numeric scale and the zoom level are shown by default: they are turned off by name.
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": true
+    "modules": {
+        "scale": {
+            "scaleNumeric": false,
+            "scaleNivel": false
+        }
     }
 }
 ```
@@ -182,12 +209,14 @@ Sets the position of the scale control on the map.
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": true,
-        "scaleNumeric": true,
-        "scaleNumericEditable": false,
-        "scaleNivel": true,
-        "position": "bottomleft"
+    "modules": {
+        "scale": {
+            "scaleGraphic": true,
+            "scaleNumeric": true,
+            "scaleNumericEditable": false,
+            "scaleNivel": true,
+            "position": "bottomleft"
+        }
     }
 }
 ```
@@ -196,26 +225,28 @@ Sets the position of the scale control on the map.
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": false,
-        "scaleNumeric": true,
-        "scaleNumericEditable": true,
-        "scaleNivel": true,
-        "position": "bottomright"
+    "modules": {
+        "scale": {
+            "scaleGraphic": false,
+            "scaleNumeric": true,
+            "scaleNumericEditable": true,
+            "scaleNivel": true,
+            "position": "bottomright"
+        }
     }
 }
 ```
 
 ### Disable entirely
 
-Remove `scaleConfig` from profile.json, or set every parameter to `false`:
+Leaving the block out does not turn the control off — it is active by default. One key does:
 
 ```json
 {
-    "scaleConfig": {
-        "scaleGraphic": false,
-        "scaleNumeric": false,
-        "scaleNivel": false
+    "modules": {
+        "scale": {
+            "enabled": false
+        }
     }
 }
 ```
@@ -269,18 +300,24 @@ The module uses the GeoLeaf CSS variables:
 
 ## JavaScript API
 
-### Automatic initialisation
+The control is mounted on `GeoLeaf.Scale`. It needs no call: the capability reads its configuration and installs the control when the application is ready.
+
+### Reading the state
 
 ```javascript
-// Initialises automatically from the active profile configuration
-GeoLeaf.UI.ScaleControl.init(map);
+// `false` only when the configuration turns the control off
+GeoLeaf.Scale.isEnabled();
+
+// The resolved configuration, merged over the built-in defaults
+GeoLeaf.Scale.getConfig();
 ```
 
 ### Manual initialisation
 
 ```javascript
-// Initialisation with a custom configuration
-GeoLeaf.UI.ScaleControl.init(map, {
+// Re-create the control with a custom configuration.
+// `init` takes the GeoLeaf map adapter, not the native MapLibre map.
+GeoLeaf.Scale.init(GeoLeaf.Core.getMap(), {
     scaleGraphic: true,
     scaleNumeric: true,
     scaleNumericEditable: false,
@@ -293,7 +330,7 @@ GeoLeaf.UI.ScaleControl.init(map, {
 
 ```javascript
 // Clean up the control
-GeoLeaf.UI.ScaleControl.destroy();
+GeoLeaf.Scale.destroy();
 ```
 
 ## Events
@@ -331,10 +368,9 @@ The module is optimised:
 
 ## Related files
 
-- `packages/core/src/modules/built-in/ui/scale-control.ts` — main module
-- `packages/core/src/bundle-esm-entry.ts` — module loading
-- `packages/core/demo/` — initialisation in the demo
-- `profiles/*/profile.json` — configuration
+- `packages/core/src/capabilities/scale/scale-control.ts` — the control
+- `packages/core/src/capabilities/scale/config.ts` — the `modules.scale` block and its defaults
+- `profiles/*/profile.json` — where a profile declares the block
 
 ## History
 

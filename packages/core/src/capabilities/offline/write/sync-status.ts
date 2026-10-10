@@ -39,10 +39,7 @@ const OWED = new Set(["pending", "failed", "inFlight"]);
 
 /** The outbox module, or `null` while the engine is not wired. */
 function _outbox(): { list?(): Promise<{ state: string }[]> } | null {
-    const db = StorageContract.DB as {
-        _ensureModule?: (name: string) => { list?(): Promise<{ state: string }[]> } | null;
-    } | null;
-    return db?._ensureModule?.("Outbox") ?? null;
+    return StorageContract.DB?._ensureModule?.("Outbox") ?? null;
 }
 
 /**
@@ -53,12 +50,7 @@ function _outbox(): { list?(): Promise<{ state: string }[]> } | null {
  * to wrap, and one of them will forget.
  */
 async function _lastSyncAt(): Promise<number | null> {
-    const db = StorageContract.DB as {
-        _ensureModule?: (
-            name: string
-        ) => { getPreference?(key: string, def?: unknown): Promise<unknown> } | null;
-    } | null;
-    const prefs = db?._ensureModule?.("Preferences");
+    const prefs = StorageContract.DB?._ensureModule?.("Preferences");
     const value = await prefs?.getPreference?.(LAST_SYNC_PREFERENCE, null);
     return typeof value === "number" ? value : null;
 }

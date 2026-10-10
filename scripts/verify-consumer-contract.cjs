@@ -376,7 +376,7 @@ const ANNONCES_GRAND_PERAGE = new Map([
     ],
     [
         "packages/plugins/table/src/types.ts#TableConfig.virtualScrolling",
-        "Jumelle exacte de `pageSize`, et traitée pareil au sprint 6 du lot 2 (tâche 2.7) : " +
+        "Jumelle exacte de `pageSize`, et traitée pareil : " +
             "clé SANS EFFET — la virtualisation se décide sur un SEUIL de lignes, jamais sur " +
             "cette clé —, sortie de `DEFAULTS` et des profils livrés, mais marquée plutôt que " +
             "retirée du type publié. Pas de `replacement` possible, donc pas sa place au registre",
@@ -843,7 +843,7 @@ async function main() {
         cm.refuse(
             `EXPECTED_FACADE_MEMBERS ne rend que ${memberTotal} membre(s) (plancher ` +
                 `${FLOOR.members}) — la profondeur 2 est trop étroite pour que CC-01 conclue. ` +
-                "Élargissez `DEPTH2_FACADES` (tâches 1.4/1.5) AVANT de compter sur cette gate.",
+                "Élargissez `DEPTH2_FACADES` AVANT de compter sur cette gate.",
             "CC-00"
         );
     }
@@ -1355,15 +1355,30 @@ async function main() {
                 continue; // not reached — `refuse` exits; it narrows `where` for the checker
             }
             const needles = anchors.needlesOf(entry.selector);
-            if (!anchorSources(where.pkg).some((src) => anchors.isPlaced(src, needles))) {
-                const forms = needles.datasetKey
-                    ? `\`${needles.literal}\` ni écriture de \`dataset.${needles.datasetKey}\``
-                    : `\`${needles.literal}\``;
+            if (needles.kind === "other") {
+                notes.push(
+                    `[CC-08] \`${entry.selector}\` — sélecteur composé : cherché comme une ` +
+                        "sous-chaîne, feuilles de style comprises. La règle ne sait pas dire ce " +
+                        "qui POSE une relation entre deux nœuds."
+                );
+            }
+            if (!anchors.isPlacedInCorpus(anchorSources(where.pkg), needles)) {
+                // What would have placed it, in the words of the form that was searched.
+                const sought = {
+                    id: `aucune écriture de l'id \`${needles.name}\` (affectation, clé \`id:\`, attribut, balisage, préfixe, ou constante écrite)`,
+                    class: `la classe \`${needles.name}\` n'est le mot d'aucune chaîne d'un script, hors sélecteur et hors lecture`,
+                    attr:
+                        `aucune écriture de l'attribut \`${needles.name}\`` +
+                        (needles.value === null ? "" : ` à la valeur \`${needles.value}\``) +
+                        " (`setAttribute`, balisage, `dataset`)",
+                    other: `le littéral \`${needles.literal}\` n'apparaît nulle part`,
+                }[needles.kind];
                 errors.push({
                     code: "CC-08",
                     msg:
-                        `\`${entry.selector}\` est déclaré \`owner: "library"\` mais ni littéral ` +
-                        `${forms} n'existe dans les sources de \`${where.pkg.name}\`. Soit le ` +
+                        `\`${entry.selector}\` est déclaré \`owner: "library"\` mais ` +
+                        `\`${where.pkg.name}\` ne le POSE pas : ${sought}. Une lecture, une ` +
+                        "règle de feuille de style ou un commentaire ne comptent pas. Soit le " +
                         "nœud a changé de nom (rupture pour l'aval), soit un autre paquet le " +
                         "pose (`provider`), soit il est désormais posé par l'hôte et l'entrée " +
                         "doit changer de propriétaire.",
@@ -1677,7 +1692,12 @@ function anchorSources(pkg) {
             "CC-08"
         );
     }
-    const sources = files.map((f) => ({ text: fs.readFileSync(f, "utf8") }));
+    // A stylesheet is read — a compound selector is searched there too — but marked: it
+    // targets a node, it never places one.
+    const sources = files.map((f) => ({
+        text: fs.readFileSync(f, "utf8"),
+        css: f.endsWith(".css"),
+    }));
     anchorCache.set(pkg.dirName, sources);
     return sources;
 }

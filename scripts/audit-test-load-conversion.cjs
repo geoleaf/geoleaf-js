@@ -1140,7 +1140,7 @@ function printTriage(t) {
     const mock = t.files.filter((f) => f.family === "mock");
 
     console.log("ℹ audit-test-load-conversion — triage\n");
-    console.log("  ══ Mécaniques — sprints 2 et 5 ══\n");
+    console.log("  ══ Mécaniques ══\n");
 
     for (const name of SCOPE) {
         const own = mech.filter((f) => f.pkg === name);
@@ -1196,7 +1196,7 @@ function printTriage(t) {
     const clean = mock.filter((f) => !f.captures.length);
     const m1Sites = mock.reduce((n, f) => n + f.m1, 0);
 
-    console.log("\n\n  ══ vi.mock() — sprint 3 ══\n");
+    console.log("\n\n  ══ vi.mock() ══\n");
     console.log(`  ${mock.length} fichiers / ${nSites(mock)} sites\n`);
 
     console.log("  Axe 1 — une factory vi.mock() capture-t-elle une variable de module ?");
@@ -1263,7 +1263,7 @@ function printReloadTriage(t) {
     const nReload = reload.reduce((n, f) => n + f.reload, 0);
     const nIso = reload.reduce((n, f) => n + f.reloadIso, 0);
 
-    console.log("\n\n  ══ resetModules() / isolateModules() — sprint 4 ══\n");
+    console.log("\n\n  ══ resetModules() / isolateModules() ══\n");
     console.log(`  ${reload.length} fichiers / ${nSites(reload)} sites\n`);
 
     console.log("  Axe R1 — ce require() RECHARGE-t-il, ou cohabite-t-il avec un rechargement ?");

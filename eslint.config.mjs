@@ -135,7 +135,7 @@ const ANY_HARDENED_PLUGINS = ANY_HARDENED_PLUGIN_PACKAGES.map((name) =>
 const KERNEL_APP_BOUNDARY = {
     group: ["**/app/*", "**/app/**"],
     message:
-        "kernel layer must not import app/ — the dependency runs app/ → (api|globals|kernel|utils), never the reverse (KERNEL S13 study, S14 move; the four roots replaced modules/ at R.9). Put the shared symbol in kernel/ instead.",
+        "kernel layer must not import app/ — the dependency runs app/ → (api|globals|kernel|utils), never the reverse (KERNEL S13 study, S14 move; the four roots replaced modules/). Put the shared symbol in kernel/ instead.",
 };
 
 // ENGINE — only adapters/maplibre/** may value-import the engine (socle S4, block 6ter bis).
@@ -873,7 +873,7 @@ export default [
                         {
                             group: ["**/app/**"],
                             message:
-                                "capabilities/ must not import app/ — the dependency runs app/ → capabilities/, never the reverse. Since R.10 there is NO exception: a capability that needs an ICoreModule lifecycle declares it in its own directory (capabilities/<id>/module.ts). Anything else must move to modules/ or go through a seam.",
+                                "capabilities/ must not import app/ — the dependency runs app/ → capabilities/, never the reverse. There is NO exception: a capability that needs an ICoreModule lifecycle declares it in its own directory (capabilities/<id>/module.ts). Anything else must move to modules/ or go through a seam.",
                         },
                         // ── `capabilities/ → built-in/` goes through a mediator ────────────
                         // 55 edges measured on 07-24. The original statement said
@@ -913,7 +913,7 @@ export default [
                         {
                             regex: String.raw`kernel/[^/]+/(?!index\.js$)(?!.*-types\.js$)(?!.*-seam\.js$)(?!config-primitives\.js$).+`,
                             message:
-                                "capabilities/ must not reach deep into kernel/ — import the sub-directory barrel (e.g. kernel/geojson/index.js) instead. Type hubs (*-types.js), seams (*-seam.js) and config-primitives.js stay directly importable. If the symbol you need is not on the barrel, adding it there is the decision to make — widening the barrel is explicit, bypassing it is not (backlog R.8).",
+                                "capabilities/ must not reach deep into kernel/ — import the sub-directory barrel (e.g. kernel/geojson/index.js) instead. Type hubs (*-types.js), seams (*-seam.js) and config-primitives.js stay directly importable. If the symbol you need is not on the barrel, adding it there is the decision to make — widening the barrel is explicit, bypassing it is not (rule R.8).",
                         },
                     ],
                 },

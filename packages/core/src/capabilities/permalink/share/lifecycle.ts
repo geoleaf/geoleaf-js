@@ -16,7 +16,7 @@
  *     injection when the strip already exists (subscription-after-render / recreate).
  *
  * `init()` is idempotent (`_started` guard); `_reset()` detaches both listeners
- * (registry destroy / test seam). Since the presets build (S2 Lot 6) it is called by
+ * (registry destroy / test seam). Since the presets build it is called by
  * `ShareModule.init()` **alone** — the kernel (`setupUI`) no longer imports this file.
  * Ordering is safe by construction: `ShareModule` has no dependencies, so the registry
  * dequeues it 2nd (right after `security`), six modules before `UIModule.init()` builds

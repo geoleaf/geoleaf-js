@@ -52,6 +52,23 @@ interface DownloadHandlerElements {
     clearBtn: HTMLButtonElement;
 }
 
+/**
+ * The origins a download left out because the origin rule refused them, each once.
+ *
+ * @param result - What `CacheManager.cacheProfile` resolved with.
+ * @returns the origins, in the order the core met them; empty on an older core, which only
+ *   logged them.
+ */
+function _refusedOrigins(result: unknown): string[] {
+    const list = (result as { preparation?: { refusedOrigins?: unknown } } | null)?.preparation
+        ?.refusedOrigins;
+    if (!Array.isArray(list)) return [];
+    const origins = list
+        .map((entry: unknown) => (entry as { origin?: unknown } | null)?.origin)
+        .filter((origin): origin is string => typeof origin === "string" && origin !== "");
+    return [...new Set(origins)];
+}
+
 /** One progress tick emitted by `CacheManager.cacheProfile`. */
 interface DownloadProgress {
     percentage?: number;
@@ -189,7 +206,24 @@ const DownloadHandler = {
             this._progressText.textContent = `✅ ${resourceCount} ${t("storage.download.done")}`;
 
         const sizeStr = FormatUtils.formatBytes((result as { totalSize?: number }).totalSize ?? 0);
-        getUINotifications()?.success(`${t("storage.notif.download.success")} : ${sizeStr}`, 4000);
+        // 🛑 WHAT THE ORIGIN RULE LEFT OUT IS SAID, AND IT IS NOT A SUCCESS. The core keeps it
+        // in its result (`preparation.refusedOrigins`, core ≥ 3.15.0); a plain "profile
+        // downloaded" over a skipped basemap told the user it was prepared. Longer on screen
+        // than a success: it names origins, and they have to be read.
+        const refused = _refusedOrigins(result);
+        if (refused.length > 0) {
+            const label = t("storage.notif.download.partial");
+            // A language that misses the key gets the key back: the count is said anyway.
+            const said = label.includes("{0}")
+                ? label.replace("{0}", String(refused.length))
+                : `${label} : ${refused.length}`;
+            getUINotifications()?.warning(`${said} (${refused.join(", ")}) — ${sizeStr}`, 9000);
+        } else {
+            getUINotifications()?.success(
+                `${t("storage.notif.download.success")} : ${sizeStr}`,
+                4000
+            );
+        }
 
         setTimeout(() => {
             if (this._progressEl) this._progressEl.style.display = "none";

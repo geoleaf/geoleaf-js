@@ -140,6 +140,15 @@ describe("_downloadResource", () => {
         // nothing else to assert: the skipped path returns before cacheLayer, without throwing
         expect(fetchFn).toHaveBeenCalled();
     });
+
+    // A JSON body that parses to `null` (or to a bare primitive) used to be stored as the
+    // resource, then handed back as a "cached" file. It is now a named failure.
+    test.each([null, 42, true])("corps %s → rejet nommé, rien de stocké", async (data) => {
+        fetchFn.mockResolvedValue({ skipped: false, size: 4, data, metadata: {} });
+        await expect(
+            Downloader._downloadResource({ url: "u.json", type: "config" }, "t")
+        ).rejects.toThrow(/Nothing storable in the response/);
+    });
 });
 
 describe("état du téléchargement", () => {

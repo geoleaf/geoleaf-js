@@ -54,7 +54,7 @@ interface StorageInitOptions {
 }
 
 /**
- * Optimistic-edit module, injected by the offline capability (tâche 4.4).
+ * Optimistic-edit module, injected by the offline capability.
  *
  * Structural, like {@link PullLike}: the facade lives in the boot graph, editing in
  * the deferred chunk.
@@ -166,6 +166,8 @@ interface StoragePushReport {
     readonly deferred: number;
     /** What stopped the drain before the end of the queue, or `null`. */
     readonly haltedBy: string | null;
+    /** Captures walked past for want of a session their layer requires — see the drain. */
+    readonly heldForSession: number;
     readonly pushed: number;
     readonly failed: number;
     readonly alreadyPresent: number;
@@ -186,7 +188,7 @@ interface StorageEditReport {
 }
 
 /**
- * Bounded-pull module, injected by the offline capability (tâche 4.1).
+ * Bounded-pull module, injected by the offline capability.
  *
  * Structural rather than imported: the façade lives in the boot graph, the pull lives in the
  * deferred offline chunk. A type-only import would be free at runtime, but naming the chunk
@@ -225,6 +227,28 @@ interface ReportLike {
     readSyncStatus?: () => Promise<SyncStatus>;
     /** The pre-departure check — see `report/preflight.ts`. Optional for the same reason. */
     buildPreflight?: () => Promise<PreflightReport>;
+    /** The origin rule's verdict for one URL — see `cache/resource-enumerator.ts`. Optional too. */
+    prefetchVerdict?: (url: string) => StoragePrefetchVerdict;
+}
+
+/**
+ * What the origin rule of the offline preparation answers for one URL.
+ *
+ * Structural, like its neighbours: the facade lives in the boot graph, the rule in the
+ * deferred chunk (`capabilities/offline/data-origins.ts`).
+ */
+interface StoragePrefetchVerdict {
+    /** Whether the preparation may download this URL ahead of use. */
+    allowed: boolean;
+    /** The origin judged — the raw URL when it does not parse, empty with no engine. */
+    origin: string;
+    /**
+     * Why not, on a refusal: `"undeclared"` — a third-party origin no declaration names;
+     * `"notPrefetchable"` — declared without `cacheable: true` and `prefetch: true`, an
+     * `authenticated` origin included; `"unparsable"`; `"engineUnavailable"` — no offline
+     * engine is wired, so nothing is prepared at all.
+     */
+    reason?: "undeclared" | "notPrefetchable" | "unparsable" | "engineUnavailable";
 }
 
 /**
@@ -260,22 +284,18 @@ interface StorageLayerPullReport {
  */
 const PULL_ENGINE_WAIT_MS = 3000;
 
-interface DBLike {
+/**
+ * The engine as this façade drives it. Its lifecycle members are written here — they are
+ * the engine's internals, which the namespace does not name. The two relays it reads are a
+ * `Pick` of the namespace's declaration, typed from the engine: a signature rewritten here
+ * would be checked against nothing.
+ */
+interface DBLike extends Pick<GeoLeafStorageDB, "getStorageStats" | "getLayersByProfile"> {
     _db?: IDBDatabase | null;
     _dbName?: string;
     _dbVersion?: number;
     init: () => Promise<unknown>;
     close?: () => void;
-    getStorageStats?: () => Promise<{
-        used: number;
-        quota: number;
-        percentage: number;
-        layersCount?: number;
-        featuresCount?: number;
-        outboxCount?: number;
-        conflictsCount?: number;
-    }>;
-    getLayersByProfile?: (profileId: string) => Promise<unknown[]>;
 }
 
 interface CacheManagerLike {
@@ -293,6 +313,13 @@ interface CacheManagerLike {
 interface OfflineDetectorLike {
     init: (opts: Record<string, unknown>) => void;
     isOnline: () => boolean;
+    /**
+     * Checks real connectivity, with a ping when one is configured. Named here because the
+     * detector's own documentation teaches it through `GeoLeaf.Storage.OfflineDetector`: this
+     * view is what the ambient namespace publishes, so a taught member missing from it does
+     * not compile.
+     */
+    checkConnectivity?: () => Promise<boolean>;
     destroy?: () => void;
 }
 
@@ -399,10 +426,10 @@ const Storage = {
     },
 
     /**
-     * Initialise every available storage sub-module (IndexedDB, CacheManager,
-     * optionally the offline detector and the Storage plugin's Service Worker).
-     * @param options - per-module options; `enableOfflineDetector` and
-     * `enableServiceWorker` are opt-in (default `false`).
+     * Initialise every available storage sub-module (IndexedDB, CacheManager, and
+     * optionally the offline detector).
+     * @param options - per-module options; `enableOfflineDetector` is opt-in (default
+     * `false`). The Service Worker is not started from here: it is the PWA capability's.
      * @returns `true` once all available modules are initialised.
      * @throws if a sub-module initialisation fails.
      * @remarks Emits `geoleaf:storage:initialized` on success.
@@ -489,11 +516,15 @@ const Storage = {
     },
 
     /**
-     * Pulls a declared layer's entities into the local `features` store (tâche 4.1).
+     * Pulls a declared layer's entities into the local `features` store.
      *
      * Bounded by the layer's `offline.maxFeatures` and, optionally, by a bounding box.
      * Downloading NEVER grants write access: the records land as `synced` and no queue entry
      * is created (invariant S6 of the sync contract).
+     *
+     * A layer that is on the map and declares `offline.enabled` is given what the store
+     * holds as the pull ends: the map follows without a reload, and `geoleaf:layer:updated`
+     * announces it. Since 3.15.0 — the layer kept its previous drawing until the next load.
      *
      * ⏱ **Waits for the engine, but not indefinitely.** The implementation lives in
      * the offline chunk, loaded via `import()` **after** boot — calling it at the
@@ -549,7 +580,7 @@ const Storage = {
     },
 
     /**
-     * Applies an edit locally AND queues it for the server — the optimistic write (tâche 4.4).
+     * Applies an edit locally AND queues it for the server — the optimistic write.
      *
      * The entity goes into the `features` store and the operation into the
      * `outbox`, **in a single transaction**: a field capture has no other copy, and
@@ -662,6 +693,7 @@ const Storage = {
                 attempted: 0,
                 deferred: 0,
                 haltedBy: null,
+                heldForSession: 0,
                 pushed: 0,
                 failed: 0,
                 alreadyPresent: 0,
@@ -753,6 +785,9 @@ const Storage = {
      * `rejectedByServer`, name a server fact no local gesture undoes: their exit is
      * {@link Storage.discardQuarantined}. A requeued entry starts a fresh replay budget.
      *
+     * An entry that goes back is announced — `geoleaf:offline:quarantine-exited`, with
+     * `exit: "requeued"` — and a pass is asked for: no `pushOutbox()` has to follow.
+     *
      * @param id - The entry's contract identifier.
      * @returns `{ok}` and, on refusal, its motive.
      * @example
@@ -779,6 +814,10 @@ const Storage = {
      * The rule that decides stays {@link Storage.requeueQuarantined}'s — motive
      * requeueable, cause observed as lifted — so what it refuses is COUNTED in
      * `skipped`, never silently taken.
+     *
+     * The gesture is announced ONCE, whatever the number of entries it brings back
+     * (`geoleaf:offline:quarantine-exited`), and asks for one pass. Bringing nothing back
+     * announces nothing.
      *
      * @param reason - Restrict to this motive; omitted, every requeueable entry.
      * @returns How many came back, how many the rule left, or the refusal.
@@ -807,6 +846,10 @@ const Storage = {
      * The entity's local record then returns to the server's truth, unless another queue
      * entry still names it: removed when the server has nothing to give back (a creation that
      * never landed, `deletedOnServer`), marked `synced` otherwise, so the next pull replaces it.
+     *
+     * A destroyed entry is announced — `geoleaf:offline:quarantine-exited`, with
+     * `exit: "discarded"` — once the local record has settled. No pass follows: nothing is left
+     * to send.
      *
      * @param id - The entry's contract identifier.
      * @param confirmedLocalId - This entry's `localId`, as the caller read it.
@@ -968,6 +1011,45 @@ const Storage = {
             return null;
         }
         return build();
+    },
+
+    /**
+     * Will the offline preparation download this URL — and if not, why?
+     *
+     * The preparation only downloads a basemap or a tiled layer from the application's own
+     * origin while it is undeclared, or from an origin declared `cacheable: true` and
+     * `prefetch: true` in `modules.offline.dataOrigins`. The refusal used to be a console
+     * warning during the download: an interface offering the basemap could neither know it
+     * beforehand nor say it afterwards. This is the same rule, asked before.
+     *
+     * `url` may be a tile URL TEMPLATE: it is judged on the concrete tile the preparation
+     * would request (`{s}` read as `a`).
+     *
+     * ⚠️ One URL, one verdict. A vector basemap is judged twice by the preparation — its
+     * style, then the tiles, glyphs and sprite the style names, which may live on other
+     * origins: a favourable verdict on the style URL does not promise everything behind it.
+     * What a download actually left out is in its result, `preparation.refusedOrigins`.
+     *
+     * Never throws. With no engine wired it answers a refusal — nothing is prepared at all.
+     * Since 3.15.0.
+     *
+     * @param url - A resource URL, a tile URL template, or a style URL.
+     * @returns `allowed`, the `origin` judged and, on a refusal, its `reason`.
+     * @example
+     * const verdict = GeoLeaf?.Storage?.prefetchVerdict?.(
+     *     "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+     * );
+     * if (verdict && !verdict.allowed) {
+     *     console.warn(`not prepared: ${verdict.origin} (${verdict.reason})`);
+     * }
+     */
+    prefetchVerdict(url: string): StoragePrefetchVerdict {
+        const verdict = this._modules.report?.prefetchVerdict;
+        if (!verdict) {
+            Log.warn("[GeoLeaf.Storage] prefetchVerdict — moteur hors-ligne non câblé.");
+            return { allowed: false, origin: "", reason: "engineUnavailable" };
+        }
+        return verdict(url);
     },
 
     /**

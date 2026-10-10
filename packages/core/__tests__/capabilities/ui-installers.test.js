@@ -1,5 +1,5 @@
 /**
- * Unit tests — S2 Lot 2 UI-simple capability installers.
+ * Unit tests — UI-simple capability installers.
  *
  * Covers the 5 homogeneous UI-control installers (branding, coordinates,
  * theme-toggle, scale, geolocation): declaration wiring (layer C), the
@@ -7,7 +7,7 @@
  * the createModule factory, and the read-API (isEnabled/getConfig) — deterministic
  * coverage replacing the fragile incidental boot coverage. Replaces the assertions
  * removed from globals/ui.test.js and modules/globals-ui.test.js.
- * (theme-selector deferred out of Lot 2 — its DOM-rendering needs a mount test.)
+ * (theme-selector deferred out of this batch — its DOM-rendering needs a mount test.)
  */
 
 import { describe, expect, it } from "vitest";
@@ -38,7 +38,7 @@ const geolocationCap = await import("../../src/capabilities/geolocation/geolocat
 const geolocationMod = await import("../../src/capabilities/geolocation/module.ts");
 const geolocationFacade = await import("../../src/api/geoleaf.geolocation.ts");
 
-// S2 Lot 8 — theme-selector, the last capability to migrate (its deterministic mount
+// theme-selector, the last capability to migrate (its deterministic mount
 // coverage now lives in __tests__/capabilities/theme-selector/mount.test.js).
 const themeSelector = await import("../../src/capabilities/theme-selector/install.ts");
 const themeSelectorCap =

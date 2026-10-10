@@ -10,6 +10,7 @@
 import {
     setEditorActiveTool,
     getEditorActiveTool,
+    deactivateActiveTool,
     updateUndoRedoState,
 } from "./sub-menu/floating-menu.js";
 import { toggleEditorMenu, destroyEditor } from "./editor-api.js";
@@ -20,7 +21,7 @@ import { discardDraft } from "./draft-state.js";
 export { setDestroyHook, toggleEditorMenu } from "./editor-api.js";
 
 /** @public */
-export function buildPublicApi(): Record<string, unknown> {
+export function buildPublicApi() {
     return {
         /** Opens or closes the editor floating sub-menu. */
         toggleMenu: (anchorEl?: Element | null): void => toggleEditorMenu(anchorEl),
@@ -31,6 +32,13 @@ export function buildPublicApi(): Record<string, unknown> {
         setActiveTool: setEditorActiveTool,
         /** Returns the currently armed tool identifier, or null. */
         getActiveTool: getEditorActiveTool,
+        /**
+         * Disarms the armed tool and abandons the shape being traced with it: the vertices
+         * already laid are removed and a click on the map draws nothing more. `true` when a
+         * tool was armed, `false` when none was. A shape already FINISHED, waiting for its
+         * form, is not touched — that is `discardDraft`.
+         */
+        cancelDrawing: deactivateActiveTool,
         /** Updates the enabled state of undo/redo buttons. */
         updateUndoRedoState,
         /** Destroys the plugin DOM (menu + modals). */
@@ -42,7 +50,7 @@ export function buildPublicApi(): Record<string, unknown> {
          */
         discardDraft,
         /**
-         * Programmatic point placement (task 5.1-a) — see `drawing/placement-api.ts`.
+         * Programmatic point placement — see `drawing/placement-api.ts`.
          *
          * ⚠️ A GETTER, not a plain property: INV-FACADE accepts a method, a function-valued
          * property or a getter, and this member is an object. It is the shape the gate
@@ -52,7 +60,7 @@ export function buildPublicApi(): Record<string, unknown> {
             return buildPlacementApi();
         },
         /**
-         * Opens the attribute form on a new Point (task 5.1-f) — see
+         * Opens the attribute form on a new Point — see
          * `add-form/placement-form.ts`.
          *
          * ⚠️ The SECOND half of the old `poi-addform-seam.ts` seam, and the only
@@ -65,4 +73,18 @@ export function buildPublicApi(): Record<string, unknown> {
             return buildAddFormApi();
         },
     };
+}
+
+/** The API this plugin mounts as `GeoLeaf.Editor`. */
+export type EditorApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Editor` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+// ⚠️ In this module and not in `entry.ts`, where the thirteen other plugins write it: that
+// file sits at the size cap of the plugin contract. `entry.ts` re-exports the type, so the
+// published declarations reach this block all the same.
+declare global {
+    interface GeoLeafPluginApis {
+        Editor: EditorApi;
+    }
 }

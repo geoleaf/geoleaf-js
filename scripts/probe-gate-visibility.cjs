@@ -279,7 +279,7 @@ function plantProbe() {
     // probeable.
     fs.writeFileSync(
         path.join(PROBE_DIR, "probe-throwaway.cjs"),
-        '"use strict";\n\n// T3.5 probe — throwaway script at a package root.\nmodule.exports = { probe: true };\n'
+        '"use strict";\n\n// Hygiene probe — throwaway script at a package root.\nmodule.exports = { probe: true };\n'
     );
 
     // ── GENERATED artefact, and a producer writing outside the perimeter ──────
@@ -303,7 +303,7 @@ function plantProbe() {
     fs.mkdirSync(path.join(PROBE_DIR, "docs", "api"), { recursive: true });
     fs.writeFileSync(
         path.join(PROBE_DIR, "docs", "api", "index.html"),
-        "<!-- T4.1 probe — generated artifact under git control. -->\n"
+        "<!-- Hygiene probe — generated artifact under git control. -->\n"
     );
 
     // ARMING variant: a PRODUCER declaring it writes outside the known
@@ -362,7 +362,7 @@ function plantProbe() {
     // the prefix a hiding place.
     fs.writeFileSync(
         path.join(PROBE_DIR, "probe-throwaway.mjs"),
-        "// T3.5 probe — throwaway ESM script at a package root.\nexport const probe = true;\n"
+        "// Hygiene probe — throwaway ESM script at a package root.\nexport const probe = true;\n"
     );
 }
 
@@ -1521,7 +1521,13 @@ try {
     //   • tests do not count: `data-testid` is placed by a lib's TEST only;
     //   • a host is not a provider: the demo app places what a HOST places;
     //   • declarations do not count: `.gl-routing-panel` is written in the
-    //     core's `global.d.ts` only, in a doc comment.
+    //     core's `global.d.ts` only, in a doc comment;
+    //   • a READ is not a placement: the core looks `#gl-loader` up and styles it, the
+    //     host's page places it — green for as long as the search was a substring;
+    //   • a stylesheet is not a placement: `.gl-main` is targeted by the core's base sheet
+    //     and read by a selector, never written;
+    //   • a valued selector is found by the VALUE written: `[data-gl-sheet='filters']`
+    //     kept its quotes and could not be declared at all.
     {
         const anchor = (selector, provider) => (b) => {
             b.required.dom_contract.push({
@@ -1568,6 +1574,24 @@ try {
             "gl-routing-panel",
             1
         );
+        consumerFixture(
+            "CC-08 : un id que le cœur LIT et stylise, sans le poser",
+            anchor("#gl-loader"),
+            "gl-loader",
+            1
+        );
+        consumerFixture(
+            "CC-08 : une classe que le cœur stylise et sélectionne, sans la poser",
+            anchor(".gl-main"),
+            "gl-main",
+            1
+        );
+        consumerFixture(
+            "CC-08 : un sélecteur valué, trouvé par la valeur écrite",
+            anchor("[data-gl-sheet='filters']"),
+            "engagement(s) du contrat inverse",
+            0
+        );
 
         // The two red fixtures above hold only while their witness is where
         // they say. If it moves — the test stops placing `data-testid`, the
@@ -1589,6 +1613,16 @@ try {
             });
         witnessIn("field-renderer", "src/__tests__/modal.test.ts", "data-testid");
         witnessIn("core", "src/global.d.ts", ".gl-routing-panel");
+        // The two read-only anchors must still be READ and STYLED where they are: a fixture
+        // red because the core forgot them altogether would prove the absence case again.
+        witnessIn("core", "src/app/init-reveal.ts", 'getElementById("gl-loader")');
+        witnessIn("core", "src/css/geoleaf-loader.css", "#gl-loader");
+        witnessIn("core", "src/css/geoleaf-ui-base.css", ".gl-main {");
+        witnessIn(
+            "core",
+            "src/kernel/ui/mobile/mobile-toolbar-pill.ts",
+            'setAttribute("data-gl-sheet", "filters")'
+        );
     }
 
     // The throwaway patterns, on known-answer witnesses.

@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 4.14 — modules/layer-manager/renderer.ts */
+/* modules/layer-manager/renderer.ts */
 
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
@@ -57,7 +57,7 @@ import { checkLayerVisibility } from "../../src/kernel/layer-manager/visibility-
 
 // domCreate() from dom-helpers.js works natively in jsdom — no mock needed.
 
-describe("layer-manager/renderer (Phase 4.14)", () => {
+describe("layer-manager/renderer", () => {
     let bodyEl;
 
     beforeEach(() => {
@@ -135,7 +135,7 @@ describe("layer-manager/renderer (Phase 4.14)", () => {
         });
     });
 
-    describe("Phase 9.9 — coverage 60%", () => {
+    describe("coverage 60%", () => {
         it("renderSections with items and collapsible builds accordion", () => {
             LMRenderer.renderSections(bodyEl, [
                 {

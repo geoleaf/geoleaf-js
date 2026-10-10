@@ -73,7 +73,7 @@ const STRUCTURAL_FILES = [
     "resolve.ts",
 ];
 
-describe("feature-info — garde structurelle (R.20, filet repris après le retrait SR0)", () => {
+describe("feature-info — garde structurelle", () => {
     it("FI-01 — les fichiers structurants de la capacité existent", () => {
         const missing = STRUCTURAL_FILES.filter((rel) => !existsSync(resolve(CAP, rel)));
         expect(

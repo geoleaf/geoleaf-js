@@ -159,13 +159,10 @@ function _resolveLabelStyleConfig(
 
 function _buildLabelStyleFromConfig(labelConfig: LabelUserConfig): LabelStyleLike {
     const cfg = labelConfig;
-    const font = cfg.font
-        ? cfg.font
-        : { family: "Arial", sizePt: 10, weight: 50, bold: false, italic: false };
+    const font = cfg.font ? cfg.font : { sizePt: 10 };
     const color = cfg.color ? cfg.color : "#000000";
     const opacity = cfg.opacity ? cfg.opacity : 1.0;
     const buffer = cfg.buffer ? cfg.buffer : { enabled: false };
-    const background = cfg.background ? cfg.background : { enabled: false };
     const offset = cfg.offset ? cfg.offset : { distancePx: 0 };
     return {
         enabled: true,
@@ -174,7 +171,6 @@ function _buildLabelStyleFromConfig(labelConfig: LabelUserConfig): LabelStyleLik
         color,
         opacity,
         buffer,
-        background,
         offset,
     };
 }

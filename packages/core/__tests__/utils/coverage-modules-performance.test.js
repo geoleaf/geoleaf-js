@@ -1,6 +1,6 @@
 /**
  * Coverage for utils/general/performance — baseline-storage + devtools-export
- * T10.1 — direct await import() without mocking to instrument real branches.
+ * direct await import() without mocking to instrument real branches.
  *
  * NOTE: performance-profiler.test.js mocks these modules, so they need a
  * dedicated file to cover their own branches/functions.

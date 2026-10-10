@@ -42,11 +42,11 @@
  * @see globals for the orchestrator and import order
  */
 
-// B6 : layer-manager (labels — S2 Lot 1 — and legend — S2 Lot 4 — migrated to their
+// B6 : layer-manager (labels — and legend — migrated to their
 // capabilities/<cap>/install.ts)
 import { LMControl } from "../kernel/layer-manager/control.js";
 import { StyleSelector } from "../kernel/layer-manager/style-selector.js";
-// B7 : theme ENGINE (kernel) — the theme-selector BAR migrated to its installer (S2 Lot 8)
+// B7 : theme ENGINE (kernel) — the theme-selector BAR migrated to its installer
 import { ThemeCache } from "../kernel/themes/theme-cache.js";
 // `ThemeLoader` is imported for ONE public entry point: `GeoLeaf.Config.clearThemesCache`
 // ⚠️ It is mounted from HERE, and not from `globals.config.ts`, on a
@@ -77,10 +77,10 @@ import "../kernel/themes/theme-applier/deferred.js";
 import "../kernel/themes/theme-applier/ui-sync.js";
 import "../kernel/themes/theme-applier/visibility.js";
 // B9 : ui — files directs (branding/coordinates/theme-toggle/scale/geolocation
-// migrated to their capabilities/<cap>/install.ts — S2 Lot 2)
+// migrated to their capabilities/<cap>/install.ts)
 import { _UIComponents } from "../kernel/ui/components.js";
 import { _UIEventDelegation } from "../kernel/ui/event-delegation.js";
-// toast-renderer (S2 Lot 4 + S7): the 3 namespace writes (`_UINotifications`,
+// toast-renderer: the 3 namespace writes (`_UINotifications`,
 // `NotificationSystem`, `Notifications`) are assigned by capabilities/toast-renderer/install.ts.
 // The kernel `ui.notify` adapter below (S7) reads `_gl._UINotifications` back lazily instead
 // of importing the singleton — an entry that leaves the capability out simply has no writer,
@@ -102,7 +102,7 @@ import {
     getOpenPanel,
 } from "../kernel/ui/desktop/desktop-panel.js";
 // Share (capability `permalink`, sub-feature): both `GeoLeaf.Share` and the lifecycle
-// wiring left the kernel in S2 Lot 6 — see capabilities/permalink/install.ts.
+// wiring left the kernel with the presets build — see capabilities/permalink/install.ts.
 import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 import type { NotifyOptions } from "../capabilities/toast-renderer/types.js";
 
@@ -143,7 +143,7 @@ export function setupUIKernel(): void {
     _gl._LayerManagerStyleSelector = StyleSelector;
 
     // -- B7 assignations : theme ENGINE only ----------------------------------
-    // (`GeoLeaf.ThemeSelector` — the switch bar — is assigned by its installer, S2 Lot 8.
+    // (`GeoLeaf.ThemeSelector` — the switch bar — is assigned by its installer.
     //  The engine below stays kernel: ThemeEngineModule applies the profile's default
     //  theme unconditionally, and the selector's facade consumes it.)
     _gl.ThemeCache = ThemeCache;
@@ -174,7 +174,7 @@ export function setupUIKernel(): void {
     if (!_gl.UI) _gl.UI = {};
     const ui = _gl.UI as Record<string, unknown>;
     // Branding / Coordinates / ThemeToggle / Scale / Geolocation (B9) migrated to their
-    // capabilities/<cap>/install.ts (S2 Lot 2): `GeoLeaf.<Cap>` is assigned by the boot
+    // capabilities/<cap>/install.ts: `GeoLeaf.<Cap>` is assigned by the boot
     // preset loop (registerGlobals), not here.
     _gl._UIComponents = _UIComponents;
     _gl._UIEventDelegation = _UIEventDelegation;
@@ -266,7 +266,7 @@ export function setupUIKernel(): void {
     ui.setImmersive = setImmersive;
     ui.isImmersive = isImmersive;
     // Share (`GeoLeaf.Share` + ShareLifecycle wiring) migrated to
-    // capabilities/permalink/install.ts + ShareModule.init() — S2 Lot 6.
+    // capabilities/permalink/install.ts + ShareModule.init().
 }
 
 // ── PHASE A — see the rationale in `globals.config.ts`. ──────────────────────────────────────

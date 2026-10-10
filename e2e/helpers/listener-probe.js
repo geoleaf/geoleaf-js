@@ -58,19 +58,31 @@ export async function installListenerProbe(page) {
             live.delete(keyOf(this, type, handler, opts));
             return remove.call(this, type, handler, opts);
         };
-        Object.defineProperty(window, "__glLiveListeners", {
-            get: () => {
-                let n = 0;
-                for (const [key, ref] of live) {
-                    const t = ref.deref();
-                    if (t === undefined) {
-                        live.delete(key); // target collected — nothing residual left
-                    } else if (t === window || t === document || t.isConnected !== false) {
-                        n++;
-                    }
+        const count = (/** @type {(t: any) => boolean} */ counted) => {
+            let n = 0;
+            for (const [key, ref] of live) {
+                const t = ref.deref();
+                if (t === undefined) {
+                    live.delete(key); // target collected — nothing residual left
+                } else if (counted(t)) {
+                    n++;
                 }
-                return n;
-            },
+            }
+            return n;
+        };
+        Object.defineProperty(window, "__glLiveListeners", {
+            get: () => count((t) => t === window || t === document || t.isConnected !== false),
+        });
+        // The same count, restricted to the PAGE: the window, the document and the nodes attached
+        // to it. The count above takes every other EventTarget too, and an `AbortSignal` is one:
+        // MapLibre posts an `abort` listener per request in flight. Measured right after an
+        // unmount: six to twelve of them, for requests the map that had gone had not finished —
+        // a number that falls on its own and says nothing of what the page holds.
+        Object.defineProperty(window, "__glLivePageListeners", {
+            get: () =>
+                count(
+                    (t) => t === window || t === document || (t instanceof Node && t.isConnected)
+                ),
         });
     });
 }
@@ -78,4 +90,15 @@ export async function installListenerProbe(page) {
 /** Current number of live DOM listeners, as seen by the probe above. */
 export async function liveListeners(page) {
     return page.evaluate(() => window.__glLiveListeners);
+}
+
+/**
+ * The live listeners posted on the window, the document or a node attached to it — without those
+ * of the requests in flight, which the count of {@link liveListeners} carries.
+ *
+ * @param {import("@playwright/test").Page} page
+ * @returns {Promise<number>}
+ */
+export async function livePageListeners(page) {
+    return page.evaluate(() => /** @type {any} */ (window).__glLivePageListeners);
 }

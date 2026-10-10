@@ -58,13 +58,10 @@ profiles/
 | `type`             | string  | `"geojson"` | Layer type — always `"geojson"` for GeoJSON layers                    |
 | `interactiveShape` | boolean | `false`     | Enable click/hover interaction on the geometric shape                 |
 | `showIconsOnMap`   | boolean | `true`      | Show POI icons on the map (point layers)                              |
-| `tooltip`          | object  | —           | Hover tooltip config (`mode`, `fields[]`)                             |
-| `popup`            | object  | —           | Click popup config (`enabled`, `fields[]`)                            |
-| `sidepanelConfig`  | object  | —           | Side panel config (`enabled`, `detailLayout[]`)                       |
+| `attributes`       | object  | —           | What the tooltip, the popup and the side panel show (`fields[]`)      |
 | `table`            | object  | —           | Data table (`enabled`, `columns[]`, `defaultSort`)                    |
 | `clustering`       | object  | —           | Clustering (`enabled`, `maxClusterRadius`, `disableClusteringAtZoom`) |
-| `pointStyle`       | object  | —           | Custom point style override (point layers)                            |
-| `legends`          | array   | —           | Manual legend entries for the layer                                   |
+| `legends`          | object  | —           | Legend file references (`directory`, `default`)                       |
 
 > See [schema/README.md](../schema/README.md) and `profiles/schemas/layer-config.schema.json` for the full JSON Schema definition.
 
@@ -117,6 +114,11 @@ See [schema/README.md](../schema/README.md) for the formal JSON Schema documenta
 
 ### Complete Example (with optional properties)
 
+`attributes` is the one list that says which property is shown where: each field names the
+surfaces it appears on — `tooltip` (hover), `popup` (click), `sidepanel` (opened from the popup).
+
+<!-- geoleaf:docs:schema layer-config -->
+
 ```json
 {
     "id": "villes_principales",
@@ -135,15 +137,19 @@ See [schema/README.md](../schema/README.md) for the formal JSON Schema documenta
         "default": "defaut.json",
         "available": [{ "id": "defaut", "label": "Défaut", "file": "defaut.json" }]
     },
-    "tooltip": { "mode": "hover", "fields": [{ "type": "text", "field": "properties.name" }] },
-    "popup": {
-        "enabled": true,
-        "fields": [{ "type": "text", "field": "properties.name", "variant": "title" }]
-    },
-    "sidepanelConfig": {
-        "enabled": true,
-        "detailLayout": [
-            { "type": "text", "label": "Nom", "field": "properties.name", "accordion": false }
+    "attributes": {
+        "titleField": "properties.name",
+        "fields": [
+            {
+                "field": "properties.name",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": { "emphasis": "title" }
+                }
+            }
         ]
     },
     "table": {

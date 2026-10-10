@@ -96,7 +96,7 @@ const REPORT_ONLY = process.argv.includes("--report");
 const BASELINE_COMMENT =
     "Sites `require()` de module source CONNUS dans les tests — état figé, PAS une liste " +
     "d'exemptions. Chaque entrée est un endroit où la couverture est attribuée aux " +
-    "mauvaises lignes et aux mauvaises fonctions (roadmap COUVERTURE, sprints 2 à 5). " +
+    "mauvaises lignes et aux mauvaises fonctions " +
     "Le gate ne bloque que sur un site ABSENT d'ici : la baseline ne peut que DESCENDRE. " +
     "Régénérer via `--update-baseline` après avoir converti un lot — jamais pour faire " +
     "taire un site neuf, qui doit être converti et non figé.";
@@ -266,7 +266,7 @@ function printDashboard(a) {
     );
     console.log(
         `  hors périmètre : ${a.nonSourceRequires} require() de mock/helper/script — ` +
-            "ne chargent aucune source mesurée (question « ESM pur », sprint 5)"
+            "ne chargent aucune source mesurée (question « ESM pur »)"
     );
     if (a.dynamicRequires.length) {
         // ⚠️ NEVER silence this count. These sites do load measured sources —
@@ -275,7 +275,7 @@ function printDashboard(a) {
         // is the only way they do not slip back under the radar.
         console.log(
             `  ⚠ specifier CONSTRUIT : ${a.dynamicRequires.length} site(s) irrésolvable(s) ` +
-                "statiquement — chargent des sources, sprints 3/4 :"
+                "statiquement — chargent des sources :"
         );
         for (const d of a.dynamicRequires) console.log(`      ${d}`);
     }

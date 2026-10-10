@@ -72,6 +72,30 @@ describe("table — geoleaf:layer:updated", () => {
         expect(refreshSpy).toHaveBeenCalledTimes(1);
     });
 
+    // 🛑 A TRAILING WAIT NEVER ENDS UNDER A STREAM. Each event pushed the refresh back, so a
+    // source writing faster than the wait left the open table on its rows from before the
+    // burst for as long as the burst lasted — measured on the shipped bundle, 30 writes at
+    // 100 ms over three seconds, rows frozen throughout.
+    it("🛑 une rafale plus serrée que la temporisation rafraîchit PENDANT la rafale", () => {
+        tableState._isVisible = true;
+        const at: number[] = [];
+        refreshSpy.mockImplementation(() => void at.push(Date.now()));
+        const start = Date.now();
+        for (let i = 0; i < 20; i++) {
+            updated("ly1");
+            vi.advanceTimersByTime(100);
+        }
+        const lastWrite = start + 1900;
+        expect(at.filter((t) => t < lastWrite).length).toBeGreaterThanOrEqual(3);
+
+        // …and the rows shown once it stops are those of the LAST write.
+        vi.advanceTimersByTime(1000);
+        expect(at.at(-1)).toBeGreaterThanOrEqual(lastWrite);
+        const settled = at.length;
+        vi.advanceTimersByTime(2000);
+        expect(at.length).toBe(settled);
+    });
+
     it("une autre couche : rien", () => {
         tableState._isVisible = true;
         updated("other");

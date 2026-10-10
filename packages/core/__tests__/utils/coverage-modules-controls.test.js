@@ -1,6 +1,6 @@
 /**
  * Coverage for utils/controls — blockMapPropagation
- * T10.1 — await import() pattern to bypass require()/CJS instrumentation gap.
+ * await import() pattern to bypass require()/CJS instrumentation gap.
  */
 
 describe("utils/controls/propagation-blocker", () => {

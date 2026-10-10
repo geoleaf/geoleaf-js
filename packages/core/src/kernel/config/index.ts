@@ -8,7 +8,7 @@
 /**
  * @description Public barrel for the configuration sub-system's cross-boundary surface.
  *
- * Mediated entry point for the `capabilities/ → kernel/` boundary (backlog R.8).
+ * Mediated entry point for the `capabilities/ → kernel/` boundary (rule R.8).
  *
  * ⚠️ **`Config` itself is NOT re-exported here — use `./config-primitives.js`.** That
  * file predates this barrel, carries 17 of the boundary's imports, and documents itself
@@ -26,4 +26,6 @@ export { resolveProfileLayers } from "./profile-layers.js";
 // hand.
 // ⚠️ The deep import was TRIED first and ESLint refused it, rightly — the barrel
 // route was added after seeing it red, not by anticipation.
-export { layerGeometry } from "./layer-geometry.js";
+// `geometryFamily` came the same way: the legend named the families by hand, and knew three
+// of the schema's spellings.
+export { geometryFamily, layerGeometry } from "./layer-geometry.js";

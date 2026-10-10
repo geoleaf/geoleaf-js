@@ -30,9 +30,11 @@
  * What this deliberately does NOT prove: that a timeout is attached to the signal. That is
  * a dataflow property; the complement is the call-site review each ratchet descent does.
  *
- * ⚠️ What it does not SEE either: a second naked fetch in a function already frozen. The
- * baseline is a set of `file::function` keys — the per-key counts are computed below and
- * never compared — so the print fallback's POST sits behind the key its other fetch froze.
+ * ⚠️ The baseline froze FUNCTIONS, and a frozen function was a blind spot: it was a set of
+ * `file::function` keys, the per-key counts were computed and never compared, so any naked
+ * fetch added to a frozen function passed. One real case sat there — the print fallback's
+ * export POST, behind the key its other fetch had frozen. The baseline now carries a COUNT per
+ * key: a rise is NF-01, a fall NF-02.
  *
  * ## Four frozen sites are REFUSALS, not remainders (arbitrated 17/08/2026, carried here
  * ## 25/08/2026 when the register line closed onto this gate)
@@ -53,8 +55,18 @@
  * They stay in the baseline ON PURPOSE. The reopen signal is a site GAINING an owner —
  * a teardown path appearing around it — never a re-reading of this list.
  *
- *   NF-01  a naked fetch in a file:function absent from the baseline → ERROR.
- *   NF-02  a baseline entry no longer observed → ERROR until tightened (ratchet down).
+ * ## And one key is frozen at TWO (05/10/2026)
+ *
+ *   · `print/server-fallback.ts` (`tryServerFallback`) — the export POST and the read of the
+ *     file the server answers with. An export the user started is a continuation that is
+ *     WANTED: closing the dialog must not cancel it, and nothing else owns it. ⚠️ Neither
+ *     carries a timeout: a server that never answers leaves the export pending, and that is
+ *     the cost this freeze accepts, written here rather than hidden behind a key.
+ *
+ *   NF-01  a naked fetch in a file:function absent from the baseline, or MORE naked fetches
+ *          in a frozen one than its count → ERROR.
+ *   NF-02  a baseline entry no longer observed, or observed FEWER times than its count →
+ *          ERROR until tightened (ratchet down).
  *   NF-03  fewer than 10 fetch calls found in total → refuse to conclude (broken glob).
  */
 "use strict";
@@ -212,10 +224,10 @@ if (UPDATE) {
         JSON.stringify(
             {
                 _comment:
-                    "NF-01/02 — sites `fetch` de production SANS clé `signal` dans leurs options, gelés à la pose. Liste DÉCROISSANTE : corriger un site (poser le signal + son timeout) puis resserrer via --update-baseline. Clés sans numéro de ligne — les lignes dérivent sans information. Ce que le gel ne prouve PAS : qu'un timeout est attaché au signal (propriété de flux de données) — c'est la revue du site, à chaque descente, qui le vérifie.",
+                    "NF-01/02 — sites `fetch` de production SANS clé `signal` dans leurs options, gelés à la pose, avec leur NOMBRE par fichier::fonction : un fetch nu de plus dans une fonction déjà gelée est une hausse (NF-01), un de moins une baisse (NF-02). Liste DÉCROISSANTE : corriger un site (poser le signal + son timeout) puis resserrer via --update-baseline. Clés sans numéro de ligne — les lignes dérivent sans information. Ce que le gel ne prouve PAS : qu'un timeout est attaché au signal (propriété de flux de données) — c'est la revue du site, à chaque descente, qui le vérifie.",
                 _generated: "node scripts/check-naked-fetch.cjs --update-baseline",
                 count: observedKeys.length,
-                entries: observedKeys,
+                entries: Object.fromEntries(observedKeys.map((k) => [k, observed.get(k)])),
             },
             null,
             4
@@ -229,22 +241,55 @@ if (!fs.existsSync(BASELINE_PATH)) {
     console.error(`❌ [NF] baseline absente — première pose : --update-baseline`);
     process.exit(1);
 }
-const baseline = new Set(JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8")).entries);
+/**
+ * The frozen count of each key.
+ *
+ * ⚠️ The file was a LIST of keys until 05/10/2026 — each one read here as a count of 1, which
+ * is what a key froze when it was written: one site. That reading is what turned the gate red
+ * on the function that held two.
+ *
+ * @type {Map<string, number>}
+ */
+const baseline = (() => {
+    const { entries } = JSON.parse(fs.readFileSync(BASELINE_PATH, "utf8"));
+    return new Map(Array.isArray(entries) ? entries.map((k) => [k, 1]) : Object.entries(entries));
+})();
 const neuf = observedKeys.filter((k) => !baseline.has(k));
-const gueris = [...baseline].filter((k) => !observed.has(k)).sort();
+const hausses = observedKeys.filter(
+    (k) =>
+        baseline.has(k) &&
+        /** @type {number} */ (observed.get(k)) > /** @type {number} */ (baseline.get(k))
+);
+const gueris = [...baseline.keys()].filter((k) => !observed.has(k)).sort();
+const baisses = observedKeys.filter(
+    (k) =>
+        baseline.has(k) &&
+        /** @type {number} */ (observed.get(k)) < /** @type {number} */ (baseline.get(k))
+);
 
 let failed = false;
-if (neuf.length) {
+if (neuf.length || hausses.length) {
     failed = true;
-    console.error(`❌ [NF-01] ${neuf.length} fetch NU(S) nouveau(x) :`);
+    console.error(
+        `❌ [NF-01] ${neuf.length + hausses.length} site(s) portent un fetch NU nouveau :`
+    );
     for (const k of neuf) console.error(`   + ${k}`);
+    for (const k of hausses) {
+        console.error(`   + ${k} — ${observed.get(k)} fetch nus, ${baseline.get(k)} gelé(s)`);
+    }
     console.error(`   Poser un signal (et son timeout) — ne pas élargir la baseline (I3).`);
 }
-if (gueris.length) {
+if (gueris.length || baisses.length) {
     failed = true;
-    console.error(`❌ [NF-02] ${gueris.length} entrée(s) guérie(s) — resserrer :`);
+    console.error(`❌ [NF-02] ${gueris.length + baisses.length} entrée(s) guérie(s) — resserrer :`);
     for (const k of gueris.slice(0, 10)) console.error(`   − ${k}`);
+    for (const k of baisses) {
+        console.error(`   − ${k} — ${observed.get(k)} fetch nu(s), ${baseline.get(k)} gelés`);
+    }
     console.error(`   \x1b[2mnode scripts/check-naked-fetch.cjs --update-baseline\x1b[0m`);
 }
 if (failed) process.exit(1);
-console.log(`\x1b[32m✓ NF\x1b[0m — aucun fetch nu nouveau (${baseline.size} gelé(s)).`);
+const frozen = [...baseline.values()].reduce((a, b) => a + b, 0);
+console.log(
+    `\x1b[32m✓ NF\x1b[0m — aucun fetch nu nouveau (${frozen} gelé(s), sous ${baseline.size} clé(s)).`
+);

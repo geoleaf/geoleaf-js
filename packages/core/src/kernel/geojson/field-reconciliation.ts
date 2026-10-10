@@ -29,12 +29,18 @@
  * once per `(layer, key, field)` for the page's life, and an unmount re-arms it — the store is
  * cleared by the lifecycle teardown, so a remounted application diagnoses afresh.
  *
+ * ## The writes after the first load
+ *
+ * An OGC refresh, a realtime tick, `GeoLeaf.Layers.setData` or `mergeFeatures`, a re-read after
+ * an offline pull: each may bring data that no longer carries a declared field. Every such write
+ * is announced (`geoleaf:layer:updated`), and the layer is judged again on what it now holds,
+ * under the style it wears. A burst is judged once — see {@link REJUDGE_DELAY_MS}.
+ *
  * ## What it does not see
  *
- * Only the features the loader converts: vector tiles keep none in memory, a plugin loader
- * (FlatGeobuf) bypasses the loader, and the writes after the first load — an OGC refresh, a
- * realtime tick, `GeoLeaf.Layers.setData` — are not judged. An empty layer proves nothing and is
- * not judged either.
+ * Only the features the layer store holds: vector tiles keep none in memory, and a plugin loader
+ * (FlatGeobuf) bypasses the loader and the store. An empty layer proves nothing and is not
+ * judged either.
  */
 
 import { getLog } from "../../utils/general/di-accessors.js";
@@ -56,8 +62,27 @@ import {
 /** `(layer, key, field)` triples already reported, this page's life. */
 const _reported = new Set<string>();
 
-// An unmount clears the store: a remounted application diagnoses afresh.
-registerLifecycleTeardown(() => _reported.clear());
+/**
+ * How long a written layer waits before it is judged again.
+ *
+ * A realtime layer ticks every few seconds and an editor writes unit by unit: judged at each
+ * announcement, a layer would be sampled as often as it is written, for a verdict nobody is
+ * waiting on. The layers written within the delay are judged together, once each.
+ */
+const REJUDGE_DELAY_MS = 250;
+
+/** Layers written since the last judgment, and the timer that will judge them. */
+const _written = new Set<string>();
+let _rejudgeTimer: ReturnType<typeof setTimeout> | null = null;
+
+// An unmount clears the store — a remounted application diagnoses afresh — and drops what was
+// waiting: nothing is judged for an application that is gone.
+registerLifecycleTeardown(() => {
+    _reported.clear();
+    _written.clear();
+    if (_rejudgeTimer !== null) clearTimeout(_rejudgeTimer);
+    _rejudgeTimer = null;
+});
 
 function _reportKey(layerId: string, field: { key: string; field: string }): string {
     return `${layerId}\u0000${field.key}\u0000${field.field}`;
@@ -162,4 +187,43 @@ export function reconcileStyleFields(layerId: string, style: unknown): void {
     } catch (err) {
         getLog().debug?.("[GeoLeaf.GeoJSON] field reconciliation skipped:", err);
     }
+}
+
+/** Judges every layer written since the last pass, on what it holds and wears NOW. */
+function _rejudgeWritten(): void {
+    _rejudgeTimer = null;
+    const layerIds = [..._written];
+    _written.clear();
+    for (const layerId of layerIds) {
+        const entry = GeoJSONShared.state.layers.get(layerId);
+        // Removed since the write was announced: there is nothing left to judge.
+        if (!entry) continue;
+        reconcileLayerFields(
+            layerId,
+            entry.config,
+            entry.currentStyle ?? null,
+            entry.features ?? []
+        );
+    }
+}
+
+/**
+ * Notes that a layer's data was written, and schedules its judgment.
+ *
+ * 🛑 THE DIAGNOSTIC SPOKE AT THE FIRST LOAD AND AT A STYLE SWITCH, NEVER AGAIN. A refresh that
+ * dropped a declared field left its reader falling back without a word — the silence this
+ * module exists against, back through the one door it did not watch.
+ */
+function _onLayerWritten(event: Event): void {
+    const layerId = ((event as CustomEvent).detail as { layerId?: unknown } | undefined)?.layerId;
+    if (typeof layerId !== "string" || layerId.length === 0) return;
+    _written.add(layerId);
+    _rejudgeTimer ??= setTimeout(_rejudgeWritten, REJUDGE_DELAY_MS);
+}
+
+// One listener for the page's life: the announcement is the single point every writer of a
+// layer goes through — the whole-collection funnel and the unit mutations alike. Guarded on
+// `document`: this module is also loaded where there is none.
+if (typeof document !== "undefined") {
+    document.addEventListener("geoleaf:layer:updated", _onLayerWritten);
 }

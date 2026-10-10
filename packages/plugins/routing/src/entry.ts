@@ -62,6 +62,17 @@ getGeoLeaf()?.I18n?.registerDict?.("routing", {
     en: langEn,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Routing`. */
+export type RoutingApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Routing` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Routing: RoutingApi;
+    }
+}
+
 // 2 — Mount the GeoLeaf.Routing namespace.
 //
 // ⚠️ The assignment must read `.<Namespace> = buildPublicApi()` LITERALLY, on ONE

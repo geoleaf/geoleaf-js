@@ -43,6 +43,7 @@
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
 import { DrainHooksContract } from "../../../kernel/shared/drain-hooks-seam.js";
+import { SessionReaderContract } from "../../../kernel/shared/session-reader-seam.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
 import { coreProfileLayerConfig } from "../config-seam.js";
 import { markerOf, readServerVersion, recordConflict } from "./conflict-store.js";
@@ -53,10 +54,35 @@ import type {
     OutboxEntry,
     QuarantineReason,
     VersionMarker,
+    WriteAuth,
 } from "../../../contracts/sync.contract.js";
 
 /** Property carrying the client identity on the wire. Shared with the backend schema. */
 const CLIENT_ID_PROPERTY = "local_id";
+
+/**
+ * Member of a request's `init` that carries what the layer declared under `write.auth`.
+ *
+ * 🛑 **A mark on the request, because the core cannot name who holds the token.** A write is
+ * authenticated by whoever intercepts `fetch` — the connector plugin, or a host's own wrapper
+ * — and the core imports neither. So the layer's declaration travels with the request it
+ * concerns, where an interceptor reads it: `none` tells it to attach no credential, even to a
+ * URL it would otherwise serve. `fetch` itself ignores a member it does not know, so with no
+ * interceptor installed the mark changes nothing and reaches no server.
+ *
+ * ⚠️ **Written twice, and held equal by a guard.** The connector reads the same name
+ * (`fetch-interceptor.ts`) and neither side may import the other;
+ * `write-auth-mark.guard.test.ts` fails the day the two differ.
+ */
+const WRITE_AUTH_MARK = "geoleafWriteAuth";
+
+/** A request `init` that may carry {@link WRITE_AUTH_MARK}. */
+type MarkedRequestInit = RequestInit & { geoleafWriteAuth?: WriteAuth };
+
+/** The mark of a target, as a fragment to spread into an `init` — empty when it declares none. */
+function authMark(target: WriteTarget): { geoleafWriteAuth?: WriteAuth } {
+    return target.auth ? { [WRITE_AUTH_MARK]: target.auth } : {};
+}
 
 /** Preference key holding the last instant the server accepted something. */
 export const LAST_SYNC_PREFERENCE = "offline.lastSyncAt";
@@ -252,8 +278,24 @@ interface PushReport {
      * difference is everything: forty captures still due, or none. `attempted` alone
      * cannot say it — a queue of one and a halt on the first entry produce the same
      * figure.
+     *
+     * - `authRequired` — a 401 on a write: the session is over, and the capture that met it
+     *   was set aside.
+     *
+     * A missing session is NOT a halt — see `heldForSession`.
      */
     readonly haltedBy: "authRequired" | null;
+    /**
+     * Captures of a layer declaring `write.auth: "bearer"` that the pass walked past because
+     * the session reader says no session is open.
+     *
+     * NOTHING was sent for them: each stays `pending`, is not counted in `attempted`, and
+     * spent none of its budget. The pass goes on — a capture of a layer that needs no session
+     * leaves behind them. It does not pause the automatic triggers either: a capture walked
+     * past costs no request, and that is what lets it leave on its own once the session is
+     * back.
+     */
+    readonly heldForSession: number;
     readonly pushed: number;
     readonly failed: number;
     /** Entries the server already knew — a 409 on the client identity. */
@@ -287,6 +329,8 @@ interface WriteTarget {
     readonly properties: readonly string[] | null;
     /** Column serving as freshness marker — the conflict filter. */
     readonly versionProperty: string;
+    /** What the layer declared under `write.auth` — `null` when it declared nothing known. */
+    readonly auth: WriteAuth | null;
 }
 
 /**
@@ -317,11 +361,6 @@ interface FeaturesModule {
     get(layerId: string, localId: string): Promise<FeatureRecord | null>;
     put(record: FeatureRecord): Promise<void>;
     remove(layerId: string, localId: string): Promise<void>;
-}
-
-/** The storage seam, reduced to what this module reads and writes. */
-interface PushStore {
-    _ensureModule?: (name: string) => unknown;
 }
 
 /**
@@ -431,7 +470,11 @@ async function reconcileByClientId(
         "&select=id";
     let response: Response;
     try {
-        response = await fetchBounded(url, { headers: { Accept: "application/json" } });
+        const init: MarkedRequestInit = {
+            headers: { Accept: "application/json" },
+            ...authMark(target),
+        };
+        response = await fetchBounded(url, init);
     } catch (error) {
         Log.warn(
             `[Offline.Push] relecture d'identité muette pour ${record.localId} :`,
@@ -478,11 +521,15 @@ function resolveWriteTarget(layerId: string): WriteTarget | null {
               dialect?: string;
               geometryProperty?: string;
               properties?: string[];
+              auth?: string;
           }
         | undefined;
     if (write?.enabled !== true || !write.endpoint) return null;
     return {
         endpoint: write.endpoint,
+        // Only the two values the contract knows: anything else is not relayed, so an
+        // interceptor never has to judge a word nobody defined.
+        auth: write.auth === "bearer" || write.auth === "none" ? write.auth : null,
         dialect: write.dialect === "rest" ? "rest" : "collection",
         geometryProperty: write.geometryProperty ?? "geom",
         properties: Array.isArray(write.properties) ? write.properties : null,
@@ -543,7 +590,7 @@ function buildRequest(
     record: FeatureRecord,
     target: WriteTarget,
     conditional = true
-): { url: string; init: RequestInit } {
+): { url: string; init: MarkedRequestInit } {
     const identified = `${target.endpoint}?id=eq.${encodeURIComponent(String(record.serverId))}`;
     // 🛑 THE BASE MARKER BECOMES A FILTER, AND THAT IS WHAT MAKES THE CONFLICT
     // DETECTABLE. Measured against real PostgREST: a `PATCH` filtered on a STALE
@@ -566,14 +613,41 @@ function buildRequest(
         Prefer: "return=representation",
     };
 
+    // What the layer declared of its authentication goes with every request of the write.
+    const mark = authMark(target);
+
     if (entry.kind === "delete") {
-        return { url: guarded, init: { method: "DELETE", headers } };
+        return { url: guarded, init: { method: "DELETE", headers, ...mark } };
     }
     const body = JSON.stringify(buildCollectionBody(record, target));
     if (entry.kind === "create") {
-        return { url: target.endpoint, init: { method: "POST", headers, body } };
+        return { url: target.endpoint, init: { method: "POST", headers, body, ...mark } };
     }
-    return { url: guarded, init: { method: "PATCH", headers, body } };
+    return { url: guarded, init: { method: "PATCH", headers, body, ...mark } };
+}
+
+/**
+ * Whether a layer that declares `write.auth: "bearer"` has no session to write with.
+ *
+ * Asked of the session reader (`GeoLeaf.Sync.registerSessionReader`) — the one holding the
+ * token tells, the core never reads it. `true` ONLY on a reader that answers `absent`:
+ *
+ * - no reader registered, or one that cannot say or fails — nobody can vouch that there is
+ *   no session, and holding captures on a guess would strand them on a page whose host
+ *   authenticates by its own means;
+ * - `expired` — whether the token can still be renewed is the server's call, made on the
+ *   way by whoever holds it.
+ *
+ * @returns `true` when the capture must stay queued.
+ */
+async function sessionAbsent(): Promise<boolean> {
+    const reader = SessionReaderContract._get();
+    if (!reader) return false;
+    try {
+        return (await reader())?.state === "absent";
+    } catch {
+        return false;
+    }
 }
 
 /**
@@ -1072,10 +1146,8 @@ async function _runBeforeDrainSteps(): Promise<void> {
  *
  * @param db - The open store, or `null`.
  */
-async function _stampLastSync(db: PushStore | null): Promise<void> {
-    const prefs = db?._ensureModule?.("Preferences") as {
-        setPreference?(key: string, value: unknown): Promise<unknown>;
-    } | null;
+async function _stampLastSync(db: typeof StorageContract.DB): Promise<void> {
+    const prefs = db?._ensureModule?.("Preferences");
     try {
         await prefs?.setPreference?.(LAST_SYNC_PREFERENCE, Date.now());
     } catch (e) {
@@ -1117,6 +1189,7 @@ function _announceDrained(report: PushReport): void {
                 deferred: report.deferred,
                 conflicts: report.conflicts,
                 haltedBy: report.haltedBy,
+                heldForSession: report.heldForSession,
             },
         })
     );
@@ -1170,6 +1243,72 @@ export async function pushOutbox(): Promise<PushReport> {
 }
 
 /**
+ * Whether an entry ready to leave must stay queued for want of a session — its layer
+ * declares `write.auth: "bearer"` and the session reader says none is open.
+ *
+ * 🛑 **The absence is observed ONCE per pass, then held for the rest of it.** A session that
+ * opens between two entries must not let the second capture of an entity leave while the
+ * first was walked past: from the first refusal on, every `bearer` capture of the pass
+ * waits, and the next pass sends them all, in order.
+ *
+ * `info`, not `warn`, and once per pass: the periodic tick repeats it for as long as nobody
+ * signs in, and a queue of forty would say it forty times.
+ *
+ * @param entry - The queue entry, for the log.
+ * @param prepared - What `prepareSend` resolved for it.
+ * @param pass - The pass's memory: `absent` once the reader has said so.
+ * @returns `true` when nothing must be sent.
+ */
+async function heldForSession(
+    entry: OutboxEntry,
+    prepared: Awaited<ReturnType<typeof prepareSend>>,
+    pass: { absent: boolean }
+): Promise<boolean> {
+    if (!prepared.ok || prepared.target.auth !== "bearer") return false;
+    if (pass.absent) return true;
+    if (!(await sessionAbsent())) return false;
+    pass.absent = true;
+    Log.info(
+        `[Offline.Push] ${entry.id} — la couche "${entry.layerId}" exige une session (write.auth: "bearer") et aucune n'est ouverte ; ses saisies restent en file, la passe continue sans elles.`
+    );
+    return true;
+}
+
+/**
+ * What an entry the server accepted leaves behind: the record settled, the followers
+ * rebased, the queue entry gone.
+ *
+ * @param outbox - The queue.
+ * @param features - The feature store.
+ * @param entry - The accepted entry.
+ * @param record - The entity it named, as it was sent.
+ * @param result - The outcome of the send.
+ */
+async function storeAccepted(
+    outbox: OutboxModule,
+    features: FeaturesModule,
+    entry: OutboxEntry,
+    record: FeatureRecord,
+    result: PushOutcome
+): Promise<void> {
+    if (entry.kind === "delete") {
+        // The entity finished its cycle: the queue lets it go, and so does the store.
+        await features.remove(entry.layerId, entry.localId);
+    } else {
+        const settled = await settledRecord(features, entry, record, result);
+        await features.put(settled.record);
+        if (settled.editedMeanwhile) {
+            await rebaseFollowers(outbox, entry, settled.record.version);
+        } else {
+            // The entity owes nothing any more: the badge the boot's restore painted on it
+            // goes. Edited meanwhile, it is still owed, and the badge stays with it.
+            clearRestoredStatus(entry.layerId, record);
+        }
+    }
+    await outbox.remove(entry.id);
+}
+
+/**
  * One drain pass — the body {@link pushOutbox} serialises.
  *
  * Split out for the lock and for nothing else: keeping it inside the public function
@@ -1180,15 +1319,16 @@ async function _drainOnce(): Promise<PushReport> {
     const nothing = {
         attempted: 0,
         haltedBy: null,
+        heldForSession: 0,
         deferred: 0,
         pushed: 0,
         failed: 0,
         alreadyPresent: 0,
         conflicts: 0,
     };
-    const db = StorageContract.DB as PushStore | null;
-    const outbox = db?._ensureModule?.("Outbox") as OutboxModule | null | undefined;
-    const features = db?._ensureModule?.("Features") as FeaturesModule | null | undefined;
+    const db = StorageContract.DB;
+    const outbox: OutboxModule | null | undefined = db?._ensureModule?.("Outbox");
+    const features: FeaturesModule | null | undefined = db?._ensureModule?.("Features");
     if (!outbox?.list || !features?.put) return { ...nothing, refused: "engineUnavailable" };
 
     // Before the read, and that ordering is load-bearing — see `_runBeforeDrainSteps`.
@@ -1246,10 +1386,32 @@ async function _drainOnce(): Promise<PushReport> {
     // avoid.
     let attempted = 0;
     let haltedBy: "authRequired" | null = null;
+    let held = 0;
+    const pass = { absent: false };
 
     for (const entry of pending) {
-        attempted += 1;
         const prepared = await prepareSend(entry, features);
+        // 🛑 A layer that declares `write.auth: "bearer"` is HELD while there is no session.
+        // The capture is not sent, not counted, not marked: it stays `pending`, having left
+        // nothing on the wire and spent none of its budget. Without this, the request went
+        // out with no credential at all, to a server the layer says requires one.
+        //
+        // ⚠️ **The pass WALKS PAST it, it does not stop** — it used to, and a capture of a
+        // layer that needs no session waited behind one it had nothing to do with. Walking
+        // past cannot reorder an entity's writes: an entity is `(layerId, localId)`, so its
+        // captures all belong to one layer, hence to one `write.auth`, and from the first
+        // refusal on every `bearer` capture of the pass is held (`heldForSession`). It is
+        // also what the pass already does with a delay not yet elapsed.
+        //
+        // ⚠️ NOT `authRequired`: that one stops the pass and pauses every automatic trigger
+        // until a person acts, because each pass costs a request and a capture set aside.
+        // This one costs neither — so the triggers keep running, and the first pass after
+        // the session is back sends, whoever holds the token and however it came back.
+        if (await heldForSession(entry, prepared, pass)) {
+            held += 1;
+            continue;
+        }
+        attempted += 1;
         if (!prepared.ok) {
             await markFailure(outbox, entry, prepared.immediate);
             failed += 1;
@@ -1305,21 +1467,7 @@ async function _drainOnce(): Promise<PushReport> {
             continue;
         }
 
-        if (entry.kind === "delete") {
-            // The entity finished its cycle: the queue lets it go, and so does the store.
-            await features.remove(entry.layerId, entry.localId);
-        } else {
-            const settled = await settledRecord(features, entry, record, result);
-            await features.put(settled.record);
-            if (settled.editedMeanwhile) {
-                await rebaseFollowers(outbox, entry, settled.record.version);
-            } else {
-                // The entity owes nothing any more: the badge the boot's restore painted on it
-                // goes. Edited meanwhile, it is still owed, and the badge stays with it.
-                clearRestoredStatus(entry.layerId, record);
-            }
-        }
-        await outbox.remove(entry.id);
+        await storeAccepted(outbox, features, entry, record, result);
         pushed += 1;
         if (result.alreadyPresent) alreadyPresent += 1;
     }
@@ -1327,8 +1475,9 @@ async function _drainOnce(): Promise<PushReport> {
     Log.info(
         `[Offline.Push] ${pushed} poussée(s), ${failed} à retenter, ${conflicts} conflit(s) tranché(s)` +
             (deferred > 0 ? `, ${deferred} différée(s)` : "") +
+            (held > 0 ? `, ${held} retenue(s) faute de session` : "") +
             (haltedBy
-                ? `, ARRÊTÉ (${haltedBy}) — ${pending.length - attempted} non tentée(s).`
+                ? `, ARRÊTÉ (${haltedBy}) — ${pending.length - attempted - held} non tentée(s).`
                 : ".")
     );
     if (pushed > 0) await _stampLastSync(db);
@@ -1336,6 +1485,7 @@ async function _drainOnce(): Promise<PushReport> {
     const report: PushReport = {
         attempted,
         haltedBy,
+        heldForSession: held,
         deferred,
         pushed,
         failed,

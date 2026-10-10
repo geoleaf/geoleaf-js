@@ -424,7 +424,7 @@ date: ${date}
 
 # Vérification de dérive — colonne « Consommateur (file:line) »
 
-> Généré par \`scripts/check-config-consumers.cjs\` (Archi roadmap S5, tâche 5.2).
+> Généré par \`scripts/check-config-consumers.cjs\`.
 > **Non destructif** : l'inventaire n'est pas modifié. L'outil parse les citations
 > \`file:line\` déjà inventoriées et vérifie qu'elles pointent toujours sur la clé
 > (${nSources} fichiers source scannés sous \`packages/*/src\`).

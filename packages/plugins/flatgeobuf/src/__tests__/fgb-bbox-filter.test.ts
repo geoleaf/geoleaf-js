@@ -165,6 +165,36 @@ describe("setupAutoRefresh", () => {
         expect(mockMap.off).toHaveBeenCalledWith("moveend", expect.any(Function));
     });
 
+    it("cleanup drops a refresh still waiting on the debounce", () => {
+        vi.useFakeTimers();
+        try {
+            const listeners: Record<string, Function> = {};
+            const mockMap = {
+                on: vi.fn((evt: string, fn: Function) => {
+                    listeners[evt] = fn;
+                }),
+                off: vi.fn(),
+                getBounds: () => ({
+                    getWest: () => -5,
+                    getSouth: () => -5,
+                    getEast: () => 5,
+                    getNorth: () => 5,
+                }),
+            };
+            const reloadFn = vi.fn();
+            const cleanup = setupAutoRefresh(mockMap, "u", { debounceMs: 100 }, reloadFn);
+
+            listeners["moveend"]();
+            cleanup();
+            vi.advanceTimersByTime(500);
+
+            expect(reloadFn).not.toHaveBeenCalled();
+            expect(mockMap.off).toHaveBeenCalledWith("moveend", listeners["moveend"]);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it("debounces and calls reload with bbox on moveend", async () => {
         vi.useFakeTimers();
 

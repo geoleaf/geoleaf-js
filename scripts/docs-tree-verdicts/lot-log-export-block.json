@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "log-export-block",
+    "scope": [
+        "packages/plugins/offline-ui/src/cache/log-export-block.ts",
+        "packages/plugins/offline-ui/src/css/cache-log-export.css"
+    ],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/cache/log-export-block.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bloc de la fenêtre hors-ligne qui télécharge le journal du core tel qu'il l'exporte",
+            "confidence": "haute",
+            "rationale": "Un appelant mesuré : `packages/plugins/offline-ui/src/cache/cache-control-dom.ts`, qui le monte en dernier dans la fenêtre. Jusque-là le journal borné et rédigé du core n'était proposé à l'utilisateur que par l'écran d'échec de démarrage ; une fois l'application lancée, il fallait une console. Le bloc n'ajoute rien au fichier et ne lit rien d'autre : il télécharge ce que rend `GeoLeaf.Log.exportDiagnostic()`, lu au clic, et dit quand le core n'a rien à exporter. Suite `log-export-block.test.ts` ; téléchargement réel prouvé par `e2e/77`. Place canonique : `cache/`, avec les autres blocs de la fenêtre."
+        },
+        "packages/plugins/offline-ui/src/css/cache-log-export.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille de la ligne « Exporter le journal » de la fenêtre hors-ligne",
+            "confidence": "haute",
+            "rationale": "Un importeur mesuré : `packages/plugins/offline-ui/src/entry.ts`. Fichier à part pour le motif de `cache-quarantine.css` : `cache-control.css` est au plafond de taille du contrat de plugin (PC-08). Les classes sont celles que `cache/log-export-block.ts` écrit en toutes lettres."
+        }
+    }
+}

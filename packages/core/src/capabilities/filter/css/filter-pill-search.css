@@ -75,7 +75,7 @@
         border: none;
         border-radius: 50%;
         background: var(--gl-color-accent, #2563eb);
-        color: #fff;
+        color: var(--gl-color-accent-contrast, #f9fafb);
         cursor: pointer;
         transition:
             background 0.15s ease,

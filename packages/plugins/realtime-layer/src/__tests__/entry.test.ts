@@ -78,6 +78,42 @@ describe("realtime-layer entry.ts", () => {
         expect(stopAll).toHaveBeenCalledTimes(1);
     });
 
+    test("🛑 chargé APRÈS le boot : son module est inscrit quand même, et arrête chaque source", async () => {
+        // Measured in a browser, the plugin's preload emptied and its bundle evaluated once the
+        // application ran: after `unmount()` the feed was still polled — for a layer that no
+        // longer existed — and after the next `mount()` it was polled twice as often. The
+        // module was only registered before the first boot.
+        const runtime = await import("../realtime-runtime.js");
+        const stopAll = vi.spyOn(runtime, "stopAll");
+        // ⚠️ The mocked module outlives `vi.resetModules()`: this is the spy the previous case
+        // installed, with its call. Counted from here.
+        stopAll.mockClear();
+        const register = vi.fn();
+        g.GeoLeaf = {
+            plugins: { register: vi.fn() },
+            registry: { register, isInitialized: () => true },
+            mount: () => undefined,
+        } as never;
+        await import("../entry.js");
+
+        const module = register.mock.calls
+            .map(([m]) => m as { id: string; destroy?: () => void })
+            .find((m) => m.id === "realtime-layer");
+        expect(module, "no lifecycle module registered on the late path").toBeDefined();
+        module?.destroy?.();
+        expect(stopAll).toHaveBeenCalledTimes(1);
+    });
+
+    test("chargé après le boot d'un core SANS `mount()` : rien n'est inscrit — rien n'y démonte", async () => {
+        const register = vi.fn();
+        g.GeoLeaf = {
+            plugins: { register: vi.fn() },
+            registry: { register, isInitialized: () => true },
+        } as never;
+        await import("../entry.js");
+        expect(register).not.toHaveBeenCalled();
+    });
+
     test("sans plugins.register → monte quand même l'API", async () => {
         g.GeoLeaf = {};
         await import("../entry.js");

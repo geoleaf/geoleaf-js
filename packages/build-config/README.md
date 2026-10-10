@@ -32,11 +32,32 @@ Always **through an npm specifier**, never through a relative path:
 
 ```js
 // packages/<a-package>/rollup.config.mjs
-import { pluginConfig } from "@geoleaf/build-config/rollup.mjs";
+import { pluginStack } from "@geoleaf/build-config/rollup.mjs";
 ```
 
 That is the whole point: npm resolves by **name**, so moving the consuming package breaks nothing.
 A `../../` would have to be rewritten every time a package moves.
+
+### Bundling a workspace library from its sources
+
+A library that inlines its own dependencies ships them inside its built file. A package that
+bundles that file and also imports one of those dependencies carries it twice. `pluginStack`
+takes the library from its sources instead:
+
+```js
+// packages/<a-package>/rollup.config.mjs
+import { pluginStack } from "@geoleaf/build-config/rollup.mjs";
+
+export default {
+    input: "src/entry.ts",
+    output: { dir: "dist", format: "es" },
+    plugins: pluginStack({ fromSource: ["@geoleaf/field-renderer"] }),
+};
+```
+
+The library is found by node resolution and must ship `src/index.ts`. Its TypeScript is
+transpiled, not type-checked: its own build checks it, and the bundling package still reads its
+published `.d.ts`.
 
 ## Two non-negotiable rules
 

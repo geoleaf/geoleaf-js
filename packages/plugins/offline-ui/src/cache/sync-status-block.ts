@@ -66,14 +66,27 @@ function t(key: string, ...args: string[]): string {
     return fn ? fn(key, ...args) : key;
 }
 
-/** "3 min", "2 h", "4 j" — a duration, not a clock reading, same as the core's strip. */
+/**
+ * The day unit, in the user's language. `min` and `h` are unit symbols shared by every
+ * language; the day has none, so the core's catalogue carries it.
+ *
+ * ⚠️ A core older than that key answers the key itself: the count then keeps the `j` this
+ * block wrote before, rather than showing a key name in the status line.
+ */
+function _days(count: number): string {
+    const key = "ui.sync.unit_day";
+    const label = t(key, String(count));
+    return label === key ? `${count} j` : label;
+}
+
+/** "3 min", "2 h", "4 d" — a duration, not a clock reading, same as the core's strip. */
 function _ago(at: number, now: number): string {
     const minutes = Math.max(0, Math.round((now - at) / 60_000));
     if (minutes < 1) return t("ui.sync.last_at", "< 1 min");
     if (minutes < 60) return t("ui.sync.last_at", `${minutes} min`);
     const hours = Math.round(minutes / 60);
     if (hours < 24) return t("ui.sync.last_at", `${hours} h`);
-    return t("ui.sync.last_at", `${Math.round(hours / 24)} j`);
+    return t("ui.sync.last_at", _days(Math.round(hours / 24)));
 }
 
 /** Writes the four facts into an already-built block. */

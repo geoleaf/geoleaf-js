@@ -309,7 +309,7 @@
             "severity": null,
             "description": "Accesseur runtime au gestionnaire de synchronisation POI qu'addpoi enregistre sur GeoLeaf.Sync, sans aucun import statique entre plugins",
             "confidence": "moyenne",
-            "rationale": "48 LOC, 1 importeur (sync/sync-manager.ts) : E1 s'active a 100 % vers src/sync/, mais est surclasse — c'est l'un des 5 fichiers de la famille canonique *-seam.ts, apparie a engine-ready.ts par la meme decision S14 Phase B documentee dans son en-tete."
+            "rationale": "48 LOC, 1 importeur (sync/sync-manager.ts) : E1 s'active a 100 % vers src/sync/, mais est surclasse — c'est l'un des 5 fichiers de la famille canonique *-seam.ts, apparie a engine-ready.ts par la meme decision, documentee dans son en-tete."
         },
         "packages/plugins/offline-ui/src/css/cache-control.css": {
             "kind": "file",

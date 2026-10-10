@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.28 - src/kernel/basemaps/ui.ts */
+/* src/kernel/basemaps/ui.ts */
 
 const logMock = vi.hoisted(() => ({
     error: vi.fn(),
@@ -29,7 +29,7 @@ import {
     destroyUI,
 } from "../../src/kernel/basemaps/ui.ts";
 
-describe("basemaps/ui (Phase 5.28)", () => {
+describe("basemaps/ui", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         mockGetActiveKey.mockReturnValue("street");

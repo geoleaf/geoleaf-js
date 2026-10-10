@@ -99,21 +99,7 @@
             "severity": null,
             "description": "Monkey-patch de globalThis.fetch : injecte l'en-tête Authorization sur les URL du baseUrl, rejoue une fois la requête après un 401, et sert les en-têtes du worker",
             "confidence": "haute",
-            "rationale": "174 LOC, 1 importeur (entry.ts) ; 3 exports (install, uninstall, getWorkerHeaders). les tuiles MVT sont laissées à maplibre-bridge.ts par detectFormat, les archives PMTiles restent ici (la bibliothèque pmtiles les lit par ce fetch) — la frontière entre les deux fichiers est énonçable en une phrase, X2b ne se déclenche pas"
-        },
-        "packages/plugins/connector/src/format-detector.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Fonction pure déduisant le format de données d'une URL et d'un Content-Type, employée pour laisser les tuiles MVT au pont MapLibre — les archives PMTiles, lues par le fetch global, restent interceptées",
-            "confidence": "haute",
-            "rationale": "40 LOC, 1 export (detectFormat), 1 importeur (fetch-interceptor.ts). Homonyme de packages/plugins/file-import/src/format-detector.ts, mais T1 §1 l'écarte après hachage : exports disjoints (detectConverter, registerConverter, isKmz, getSupportedExtensions côté file-import) — pas un fork, et les deux chemins qualifient déjà le domaine (N5 non déclenché)"
+            "rationale": "174 LOC, 1 importeur (entry.ts) ; 3 exports (install, uninstall, getWorkerHeaders). aucun format n'est écarté : ce fichier sert le fetch de la page (données, archives PMTiles, tuiles et glyphes de la préparation hors ligne), maplibre-bridge.ts les requêtes de la carte — la frontière entre les deux fichiers est énonçable en une phrase, X2b ne se déclenche pas"
         },
         "packages/plugins/connector/src/lang/lang-fr.ts": {
             "kind": "file",

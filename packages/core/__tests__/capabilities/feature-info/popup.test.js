@@ -200,6 +200,13 @@ describe("handleClick()", () => {
         expect(isSidePanelOpen()).toBe(true);
         expect(popup()).toBeNull();
     });
+    it('"Voir plus" is labelled in the interface language, not in French for everyone', () => {
+        globalThis.GeoLeaf.I18n = {
+            t: (key, fb) => (key === "feature-info.popup.more" ? "See more" : fb),
+        };
+        handleClick(DETAIL);
+        expect(document.querySelector(".gl-poi-popup__link").textContent).toBe("See more >>>");
+    });
     it('"Voir plus" is absent when binding.sidepanel is false', () => {
         stubGeoLeaf({ ...DEFAULT_POPUP, sidepanel: false });
         handleClick(DETAIL);

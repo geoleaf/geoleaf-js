@@ -226,7 +226,13 @@ export const OfflineLifecycle = {
 
         // Core-only mode (offline disabled / no pwa): connectivity badge only.
         if (cfg.offlineDetectorEnabled === true) {
-            _detector?.init({ showBadge: true, badgePosition: "topleft", checkInterval: 30000 });
+            // The profile's corner, as in engine mode above: it was written `"topleft"` here,
+            // so an application showing the badge ALONE could not place it.
+            _detector?.init({
+                showBadge: true,
+                badgePosition: cfg.badgePosition ?? "topleft",
+                checkInterval: 30000,
+            });
             Log.info("[Offline] Offline detector initialized (core mode).");
         }
     },

@@ -36,11 +36,28 @@ import { whenAppReady } from "../../kernel/shared/index.js";
 
 /** Debounce for auto-apply on control changes (kept from the legacy panel). */
 const DEBOUNCE_MS = 300;
+/**
+ * The longest an active filter waits before judging a written layer again.
+ *
+ * The wait above is trailing: under writes closer together than itself it never ends, and the
+ * map kept the verdict from before the burst for as long as it lasted. Bounded for the
+ * layer's writes only — a user still typing must not have the filter applied under their hands.
+ */
+const STORE_MAX_WAIT_MS = 1000;
 
 let _started = false;
 let _panel: HTMLElement | null = null;
 let _cleanups: Array<() => void> = [];
 let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let _storeDeadline: ReturnType<typeof setTimeout> | null = null;
+
+/** Disarms the pending auto-apply, whichever timer holds it. */
+function _clearTimers(): void {
+    if (_debounceTimer) clearTimeout(_debounceTimer);
+    if (_storeDeadline) clearTimeout(_storeDeadline);
+    _debounceTimer = null;
+    _storeDeadline = null;
+}
 
 /** Mounts + wires the panel once the app (data) is ready, if the profile is migrated. */
 function _onAppReady(): void {
@@ -67,7 +84,12 @@ function _mountPanel(config: FilterConfig): void {
 
 /** Wires Apply / Reset / Close actions + debounced auto-apply on control changes. */
 function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
-    const apply = (): void => applyFilterFromPanel(_panel, config);
+    // Every pass disarms both timers: an Apply click, the quiet moment or the deadline, whichever
+    // comes first, leaves nothing armed behind it.
+    const apply = (): void => {
+        _clearTimers();
+        applyFilterFromPanel(_panel, config);
+    };
     const debouncedApply = (): void => {
         if (_debounceTimer) clearTimeout(_debounceTimer);
         _debounceTimer = setTimeout(apply, DEBOUNCE_MS);
@@ -89,7 +111,9 @@ function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
     // active, nothing to judge. A filter pass writes the map, never the store, so it cannot
     // fire this event again.
     const onLayerUpdated = (): void => {
-        if (readActiveFilter(_panel, config).length > 0) debouncedApply();
+        if (readActiveFilter(_panel, config).length === 0) return;
+        debouncedApply();
+        _storeDeadline ??= setTimeout(apply, STORE_MAX_WAIT_MS);
     };
 
     panel.addEventListener("click", onClick);
@@ -143,10 +167,7 @@ export const FilterLifecycle = {
         // an application mounted again — would return at once, and this capability would
         // never come back.
         try {
-            if (_debounceTimer) {
-                clearTimeout(_debounceTimer);
-                _debounceTimer = null;
-            }
+            _clearTimers();
             _cleanups.forEach((fn) => fn());
             _cleanups = [];
             _panel?.remove();

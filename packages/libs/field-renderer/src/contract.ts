@@ -8,7 +8,7 @@
 /**
  * A single field descriptor handed to a component.
  *
- * ⚠️ This doc said « from the JSON profile `formSchema` » until task 7.2. That key no
+ * ⚠️ This doc used to say « from the JSON profile `formSchema` ». That key no
  * longer exists: the host projects `attributes.fields[]` entries carrying `edit` into this
  * shape (editor `modal/attributes-to-form.ts`). Nothing changed HERE — this contract was
  * always about what a component receives, never about where the profile keeps it, and that

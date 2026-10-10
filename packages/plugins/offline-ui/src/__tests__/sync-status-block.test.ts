@@ -190,6 +190,33 @@ describe("bloc de statut de synchronisation dans la modale du cache", () => {
         expect(text("last")).toContain("3 min");
     });
 
+    test("au-delà d'un jour, l'unité est celle du catalogue du cœur", async () => {
+        FR["ui.sync.unit_day"] = "{0} d";
+        try {
+            status = {
+                online: true,
+                owed: 0,
+                quarantined: 0,
+                lastSyncAt: Date.now() - 4 * 24 * 3_600_000,
+            };
+            await mount();
+            expect(text("last")).toBe("synchro 4 d");
+        } finally {
+            delete FR["ui.sync.unit_day"];
+        }
+    });
+
+    test("sous un cœur qui n'a pas la clé, le compte de jours garde son unité — jamais un nom de clé", async () => {
+        status = {
+            online: true,
+            owed: 0,
+            quarantined: 0,
+            lastSyncAt: Date.now() - 4 * 24 * 3_600_000,
+        };
+        await mount();
+        expect(text("last")).toBe("synchro 4 j");
+    });
+
     test("🛑 il se rafraîchit sur les deux événements de file du cœur", async () => {
         await mount();
         expect(text("pending")).toBe("Tout est envoyé");

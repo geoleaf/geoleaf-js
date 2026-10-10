@@ -81,6 +81,15 @@ export { Share } from "./api/geoleaf.share.js";
 export { Notifications } from "./capabilities/toast-renderer/public-api.js";
 export { PWA } from "./api/geoleaf.pwa.js";
 
-export default typeof window !== "undefined"
-    ? (window as unknown as Record<string, unknown>)["GeoLeaf"]
-    : {};
+/**
+ * The `GeoLeaf` namespace — what `import GeoLeaf from "@geoleaf/core"` hands over.
+ *
+ * Typed as the ambient namespace (`GeoLeafGlobal`): it was `unknown`, so the import every guide
+ * teaches compiled and its first dereference did not. The value is the namespace the bundle
+ * mounted on `window` — read through the ambient declaration of `window.GeoLeaf`, no cast — or
+ * an empty object where there is no `window`.
+ */
+const _namespace: GeoLeafGlobal =
+    (typeof window !== "undefined" ? window.GeoLeaf : undefined) ?? {};
+
+export default _namespace;

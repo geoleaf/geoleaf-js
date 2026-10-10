@@ -109,7 +109,7 @@ export async function buildSyncReport(
     const layers = coreProfileLayers() as readonly OfflineLayerDeclaration[];
     if (layers.length === 0) return [];
 
-    const db = StorageContract.DB as ReportStore | null;
+    const db: ReportStore | null = StorageContract.DB;
     const pullState: PullStateMap = await readPullState(db);
 
     const layerIds = layers.map((l) => String(l.id ?? "")).filter((id) => id.length > 0);

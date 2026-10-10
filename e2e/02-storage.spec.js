@@ -5,7 +5,7 @@
 
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
-import { scanPage } from "./helpers/axe-config.js";
+import { scanPage, scanComponent } from "./helpers/axe-config.js";
 
 // Port 8767 (deploy-storage) is retired: storage ships in both gated variants now.
 // ⚠️ This spec then targeted `deploy-addpoi`, "the closest neighbour of the
@@ -54,4 +54,45 @@ test.describe("02-storage", () => {
         const display = await modal.evaluate((el) => getComputedStyle(el).display);
         expect(display).not.toBe("none");
     });
+
+    // The page scan above runs with the window CLOSED: none of its surfaces is in the DOM
+    // it judges. The window's primary button, its header and its action buttons wrote a
+    // light text on the theme accent — 1.39:1 in the light theme — through every gate.
+    // Scanned OPEN, in both themes: the dark header is a different background altogether.
+    for (const theme of ["light", "dark"]) {
+        test(`[a11y] the open cache window passes the axe scan — ${theme} theme`, async ({
+            page,
+        }) => {
+            // Captured BEFORE any page script: the event fires during the boot, and it is
+            // the only milestone after the boot's last theme write — a class set earlier
+            // is erased by `applyTheme`.
+            await page.addInitScript(() => {
+                document.addEventListener("geoleaf:app:ready", () => {
+                    /** @type {any} */ (window).__glAppReady = true;
+                });
+            });
+            await page.goto("/");
+            await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 15000 });
+            await page.waitForFunction(
+                () => /** @type {any} */ (window).__glAppReady === true,
+                null,
+                {
+                    timeout: 25000,
+                }
+            );
+            await page.evaluate((dark) => {
+                document.body.classList.toggle("gl-theme-dark", dark);
+                document.body.classList.toggle("gl-theme-light", !dark);
+            }, theme === "dark");
+
+            await page.locator('[data-gl-toolbar-action="offline-ui"]').first().click();
+            await expect(page.locator("#gl-cache-modal")).toBeVisible({ timeout: 5000 });
+            // The scan must have something to judge: a window that mounted empty would
+            // pass with no violation at all.
+            await expect(page.locator("#gl-cache-modal .gl-btn--primary").first()).toBeVisible();
+
+            const results = await scanComponent(page, "#gl-cache-modal");
+            expect(results.violations).toEqual([]);
+        });
+    }
 });

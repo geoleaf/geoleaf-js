@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "contraste-accent",
+    "scope": ["scripts/verify-css-accent-contrast.cjs"],
+    "verdicts": {
+        "scripts/verify-css-accent-contrast.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Gate : un texte écrit sur un fond d'accent atteint 4,5:1 dans chaque thème et chaque palette — le contraste est calculé, bloc par bloc",
+            "confidence": "haute",
+            "rationale": "Née d'un défaut mesuré : le bouton primaire de la fenêtre hors-ligne se lisait à 1,39:1 en thème clair, vert à travers toutes les gates. `verify-css-tokens.cjs` juge qu'un jeton existe, pas qu'il se lit sur son fond ; une règle par nom de jeton aurait manqué la moitié des cas, écrits en `#fff`. Résout les blocs de thème par élément porteur, pas par ordre de cascade — c'est ce qui a montré les palettes sombres. Vue rouge sur 138 paires avant correctif. Plancher zéro, sans gel ; câblée dans ci-local et ci.yml, déclarée à l'hygiène. Ce qu'elle ne juge pas est imprimé"
+        }
+    }
+}

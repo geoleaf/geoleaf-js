@@ -44,6 +44,17 @@ function buildPublicApi() {
 
 // ─── Mount GeoLeaf.FlatGeobuf ─────────────────────────────────────────────────
 
+/** The API this plugin mounts as `GeoLeaf.FlatGeobuf`. */
+export type FlatGeobufApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.FlatGeobuf` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        FlatGeobuf: FlatGeobufApi;
+    }
+}
+
 if (_g.GeoLeaf) {
     _g.GeoLeaf.FlatGeobuf = buildPublicApi();
 }

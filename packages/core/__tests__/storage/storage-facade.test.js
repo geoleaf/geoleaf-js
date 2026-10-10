@@ -320,7 +320,7 @@ describe("Storage — lectures hors-ligne", () => {
     });
 });
 
-describe("Storage.pullLayer — tâche 4.1, l'attente du moteur est BORNÉE", () => {
+describe("Storage.pullLayer — l'attente du moteur est BORNÉE", () => {
     test("délègue au module `pull` quand il est câblé", async () => {
         const report = { layerId: "sites_rosario", written: 27, refused: null };
         const pullLayer = vi.fn().mockResolvedValue(report);

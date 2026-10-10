@@ -10,7 +10,7 @@
 //   - gate OFF (E2E_HW_GL=1) — the host's real GL; absolute values are not comparable
 //              to a contract captured elsewhere, so nothing is asserted.
 //
-// ⚠️ T6.4 — WRITING the baseline is a THIRD, INDEPENDENT switch: PERF_BASELINE_WRITE=1
+// ⚠️ WRITING the baseline is a THIRD, INDEPENDENT switch: PERF_BASELINE_WRITE=1
 // (which requires E2E_HW_GL=1). This header used to describe a BIMODAL contract —
 // "capture mode (E2E_HW_GL=1) → spec writes the baseline" — and that description was
 // the defect, not just a wording issue: one variable carried both the GL choice and
@@ -39,7 +39,8 @@
  * anti-flake against sub-millisecond render timings and heap-sampling jitter.
  */
 const TOLERANCES = {
-    // geojsonRender[label].avg_ms — ceiling = max(committed.max * factor, floorMs).
+    // geojsonRender[label] — ceiling = max(committed.max * factor, floorMs), and the caller
+    // holds the FASTEST of its iterations to it, not their mean: see the gate in the spec.
     // floorMs absorbs the sub-ms noise where a pure ratio is meaningless (~0.2 ms).
     geojsonRender: { factor: 3, floorMs: 5 },
     // RETAINED memory cost of 10,000 features — absolute band, NO baseline.

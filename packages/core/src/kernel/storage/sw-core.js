@@ -21,7 +21,7 @@
  * - Network-First: configurations
  * - Tile: IndexedDB `geoleaf-db` → Cache API → network → placeholder
  *
- * ✅ ROOT CAUSE n°2 IS REPAIRED (task 3.1, 02/08/2026) — and the repair was to REMOVE a
+ * ✅ ROOT CAUSE n°2 IS REPAIRED (02/08/2026) — and the repair was to REMOVE a
  * number, not to correct one.
  *
  * Until then this file opened `geoleaf-db` at a hard-coded version `2` while the engine
@@ -32,7 +32,7 @@
  * `open("geoleaf-db", 2)` → `{ ok: false, err: "VersionError" }` against `geoleaf-db@v3`
  * (`scripts/probe-sw-observability.mjs`).
  *
- * The worker now opens WITHOUT a version (decision T2′). An `undefined` version opens at the
+ * The worker now opens WITHOUT a version. An `undefined` version opens at the
  * database's current version and never triggers an upgrade, so the READ-ONLY /
  * NON-PROVISIONING intent below is structurally true rather than defended by an abort — and
  * there is no number left to desynchronise. What replaces the version check is capability
@@ -181,6 +181,26 @@ const OFFLINE_TILE_SVG =
 // ═══════════════════════════════════════════════
 // INSTALL EVENT
 // ═══════════════════════════════════════════════
+
+/**
+ * Takes the page at once when this is the FIRST worker of the scope — and only then.
+ *
+ * 🛑 AN UPDATE WAITS. This worker called `skipWaiting()` at every install: a deployment took
+ * the page over the moment it was downloaded, and `activate` then purged the `geoleaf-v*`
+ * caches of the version that page was still running on — its lazy chunks included — under a
+ * user who may be offline, in the middle of a capture. Nobody had consented to anything.
+ *
+ * `registration.active` tells the two apart. No active worker: nothing to protect, and
+ * waiting would only leave a first visit without offline support. With one, this worker stays
+ * `waiting` until the page sends `SKIP_WAITING` (`GeoLeaf.PWA.applyUpdate()`, see the
+ * `message` handler) or until every tab it serves is closed — the browser's own rule.
+ *
+ * @returns {Promise<void>}
+ */
+function _takePageIfFirstInstall() {
+    return self.registration.active ? Promise.resolve() : self.skipWaiting();
+}
+
 self.addEventListener("install", (event) => {
     if (_SW_DEBUG) console.log("[SW] Installing Service Worker v" + CACHE_VERSION);
 
@@ -206,10 +226,22 @@ self.addEventListener("install", (event) => {
                     // behind it, and the derivation throws otherwise.
                     await cache.addAll(STATIC_ASSETS);
                 }
-                await self.skipWaiting();
+                await _takePageIfFirstInstall();
                 if (_SW_DEBUG) console.log("[SW] Installation complete");
             } catch (error) {
                 console.error("[SW] Pre-cache failed:", error);
+                // 🛑 AN UPDATE WHOSE PRE-CACHE FAILED DOES NOT INSTALL. Swallowed, the failure
+                // let a worker with an EMPTY static cache reach `installed`: it waited, the
+                // page announced it, and accepting it replaced a working worker by one that
+                // had cached nothing — whose activation then purged the caches of the one it
+                // replaced. Rejecting makes the browser discard this worker: the one in
+                // place keeps serving, nothing is offered, and the next update check tries
+                // again. ⚠️ A file missing for good from the list therefore holds every
+                // update back until a deployment restores it — which is what
+                // `lib/boot-assets.cjs` exists to make impossible at build time.
+                if (self.registration.active) throw error;
+                // A FIRST install has no worker to protect and nothing to lose: it takes the
+                // page, and its cache fills as the page is used.
                 await self.skipWaiting();
             }
         })()
@@ -430,6 +462,9 @@ self.addEventListener("message", (event) => {
         return;
     }
 
+    // The gesture of an update: the page sends it when its user accepts the new version
+    // (`GeoLeaf.PWA.applyUpdate()`), and it is the ONLY thing that makes a waiting worker
+    // take a page that is in use — see `_takePageIfFirstInstall`.
     if (event.data && event.data.type === "SKIP_WAITING") {
         self.skipWaiting();
     }
@@ -1127,7 +1162,7 @@ async function fetchBounded(request, timeoutMs = 10000) {
  * the Cache API, so a core-only deployment serves tiles exactly like the former lite
  * SW.
  *
- * ✅ Step 1 is REACHABLE since task 3.1 (02/08/2026). It was unreachable in every deployment
+ * ✅ Step 1 is REACHABLE since 02/08/2026. It was unreachable in every deployment
  * until then — the worker opened the database at a version it could not have. The ordering
  * above is now the ordering that actually runs.
  *
@@ -1390,7 +1425,7 @@ function getCacheNameForProfile(url) {
 /**
  * Opens the shared `geoleaf-db` IndexedDB — READ-ONLY, NON-PROVISIONING, VERSIONLESS.
  *
- * 🛑 THE SW CARRIES NO VERSION NUMBER, AND THAT IS THE WHOLE POINT (task 3.1, decision T2′).
+ * 🛑 THE SW CARRIES NO VERSION NUMBER, AND THAT IS THE WHOLE POINT.
  *
  * It used to open at a hard-coded `2` while the engine declared `3`. IndexedDB refuses to
  * open below the stored version — it throws `VersionError` — so this function resolved

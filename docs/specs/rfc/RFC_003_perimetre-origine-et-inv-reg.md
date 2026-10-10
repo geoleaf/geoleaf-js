@@ -13,8 +13,7 @@
 Deux points sans rapport de fond, réunis parce qu'ils exigent la même autorisation : éditer la
 Partie I figée (§10). Aucun des deux n'ajoute d'obligation à un plugin conforme.
 
-Le pré-vol de cette RFC a **infirmé un tiers de son énoncé d'origine** (tâche 10.5 de
-le socle d'initialisation), et les écarts sont consignés au §Pré-vol ci-dessous plutôt que corrigés
+Le pré-vol de cette RFC a **infirmé un tiers de son énoncé d'origine**, et les écarts sont consignés au §Pré-vol ci-dessous plutôt que corrigés
 en silence.
 
 ---
@@ -65,8 +64,8 @@ trouve, et la question se ré-instruit de zéro à chaque fois qu'elle revient.
 4. **Le coût est net et mesurable.** Un descripteur récupéré au runtime ajoute **une requête
    sérialisée par plugin avant `boot()`**, là où un descripteur de build ne coûte aucune E/S.
 
-**Et le dépôt va déjà dans la direction inverse, sprint après sprint** : les tâches 5.3/5.4 ont
-retiré `unpkg.com` du déployé et 5.5 a resserré la CSP. Autoriser une origine tierce au runtime
+**Et le dépôt va déjà dans la direction inverse, sprint après sprint** : `unpkg.com` a été
+retiré du déployé, puis la CSP resserrée. Autoriser une origine tierce au runtime
 contredirait un travail livré.
 
 **Changement :** une sous-section « Chargement depuis une origine tierce (hors contrat) » au §0,
@@ -95,7 +94,7 @@ mot suffit.
 
 ## Pré-vol — un tiers de l'énoncé d'origine était faux
 
-La tâche 10.5 annonçait **trois** gestes de ménage. La mesure en laisse **un**.
+L'énoncé d'origine annonçait **trois** gestes de ménage. La mesure en laisse **un**.
 
 | Énoncé de 10.5                                                           | Mesure du 08/08/2026                                                                                                                                                                                                                                                                                                  |
 | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -107,7 +106,7 @@ La tâche 10.5 annonçait **trois** gestes de ménage. La mesure en laisse **un*
 là où `:80` le plaçait — c'est `register()` qui s'y trouve —, et le fait qui compte est ailleurs
 encore, dans le **type** qui porte l'argument : `LazyResolver`, déclaré par `packages/core/src/kernel/api/api-types.ts`.
 
-> 🛑 **Annotation du 11/08/2026 (tâche 6.11) — cette correction s'était périmée à son tour, et
+> 🛑 **Annotation du 11/08/2026 — cette correction s'était périmée à son tour, et
 > c'est la démonstration la plus courte de la classe qu'elle instruit.** Elle écrivait
 > « `registerLazy` est en `plugin-registry.ts:87` » ; au 11/08 la déclaration est en **`:88`**,
 > `:87` étant le `*/` fermant du bloc TSDoc au-dessus. **Une ligne ajoutée dans un commentaire

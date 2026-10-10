@@ -20,15 +20,26 @@
 //     request hook of a configured connector;
 //   · a position being shared stops being sent;
 //   · a plugin loaded after the boot is torn down too (`geocoding`, whose preload is emptied);
+//   · `realtime-layer` loaded after the boot stops polling with the application, and one set of
+//     sources — not two — polls on the next map;
+//   · a pane its plugin removed is not brought back by the host that had adopted it — the
+//     itinerary pane of `routing`, under the mobile sheet AND under the desktop panel;
+//   · a guidance session of `navigation` ends with the application — banner, position watch,
+//     screen wake lock — and is not resumed;
+//   · the offline window of `offline-ui` closes with the application, and gives its listeners back;
 //   · cycle after cycle, with the plugins built again each time, the live listeners stay flat.
 //
-// ⚠️ ONE DECISION IS ASSERTED AS SUCH: `unmount()` does NOT give `window.fetch` back to a
-// configured connector. `configure()` is the host's call, made once for the page — the session is
-// not part of the application the boot starts.
+// ⚠️ TWO DECISIONS ARE ASSERTED AS SUCH. `unmount()` does NOT give `window.fetch` back to a
+// configured connector, and does NOT close the socket `GeoLeaf.Ws.init()` opened. Both are the
+// host's call, made once for the page — neither is part of the application the boot starts.
 
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
-import { installListenerProbe, liveListeners } from "./helpers/listener-probe.js";
+import {
+    installListenerProbe,
+    liveListeners,
+    livePageListeners,
+} from "./helpers/listener-probe.js";
 import { bootPage, installSignals, mountAndWait, unmount } from "./helpers/mount.js";
 
 test.use({ baseURL: baseURL("full") });
@@ -38,6 +49,27 @@ const SHARE_ENDPOINT = "https://positions.geoleaf-e2e.test/positions";
 /** A connector base that collides with none of the application's own requests. */
 const CONNECTOR_BASE = "https://api.geoleaf-e2e.test";
 const HERE = { latitude: -32.95, longitude: -60.65 };
+/** A socket endpoint that exists nowhere — answered by the spec, never reached. */
+const WS_URL = "wss://ws.geoleaf-e2e.test/live";
+/** A synthetic itinerary along one parallel — what `routing` shows and `navigation` follows. */
+const ROUTE_LINE = [
+    [-60.66, -32.95],
+    [-60.659, -32.95],
+    [-60.658, -32.95],
+    [-60.657, -32.95],
+    [-60.656, -32.95],
+];
+const ROUTE = {
+    distance: 400,
+    duration: 40,
+    geometry: "",
+    provider: "e2e",
+    waypoints: [
+        { coordinates: ROUTE_LINE[0], name: "Start" },
+        { coordinates: ROUTE_LINE[4], name: "End" },
+    ],
+    legs: [{ distance: 400, duration: 40, steps: [] }],
+};
 
 /**
  * Counts the live intervals and the product's live mutation observers — neither is seen by the
@@ -79,6 +111,113 @@ async function installTimerProbe(page) {
         w.__glTimers = () => ({ intervals: intervals.size, observers: observers.size });
         w.__glNativeFetch = w.fetch;
     });
+}
+
+/**
+ * Replaces what a guidance session HOLDS on the device — the position watch and the screen wake
+ * lock — by counted stand-ins, and lets a spec feed positions (`__glFix`). Installed before any
+ * page script. Neither is visible in the DOM: without the count, a session that outlives its
+ * application is indistinguishable from one that ended.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function installGuidanceProbe(page) {
+    await page.addInitScript(() => {
+        const w = /** @type {any} */ (window);
+        const watches = new Map();
+        let nextWatch = 1;
+        Object.defineProperty(navigator, "geolocation", {
+            configurable: true,
+            value: {
+                watchPosition: (/** @type {Function} */ onFix) => {
+                    const id = nextWatch++;
+                    watches.set(id, onFix);
+                    return id;
+                },
+                clearWatch: (/** @type {number} */ id) => {
+                    watches.delete(id);
+                },
+                getCurrentPosition: () => {},
+            },
+        });
+        let locks = 0;
+        Object.defineProperty(navigator, "wakeLock", {
+            configurable: true,
+            value: {
+                request: async () => {
+                    locks += 1;
+                    return {
+                        released: false,
+                        release: async () => {
+                            locks -= 1;
+                        },
+                        addEventListener() {},
+                        removeEventListener() {},
+                    };
+                },
+            },
+        });
+        w.__glHeld = () => ({ watches: watches.size, wakeLocks: locks });
+        w.__glFix = (
+            /** @type {number} */ lng,
+            /** @type {number} */ lat,
+            /** @type {number} */ at
+        ) =>
+            watches.forEach((onFix) =>
+                onFix({
+                    coords: {
+                        longitude: lng,
+                        latitude: lat,
+                        accuracy: 6,
+                        altitude: null,
+                        altitudeAccuracy: null,
+                        heading: null,
+                        speed: 10,
+                    },
+                    timestamp: at,
+                })
+            );
+    });
+}
+
+/**
+ * What a guidance session shows and holds right now.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+function guidance(page) {
+    return page.evaluate(() => {
+        const w = /** @type {any} */ (window);
+        return {
+            banners: document.querySelectorAll(".gl-nav-banner").length,
+            guiding: w.GeoLeaf.Navigation?.isGuiding?.() ?? false,
+            ...w.__glHeld(),
+        };
+    });
+}
+
+/**
+ * Starts a guidance session on the synthetic itinerary and feeds it two positions.
+ *
+ * @param {import("@playwright/test").Page} page
+ */
+async function startGuidance(page) {
+    await page.evaluate(
+        async ({ route, line }) => {
+            const w = /** @type {any} */ (window);
+            await w.GeoLeaf.plugins.load("navigation");
+            w.GeoLeaf.Navigation.start(route, line, {
+                recompute: async () => ({ ok: false, reason: "network" }),
+                decodeGeometry: () => line,
+            });
+            let at = 1_700_000_000_000;
+            for (const [lng, lat] of line.slice(0, 2)) {
+                at += 5000;
+                w.__glFix(lng, lat, at);
+            }
+        },
+        { route: ROUTE, line: ROUTE_LINE }
+    );
 }
 
 /**
@@ -510,8 +649,10 @@ test.describe("75-remount-plugins — the plugins, unmounted and mounted again",
         // The application preloads the plugin at boot whenever its profile enables it: the late
         // path does not exist as shipped. Its preload gets an EMPTY module, and the real bundle
         // is evaluated below under another URL — a module is cached by its URL.
+        // ⚠️ The preload asks for the bundle with its content token (`?v=`): the pattern takes
+        // it with or without one, and stops there — `?late`, below, must reach the real file.
         let emptied = 0;
-        await context.route(/\/dist\/geoleaf-geocoding\.plugin\.js$/, (route) => {
+        await context.route(/\/dist\/geoleaf-geocoding\.plugin\.js(\?v=[0-9a-f]+)?$/, (route) => {
             emptied += 1;
             return route.fulfill({
                 status: 200,
@@ -546,6 +687,404 @@ test.describe("75-remount-plugins — the plugins, unmounted and mounted again",
 
             await mountAndWait(page);
             await expect(page.locator(".gl-geocoding-ctrl")).toHaveCount(1, { timeout: 15_000 });
+        } finally {
+            await context.close();
+        }
+    });
+
+    test("realtime-layer loaded after the boot stops polling with the application, and restarts ONCE", async ({
+        browser,
+    }) => {
+        test.setTimeout(180_000);
+        // 🛑 MEASURED BEFORE THE FIX, by this very technique: its module was registered only
+        // before the first boot, so loaded late the plugin heard no unmount. Over nine seconds
+        // at a two-second interval the feed was requested 4 times AFTER `unmount()` — for a
+        // layer that no longer existed — and 9 times after the next `mount()`: a second set of
+        // sources beside the first. After the fix: 0, then 4.
+        const LAYER = "epicentres_seismes";
+        const INTERVAL_MS = 2000;
+        const WINDOW_MS = 9000;
+        const context = await browser.newContext({
+            baseURL: baseURL("full"),
+            ignoreHTTPSErrors: true,
+            serviceWorkers: "block",
+        });
+        let emptied = 0;
+        // With or without its content token, and nothing else — see the geocoding case above.
+        await context.route(
+            /\/dist\/geoleaf-realtime-layer\.plugin\.js(\?v=[0-9a-f]+)?$/,
+            (route) => {
+                emptied += 1;
+                return route.fulfill({
+                    status: 200,
+                    contentType: "text/javascript",
+                    body: "export {};",
+                });
+            }
+        );
+        // The shipped interval is a minute: shortened, so a window of seconds can count.
+        await context.route("**/profiles/tourism/profile-bundle.json**", async (route) => {
+            const bundle = await (await route.fetch()).json();
+            const realtime = bundle.layerConfigs?.[LAYER]?.data?.realtime;
+            if (!realtime)
+                throw new Error(`le bundle ne porte plus la couche temps réel \`${LAYER}\``);
+            realtime.intervalMs = INTERVAL_MS;
+            await route.fulfill({ json: bundle });
+        });
+        // The feed is a route, counted: the subject is WHETHER it is asked, not what it answers.
+        /** @type {number[]} */
+        const asked = [];
+        await context.route("https://earthquake.usgs.gov/**", (route) => {
+            asked.push(Date.now());
+            return route.fulfill({
+                status: 200,
+                contentType: "application/json",
+                body: JSON.stringify({ type: "FeatureCollection", features: [] }),
+            });
+        });
+        const page = await context.newPage();
+        /** How many times the feed is asked over the next window. */
+        const askedOverWindow = async () => {
+            const from = Date.now();
+            await page.waitForTimeout(WINDOW_MS);
+            return asked.filter((at) => at >= from).length;
+        };
+        try {
+            await installSignals(page);
+            await bootPage(page);
+            await mountAndWait(page);
+            expect(emptied, "the preload was intercepted").toBeGreaterThan(0);
+            expect(
+                await page.evaluate(
+                    () => typeof (/** @type {any} */ (window).GeoLeaf.RealtimeLayer)
+                ),
+                "the plugin is not loaded yet"
+            ).toBe("undefined");
+
+            await page.evaluate(
+                async ({ url, layer }) => {
+                    await import(url);
+                    /** @type {any} */ (window).GeoLeaf.RealtimeLayer.start(layer);
+                },
+                {
+                    url: `${baseURL("full")}/dist/geoleaf-realtime-layer.plugin.js?late`,
+                    layer: LAYER,
+                }
+            );
+            // The witness: the source polls, at about the interval — else nothing below is a
+            // measure of a source that stopped.
+            const mounted = await askedOverWindow();
+            expect(mounted, "the late-loaded source does not poll").toBeGreaterThanOrEqual(3);
+
+            await unmount(page);
+            // One request may be in flight at the unmount; the window is counted after it.
+            await page.waitForTimeout(1500);
+            expect(
+                await askedOverWindow(),
+                "the feed is still polled after unmount(), for a layer that is gone"
+            ).toBe(0);
+
+            await mountAndWait(page);
+            const again = await askedOverWindow();
+            expect(again, "the sources did not start again on the next map").toBeGreaterThanOrEqual(
+                3
+            );
+            // One set, not two: twice the rate is what a second set beside the first gave.
+            expect(again, "a second set of sources polls beside the first").toBeLessThanOrEqual(
+                mounted + 2
+            );
+        } finally {
+            await context.close();
+        }
+    });
+
+    // 🛑 MEASURED BEFORE THE FIX, under both hosts: the plugin removes its pane at the unmount,
+    // then the host that had adopted it — torn down after the plugin — handed its moved nodes
+    // back to their original parent without checking that it still held them. The pane was back
+    // in `<body>` after `unmount()`, the SAME element, and the next opening built a second one
+    // beside it. The defect was the host's: any hosted pane its plugin removes was in that case.
+    for (const host of [
+        {
+            name: "the mobile sheet",
+            viewport: { width: 1280, height: 720 },
+            within: "#gl-sheet-panel-body",
+        },
+        {
+            name: "the desktop panel",
+            viewport: { width: 1600, height: 900 },
+            within: ".gl-rp-pane",
+        },
+    ]) {
+        test(`a pane its plugin removed is not brought back by ${host.name} — routing`, async ({
+            browser,
+        }) => {
+            test.setTimeout(180_000);
+            const context = await browser.newContext({
+                baseURL: baseURL("full"),
+                ignoreHTTPSErrors: true,
+                viewport: host.viewport,
+            });
+            const page = await context.newPage();
+            const pageErrors = [];
+            page.on("pageerror", (e) => pageErrors.push(e.message));
+            /** Opens the itinerary pane and reads where its roots sit. */
+            const openPane = async () => {
+                await clickToolbar(page, "routing");
+                await expect(page.locator(".gl-routing-panel")).not.toHaveCount(0, {
+                    timeout: 20_000,
+                });
+                return page.evaluate(
+                    (within) => ({
+                        panes: document.querySelectorAll(".gl-routing-panel").length,
+                        hosted: document.querySelectorAll(`${within} .gl-routing-panel`).length,
+                    }),
+                    host.within
+                );
+            };
+            try {
+                await installSignals(page);
+                await installTimerProbe(page);
+                await bootPage(page);
+                await mountAndWait(page);
+                await settle(page);
+
+                // The witness: ONE pane, and it is THIS host that holds it — else the test would
+                // pass on the other host, whatever this one does.
+                expect(await openPane(), `the pane is open in ${host.name}`).toEqual({
+                    panes: 1,
+                    hosted: 1,
+                });
+
+                await unmount(page);
+                await expect(
+                    page.locator(".gl-routing-panel"),
+                    "the pane its plugin removed is back in the page"
+                ).toHaveCount(0);
+
+                await mountAndWait(page);
+                await settle(page);
+                expect(await page.locator(".gl-routing-panel").count(), "after mount()").toBe(0);
+                expect(await openPane(), "the next opening builds ONE pane").toEqual({
+                    panes: 1,
+                    hosted: 1,
+                });
+                expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+            } finally {
+                await context.close();
+            }
+        });
+    }
+
+    test("a guidance session ends with the application, and is not resumed", async ({ page }) => {
+        test.setTimeout(180_000);
+        // 🛑 MEASURED BEFORE THE FIX: the plugin registered no lifecycle module. After
+        // `unmount()` the banner was still in the page, one position watch and one wake lock
+        // were still held, and the session followed positions for a map that was gone.
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        await installSignals(page);
+        await installTimerProbe(page);
+        await installGuidanceProbe(page);
+        await bootPage(page);
+        await mountAndWait(page);
+        await settle(page);
+
+        await startGuidance(page);
+        // The witness: there IS a session, and it holds what the test says it gives back.
+        await expect
+            .poll(() => guidance(page), { timeout: 15_000 })
+            .toEqual({ banners: 1, guiding: true, watches: 1, wakeLocks: 1 });
+
+        await unmount(page);
+        await expect
+            .poll(() => guidance(page), {
+                timeout: 5_000,
+                message: "the session outlived its application",
+            })
+            .toEqual({ banners: 0, guiding: false, watches: 0, wakeLocks: 0 });
+
+        await mountAndWait(page);
+        await settle(page);
+        expect(await guidance(page), "the next mount resumed the session").toEqual({
+            banners: 0,
+            guiding: false,
+            watches: 0,
+            wakeLocks: 0,
+        });
+
+        // And guidance WORKS on the next application: the banner sits in the new map.
+        await startGuidance(page);
+        await expect
+            .poll(() => guidance(page), { timeout: 15_000 })
+            .toEqual({ banners: 1, guiding: true, watches: 1, wakeLocks: 1 });
+        expect(
+            await page.evaluate(() => {
+                const w = /** @type {any} */ (window);
+                const container = w.GeoLeaf.Core.getMap().getNativeMap().getContainer();
+                return container.querySelectorAll(".gl-nav-banner").length;
+            }),
+            "the banner sits in the container of the new map"
+        ).toBe(1);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
+
+    test("the offline window closes with the application, and its listeners come back", async ({
+        page,
+    }) => {
+        test.setTimeout(240_000);
+        // 🛑 MEASURED BEFORE THE FIX: open at `unmount()`, the window stayed over the page — and
+        // over the next application —, with some thirty listeners.
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        await installSignals(page);
+        await installTimerProbe(page);
+        await installListenerProbe(page);
+        await bootPage(page);
+        await mountAndWait(page);
+        await settle(page);
+
+        // ⚠️ The listeners of the PAGE, not every live one: the requests a map had in flight when
+        // it went each hold an `abort` listener for a while, and that count fell by twelve
+        // between two cycles of this very test — on nothing the window does.
+        /** Two equal readings, 500 ms apart: the window keeps rendering after it shows. */
+        const settledListeners = async () => {
+            let previous = -1;
+            for (let i = 0; i < 40; i++) {
+                const current = await livePageListeners(page);
+                if (current === previous) return current;
+                previous = current;
+                await page.waitForTimeout(500);
+            }
+            throw new Error("the live listeners never settled");
+        };
+
+        // The reference: what an unmounted application leaves when the window was NEVER opened.
+        const idle = [await settledListeners()];
+        await unmount(page);
+        const bare = await settledListeners();
+        await mountAndWait(page);
+        await settle(page);
+        idle.push(await settledListeners());
+
+        const CYCLES = 3;
+        const open = [];
+        const gone = [];
+        for (let i = 1; i <= CYCLES; i++) {
+            await clickToolbar(page, "offline-ui");
+            await expect(page.locator("#gl-cache-modal")).toBeVisible({ timeout: 20_000 });
+            open.push(await settledListeners());
+            await unmount(page);
+            await expect(
+                page.locator("#gl-cache-modal"),
+                "the window of the unmounted application is still in the page"
+            ).toHaveCount(0);
+            gone.push(await settledListeners());
+            await mountAndWait(page);
+            await settle(page);
+            expect(await page.locator("#gl-cache-modal").count(), "after mount()").toBe(0);
+            idle.push(await settledListeners());
+        }
+
+        const JITTER = 2;
+        const report = `idle ${idle.join(", ")} · window open ${open.join(", ")} · unmounted ${gone.join(", ")} (never opened: ${bare})`;
+        // The witness: an open window DOES hold listeners — else « they come back » says nothing.
+        expect(open[0] - idle[1], `an open window holds no listener: ${report}`).toBeGreaterThan(
+            20
+        );
+        for (const left of gone) {
+            expect(
+                Math.abs(left - bare),
+                `an application unmounted with its window open leaves listeners: ${report}`
+            ).toBeLessThanOrEqual(JITTER);
+        }
+        expect(
+            Math.max(...idle) - Math.min(...idle),
+            `the listeners of an idle application drift: ${report}`
+        ).toBeLessThanOrEqual(JITTER);
+        console.info(`[remount-plugins] offline window over ${CYCLES} cycles: ${report}`);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
+    test("a socket the host opened stays open across a remount — a decision, asserted as such", async ({
+        browser,
+    }) => {
+        test.setTimeout(180_000);
+        // Not a defect waiting for its fix: the connection is opened by the host
+        // (`GeoLeaf.Ws.init()`), like the session of the connector, and belongs to the page. What
+        // is asserted is that the decision HOLDS — one socket, never opened again, and a message
+        // still reaches its subscriber on the next application. A plugin that came to register a
+        // teardown would turn this test red, and that is its job.
+        const context = await browser.newContext({
+            baseURL: baseURL("full"),
+            ignoreHTTPSErrors: true,
+        });
+        /** @type {import("@playwright/test").WebSocketRoute[]} */
+        const served = [];
+        await context.routeWebSocket(WS_URL, (socket) => {
+            served.push(socket);
+            socket.onMessage((message) => {
+                try {
+                    if (JSON.parse(String(message)).type === "ping") {
+                        socket.send(JSON.stringify({ type: "pong" }));
+                    }
+                } catch {
+                    /* not JSON: nothing to answer */
+                }
+            });
+        });
+        const page = await context.newPage();
+        /** What the page holds of the connection. */
+        const connection = () =>
+            page.evaluate(() => {
+                const w = /** @type {any} */ (window);
+                return {
+                    state: w.GeoLeaf.Ws.state,
+                    subscriptions: w.GeoLeaf.Ws.getSubscriptions(),
+                    received: w.__glReceived,
+                };
+            });
+        /** Sends one message on the subscribed channel, from the server side. */
+        const push = () => served[0]?.send(JSON.stringify({ channel: "t", payload: { n: 1 } }));
+        try {
+            await installSignals(page);
+            await installTimerProbe(page);
+            await bootPage(page);
+            await mountAndWait(page);
+            await settle(page);
+
+            await page.evaluate(async (url) => {
+                const w = /** @type {any} */ (window);
+                await w.GeoLeaf.plugins.load("websocket");
+                await w.GeoLeaf.Ws.init({
+                    transport: "native-ws",
+                    url,
+                    reconnect: { initialDelayMs: 50, maxRetries: 5 },
+                });
+                w.__glReceived = 0;
+                w.GeoLeaf.Ws.subscribe("t", () => (w.__glReceived += 1));
+            }, WS_URL);
+            // The witness: the channel delivers — else « still delivers » below says nothing.
+            push();
+            await expect
+                .poll(connection, { timeout: 15_000 })
+                .toEqual({ state: "connected", subscriptions: ["t"], received: 1 });
+
+            await unmount(page);
+            push();
+            await expect
+                .poll(connection, { timeout: 15_000 })
+                .toEqual({ state: "connected", subscriptions: ["t"], received: 2 });
+
+            await mountAndWait(page);
+            await settle(page);
+            push();
+            await expect
+                .poll(connection, { timeout: 15_000 })
+                .toEqual({ state: "connected", subscriptions: ["t"], received: 3 });
+            expect(served.length, "the socket was opened again").toBe(1);
+
+            // And the gesture that DOES close it is the host's.
+            await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Ws.destroy());
+            expect((await connection()).state).toBe("disconnected");
         } finally {
             await context.close();
         }

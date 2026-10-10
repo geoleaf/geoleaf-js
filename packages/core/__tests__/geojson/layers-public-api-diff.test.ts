@@ -1,5 +1,5 @@
 /**
- * Unit tests — the DIFF path of `GeoLeaf.Layers` (R6, task 2.2).
+ * Unit tests — the DIFF path of `GeoLeaf.Layers`.
  *
  * 🛑 WHAT THIS FILE EXISTS TO PREVENT. `applyDataDiff` is optional on `IMapAdapter`
  * and every call site falls back to a full re-feed when it is absent or declines. That

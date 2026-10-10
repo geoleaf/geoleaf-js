@@ -8,6 +8,9 @@
 /* ========================================================================== */
 
 .gl-table-panel {
+    /* On `document.body`, outside the application's root: without this the panel took the
+       host page's default font — measured, a serif for its cells. */
+    font-family: var(--gl-font-family, system-ui, -apple-system, sans-serif);
     position: fixed;
     bottom: 0;
     left: 0;
@@ -107,7 +110,7 @@
 
 .gl-table-panel__select:focus-visible {
     outline: none;
-    border-color: var(--gl-color-accent);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent));
     box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
 }
 
@@ -136,7 +139,7 @@
 
 .gl-table-panel__search-input:focus-visible {
     outline: none;
-    border-color: var(--gl-color-accent);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent));
     box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
 }
 
@@ -477,7 +480,7 @@ body.gl-theme-dark .gl-table-panel {
    tab clicks) — mirrors the native .gl-rp-tab.gl-is-active accent look. */
 .gl-rp-tab.gl-table-tab-active {
     background: var(--gl-color-accent);
-    color: #fff;
+    color: var(--gl-color-accent-contrast);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
@@ -501,4 +504,10 @@ body.gl-table-open .gl-notifications--bottom-center {
 body:has(.gl-table-panel.gl-is-visible) .maplibregl-ctrl-bottom-right {
     bottom: calc(40% + 24px);
     transition: bottom 0.3s ease-in-out;
+}
+
+/* A form control does not inherit its font: left alone, the panel's buttons, its search
+   field and its selects were drawn in the browser's own (Arial), next to the panel's text. */
+.gl-table-panel :is(button, input, select) {
+    font-family: inherit;
 }

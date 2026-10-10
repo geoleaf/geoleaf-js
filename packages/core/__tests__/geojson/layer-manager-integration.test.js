@@ -39,7 +39,7 @@ describe("geojson/layers/integration", () => {
             expect(logMock.warn).toHaveBeenCalled();
         });
 
-        it("Phase 9.10 — registers layers when _registerGeoJsonLayer exists", () => {
+        it("registers layers when _registerGeoJsonLayer exists", () => {
             LayerManagerIntegration.detectLayerType = () => "fill";
             const _registerGeoJsonLayer = vi.fn();
             _g.GeoLeaf = { LayerManager: { _registerGeoJsonLayer } };
@@ -61,13 +61,13 @@ describe("geojson/layers/integration", () => {
     });
 
     describe("populateLayerManagerWithAllConfigs", () => {
-        it("Phase 9.10 — warns when LayerManager or _registerGeoJsonLayer missing", () => {
+        it("warns when LayerManager or _registerGeoJsonLayer missing", () => {
             _g.GeoLeaf = {};
             LayerManagerIntegration.populateLayerManagerWithAllConfigs({});
             expect(logMock.warn).toHaveBeenCalled();
         });
 
-        it("Phase 9.10 — populates when _allLayerConfigs and _registerGeoJsonLayer exist", () => {
+        it("populates when _allLayerConfigs and _registerGeoJsonLayer exist", () => {
             const _registerGeoJsonLayer = vi.fn();
             const _updateContent = vi.fn();
             _g.GeoLeaf = {

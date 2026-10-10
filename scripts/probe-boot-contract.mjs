@@ -16,7 +16,7 @@
  * already serves `deploy/deploy-core` at https://demo.geoleaf.local.test/. So: `npm run
  * build:deploy` (a build, allowed), then drive Chromium straight at that URL.
  *
- * N.B. since backlog R.7a the suite ITSELF can run without starting a server
+ * N.B. the suite ITSELF can run without starting a server
  * (`E2E_TARGET=nginx`, see e2e/helpers/base-url.js) — this probe keeps its own entry point
  * because it asserts a boot CONTRACT (facade surface + perf-mark order), not a scenario.
  *

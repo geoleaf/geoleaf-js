@@ -1033,7 +1033,7 @@ describe("reviewsComponent — add review via form", () => {
             ".gl-form-reviews__form input[type=text]"
         )!;
         authorInput.value = "Bob";
-        const submitBtn = el.querySelector<HTMLButtonElement>(".gl-btn--primary")!;
+        const submitBtn = el.querySelector<HTMLButtonElement>(".gl-btn--accent")!;
         submitBtn.click();
         expect(onChange).toHaveBeenCalledOnce();
         const called = onChange.mock.calls[0][0] as Array<{ author: string }>;

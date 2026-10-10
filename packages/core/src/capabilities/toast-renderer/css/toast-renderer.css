@@ -35,6 +35,9 @@
     }
 
     .gl-notifications {
+        /* On `document.body`, outside the application's root: without this a toast took the
+           host page's default font. */
+        font-family: var(--gl-font-family);
         position: fixed;
         /* Above everything, modals included (field-renderer overlay: 10000), so toasts
    stay readable while a form is left open on an error. Still BELOW the
@@ -361,7 +364,7 @@
         /* Same undefined-token fix as the border-left above (S9): an invalid `outline`
    shorthand fell back to `outline-style: none`, so the focus ring was absent —
    an accessibility defect, not just a cosmetic one. */
-        outline: 2px solid var(--gl-color-accent);
+        outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent));
         outline-offset: 2px;
     }
 

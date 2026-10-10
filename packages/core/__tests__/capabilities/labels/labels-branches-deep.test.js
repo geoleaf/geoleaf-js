@@ -1,5 +1,5 @@
 /**
- * @fileoverview Deep branch coverage for labels module (T10.2.5)
+ * @fileoverview Deep branch coverage for labels module
  *
  * Strategy: await import() — Istanbul ESM instrumentation active.
  * Mocks: only Core.getMap, GeoJSONCore.getLayerById (boundary of the map engine),
@@ -106,7 +106,7 @@ function _makeLayerData(overrides = {}) {
 
 let Labels, LabelRenderer, LabelButtonManager;
 
-describe("labels-branches-deep (T10.2.5)", () => {
+describe("labels-branches-deep", () => {
     beforeAll(async () => {
         const labelsMod = await import("../../../src/capabilities/labels/labels.ts");
         Labels = labelsMod.Labels;

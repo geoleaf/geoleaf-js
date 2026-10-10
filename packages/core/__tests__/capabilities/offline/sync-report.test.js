@@ -383,6 +383,34 @@ describe("4.8 — rapport de synchronisation par couche", () => {
                 state: "pending",
             });
             expect(pending[0].feature.properties.nom).toBe("cabane");
+            // A live entry carries no motive: the two keys are ABSENT, not `undefined`.
+            expect("quarantine" in pending[0]).toBe(false);
+            expect("quarantineStatus" in pending[0]).toBe(false);
+        });
+
+        test("🛑 une saisie mise de côté dit POURQUOI — le motif et le statut du refus", async () => {
+            // The motive was only reachable through the internal `_ensureModule("Outbox")`:
+            // a host interface that wants to say "why is this stuck" had no public seam.
+            await applyEdit({
+                layerId: "sites_rosario",
+                kind: "create",
+                localId: "refusee",
+                feature: { type: "Feature", geometry: point, properties: {} },
+            });
+            const [owed] = await IndexedDB.listPendingEdits();
+            await IndexedDB._ensureModule("Outbox").updateState(owed.entryId, "quarantined", {
+                quarantine: "rejectedByServer",
+                quarantineStatus: 403,
+            });
+
+            const [aside] = await IndexedDB.listPendingEdits();
+
+            expect(aside).toMatchObject({
+                localId: "refusee",
+                state: "quarantined",
+                quarantine: "rejectedByServer",
+                quarantineStatus: 403,
+            });
         });
     });
 });

@@ -147,6 +147,69 @@ GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
 
 ---
 
+## When a new version is deployed
+
+A deployment changes the service worker, and the browser installs the new one in the
+background. **It does not take over a page that is in use.** The new version waits — its
+caches are ready, the page keeps running on the version it booted with — until the user
+accepts it.
+
+| Moment                                         | What happens                                                                  |
+| ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| First visit                                    | The worker takes the page at once: there is nothing to protect                |
+| A new version is found, the page is in use     | It installs, then waits. `geoleaf:sw:update-waiting` is emitted on `document` |
+| The user accepts — `GeoLeaf.PWA.applyUpdate()` | The new worker takes over, and **the page reloads** onto the new version      |
+| Nobody accepts                                 | The new version takes over once every tab of the application has been closed  |
+
+Why it waits: activating a new worker purges the previous version's caches. Done under a page
+that is still running that version, it removes the lazy chunks the page has not loaded yet — a
+user offline, in the middle of a capture, then opens a panel that no longer exists anywhere.
+
+### Who asks the user
+
+- **With `@geoleaf-plugins/offline-ui`** — nothing to write. The plugin shows a banner,
+  « A new version is ready », with **Reload** and **Later**.
+- **Without it** — the new version waits silently until every tab is closed. Offer the gesture
+  yourself:
+
+```javascript
+function offerReload() {
+    myReloadButton.hidden = false;
+}
+
+// The event is emitted once per waiting version, possibly before your listener exists:
+// read the state as well.
+document.addEventListener("geoleaf:sw:update-waiting", offerReload);
+if (GeoLeaf.PWA.isUpdateWaiting()) offerReload();
+
+myReloadButton.addEventListener("click", () => {
+    // Returns false when nothing was waiting; otherwise the page reloads.
+    GeoLeaf.PWA.applyUpdate();
+});
+```
+
+::: warning
+
+`applyUpdate()` reloads the page: call it from a user gesture. What the page holds in memory —
+a form being filled — is lost with it. Captures already queued by the offline write cycle are
+not: they are in IndexedDB.
+
+The reload is not instantaneous. The browser lets the new worker take over once the previous one
+has finished the requests it is serving — a slow tile server can hold it for a while — and the
+page reloads then, once. Disable your button after the click rather than expecting an immediate
+effect.
+
+:::
+
+With several tabs open, one worker serves them all: accepting the update in one tab activates
+it for every tab. The tab where the gesture was made reloads; the others do not reload by
+themselves — `isUpdateWaiting()` stays `true` there, and `applyUpdate()` reloads them.
+
+`geoleaf:sw:updated` is a different fact: a worker **activated**. It also fires at a first
+install.
+
+---
+
 ## Testing locally
 
 The Service Worker and the manifest are **not** active when the sources are served directly: they only exist in the built variants. A deployment must therefore be regenerated, **in four steps — the first one is not optional**:

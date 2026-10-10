@@ -60,7 +60,7 @@ GeoLeaf implements several independent layers of protection:
 
 - **DOM injection**: 12 identified vectors (POI popup, tooltip, labels, search results, etc.) — all sanitised through `escapeHtml()` or `DOMSecurity.*`
 - **URL injection**: 7 vectors (`url`, `website`, `image` fields, permalink lat/lng/zoom) — validated through `validateUrl()` + `validateCoordinates()`
-- **Prototype pollution**: 5 vectors (JSON profile config, **a profile's `modules` bag**, POI properties, GeoJSON styles, compact permalink) — blocked by a **single canonical** blocklist, `isUnsafeKey()` / `hasUnsafeSegment()` (`utils/general/object-path-guard.ts`), applied by the 7 sink files; the permalink additionally goes through a type revalidation
+- **Prototype pollution**: 5 vectors (JSON profile config, **a profile's `modules` bag**, POI properties, GeoJSON styles, a permalink — its compact payload, and the names of its per-field `gl_f.*` parameters) — blocked by a **single canonical** blocklist, `isUnsafeKey()` / `hasUnsafeSegment()` (`utils/general/object-path-guard.ts`), applied by the 7 sink files; the permalink additionally goes through a type revalidation
 
 For the full inventory with source files and tests, see [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md).
 

@@ -8,9 +8,9 @@
 /**
  * Outbox Module — the write queue, with the key-collision fix IN THE KEY.
  *
- * Implements {@link OutboxEntry} of `contracts/sync.contract.ts` (task 3.4). It **replaced**
- * `sync_queue`, which is gone: task 4.4b rewired both producers, and **4.11** removed the store
- * and its 691 LOC.
+ * Implements {@link OutboxEntry} of `contracts/sync.contract.ts`. It **replaced**
+ * `sync_queue`, which is gone: both producers were rewired first, then the store was removed
+ * with its 691 LOC.
  *
  * ⚠️ This sentence carried a future tense over a finished fact until 08/08/2026, and it
  * attributed the retirement to the wrong lot twice. The prose below is kept in the past

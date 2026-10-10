@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.29 - theme-selector */
+/* theme-selector */
 
 /* Relocated S8/F4: themes/ (depth 2) → capabilities/theme-selector/ (depth 3); imports rebased ../../src → ../../../src. */
 const logMock = vi.hoisted(() => ({
@@ -73,7 +73,7 @@ vi.mock("../../../src/utils/general/event-listener-manager.js", () => ({
 import { domCreateDouble } from "../../_helpers/dom-create-double.js";
 import { ThemeSelector } from "../../../src/capabilities/theme-selector/theme-selector.js";
 
-describe("theme-selector (Phase 5.29)", () => {
+describe("theme-selector", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         document.body.innerHTML = "";

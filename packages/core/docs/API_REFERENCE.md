@@ -181,6 +181,9 @@ initialised for the application already running, which it joined by itself; sinc
 from the next boot on. A UI slot registered then is not drawn before the next mount — the
 toolbar is built once per boot — and a warning says so: a button that must exist before its
 bundle loads is declared with `GeoLeaf.plugins.registerLazyForAction()`, before the boot.
+Since 3.15.0 the member is typed in the ambient namespace, and its descriptor takes what the
+toolbars read: `legacyProfileKey` on both slots — the visibility key read when `profileKey` is
+absent from the configuration — and `variant` (`"icon"` or `"tab"`) on the desktop one.
 
 ---
 
@@ -282,13 +285,35 @@ a lifecycle module with `GeoLeaf.registry`, whether its bundle was loaded before
 demand, and the next mount draws every toolbar button again — those of the plugins loaded since
 the first boot included. `connector` 1.3.5, `editor` 1.5.7, `geocoding` 1.1.3, `measure` 1.0.9,
 `position-share` 1.0.2, `print` 1.3.4 and `table` 1.1.3 leave the page with the application and
-work again on the next map; `realtime-layer` (1.0.6) stops with it when it was loaded before the
-boot. The other plugins have not been measured through a remount.
+work again on the next map; `realtime-layer` stops with it — from its 1.0.6 when it was loaded
+before the boot, from its 1.0.8 when it was loaded on demand too.
 
-What `unmount()` leaves alone: `GeoLeaf.Connector.configure()`. The session is the host's, set
-once for the page — `window.fetch` keeps its token, and the next application is authenticated
-without configuring again. A position shared by hand (`GeoLeaf.PositionShare.start()`) is
-stopped, and is not resumed by the next mount.
+The plugins that draw no button of their own were measured the same way, each brought to its
+built state, then unmounted and mounted again:
+
+| Plugin        | What `unmount()` does                                                           | Since                  |
+| ------------- | ------------------------------------------------------------------------------- | ---------------------- |
+| `navigation`  | ends the guidance session — banner, position watch and screen wake lock         | `navigation` 1.0.3     |
+| `offline-ui`  | closes the offline window and returns its listeners; the button opens a new one | `offline-ui` 1.6.4     |
+| `routing`     | removes the itinerary pane; the next opening builds one pane, on the new map    | `@geoleaf/core` 3.15.0 |
+| `cog`         | nothing is left; a handle of the previous map removes without error             | —                      |
+| `file-import` | nothing is left                                                                 | —                      |
+| `flatgeobuf`  | nothing is left — an auto-refreshing layer stops asking for its file            | —                      |
+| `websocket`   | **nothing, on purpose** — see below                                             | —                      |
+
+A layer added by a call (`COG.addLayer()`, `FileImport.importAsLayer()`,
+`FlatGeobuf.loadBboxAsLayer()`) belongs to the application that was unmounted: the next mount
+draws what the profile declares, and does not replay the call.
+
+What `unmount()` leaves alone, because it is the host's and set once for the page:
+
+- **`GeoLeaf.Connector.configure()`** — `window.fetch` keeps its token, and the next application
+  is authenticated without configuring again.
+- **`GeoLeaf.Ws.init()`** — the connection stays open across the unmount, and the next
+  application finds it connected, subscriptions included. `GeoLeaf.Ws.destroy()` closes it.
+
+A position shared by hand (`GeoLeaf.PositionShare.start()`) is stopped, and is not resumed by
+the next mount; a guidance session is not resumed either.
 
 ```ts
 import * as maplibregl from "maplibre-gl";
@@ -550,6 +575,23 @@ loaded and rendered exactly as without the key, and stays drivable through
 meant to switch, such as a snapping support or a computation layer. A profile's layer file accepts
 the same key. Since 3.9.0.
 
+**The `geometry` of a definition — and the spellings only `create` reads**
+
+`geometry`, or its alias `geometryType`, takes the profile vocabulary: `point`, `multipoint`,
+`line`, `polyline`, `multiline`, `polygon`, `multipolygon`, `fill-extrusion`. `create` does not
+validate a definition against the layer schema, so it also reads what a profile may not write —
+those kinds in any letter case, `linestring` and `multilinestring`, and the GeoJSON type names as
+they are written (`Point`, `LineString`, `MultiPolygon`…).
+
+`mixed` is for a **vector-tile** layer whose source-layer holds points, lines and polygons at
+once: the layer then draws all three, each sub-layer confined to its own geometry. Since 3.15.0
+a profile may declare it too, on a layer that names its tiles (`data.vectorTiles.tilesUrl`), and
+on no other.
+
+On a GeoJSON layer the data decides which sub-layers are built: a declared kind never narrows
+them, and a word that names no geometry — `mixed` included — adds none. On a vector-tile layer,
+where there is no data to scan, such a word draws nothing, and a warning says so.
+
 ⚠️ Without any of the four — `url`, `dataFile`, a `data` block or `inlineData` — the definition
 has no source, and `create` resolves to `null` rather than throwing. Check the result: a `null`
 here means the source did not resolve, which is a property of the data, not a caller error.
@@ -603,7 +645,7 @@ document.addEventListener("geoleaf:app:ready", async () => {
 | `setFeatureState` | `(layerId, id, state) => void` | **Ephemeral** GPU-side state (sync badge, hover, selection). Requires `promoteId` on the source, and is **cleared by any source rebuild** (`setData`) — use `patchFeature` for state that must persist. |
 | `mergeFeatures`   | `(layerId, features) => void`  | Upserts features, de-duplicated by id (offline replay).                                                                                                                                                 |
 
-Every mutation of the store through these methods — `setData`, `clear`, `addFeature`, `removeFeature` (when it removed something), `updateFeatureId`, `mergeFeatures`, and `patchFeature` with `{ rerender: true }` — is announced once by `geoleaf:layer:updated` (`{ layerId }`, since 3.12.0). A silent `patchFeature` is not — it changes what is held without redrawing it —, nor are a visible subset and `hideFeatures`, which change what is drawn, not what is held. A writer of a whole collection outside `GeoLeaf.Layers` is not announced either: a real-time layer's ticks, an OGC layer's auto-refresh, a direct `GeoLeaf.GeoJSON.updateLayerData`.
+Every mutation of the store through these methods — `setData`, `clear`, `addFeature`, `removeFeature` (when it removed something), `updateFeatureId`, `mergeFeatures`, and `patchFeature` with `{ rerender: true }` — is announced once by `geoleaf:layer:updated` (`{ layerId }`, since 3.12.0). A silent `patchFeature` is not — it changes what is held without redrawing it —, nor are a visible subset and `hideFeatures`, which change what is drawn, not what is held. Since 3.15.0 a writer of a whole collection outside `GeoLeaf.Layers` is announced too, once per write: a real-time layer's ticks, an OGC layer's auto-refresh, a direct `GeoLeaf.GeoJSON.updateLayerData` — the open table and the active filter follow them.
 
 **Example — add a point after boot**
 
@@ -729,7 +771,7 @@ Configured under `modules.filter` (`config/plugins/filter.json`), **opt-out** (a
 `taxonomy` field carries:
 
 - `values` — the checked categories, then the checked sub-categories, flat. The map is filtered on
-  this list, and a permalink stores it.
+  this list.
 - `subValues` — only when at least one sub-category is checked: one `{ value, category }` per
   checked sub-category, in panel order, `category` being the category it is listed under. A
   sub-category id is unique only within its category, so the pair says which one was checked.
@@ -750,8 +792,13 @@ const { fields } = GeoLeaf.Filter.getActiveFilter();
 `applyFilter(state)` takes the same shape back. It sets the panel's controls to `state` — a panel
 field left out of it is cleared — and filters the map on `state` alone; the proximity toolbar is not
 touched. With `subValues`, a sub-category id listed under several categories is checked only under
-those named; without it — a state saved by an earlier version, or a permalink —
+those named; without it — a state saved by an earlier version, or a link written before 3.15.0 —
 the panel is restored from `values` alone, as before.
+
+A `range` field carries `range: { min?, max? }` — only the bounds the user moved. Its panel
+control is one slider, the lower bound, unless the field declares `bounds: "both"` (since 3.15.0):
+two sliders that cannot cross. `applyFilter()` may hand an upper bound to a field that offers one
+slider: the map is filtered on it, and the slider shows the lower bound alone.
 
 ---
 
@@ -1093,7 +1140,27 @@ Permalink.applyStoredState(map); // after map + modules are ready
 Permalink.startSync(map); // begin sync
 ```
 
-> **Security:** `lat`, `lng`, `zoom` are validated via `validateNumber()` / `validateCoordinates()`. Layer IDs are string-filtered (max 100 entries). Filter text is truncated to 200 chars.
+**The filter in a link — one parameter per field** (since 3.15.0). Each constrained field of the
+filter panel is written under its own parameter, named by the field's id in
+`modules.filter.fields`:
+
+| Field kind | Parameter and value                                                                    |
+| ---------- | -------------------------------------------------------------------------------------- |
+| `text`     | `gl_f.<id>=<query>`                                                                    |
+| `tag`      | `gl_f.<id>=a,b,c`                                                                      |
+| `range`    | `gl_f.<id>=<min>..<max>` — an open bound is left empty: `100..`, `..500`               |
+| `taxonomy` | `gl_f.<id>=a,b,c`, and its checked sub-categories under `gl_f.<id>.sub=category/sub,…` |
+
+`boolean` and `proximity` fields are not carried. In `getState()` these parameters are
+`fieldFilters`, a map of field id to the value as written.
+
+A link written before 3.15.0 ranged the filter by kind — `gl_filter`, `gl_cats`, `gl_tags`,
+`gl_rating` — so two fields of the same kind shared one slot, and a range kept its lower bound.
+**Those links are still restored**, as they were; the application no longer writes them, and a
+link restored from them is rewritten per field at the next change. A link carrying both is read
+per field. Beyond 200 characters a link switches to the compact form (`gl=…`), as before.
+
+> **Security:** `lat`, `lng`, `zoom` are validated via `validateNumber()` / `validateCoordinates()`. Layer IDs are string-filtered (max 100 entries). Filter text is truncated to 200 chars. Per-field entries are capped in number and length, a range must read as a finite interval, and an entry is applied only to a field whose kind the `fields` whitelist lets through.
 
 ---
 
@@ -1165,13 +1232,16 @@ import { PWA } from "@geoleaf/core";
 // or: GeoLeaf.PWA (CDN/global)
 ```
 
-Manages the Progressive Web App install banner (iOS) and install prompt (Chrome/Android).
-Activated automatically by the boot sequence when `pwa.installPrompt.enabled: true` in config.
+Manages the Progressive Web App install banner (iOS) and install prompt (Chrome/Android) —
+activated automatically by the boot sequence when `pwa.installPrompt.enabled: true` in config —
+and the application's updates: whether a new version waits, and the gesture that applies it.
 
-| Method          | Signature                     | Description                                                           |
-| --------------- | ----------------------------- | --------------------------------------------------------------------- |
-| `init`          | `(config: PWAConfig) => void` | Initialise PWA features (called by boot — opt-in only)                |
-| `isInstallable` | `() => boolean`               | `true` when the app can still be installed on this device — see below |
+| Method            | Signature                     | Description                                                                          |
+| ----------------- | ----------------------------- | ------------------------------------------------------------------------------------ |
+| `init`            | `(config: PWAConfig) => void` | Initialise PWA features (called by boot — opt-in only)                               |
+| `isInstallable`   | `() => boolean`               | `true` when the app can still be installed on this device — see below                |
+| `isUpdateWaiting` | `() => boolean`               | `true` when a newer version is installed and this page has not been reloaded onto it |
+| `applyUpdate`     | `() => boolean`               | Applies the waiting version — **the page reloads**. `false` when nothing was waiting |
 
 ### `isInstallable()`
 
@@ -1194,6 +1264,38 @@ On Android this answers **"a prompt is available"**, not "this browser could ins
 deferred prompt is only captured when `installPrompt.enabled` is `true` — with the banner disabled,
 it returns `false` even on an installable Chrome. iOS is unaffected.
 :::
+
+### `isUpdateWaiting()` and `applyUpdate()`
+
+A new version of the application does not take over a page that is in use: its service worker
+installs, then **waits**, and `geoleaf:sw:update-waiting` is emitted on `document`. It takes
+over when `applyUpdate()` is called, or once every tab of the application has been closed.
+
+```ts
+const offerReload = () => {
+    myReloadButton.hidden = false;
+};
+// Emitted once per waiting version — possibly before this listener exists.
+document.addEventListener("geoleaf:sw:update-waiting", offerReload);
+if (GeoLeaf.PWA.isUpdateWaiting()) offerReload();
+
+myReloadButton.addEventListener("click", () => GeoLeaf.PWA.applyUpdate());
+```
+
+- `isUpdateWaiting()` is `false` at a first install, when `modules.pwa.enabled` is not `true`,
+  and until the service worker has been registered — at idle, up to three seconds after the
+  boot. It stays `true` in a tab whose update was applied from **another** tab: the worker
+  changed under that page, which still runs the previous version's code.
+- `applyUpdate()` returns `true` when an update is being applied: the new worker takes over,
+  then the page reloads — once, and not instantly: the browser waits for the previous worker to
+  finish the requests it is serving. Call it from a user gesture — what the page holds in memory
+  is lost. It returns `false`, and does nothing, when nothing was waiting.
+- `@geoleaf-plugins/offline-ui` asks the question for you, with a « Reload » banner. Without
+  that plugin, nothing asks: the new version waits until the tabs are closed.
+- `geoleaf:sw:updated` says something else — a worker **activated** — and also fires at a first
+  install.
+
+See [PWA — When a new version is deployed](./pwa.md#when-a-new-version-is-deployed).
 
 ```ts
 // Opt-in via geoleaf.config.json:
@@ -1354,6 +1456,38 @@ The generated declarations ship in **`dist/types/bundle-esm-entry.d.ts`** (resol
 the source's type surface — are **not** part of the public API: do not import them by path, it is
 not a supported entry point. The rule is simple: **if it is not re-exported from `@geoleaf/core`,
 from a `./contracts/*` subpath or from `./schemas`, it is not public.**
+
+Since 3.15.0 the default export is typed: `import GeoLeaf from "@geoleaf/core"` hands over the
+namespace under its ambient type, where it was `unknown` — the import compiled and its first
+dereference did not. The members of that type are optional, as they are on the global `GeoLeaf`:
+a façade exists once its module is mounted. `ensureGeoLeaf()` is exported too, for a module that
+mounts a member on the namespace:
+
+```ts
+import GeoLeaf, { ensureGeoLeaf } from "@geoleaf/core";
+
+GeoLeaf.Events?.on("geoleaf:map:ready", () => console.info("map ready"));
+const loaded = ensureGeoLeaf().plugins?.isLoaded?.("table") ?? false;
+```
+
+A plugin's namespace — `GeoLeaf.Table`, `GeoLeaf.Editor`… — is declared by the core and typed by
+the plugin: its declarations add one member to the `GeoLeafPluginApis` interface, and the
+namespace takes that type for whoever installs the plugin. A namespace no installed plugin
+registered stays `unknown`: reachable, not callable.
+
+The ambient `GeoLeaf` namespace types each façade member by member. Since 3.15.0
+`GeoLeaf.Storage` carries no index signature: every member is named, and a name the façade does
+not carry is a compile error instead of an `unknown`. `GeoLeaf.Storage.DB` and the other
+namespaces still end with one, so a misspelled member of theirs is not reported yet.
+
+`GeoLeaf.Storage.DB` names twelve of the engine's relays: `listPendingEdits`, the layer cache
+(`getLayer`, `cacheLayer`, `removeLayer`, `getLayersByProfile`), `getStorageStats`, and the image
+store (`storeImageLocally`, `getLocalImage`, `getPendingImages`, `updateImageUploadStatus`,
+`bindLocalImage`, `cleanUploadedImages`). Each is typed from the engine itself, so an argument
+it does not take is a compile error: `updateImageUploadStatus(id, status)` takes an object,
+`{ uploaded, url? }`, and `cacheLayer(id, data, profileId)` takes `null` for a layer that belongs
+to no profile. A relay it does not name is still reachable through its index signature, as
+`unknown`.
 
 _(There is no hand-written `index.d.ts` anywhere — the declarations are generated at build time:
 `dist/types/` from the source, `dist/schemas/` from the profile JSON Schemas. Those two generated

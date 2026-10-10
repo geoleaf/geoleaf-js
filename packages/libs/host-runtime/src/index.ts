@@ -74,6 +74,10 @@ export { confirmDialog, type ConfirmDialogOptions } from "./ui/confirm-dialog.js
 // have made Escape perform an action.
 export { chooseDialog, type ChooseDialogOptions, type DialogChoice } from "./ui/confirm-dialog.js";
 export { createModalShell, type ModalShell, type ModalShellOptions } from "./ui/modal-shell.js";
+// The two sheets, for the caller that writes their classes itself — the form's responsive
+// modal. The rules have ONE home; a caller adopts them, it does not copy them.
+export { adoptModalShellSheet } from "./ui/modal-shell.js";
+export { adoptConfirmDialogSheet } from "./ui/confirm-dialog.js";
 export {
     jsonHeaders,
     bearer,

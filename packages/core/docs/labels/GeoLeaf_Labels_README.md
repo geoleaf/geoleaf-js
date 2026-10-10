@@ -446,19 +446,12 @@ object ([above](#configuration-on-the-layer)):
         "enabled": true,
         "visibleByDefault": false,
         "field": "nom",
-        "font": {
-            "family": "Arial",
-            "sizePt": 11,
-            "weight": 50,
-            "bold": false,
-            "italic": false
-        },
+        "font": { "sizePt": 11 },
         "color": "#333333",
         "opacity": 1,
         "buffer": {
             "enabled": true,
             "color": "#ffffff",
-            "opacity": 0.8,
             "sizePx": 2
         },
         "offset": {
@@ -472,24 +465,26 @@ object ([above](#configuration-on-the-layer)):
 Both schemas — a style file's `label` object and a layer config's `labels` block — accept exactly
 these keys, plus `_comment*` keys; any other key is refused.
 
-| Property               | Type                  | Description                                                                                                                          |
-| ---------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `enabled`              | boolean, **required** | Must be `true` for labels to exist; any other value disables them                                                                    |
-| `visibleByDefault`     | boolean               | Labels shown when the layer loads, without user action (default `false`)                                                             |
-| `field`                | string                | Name of the feature property displayed, e.g. `"nom"` — a plain property name, not a `properties.` path                               |
-| `font.family`          | string                | Accepted, not rendered: the font stack comes from the loaded map style                                                               |
-| `font.sizePt`          | number (1–72)         | Text size in points, converted to pixels (12 px when absent)                                                                         |
-| `font.weight`          | number (1–100)        | Accepted, not rendered                                                                                                               |
-| `font.bold` / `italic` | boolean               | Accepted, not rendered                                                                                                               |
-| `color`                | string (`#rrggbb`)    | Text colour (default `#000000`)                                                                                                      |
-| `opacity`              | number (0–1)          | Text opacity (default `1`)                                                                                                           |
-| `buffer.enabled`       | boolean               | Draws a halo around the text when `true` (default `false`)                                                                           |
-| `buffer.color`         | string (`#rrggbb`)    | Halo colour (default `#ffffff`)                                                                                                      |
-| `buffer.sizePx`        | number (≥ 0)          | Halo width in pixels (default `2`)                                                                                                   |
-| `buffer.opacity`       | number (0–1)          | Accepted, not rendered                                                                                                               |
-| `buffer.noFill`        | boolean               | Accepted, not rendered                                                                                                               |
-| `offset.placement`     | string                | Side the label sits on: `center` (default), `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right` |
-| `offset.distancePx`    | number (≥ 0)          | Gap in pixels between the feature and the nearest edge of the text (default `12`); ignored with `center`                             |
+| Property            | Type                  | Description                                                                                                                          |
+| ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled`           | boolean, **required** | Must be `true` for labels to exist; any other value disables them                                                                    |
+| `visibleByDefault`  | boolean               | Labels shown when the layer loads, without user action (default `false`)                                                             |
+| `field`             | string                | Name of the feature property displayed, e.g. `"nom"` — a plain property name, not a `properties.` path                               |
+| `font.sizePt`       | number (1–72)         | Text size in points, converted to pixels (12 px when absent). The only key of `font`                                                 |
+| `color`             | string (`#rrggbb`)    | Text colour (default `#000000`)                                                                                                      |
+| `opacity`           | number (0–1)          | Text opacity (default `1`)                                                                                                           |
+| `buffer.enabled`    | boolean               | Draws a halo around the text when `true` (default `false`)                                                                           |
+| `buffer.color`      | string (`#rrggbb`)    | Halo colour (default `#ffffff`)                                                                                                      |
+| `buffer.sizePx`     | number (≥ 0)          | Halo width in pixels (default `2`)                                                                                                   |
+| `offset.placement`  | string                | Side the label sits on: `center` (default), `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right` |
+| `offset.distancePx` | number (≥ 0)          | Gap in pixels between the feature and the nearest edge of the text (default `12`); ignored with `center`                             |
+
+The typeface is not a profile setting: family, weight and slant come from the map style the engine
+has loaded, and a halo has a colour and a width — no opacity of its own. Until 3.15.0 the schemas
+accepted `font.family`, `font.weight`, `font.bold`, `font.italic`, `buffer.opacity` and
+`buffer.noFill`, and nothing rendered them. The schemas refuse them now: `validate:profiles` fails on
+a style that carries one. At run time such a key is still ignored, as it always was — remove it, the
+rendering does not change.
 
 The scale window of the labels is not in this object: it is the style file's root `labelScale`
 key, `{ "minScale": …, "maxScale": … }` (scale denominators, each nullable).

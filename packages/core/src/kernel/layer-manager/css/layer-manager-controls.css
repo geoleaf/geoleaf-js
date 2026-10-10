@@ -174,7 +174,7 @@
 
 .gl-layer-manager__style-select:focus-visible {
     outline: none;
-    border-color: var(--gl-color-accent, #4a90d9);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent, #4a90d9));
     box-shadow: 0 0 0 2px var(--gl-color-accent-soft, rgba(74, 144, 217, 0.25));
 }
 

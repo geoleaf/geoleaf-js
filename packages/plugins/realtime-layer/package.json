@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/realtime-layer",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Realtime Layer Plugin — Generic real-time layer updates via polling, WebSocket and SSE",

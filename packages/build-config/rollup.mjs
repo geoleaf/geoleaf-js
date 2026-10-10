@@ -53,7 +53,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import replace from "@rollup/plugin-replace";
 import json from "@rollup/plugin-json";
 import postcss from "rollup-plugin-postcss";
-import { minify } from "rollup-plugin-esbuild";
+import esbuild, { minify } from "rollup-plugin-esbuild";
 
 import fs from "node:fs";
 import path from "node:path";
@@ -239,6 +239,56 @@ export function licenseBanner(pkg) {
 }
 
 /**
+ * Makes a bundle take a workspace library from its SOURCES rather than from its built file.
+ *
+ * 🛑 WHY. A library that inlines its own dependencies (`external: []`) ships them INSIDE its
+ * built file. A package that bundles that file and also imports one of those dependencies
+ * directly carries it twice — two module scopes for code written as one, and its bytes paid
+ * twice. Measured on the editor: two copies of the dialog module of `@geoleaf/host-runtime`,
+ * one of its own and one inside the built `@geoleaf/field-renderer`. Taken from its sources,
+ * the library's imports resolve to the very modules the bundling package resolves to.
+ *
+ * Two halves: the bare specifier is resolved to `src/index.ts` of the package node resolution
+ * finds — never a path written here — and the library's TypeScript is transpiled by esbuild,
+ * since the package's own `@rollup/plugin-typescript` only transforms what lives under its
+ * root. ⚠️ Transpiled, NOT type-checked, and that is enough: the library is checked by its own
+ * build, and the bundling package's types still come from the library's published `.d.ts`.
+ *
+ * @param {string[]} names Bare specifiers of workspace libraries shipping their `src/`.
+ * @returns {import('rollup').Plugin[]} The resolver — to be placed BEFORE `nodeResolve`,
+ *   which would otherwise answer first with the built file — and the transpiler.
+ */
+function fromSourcePlugins(names) {
+    const requireFromPackage = createRequire(path.join(process.cwd(), "package.json"));
+    const roots = names.map((name) => {
+        const src = path.join(
+            path.dirname(requireFromPackage.resolve(`${name}/package.json`)),
+            "src"
+        );
+        const entry = path.join(src, "index.ts");
+        if (!fs.existsSync(entry)) {
+            throw new Error(
+                `[build-config] ${name} ships no src/index.ts — cannot be built from source`
+            );
+        }
+        return { name, src: fs.realpathSync(src), entry: fs.realpathSync(entry) };
+    });
+    const entries = new Map(roots.map((root) => [root.name, root.entry]));
+    // One glob per library: its TypeScript, wherever it sits under `src/`. Absolute, so the
+    // filter does not resolve it against the bundling package's directory.
+    const include = roots.map((root) => `${root.src.split(path.sep).join("/")}/**/*.ts`);
+    return [
+        {
+            name: "geoleaf-from-source",
+            resolveId(source) {
+                return entries.get(source) ?? null;
+            },
+        },
+        esbuild({ include, exclude: "**/*.d.ts", target: "es2022", tsconfig: false }),
+    ];
+}
+
+/**
  * Builds a package's plugin stack.
  *
  * Each option corresponds to a plugin really used by at least one package; none
@@ -262,6 +312,9 @@ export function licenseBanner(pkg) {
  *                                      `inject: true`, the form PC-13 forbids.
  * @param {object}  [options.typescript] Options merged into `@rollup/plugin-typescript`
  *                                      (the local `tsconfig` is always kept).
+ * @param {string[]} [options.fromSource] Workspace libraries to bundle from their sources
+ *                                      rather than from their built file — see
+ *                                      `fromSourcePlugins`.
  * @param {boolean} [options.minify]    Adds `rollup-plugin-esbuild`'s `minify()`.
  * @param {{name: string, version: string}} [options.pkg] The manifest, for the
  *                                      licence banner. Its ABSENCE breaks nothing
@@ -277,10 +330,13 @@ export function pluginStack({
     version,
     css = false,
     typescript: tsOptions = {},
+    fromSource = [],
     minify: useMinify = false,
     pkg,
 } = {}) {
-    const plugins = [nodeResolve(resolve)];
+    const [sourceResolver, sourceTranspiler] =
+        fromSource.length > 0 ? fromSourcePlugins(fromSource) : [];
+    const plugins = [...(sourceResolver ? [sourceResolver] : []), nodeResolve(resolve)];
 
     if (useCommonjs) plugins.push(commonjs());
     if (useJson) plugins.push(json());
@@ -296,6 +352,8 @@ export function pluginStack({
             postcss({ inject: cspStyleInject, minimize: true, extract: false, sourceMap: false })
         );
     }
+
+    if (sourceTranspiler) plugins.push(sourceTranspiler);
 
     plugins.push(typescript({ tsconfig: "./tsconfig.json", ...tsOptions }));
 

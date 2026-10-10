@@ -1,5 +1,5 @@
 /**
- * T10.3.12 — legend-control-branches-deep.test.js
+ * legend-control-branches-deep.test.js
  * Covers: src/capabilities/legend/legend-control.ts
  *         - createLegendControl() all branches
  *         - ensureSpriteLoaded() all paths
@@ -35,7 +35,7 @@ function makeMockMap(_position = "bottomleft") {
     };
 }
 
-describe("LegendControl (T10.3.12)", () => {
+describe("LegendControl", () => {
     let LegendControl;
     let LegendRendererMock;
 
@@ -321,9 +321,9 @@ describe("LegendControl (T10.3.12)", () => {
     });
 });
 
-// ─── ensureSpriteLoaded (T10.3.12b) ──────────────────────────────────────────
+// ─── ensureSpriteLoaded ──────────────────────────────────────────
 
-describe("ensureSpriteLoaded branches (T10.3.12b)", () => {
+describe("ensureSpriteLoaded branches", () => {
     let LegendControl;
 
     beforeEach(async () => {

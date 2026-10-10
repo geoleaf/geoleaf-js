@@ -33,12 +33,7 @@
 
     .gl-branding {
         /* The control is inserted into the container designated by `position`. */
-        font-family:
-            system-ui,
-            -apple-system,
-            BlinkMacSystemFont,
-            "Segoe UI",
-            sans-serif;
+        font-family: var(--gl-font-family);
         font-size: 0.6rem;
         color: var(--gl-color-text-muted);
         pointer-events: auto;

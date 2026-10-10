@@ -138,7 +138,7 @@ describe("registerPresetModules (presets/apply-preset)", () => {
         expect(modReg.register).not.toHaveBeenCalled();
     });
 
-    // S2 Lot 6 — `moduleGate`: the module hangs off a SUB-KEY of the capability's config
+    // `moduleGate`: the module hangs off a SUB-KEY of the capability's config
     // (share under permalink), so it must NOT be gated by the declaration's own gate.
     it("prefers moduleGate over the declaration gate when present", () => {
         const sub = makeInstaller("permalink");

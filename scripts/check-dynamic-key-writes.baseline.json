@@ -1,7 +1,7 @@
 {
     "_comment": "Écritures à clé dynamique connues et NON gardées, figées pour que le gate ne bloque que sur une NOUVELLE. Ce n'est PAS une liste de vulnérabilités : la plupart de ces clés sont code-originées et ne viennent jamais d'un JSON externe. Ce qui est intentionnellement sûr (index numérique, liste de clés en dur, allowlist plus stricte) va dans ALLOWLIST, DANS le script, avec sa justification — pas ici. L'identité d'une entrée est fichier|fonction|expression-de-clé, PAS le numéro de ligne : une baseline indexée par ligne se périme au premier refactor. Corollaire assumé : deux écritures identiques dans la même fonction ne comptent que pour une.",
     "generated": "2026-07-18",
-    "count": 50,
+    "count": 48,
     "sinks": [
         "packages/core/src/adapters/maplibre/maplibre-style-transform.ts|buildGeoLeafStyleTransform|sourceId",
         "packages/core/src/adapters/maplibre/maplibre-taxonomy-paint.ts|applyTaxonomyMarkerPaint|key",
@@ -9,8 +9,6 @@
         "packages/core/src/capabilities/filter/apply.ts|resolveOptionsWithData|field.id",
         "packages/core/src/capabilities/filter/taxonomy-options.ts|resolveFieldOptions|field.id",
         "packages/core/src/capabilities/offline/cache/metrics.ts|estimateProfileSize|t",
-        "packages/core/src/capabilities/offline/db/indexeddb.ts|_ensureModule|moduleName",
-        "packages/core/src/capabilities/offline/db/indexeddb.ts|_initializeModules|name",
         "packages/core/src/capabilities/taxonomy/marker-paint.ts|buildMarkerPaint|role.key",
         "packages/core/src/kernel/api/controller.ts|_initializeManagers|type",
         "packages/core/src/kernel/basemaps/registry.ts|registerBaseLayer|actualKey",

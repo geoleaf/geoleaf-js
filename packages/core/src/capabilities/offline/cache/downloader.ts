@@ -318,7 +318,13 @@ const CacheDownloader = {
         // real, not rewiring a field. ⚠️ And the one-year immutability claim the
         // worker put on rebuilt responses was already removed for this motive:
         // freshness was guaranteed by nothing.
-        await StorageDB.cacheLayer(resource.url, fetchResult.data, profileId, {
+        const payload = fetchResult.data;
+        if (typeof payload !== "string" && (typeof payload !== "object" || payload === null)) {
+            // A JSON body that parses to `null` or to a bare primitive is not a resource the
+            // profile can use offline: storing it would hand that value back as a "cached" file.
+            throw new Error(`Nothing storable in the response (${typeof payload})`);
+        }
+        await StorageDB.cacheLayer(resource.url, payload, profileId, {
             etag: fetchResult.metadata?.etag as string | undefined,
             lastModified: fetchResult.metadata?.lastModified as string | undefined,
             // NOT `as number`: the value is the raw `Content-Length` header, so it is a

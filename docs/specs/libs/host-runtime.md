@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: cd3343770
-date: 4 octobre 2026
+verifie_contre: 11521ab02
+date: 7 octobre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -219,6 +219,15 @@ Trois seams de ce paquet apportent leur propre feuille : `tooltip`, `modal-shell
 `confirm-dialog`. Elles sont nommées **`*.lazy.css`** et adoptées **au moment de l'appel**, par
 `adoptStylesheet(css, key)`. Ce n'est pas un raffinement : c'est un correctif.
 
+**Les deux feuilles de la modale sont la SEULE source de leurs règles (04/10/2026).**
+`@geoleaf/field-renderer` en portait une copie, pour sa modale de formulaire qui écrit les mêmes
+classes sans passer par `createModalShell`. Il les **adopte** désormais, par deux fonctions exportées
+pour lui — `adoptModalShellSheet()` et `adoptConfirmDialogSheet()`, les mêmes que les seams appellent.
+Le bloc tactile des boutons du dialogue (44 px sous `pointer: coarse`) vit dans `confirm-dialog.lazy.css` :
+il était dans la bibliothèque du formulaire, donc absent de tout dialogue ouvert sans elle.
+⚠️ Ces deux fonctions ne dérogent pas à la règle ci-dessous : elles n'adoptent rien à l'import de CE
+paquet, et rollup les élague du bundle qui ne les appelle pas.
+
 **Le défaut, mesuré le 27/08/2026.** Elles portaient un import d'effet de bord en tête de
 module. Le build en fait une adoption **inconditionnelle** dans `document.adoptedStyleSheets` —
 un effet de bord que rollup ne peut pas supprimer. Or ce paquet est **inliné dans chaque
@@ -272,12 +281,13 @@ fuit pas chez ceux qu'on a regardés n'est pas un effet de bord qui ne fuit pas.
 
 ### Trois gardes surveillent ce paquet, et il faut savoir laquelle fait quoi
 
-| Garde                                   | Ce qu'elle tient                                                                                                                                                                  |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/verify-seam-drift.cjs`         | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                                                                                        |
-| `scripts/verify-plugin-shared-fork.cjs` | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus**                                                                    |
-| `scripts/check-shipped-specifiers.cjs`  | SHIP-SPEC-02 — qu'aucun fichier atteignable ne **nomme** ce workspace `private` ; il est scanné bien qu'il n'ait pas de tarball, parce qu'il part inliné dans les bundles publiés |
-| `scripts/verify-host-contract-sync.cjs` | HOST-01/02/03 — `GeoLeafHost` ⊆ `GeoLeafGlobal`, et aucun des deux ne nomme un membre que le boot ne monte pas                                                                    |
+| Garde                                            | Ce qu'elle tient                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scripts/verify-seam-drift.cjs`                  | Le couple `getGeoLeaf` core ↔ bibliothèque, sous le seam **`host-global`**                                                                                                                                                                                                           |
+| `scripts/verify-plugin-shared-fork.cjs`          | Qu'un plugin ne **recopie** pas ce que ce paquet fournit — **en exemptant les deux côtés du couple ci-dessus**                                                                                                                                                                       |
+| `scripts/check-shipped-specifiers.cjs`           | SHIP-SPEC-02 — qu'aucun fichier atteignable ne **nomme** ce workspace `private` ; il est scanné bien qu'il n'ait pas de tarball, parce qu'il part inliné dans les bundles publiés                                                                                                    |
+| `scripts/verify-host-contract-sync.cjs`          | HOST-01/02/03 — `GeoLeafHost` ⊆ `GeoLeafGlobal`, et aucun des deux ne nomme un membre que le boot ne monte pas                                                                                                                                                                       |
+| `examples/consumer/extension-contract.ts` (core) | La **forme** de chaque membre que `GeoLeafHost` nomme sous un namespace, comparée à celle de `GeoLeafGlobal` par le compilateur (`typecheck:consumer`). Traînes et sacs laissés de côté : un membre déclaré `Record<string, unknown>` ou `(...args: unknown[])` n'est comparé à rien |
 
 ⚠️ **L'exemption de la deuxième est ce qui rend la première indispensable.** Sans la gate de dérive,
 le couple `getGeoLeaf` serait la seule copie du dépôt que **rien** ne surveille — exemptée d'un côté,
@@ -289,11 +299,22 @@ Tous les plugins qui parlent au namespace, en dépendance de **développement** 
 aussi**, qui n'est pas un plugin. Depuis le 06/08/2026 la plomberie d'interface a migré de lui vers
 ce paquet, et `packages/libs/field-renderer/src/ui/responsive-modal.ts` importe désormais
 `createFocusTrap` et `confirmDialog` d'ici : la dépendance va donc `field-renderer` → `host-runtime`,
-jamais l'inverse. La liste ne se recopie pas, elle se dérive — `npm run versions:check`, ou un grep
+jamais l'inverse. Ses deux primitives DOM, `_el` et `applyCssText`, sont depuis le 06/10/2026 des
+enveloppes de `createEl` et `applyStyleText` : il n'y a plus de copie à tenir égale. La liste ne se recopie pas, elle se dérive — `npm run versions:check`, ou un grep
 de `"@geoleaf/host-runtime"` dans les `package.json` des workspaces.
 `addpoi` faisait exception (fusionné dans [`editor`](../plugins/CDC_editor.md)) : il le **déclarait** et son `entry.ts` **ne s'en
 sert pas**, préférant une conversion de `globalThis` faite à la main — c'est-à-dire exactement la
 forme que ce paquet existe pour supprimer, et le dernier site à ne pas l'avoir adoptée.
+
+⚠️ **« Chaque paquet embarque la sienne » — UNE, et cela s'est mesuré faux.** L'éditeur importe ce
+paquet directement **et** regroupe `field-renderer`, dont le fichier bâti l'embarque déjà
+(`external: []`) : son bundle en portait deux exemplaires, donc deux portées de module pour un code
+écrit comme unique — deux ensembles de dédoublonnage pour `adoptStylesheet`, deux fois le module de
+dialogue. Depuis le 04/10/2026 l'éditeur prend `field-renderer` par ses **sources** (option
+`fromSource` de `packages/build-config/rollup.mjs`), et les imports des deux côtés se résolvent sur
+le même module. La gate de taille des greffons refuse le retour d'un module embarqué deux fois
+(`checkTwiceBundled`, `scripts/check-bundle-size.cjs`) : elle lit les sourcemaps, sans nommer de
+paquet.
 
 ---
 

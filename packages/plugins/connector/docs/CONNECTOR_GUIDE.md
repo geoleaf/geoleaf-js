@@ -27,7 +27,7 @@ title: "GeoLeaf — Authentification HTTP avec @geoleaf-plugins/connector"
 - JWT : détection d'expiration + refresh automatique ; une panne du point de renouvellement garde la session, seul un refus l'efface
 - Persistance du token en IndexedDB (survit au rechargement de page)
 - Modal de connexion accessible (aucune dépendance CSS externe)
-- Intercept MapLibre `transformRequest` pour les tuiles vectorielles (MVT) ; les archives PMTiles passent par `window.fetch`, que la bibliothèque `pmtiles` emploie
+- Intercept MapLibre `transformRequest` pour les tuiles vectorielles (MVT) que la carte affiche ; les archives PMTiles passent par `window.fetch`, que la bibliothèque `pmtiles` emploie — comme les tuiles et les glyphes que la préparation hors ligne télécharge
 
 ---
 
@@ -238,15 +238,16 @@ GeoLeaf.Sync.registerSessionReader(() => {
 
 ## Événements DOM
 
-| Événement                                     | Détail                       | Déclenché quand                              |
-| --------------------------------------------- | ---------------------------- | -------------------------------------------- |
-| `geoleaf:connector:authenticated`             | `{ baseUrl }`                | Login modal réussi                           |
-| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                | Renouvellement réussi                        |
-| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`         | Session terminée : refus                     |
-| `geoleaf:connector:signed-out`                | `{ baseUrl }`                | `logout()` a terminé la session              |
-| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }` | Clic sur le bouton d'identification          |
-| `geoleaf:connector:signup-requested`          | `{ url }`                    | Clic sur « Créer un compte » — annulable     |
-| `geoleaf:connector:forgot-password-requested` | `{ url }`                    | Clic sur « Mot de passe oublié » — annulable |
+| Événement                                     | Détail                                  | Déclenché quand                                                      |
+| --------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------- |
+| `geoleaf:connector:authenticated`             | `{ baseUrl }`                           | Login modal réussi                                                   |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                           | Renouvellement réussi                                                |
+| `geoleaf:connector:auth-error`                | `{ baseUrl, error }`                    | Session terminée : refus                                             |
+| `geoleaf:connector:login-failed`              | `{ baseUrl, error, status?, problem? }` | Une connexion depuis la fenêtre a été refusée, ou n'a pas pu aboutir |
+| `geoleaf:connector:signed-out`                | `{ baseUrl }`                           | `logout()` a terminé la session                                      |
+| `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }`            | Clic sur le bouton d'identification                                  |
+| `geoleaf:connector:signup-requested`          | `{ url }`                               | Clic sur « Créer un compte » — annulable                             |
+| `geoleaf:connector:forgot-password-requested` | `{ url }`                               | Clic sur « Mot de passe oublié » — annulable                         |
 
 ```js
 document.addEventListener("geoleaf:connector:authenticated", (e) => {
@@ -265,9 +266,9 @@ document.addEventListener("geoleaf:connector:auth-error", (e) => {
 
 - Le token n'est **jamais** transmis en query string — uniquement via header `Authorization`
 - Les mots de passe sont effacés de la mémoire après utilisation (OWASP A02)
-- `baseUrl` doit utiliser HTTPS en production (erreur levée sinon) ; `http://` n'est toléré, avec un avertissement, que si la page tourne sur un hôte de développement — `localhost`, `*.localhost`, boucle locale, ou un nom en `.test`, réservé aux tests (RFC 6761)
+- `baseUrl` et `auth.endpoint` doivent utiliser HTTPS (erreur levée sinon) : le premier reçoit le jeton, le second le mot de passe. `http://` n'est toléré, avec un avertissement, que si l'URL elle-même VISE un hôte de développement — `localhost`, `*.localhost`, boucle locale, ou un nom en `.test`, réservé aux tests (RFC 6761). La page ne compte pas : une page servie sur `localhost` ne peut pas envoyer un secret en `http://` vers un hôte distant ni vers une adresse de réseau local. `auth.signupUrl` et `auth.forgotPasswordUrl` suivent la même règle
 - Sanitisation XSS de la modal : `textContent` uniquement — aucun `innerHTML` avec données utilisateur
-- Tuiles vectorielles (MVT) : jeton via `map.setTransformRequest()` (MapLibre bridge) ; archives PMTiles : via `window.fetch`, que la bibliothèque `pmtiles` emploie
+- Tuiles vectorielles (MVT) : jeton via `map.setTransformRequest()` (MapLibre bridge) à l'affichage, via `window.fetch` quand la préparation hors ligne les télécharge — la même identité dans les deux cas ; archives PMTiles : via `window.fetch`, que la bibliothèque `pmtiles` emploie
 
 ---
 

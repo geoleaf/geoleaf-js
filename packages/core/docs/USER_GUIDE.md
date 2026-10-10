@@ -299,7 +299,7 @@ Profiles are predefined configurations that define:
 
 #### 4.2 Custom profiles
 
-Profiles can be created for any business domain. See [PROFILES_GUIDE.md](PROFILES_GUIDE.md).
+Profiles can be created for any business domain. See [QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md).
 
 ### Switching Profiles
 
@@ -1245,8 +1245,8 @@ GeoLeaf.boot({
 
 ### Documentation
 
-- **[Configuration Guide](CONFIGURATION_GUIDE.md)** — full detail of the JSON configuration files
-- **[Profiles Guide](PROFILES_GUIDE.md)** — building custom business profiles
+- **[Profile JSON Reference](PROFILE_JSON_REFERENCE.md)** — reading guide of a profile's JSON files
+- **[Quickstart Tutorial](QUICKSTART_TUTORIAL.md)** — a profile built step by step
 - **[Events API](EVENTS_API.md)** — complete GeoLeaf event reference
 - **[Cookbook](COOKBOOK.md)** — 10 practical recipes
 - **[usage-cdn.md](usage-cdn.md)** — CDN and NPM loading

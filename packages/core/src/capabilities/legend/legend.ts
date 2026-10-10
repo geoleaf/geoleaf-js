@@ -39,7 +39,7 @@ import {
     showLoadingOverlay as _showLoadingOverlay,
 } from "./legend-overlay.js";
 import type { LegendControlLike, LegendData } from "./types.js";
-import { layerGeometry } from "../../kernel/config/index.js";
+import { geometryFamily, layerGeometry } from "../../kernel/config/index.js";
 
 // The global `GeoLeaf` namespace shape is declared canonically in `src/global.d.ts`.
 // `ensureGeoLeaf()` returns it (creating an empty namespace if boot has not yet
@@ -126,11 +126,15 @@ function _styleFetchSignal(): AbortSignal | undefined {
 
 const _allLayers = new Map<string, LayerInfo>();
 
+/**
+ * The legend symbol's family for a declared geometry, read from the kernel's family table.
+ *
+ * It was three comparisons here, and every other spelling the layer schema admits —
+ * `multipolygon`, `multiline`, `fill-extrusion` — was drawn as a point. A kind that names no
+ * single family (`mixed`, an unknown token) keeps the point symbol.
+ */
 function _normalizeGeometryType(rawGeometry: string | undefined): string {
-    const value = (rawGeometry || "").toLowerCase();
-    if (value === "polyline" || value === "line") return "line";
-    if (value === "polygon") return "polygon";
-    return "point";
+    return geometryFamily(rawGeometry) ?? "point";
 }
 
 function _scheduleRebuild(): void {

@@ -71,7 +71,7 @@ This policy covers the whole `GeoLeaf-Js` monorepo — every package it publishe
 GeoLeaf implements multiple layers of protection:
 
 All paths below are relative to `packages/core/src/` and were re-verified against the code on
-31/07/2026. They previously all named a `modules/` root **dissolved at R.9** — six dead paths
+31/07/2026. They previously all named a `modules/` root **since dissolved** — six dead paths
 in the policy GitHub renders in its own Security tab, invisible to every gate because this file
 sat outside their perimeter until that date.
 

@@ -1,5 +1,5 @@
 /**
- * T10.3.2c — theme-branches-deep.test.js
+ * theme-branches-deep.test.js
  * Covers: src/kernel/ui/theme.ts (98 branches)
  * Strategy: await import() + minimal mock (Log, getLabel)
  * Real DOM + real localStorage via jsdom.
@@ -14,7 +14,7 @@ vi.mock("../../src/utils/i18n/i18n.js", () => ({
     getLabel: vi.fn((key) => key),
 }));
 
-describe("_UITheme (T10.3.2c)", () => {
+describe("_UITheme", () => {
     let _UITheme;
 
     beforeAll(async () => {

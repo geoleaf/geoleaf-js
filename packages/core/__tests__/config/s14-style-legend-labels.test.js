@@ -7,8 +7,9 @@
  * item. `legend.description` is read here (ANO-072) although the hardened styleRule.legend
  * block rejects it — the schema lock lives in s14-styles-anomalies-lock.test.js.
  *
- * Residual `label.font.{family,weight,bold,italic}` + `buffer.{noFill,opacity}` are NOT
- * mapped to the MapLibre symbol path (ANO-064/067); locked as it.todo. The former dead
+ * `label.font.{family,weight,bold,italic}` and `buffer.{noFill,opacity}` (ANO-064/067) were
+ * never mapped to the MapLibre symbol path; they left the schema on 04/10/2026 and their
+ * refusal is locked in s14-styles-anomalies-lock.test.js. The former dead
  * Leaflet DOM path (ANO-075) and the removed keys background/legend.items (ANO-066/074)
  * were cleaned up in archi B.3/B.5 + résidu. ⚠️ `label.offset` (ANO-065) was in that
  * "removed" list until 05/09/2026 and no longer belongs there: it came BACK to the schema
@@ -103,20 +104,15 @@ describe("config B6 — generateLegendFromStyle (fixture defaut.json round-trip)
     });
 });
 
-describe("config B6 — label.* non-mapped MapLibre (it.todo)", () => {
-    // ANO-066 (label.background), ANO-074 (legend.items) RESOLVED (keys removed from
-    // style.schema.json — archi B.3/B.5). ANO-075 RESOLVED (the dead Leaflet DOM label path
-    // was removed from label-renderer.ts — archi résidu).
-    // ⚠️ ANO-065 (label.offset) was resolved the OTHER way, and this comment said "keys
-    // removed" until 05/09/2026: `offset.placement` / `offset.distancePx` are back in the
-    // schema and ARE mapped now (text-anchor + text-radial-offset). Their coverage lives in
-    // __tests__/capabilities/labels/label-renderer.test.js, not here. Remaining:
-    // font.family/weight/bold/italic + buffer.noFill/opacity stay schema-accepted but
-    // unmapped by the MapLibre symbol path (font.sizePt + buffer.color/sizePx ARE live).
-    it.todo(
-        "@anomaly ANO-064 — label.font.family/weight/bold/italic: not mapped (only font.sizePt is live)"
-    );
-    it.todo(
-        "@anomaly ANO-067 — label.buffer.opacity/noFill: MapLibre text-halo has no such option"
-    );
-});
+// ── label.* keys no renderer reads — all resolved, nothing left to lock here ──
+// ANO-066 (label.background), ANO-074 (legend.items) RESOLVED (keys removed from
+// style.schema.json — archi B.3/B.5). ANO-075 RESOLVED (the dead Leaflet DOM label path
+// was removed from label-renderer.ts — archi résidu).
+// ANO-064 (font.family/weight/bold/italic) and ANO-067 (buffer.opacity/noFill) RESOLVED the
+// same way on 04/10/2026: removed from both schemas. What stays is what the symbol path maps
+// (font.sizePt, buffer.color/sizePx). The refusal of each removed key is asserted in
+// s14-styles-anomalies-lock.test.js and layer-labels-schema.test.ts.
+// ⚠️ ANO-065 (label.offset) was resolved the OTHER way, and this comment said "keys
+// removed" until 05/09/2026: `offset.placement` / `offset.distancePx` are back in the
+// schema and ARE mapped now (text-anchor + text-radial-offset). Their coverage lives in
+// __tests__/capabilities/labels/label-renderer.test.js, not here.

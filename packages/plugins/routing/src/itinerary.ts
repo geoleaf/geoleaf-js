@@ -75,8 +75,8 @@ function stopPicking(): void {
  *
  * ⚠️ **5, and it is not a free choice.** Valhalla encodes at 1e6 and OSRM at 1e5; the
  * normalisers re-encode everything to 5 so that one number is true of every route this package
- * produces. Decoding at the wrong factor puts Réunion at latitude −208 — measured in sprint 1,
- * on the captured corpus.
+ * produces. Decoding at the wrong factor puts Réunion at latitude −208 — measured on the
+ * captured corpus.
  */
 const POLYLINE_PRECISION = 5;
 

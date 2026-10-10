@@ -30,6 +30,7 @@ import { loadFgbBbox, setupAutoRefresh } from "./fgb-bbox-filter.js";
 interface MapAdapterLike {
     addGeoJSONLayer?(id: string, data: unknown, options?: Record<string, unknown>): void;
     updateLayerData?(id: string, data: unknown): void;
+    hasLayer?(id: string): boolean;
     getNativeMap?(): unknown;
 }
 
@@ -134,6 +135,10 @@ export async function loadAsLayer(url: string, options: FgbLayerOptions = {}): P
  * Loads FlatGeobuf features filtered by bbox and adds them as a GeoJSON layer.
  * Optionally sets up auto-refresh to re-fetch on viewport change.
  *
+ * The refresh lasts as long as the layer: once the layer has been removed from the map
+ * (`removeLayer` on the map adapter), the next viewport change removes the listener instead of
+ * fetching. When two refreshes overlap, only the answer to the latest one is drawn.
+ *
  * @param url - Remote URL of the .fgb file.
  * @param bbox - Initial bounding box filter.
  * @param options - Layer + bbox options (autoRefresh, debounceMs…).
@@ -154,16 +159,33 @@ export async function loadBboxAsLayer(
             adapter && typeof adapter.getNativeMap === "function" ? adapter.getNativeMap() : null;
 
         if (nativeMap && typeof (nativeMap as { on?: unknown }).on === "function") {
-            setupAutoRefresh(
+            // A refresh belongs to the layer it feeds. Nothing tells a plugin that a layer
+            // drawn through the adapter has been removed, so each refresh asks the adapter:
+            // once the layer is gone, the listener removes itself instead of fetching for a
+            // source that no longer exists.
+            const layerGone = (): boolean => adapter?.hasLayer?.(layerId) === false;
+            // Two refreshes may answer out of order; only the latest one asked may write.
+            let generation = 0;
+            const stop = setupAutoRefresh(
                 nativeMap as Parameters<typeof setupAutoRefresh>[0],
                 url,
                 options,
                 (newBbox) => {
+                    if (layerGone()) {
+                        stop();
+                        return;
+                    }
+                    const asked = (generation += 1);
                     // The callback must return void. The body swallows every failure
                     // on purpose, so there is nothing to await and nothing to reject.
                     void (async () => {
                         try {
                             const refreshed = await loadFgbBbox(url, newBbox, options);
+                            if (asked !== generation) return;
+                            if (layerGone()) {
+                                stop();
+                                return;
+                            }
                             // In-place data replacement via the adapter (setData on the source).
                             adapter?.updateLayerData?.(layerId, refreshed.data);
                         } catch {

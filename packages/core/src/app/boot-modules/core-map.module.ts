@@ -12,7 +12,7 @@
  * `GeoLeaf._app` for UIModule to consume.
  *
  * The behaviour lives in {@link CoreMapLifecycle}: this file is registry glue, like the
- * other 18 `ICoreModule` wrappers. Until R.42 it was the exception — `init()` carried
+ * other 18 `ICoreModule` wrappers. Until 25/07/2026 it was the exception — `init()` carried
  * ~148 lines orchestrating seven responsibilities under a `complexity` /
  * `max-lines-per-function` disable, the only such disable among the 19 wrappers. The
  * extraction is graph-preserving on purpose: `id` and `dependencies` are unchanged, so
@@ -31,7 +31,7 @@ import { CoreMapLifecycle } from "./core-map-lifecycle.js";
  */
 export class CoreMapModule implements ILifecycleModule {
     readonly id = "core-map" as const;
-    // S6 Lot 6: `security` pruned with SecurityModule (facade-only, ordered by the ESM chain).
+    // `security` pruned with SecurityModule (facade-only, ordered by the ESM chain).
     readonly dependencies = ["config"] as const;
 
     init(adapter: IMapAdapter, config: IGeoLeafConfig): void {

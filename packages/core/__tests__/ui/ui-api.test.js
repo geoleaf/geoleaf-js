@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.15 - ui-api */
+/* ui-api */
 
 // `vi.hoisted` — the double must be reachable by the assertions, and
 // `vi.mock` is hoisted above module `const`s.
@@ -61,7 +61,7 @@ beforeAll(async () => {
     // assertions looking for them HERE were removed: they did not test this unit.
 });
 
-describe("ui/ui-api (Phase 5.15)", () => {
+describe("ui/ui-api", () => {
     it("GeoLeaf.UI exists after load", () => {
         expect(_g.GeoLeaf.UI).toBeDefined();
     });

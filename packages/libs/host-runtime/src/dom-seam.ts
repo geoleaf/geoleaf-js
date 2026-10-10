@@ -17,10 +17,10 @@
  * them here would make that gate red on the library that legitimately owns them.
  * Consumers keep their local vocabulary at the import — `import { createEl as _el }`.
  *
- * field-renderer still carries its own copies: it has no dependency on this package,
- * and adding one to share seven lines would pull a second library into every consumer's
- * type graph. The pair is therefore PINNED in `scripts/verify-seam-drift.cjs` instead —
- * which turns four un-confronted copies into one gated pair.
+ * field-renderer no longer carries copies: it bundles this package (focus trap, dialogs and
+ * their stylesheets), and its `_el` / `applyCssText` are local wrappers that delegate here —
+ * written signatures, so its published declarations name no private package. The pair that
+ * `scripts/verify-seam-drift.cjs` pinned left with the copies.
  */
 
 /**

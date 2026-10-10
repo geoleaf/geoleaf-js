@@ -223,7 +223,10 @@ function _createOffscreenInstance(
         bearing: 0,
         pitch: 0,
         pixelRatio: 1,
-        preserveDrawingBuffer: true,
+        // MapLibre reads the WebGL context attributes from `canvasContextAttributes` only:
+        // a top-level `preserveDrawingBuffer` is silently ignored and the context is created
+        // with the default, `false` — the canvas could then be read back empty.
+        canvasContextAttributes: { preserveDrawingBuffer: true },
         attributionControl: false,
         interactive: false,
     };

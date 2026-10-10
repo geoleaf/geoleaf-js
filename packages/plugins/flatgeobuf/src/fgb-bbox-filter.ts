@@ -84,14 +84,21 @@ interface MapLike {
 }
 
 /**
- * Creates a simple debounce wrapper.
+ * Creates a simple debounce wrapper, with the means to drop a call still pending.
  * @internal
  */
-function _debounce(fn: () => void, ms: number): () => void {
+function _debounce(fn: () => void, ms: number): { call: () => void; cancel: () => void } {
     let timer: ReturnType<typeof setTimeout> | null = null;
-    return () => {
+    const cancel = (): void => {
         if (timer) clearTimeout(timer);
-        timer = setTimeout(fn, ms);
+        timer = null;
+    };
+    return {
+        call: () => {
+            cancel();
+            timer = setTimeout(fn, ms);
+        },
+        cancel,
     };
 }
 
@@ -104,7 +111,8 @@ function _debounce(fn: () => void, ms: number): () => void {
  *   which file it refreshes; the parameter stays for call-shape compatibility.
  * @param options - Bbox load options; `debounceMs` throttles the refresh.
  * @param reloadFn - Callback invoked with the new bbox on each viewport change.
- * @returns Cleanup function that removes the listener.
+ * @returns Cleanup function: removes the listener and drops a refresh still waiting on the
+ *   debounce, so nothing fires once it has been called.
  */
 export function setupAutoRefresh(
     map: MapLike,
@@ -114,7 +122,7 @@ export function setupAutoRefresh(
 ): () => void {
     const ms = options.debounceMs ?? DEFAULT_DEBOUNCE_MS;
 
-    const handler = _debounce(() => {
+    const debounced = _debounce(() => {
         const bounds = map.getBounds?.();
         if (!bounds) return;
         reloadFn({
@@ -125,6 +133,9 @@ export function setupAutoRefresh(
         });
     }, ms);
 
-    map.on("moveend", handler);
-    return () => map.off("moveend", handler);
+    map.on("moveend", debounced.call);
+    return () => {
+        debounced.cancel();
+        map.off("moveend", debounced.call);
+    };
 }

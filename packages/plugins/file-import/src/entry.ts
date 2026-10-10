@@ -39,6 +39,17 @@ function buildPublicApi() {
 
 // ─── Mount GeoLeaf.FileImport ─────────────────────────────────────────────────
 
+/** The API this plugin mounts as `GeoLeaf.FileImport`. */
+export type FileImportApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.FileImport` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        FileImport: FileImportApi;
+    }
+}
+
 if (_g.GeoLeaf) {
     _g.GeoLeaf.FileImport = buildPublicApi();
 }

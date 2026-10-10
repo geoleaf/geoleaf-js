@@ -203,10 +203,93 @@ describe("public-api", () => {
             });
 
             // Invoke the reloadFn captured by the mocked setupAutoRefresh.
-            const reloadFn = mockSetupAutoRefresh.mock.calls[0][3] as (b: FgbBbox) => Promise<void>;
-            await reloadFn(VALID_BBOX);
+            const reloadFn = mockSetupAutoRefresh.mock.calls[0][3] as (b: FgbBbox) => void;
+            reloadFn(VALID_BBOX);
 
-            expect(updateLayerData).toHaveBeenCalledWith("auto-layer", refreshed.data);
+            await vi.waitFor(() =>
+                expect(updateLayerData).toHaveBeenCalledWith("auto-layer", refreshed.data)
+            );
+        });
+
+        // The three cases below drive the REAL refresh callback: the mocked
+        // `setupAutoRefresh` only hands it over and returns the cleanup it was asked for.
+        it("draws only the answer to the latest refresh when two answer out of order", async () => {
+            const first = makeFgbResult(2);
+            const second = makeFgbResult(7);
+            let answerFirst: (v: unknown) => void = () => {};
+            let answerSecond: (v: unknown) => void = () => {};
+            mockLoadFgbBbox
+                .mockResolvedValueOnce(makeFgbResult(1))
+                .mockReturnValueOnce(new Promise((r) => (answerFirst = r)))
+                .mockReturnValueOnce(new Promise((r) => (answerSecond = r)));
+            const nativeMap = { on: vi.fn(), off: vi.fn(), getBounds: vi.fn() };
+            const { updateLayerData } = installAdapter(nativeMap);
+
+            await loadBboxAsLayer("https://example.com/data.fgb", VALID_BBOX, {
+                layerId: "race-layer",
+                autoRefresh: true,
+            });
+            const reloadFn = mockSetupAutoRefresh.mock.calls[0][3] as (b: FgbBbox) => void;
+            reloadFn(VALID_BBOX);
+            reloadFn(VALID_BBOX);
+
+            // The newer request answers first, the older one last.
+            answerSecond(second);
+            await vi.waitFor(() => expect(updateLayerData).toHaveBeenCalledTimes(1));
+            answerFirst(first);
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(updateLayerData).toHaveBeenCalledTimes(1);
+            expect(updateLayerData).toHaveBeenCalledWith("race-layer", second.data);
+        });
+
+        it("removes its listener, and fetches nothing, once the layer has left the map", async () => {
+            mockLoadFgbBbox.mockResolvedValue(makeFgbResult(1));
+            const stop = vi.fn();
+            mockSetupAutoRefresh.mockReturnValue(stop);
+            const nativeMap = { on: vi.fn(), off: vi.fn(), getBounds: vi.fn() };
+            const { adapter, updateLayerData } = installAdapter(nativeMap);
+            let present = true;
+            (adapter as { hasLayer?: (id: string) => boolean }).hasLayer = () => present;
+
+            await loadBboxAsLayer("https://example.com/data.fgb", VALID_BBOX, {
+                layerId: "gone-layer",
+                autoRefresh: true,
+            });
+            const reloadFn = mockSetupAutoRefresh.mock.calls[0][3] as (b: FgbBbox) => void;
+            const fetchesBefore = mockLoadFgbBbox.mock.calls.length;
+
+            present = false;
+            reloadFn(VALID_BBOX);
+
+            expect(stop).toHaveBeenCalledTimes(1);
+            expect(mockLoadFgbBbox.mock.calls.length).toBe(fetchesBefore);
+            expect(updateLayerData).not.toHaveBeenCalled();
+        });
+
+        it("does not draw an answer that arrives after the layer has left the map", async () => {
+            let answer: (v: unknown) => void = () => {};
+            mockLoadFgbBbox
+                .mockResolvedValueOnce(makeFgbResult(1))
+                .mockReturnValueOnce(new Promise((r) => (answer = r)));
+            const stop = vi.fn();
+            mockSetupAutoRefresh.mockReturnValue(stop);
+            const nativeMap = { on: vi.fn(), off: vi.fn(), getBounds: vi.fn() };
+            const { adapter, updateLayerData } = installAdapter(nativeMap);
+            let present = true;
+            (adapter as { hasLayer?: (id: string) => boolean }).hasLayer = () => present;
+
+            await loadBboxAsLayer("https://example.com/data.fgb", VALID_BBOX, {
+                layerId: "late-layer",
+                autoRefresh: true,
+            });
+            const reloadFn = mockSetupAutoRefresh.mock.calls[0][3] as (b: FgbBbox) => void;
+            reloadFn(VALID_BBOX);
+            present = false;
+            answer(makeFgbResult(4));
+            await vi.waitFor(() => expect(stop).toHaveBeenCalledTimes(1));
+
+            expect(updateLayerData).not.toHaveBeenCalled();
         });
 
         it("does not set up auto-refresh when option is false", async () => {

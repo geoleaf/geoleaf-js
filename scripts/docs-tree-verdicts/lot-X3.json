@@ -127,7 +127,7 @@
             "severity": null,
             "description": "Registre des enveloppes de handlers des événements carte, clé par handler puis par événement, pour que `off()` rende bien l'enveloppe à MapLibre qui apparie par identité",
             "confidence": "haute",
-            "rationale": "111 LOC, 4 exports, 1 importeur (`maplibre-adapter.ts`). L'en-tête se déclare « Sibling of maplibre-event-subscriptions » et trace la double clé à un défaut daté (LOW-30, tâche 4.3) : la séparation d'avec son frère est documentée et mesurable, pas une redite"
+            "rationale": "111 LOC, 4 exports, 1 importeur (`maplibre-adapter.ts`). L'en-tête se déclare « Sibling of maplibre-event-subscriptions » et trace la double clé à un défaut daté : la séparation d'avec son frère est documentée et mesurable, pas une redite"
         },
         "packages/core/src/adapters/maplibre/maplibre-hatch-patterns.ts": {
             "kind": "file",

@@ -70,17 +70,18 @@ const MIN_DRAIN_INTERVAL_MS = 5_000;
 
 /** What asked for a drain — logged, and useful when reading a trace after a tour. */
 type DrainCause =
-    "storageReady" | "online" | "visible" | "poll" | "write" | "banner" | "cache-modal";
+    "storageReady" | "online" | "visible" | "poll" | "write" | "banner" | "cache-modal" | "requeue";
 
 /**
- * The causes a person pressed: the sync strip's "send now" and the offline window's. They pass
- * the dead-session pause — see {@link _authHalted}.
+ * The causes a person pressed: the sync strip's "send now", the offline window's, and a requeue
+ * out of quarantine — whose main motive is `authRequired`, so the gesture IS the statement that
+ * the session is back. They pass the dead-session pause — see {@link _authHalted}.
  *
  * ⚠️ A pass sent on a session that is still dead stops at its first 401 and sets that capture
  * aside as `authRequired`, like any other: one per press, where the automatic triggers would
  * cost one per minute. Signing back in requeues them.
  */
-const MANUAL_CAUSES: ReadonlySet<DrainCause> = new Set(["banner", "cache-modal"]);
+const MANUAL_CAUSES: ReadonlySet<DrainCause> = new Set(["banner", "cache-modal", "requeue"]);
 
 /** Collaborators the tests replace; production passes none. */
 interface DrainTriggerDeps {
@@ -141,6 +142,7 @@ let _onOnline: (() => void) | null = null;
 let _onVisibility: (() => void) | null = null;
 let _onQueued: (() => void) | null = null;
 let _onDrained: ((event: Event) => void) | null = null;
+let _onQuarantineExited: ((event: Event) => void) | null = null;
 
 /** `false` only when the browser positively says so — an unknown state is treated as online. */
 function _online(): boolean {
@@ -149,10 +151,7 @@ function _online(): boolean {
 
 /** The outbox module, or `null` while the engine is not wired. */
 function _outbox(): { countDue?(now: number): Promise<number> } | null {
-    const db = StorageContract.DB as {
-        _ensureModule?: (name: string) => { countDue?(now: number): Promise<number> } | null;
-    } | null;
-    return db?._ensureModule?.("Outbox") ?? null;
+    return StorageContract.DB?._ensureModule?.("Outbox") ?? null;
 }
 
 /**
@@ -193,7 +192,11 @@ export async function requestDrain(cause: DrainCause): Promise<void> {
             // replayable entry: the tick may stop reading until something says otherwise.
             // ⚠️ `deferred > 0` KEEPS it lit — those entries are waiting for their delay, and
             // the tick is precisely what will come back for them.
-            _maybeOwed = report.attempted > 0 || report.deferred > 0;
+            // ⚠️ And so does a capture held for want of a session: a pass that holds every
+            // entry makes no request, so both figures are zero while a capture is due. Read
+            // as "nothing replayable", it put the tick to sleep on a queue that was not
+            // empty — and a session reader announces nothing when the session opens.
+            _maybeOwed = report.attempted > 0 || report.deferred > 0 || report.heldForSession > 0;
         } while (_again);
     } catch (e) {
         // `pushOutbox` does not throw by contract; a rejection here would be an engine
@@ -300,6 +303,16 @@ export function armOutboxDrain(deps: DrainTriggerDeps = {}): void {
             _authHalted = detail?.haltedBy === "authRequired";
         };
         document.addEventListener("geoleaf:offline:outbox-drained", _onDrained);
+        // Entries requeued out of quarantine are owed again, and requeueing is asking to send:
+        // without this pass, a requeue on a calm queue sent nothing before the next trigger.
+        // A `discarded` exit leaves nothing to send.
+        _onQuarantineExited = (event: Event) => {
+            const detail = (event as CustomEvent<{ exit?: string }>).detail;
+            if (detail?.exit !== "requeued") return;
+            _maybeOwed = true;
+            void requestDrain("requeue");
+        };
+        document.addEventListener("geoleaf:offline:quarantine-exited", _onQuarantineExited);
     }
     if (typeof document === "undefined" || document.visibilityState === "visible") _startTimer();
     void requestDrain("storageReady");
@@ -314,11 +327,15 @@ export function disarmOutboxDrain(): void {
         if (_onVisibility) document.removeEventListener("visibilitychange", _onVisibility);
         if (_onQueued) document.removeEventListener("geoleaf:offline:outbox-queued", _onQueued);
         if (_onDrained) document.removeEventListener("geoleaf:offline:outbox-drained", _onDrained);
+        if (_onQuarantineExited) {
+            document.removeEventListener("geoleaf:offline:quarantine-exited", _onQuarantineExited);
+        }
     }
     _onOnline = null;
     _onVisibility = null;
     _onQueued = null;
     _onDrained = null;
+    _onQuarantineExited = null;
     _maybeOwed = true;
     _authHalted = false;
     _stopTimer();

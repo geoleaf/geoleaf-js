@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.23 - labels */
+/* labels */
 
 const logMock = vi.hoisted(() => ({
     error: vi.fn(),
@@ -32,7 +32,7 @@ import { Labels } from "../../../src/capabilities/labels/labels.js";
 import { LabelRenderer } from "../../../src/capabilities/labels/label-renderer.js";
 import { Core } from "../../../src/api/geoleaf.core.js";
 
-describe("labels (Phase 5.23)", () => {
+describe("labels", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         Labels.destroy();

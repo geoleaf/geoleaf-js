@@ -100,7 +100,7 @@ describe("boot — golden master (oracle 0-régression S1→S4)", () => {
         GeoLeaf.Config.loadActiveProfileResources = () => Promise.resolve({});
 
         _app._appStarted = false;
-        // S6 Lot 1: public API instead of forcing the private `_initialized = false`. Harmless
+        // public API instead of forcing the private `_initialized = false`. Harmless
         // here (the registry has never been init'd at this point, so `_initOrder` is empty and
         // destroy() only re-arms), but the crutch had no reason to outlive the bug it hid.
         if (GeoLeaf._registry) GeoLeaf._registry.destroy();

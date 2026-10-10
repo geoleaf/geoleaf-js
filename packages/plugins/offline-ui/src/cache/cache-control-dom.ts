@@ -5,10 +5,12 @@
  * https://geoleaf.dev
  */
 
-import { Log } from "@geoleaf/host-runtime";
+import { Log, tLabel as t } from "@geoleaf/host-runtime";
 import { createElement } from "../utils/dom-helpers.js";
 import { buildZoneSelectionSection } from "./cache-control-zone.js";
 import { buildSyncStatusBlock } from "./sync-status-block.js";
+import { buildQuarantineBlock } from "./quarantine-block.js";
+import { buildLogExportBlock } from "./log-export-block.js";
 import { buildPreflightBlock } from "./preflight-block.js";
 
 import type { CacheControlState } from "./cache-control-types.js";
@@ -28,7 +30,7 @@ export function buildStructure(self: CacheControlState): void {
     const iconSpan = document.createElement("span");
     iconSpan.className = "gl-cache-control__icon";
     iconSpan.textContent = "\u{1F4BE}";
-    const textNode = document.createTextNode(" Offline Cache");
+    const textNode = document.createTextNode(" " + t("storage.toolbar.button"));
     titleEl.appendChild(iconSpan);
     titleEl.appendChild(textNode);
 
@@ -40,7 +42,7 @@ export function buildStructure(self: CacheControlState): void {
         const toggleBtn = createElement("button", "gl-cache-control__toggle", header);
         self._toggleBtn = toggleBtn;
         toggleBtn.type = "button";
-        toggleBtn.setAttribute("aria-label", "Toggle cache");
+        toggleBtn.setAttribute("aria-label", t("storage.toolbar.button"));
         toggleBtn.textContent = "\u27F1";
 
         toggleBtn.addEventListener("click", (ev) => {
@@ -83,6 +85,8 @@ function buildContent(self: CacheControlState): void {
     // CACHE — profile, size, quota, what was downloaded. This one reports what has not yet
     // LEFT, which no part of this modal said without the editor plugin loaded.
     buildSyncStatusBlock(self, bodyEl);
+    // What that block counts as set aside, with the two exits the core publishes.
+    buildQuarantineBlock(self, bodyEl);
     // "Can I leave?" — the core's pre-departure check, next to where the device is prepared.
     buildPreflightBlock(self, bodyEl);
 
@@ -97,7 +101,7 @@ function buildContent(self: CacheControlState): void {
     statusIcon.textContent = "\u{1F4CA}";
     const statusLabel = document.createElement("span");
     statusLabel.className = "gl-cache-status__label";
-    statusLabel.textContent = "STATUT";
+    statusLabel.textContent = t("storage.status.title");
     statusTitle.appendChild(statusIcon);
     statusTitle.appendChild(statusLabel);
 
@@ -105,7 +109,7 @@ function buildContent(self: CacheControlState): void {
     self._statusToggleBtn = statusToggleBtn;
     statusToggleBtn.type = "button";
     statusToggleBtn.textContent = "\u25BC";
-    statusToggleBtn.setAttribute("aria-label", "Toggle status");
+    statusToggleBtn.setAttribute("aria-label", t("storage.status.title"));
 
     // Collapsible content container
     const statusInfo = createElement("div", "gl-cache-status__info", statusSection);
@@ -113,10 +117,16 @@ function buildContent(self: CacheControlState): void {
 
     // Status rows
     const rows = [
-        { key: "Profile:", id: "gl-cache-profile", value: "-" },
-        { key: "State:", id: "gl-cache-state", value: "Not downloaded" },
-        { key: "Size:", id: "gl-cache-size", value: "0 MB" },
-        { key: "Quota:", id: "gl-cache-quota", value: "0 MB available" },
+        { key: t("storage.status.profile"), id: "gl-cache-profile", value: "-" },
+        {
+            key: t("storage.status.state"),
+            id: "gl-cache-state",
+            value: t("storage.layers.notCached"),
+        },
+        { key: t("storage.layers.col.size"), id: "gl-cache-size", value: "0 MB" },
+        // "Quota" is the word in each of the six languages; the value is painted by the
+        // first status update.
+        { key: "Quota", id: "gl-cache-quota", value: "-" },
     ];
 
     interface StatusRow {
@@ -127,7 +137,7 @@ function buildContent(self: CacheControlState): void {
     rows.forEach((row: StatusRow) => {
         const rowEl = createElement("div", "gl-cache-status__row", statusInfo);
         const keyEl = createElement("span", "gl-cache-status__key", rowEl);
-        keyEl.textContent = row.key;
+        keyEl.textContent = `${row.key} :`;
         const valueEl = createElement("span", "gl-cache-status__value", rowEl);
         valueEl.id = row.id;
         valueEl.textContent = row.value;
@@ -151,13 +161,13 @@ function buildContent(self: CacheControlState): void {
     );
     self._downloadBtn = downloadBtn;
     downloadBtn.id = "gl-cache-download";
-    downloadBtn.title = "Download profile for offline use";
+    downloadBtn.title = t("storage.warn.btn.ready");
     const dlIcon = document.createElement("span");
     dlIcon.className = "gl-btn__icon";
     dlIcon.textContent = "\u2B07\uFE0F";
     const dlText = document.createElement("span");
     dlText.className = "gl-btn__text";
-    dlText.textContent = "Download profile";
+    dlText.textContent = t("storage.download.btn");
     downloadBtn.appendChild(dlIcon);
     downloadBtn.appendChild(dlText);
 
@@ -168,14 +178,14 @@ function buildContent(self: CacheControlState): void {
     );
     self._clearBtn = clearBtn;
     clearBtn.id = "gl-cache-clear";
-    clearBtn.title = "Clear the profile cache";
+    clearBtn.title = t("storage.download.clearBtn");
     clearBtn.disabled = true;
     const clearIcon = document.createElement("span");
     clearIcon.className = "gl-btn__icon";
     clearIcon.textContent = "\u{1F5D1}\uFE0F";
     const clearText = document.createElement("span");
     clearText.className = "gl-btn__text";
-    clearText.textContent = "Clear cache";
+    clearText.textContent = t("storage.download.clearBtn");
     clearBtn.appendChild(clearIcon);
     clearBtn.appendChild(clearText);
 
@@ -192,20 +202,23 @@ function buildContent(self: CacheControlState): void {
     const progressText = createElement("div", "gl-cache-progress__text", progressEl);
     self._progressText = progressText;
     progressText.id = "gl-cache-progress-text";
-    progressText.textContent = "Downloading...";
+    progressText.textContent = t("storage.download.inProgress");
 
     const stopBtn = createElement("button", "gl-btn gl-btn--danger gl-cache-btn-stop", progressEl);
     self._stopBtn = stopBtn;
     stopBtn.id = "gl-cache-stop";
-    stopBtn.title = "Stop download";
+    stopBtn.title = t("storage.download.stop");
     const stopIcon = document.createElement("span");
     stopIcon.className = "gl-btn__icon";
     stopIcon.textContent = "\u23F9\uFE0F";
     const stopText = document.createElement("span");
     stopText.className = "gl-btn__text";
-    stopText.textContent = "Stop";
+    stopText.textContent = t("storage.download.stop");
     stopBtn.appendChild(stopIcon);
     stopBtn.appendChild(stopText);
+
+    // Last: the journal of what happened, for whoever has to report it.
+    buildLogExportBlock(bodyEl);
 }
 
 /** Builds the layer selection section (CONFIG accordion). */
@@ -221,7 +234,7 @@ function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLEleme
     layerIcon.textContent = "\u2699\uFE0F";
     const layerLabel = document.createElement("span");
     layerLabel.className = "gl-cache-layers__label";
-    layerLabel.textContent = "CONFIG";
+    layerLabel.textContent = t("storage.config.title");
     headerTitle.appendChild(layerIcon);
     headerTitle.appendChild(layerLabel);
 
@@ -229,7 +242,7 @@ function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLEleme
     self._layersToggleBtn = layersToggleBtn;
     layersToggleBtn.type = "button";
     layersToggleBtn.textContent = "\u25BC";
-    layersToggleBtn.setAttribute("aria-label", "Toggle configuration");
+    layersToggleBtn.setAttribute("aria-label", t("storage.config.title"));
 
     // Collapsible content container
     self._layersContent = createElement("div", "gl-cache-layers__content", layersSection);
@@ -237,5 +250,5 @@ function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLEleme
 
     // Placeholder - will be populated by _populateLayerSelection
     const loading = createElement("div", "gl-cache-layers__loading", self._layersContent);
-    loading.textContent = "Loading layers...";
+    loading.textContent = t("storage.sync.loading");
 }

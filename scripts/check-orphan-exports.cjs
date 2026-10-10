@@ -423,6 +423,24 @@ const CLASS_C = [
     "kernel/geojson/core-types.ts::MapPointLike",
     "kernel/geojson/loader/loader-types.ts::GeoJSONLayerConfigLike",
     "kernel/geojson/loader/loader-types.ts::TaxonomyResolverFeature",
+    // The type of the API each plugin mounts on its namespace. Carried by the plugin's
+    // member of `GeoLeafPluginApis` — the registry the core's `GeoLeaf.<Namespace>` reads —
+    // declared in the same `entry.ts`: whoever calls `GeoLeaf.Table.exportSelection()`
+    // consumes `TableApi` without naming it. Its named consumer is the integrator, and, in
+    // this repository, the consumer fixture of the core, which this net does not walk.
+    "packages/plugins/cog/src/entry.ts::CogApi",
+    "packages/plugins/connector/src/entry.ts::ConnectorApi",
+    "packages/plugins/file-import/src/entry.ts::FileImportApi",
+    "packages/plugins/flatgeobuf/src/entry.ts::FlatGeobufApi",
+    "packages/plugins/geocoding/src/entry.ts::GeocodingApi",
+    "packages/plugins/measure/src/entry.ts::MeasureApi",
+    "packages/plugins/navigation/src/entry.ts::NavigationApi",
+    "packages/plugins/position-share/src/entry.ts::PositionShareApi",
+    "packages/plugins/print/src/entry.ts::PrintApi",
+    "packages/plugins/realtime-layer/src/entry.ts::RealtimeLayerApi",
+    "packages/plugins/routing/src/entry.ts::RoutingApi",
+    "packages/plugins/table/src/entry.ts::TableApi",
+    "packages/plugins/websocket/src/entry.ts::WsApi",
 ];
 
 /**
@@ -564,6 +582,21 @@ const ALLOWLIST = {
     // case could not observe a fresh registration. Production has no unregister path — the
     // protocol lives as long as the page — so no production caller will ever appear.
     "adapters/maplibre/maplibre-pmtiles.ts": ["_resetPmtilesProtocolForTests"],
+
+    // ── A GUARD seam: a verdict no running page can reach ───────────────
+    //
+    // `filterScopedFields` names the filter fields whose verdict is over a SET of layers —
+    // a text search's fields, a descriptor that lists no layer. « Carried by none » needs
+    // every layer of the scope at once: a page holds the layers of its active theme only,
+    // so the runtime diagnostic sets these fields aside, and no production caller will ever
+    // exist. Its one consumer is
+    // `__tests__/guards/profile-field-reconciliation.guard.test.ts`, which reads every
+    // layer of every profile of the repository.
+    //
+    // ⚠️ In the product and not in the guard, on purpose: WHICH descriptors are scoped is
+    // the exact complement of what `filterDeclaredFields` — same file — judges layer by
+    // layer. Written twice, the two halves would be free to stop covering the whole.
+    "capabilities/filter/declared-fields.ts": ["filterScopedFields"],
 
     // ── A GATE seam: exported to be confronted, not to be called ───────
     //

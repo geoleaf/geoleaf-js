@@ -1,0 +1,47 @@
+/* ==========================================================================
+   @geoleaf-plugins/offline-ui — « Export the log » (`cache/log-export-block.ts`)
+   Last in the offline window: a quiet row, not a call to action. A file of its own
+   for the reason `cache-quarantine.css` gives: `cache-control.css` sits at the
+   700-line cap (PC-08).
+   ========================================================================== */
+.gl-cache-log-export {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    font-size: 12px;
+    line-height: 18px;
+    border-top: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
+}
+
+.gl-cache-log-export__hint {
+    flex: 1 1 12em;
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-cache-log-export__btn {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 4px 12px;
+    font: inherit;
+    font-weight: 600;
+    color: var(--gl-color-text-main, #1f2937);
+    background: none;
+    border: 1px solid var(--gl-color-border-strong, #9ca3af);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-cache-log-export__btn:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, currentColor);
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    .gl-cache-log-export__btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

@@ -10,7 +10,7 @@
         "$schema": { "type": "string" },
         "mapOptions": {
             "type": "object",
-            "description": "Pass-through MapLibre map options exposed at profile level.",
+            "description": "Map engine options a profile may set. A closed list, not a pass-through: only the keys declared here reach the engine, read at boot.",
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "properties": {

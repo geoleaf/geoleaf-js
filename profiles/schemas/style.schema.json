@@ -43,22 +43,13 @@
                             "additionalProperties": false,
                             "patternProperties": { "^_comment": {} },
                             "properties": {
-                                "family": { "type": "string", "default": "Arial" },
                                 "sizePt": {
                                     "type": "number",
                                     "minimum": 1,
                                     "maximum": 72,
                                     "default": 12,
-                                    "description": "Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer."
-                                },
-                                "weight": {
-                                    "type": "number",
-                                    "minimum": 1,
-                                    "maximum": 100,
-                                    "default": 50
-                                },
-                                "bold": { "type": "boolean", "default": false },
-                                "italic": { "type": "boolean", "default": false }
+                                    "description": "Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style."
+                                }
                             }
                         },
                         "color": {
@@ -78,17 +69,10 @@
                             "patternProperties": { "^_comment": {} },
                             "properties": {
                                 "enabled": { "type": "boolean", "default": false },
-                                "noFill": { "type": "boolean" },
                                 "color": {
                                     "type": "string",
                                     "pattern": "^#[0-9a-fA-F]{6}$",
                                     "default": "#ffffff"
-                                },
-                                "opacity": {
-                                    "type": "number",
-                                    "minimum": 0,
-                                    "maximum": 1,
-                                    "default": 1
                                 },
                                 "sizePx": { "type": "number", "minimum": 0, "default": 2 }
                             }

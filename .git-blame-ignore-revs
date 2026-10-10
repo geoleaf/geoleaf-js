@@ -17,7 +17,7 @@
 # que le formatage ne rediverge pas.
 22449f5a0a97c5d4ae3a6f9fe504c374db5ed3ea
 
-# Formatage prettier des 40 sources de `apps/` et `e2e/` (T6.5, 25/07/2026).
+# Formatage prettier des 40 sources de `apps/` et `e2e/` (25/07/2026).
 # Preuve : `npx playwright test --list` sort « Total: 202 tests in 36 files » AVANT
 # et APRÈS — chaque spec parse toujours et enregistre exactement les mêmes tests, ce
 # qu'un reformatage qui aurait changé du comportement ne pourrait pas garantir. Plus

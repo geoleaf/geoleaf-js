@@ -14,7 +14,7 @@
  *   PI-02  Anti-empty-corpus floor. The package exists but zero files were scanned — the
  *          gate would report "no violation" while measuring nothing.
  *
- * ## Why the scope is the plugin and NOT the repository (decision D9)
+ * ## Why the scope is the plugin and NOT the repository
  *
  * Measured on 2026-08-20 and again on 2026-08-21: the repository already carries seven
  * legitimate `navigator.geolocation` sites outside any `platform/` directory — the core
@@ -81,7 +81,7 @@ const TEST_FILE_RE = /\.(test|spec)\.[cm]?[jt]sx?$/;
 const SOURCE_RE = /\.[cm]?[jt]sx?$/;
 
 /**
- * The forbidden accesses, from decision D9 — verbatim, and closed.
+ * The forbidden accesses — a closed list.
  *
  * @type {{re: RegExp, label: string}[]}
  */
@@ -180,7 +180,7 @@ if (!inRegistry && !onDisk) {
     console.log(
         `    chemin essayé : ${path.relative(ROOT, FALLBACK_DIR)}\n` +
             `    🛑 Ce n'est PAS un vert : rien n'a été scanné, donc rien n'est prouvé. Le plugin\n` +
-            `    naît au sprint 1 ; ce saut deviendra un verdict le jour où il aura des sources.`
+            `    n'existe pas encore ; ce saut deviendra un verdict le jour où il aura des sources.`
     );
     process.exit(0);
 }

@@ -195,7 +195,7 @@ provider V8 ; l'ancien « ≥ 75 % » était un chiffre istanbul d'avant `tsx`.
 circulaient ici (82,5 % lignes / 80,3 % statements / ~85,7 % branches) proviennent d'une
 mesure dont l'attribution est fausse à 49 % — mesuré et archivé le 24/07/2026. Ils sont
 retirés plutôt que remplacés : les rechiffrer aujourd'hui reviendrait à substituer un
-chiffre faux à un autre. Le sprint 6 de cette roadmap les rétablira sur une mesure vraie.
+chiffre faux à un autre. Ils seront rétablis sur une mesure vraie.
 
 ### E2E tests (Playwright)
 

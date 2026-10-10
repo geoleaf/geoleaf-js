@@ -124,7 +124,7 @@ GeoLeaf.boot({ configUrl: "/geoleaf.config.json" });
 > `Core.init()` is not the way in: it creates a map and reads no configuration. A `configUrl`
 > passed to it is ignored without a word — the map appears, and no profile is ever loaded.
 
-See [PROFILES_GUIDE.md](PROFILES_GUIDE.md) for profile structure.
+See [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md) for profile structure.
 
 ---
 
@@ -167,6 +167,8 @@ Three steps, all in `config/plugins/taxonomy.json` (referenced by `Files.modules
 
 **2. Bind your layers to it** — a layer gets icons **only** if it is bound. This is the step people
 miss:
+
+<!-- geoleaf:docs:module taxonomy -->
 
 ```json
 {
@@ -261,8 +263,8 @@ The data table has been extracted from the core into the MIT plugin `@geoleaf-pl
 // Import the table plugin via its own script/entry (after @geoleaf/core).
 // `GeoLeaf.Table` is available once the plugin is loaded — no _loadModule("table").
 
-// Initialize with POI data from the profile
-GeoLeaf.Table.init({ visible: true });
+// The plugin initialises itself when the map is ready — there is no init call.
+// `modules.table.defaultVisible` opens the panel at startup.
 
 // Show/hide table
 GeoLeaf.Table.show();

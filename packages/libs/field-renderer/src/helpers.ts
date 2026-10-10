@@ -5,6 +5,7 @@
  * https://geoleaf.dev
  */
 
+import { createEl } from "@geoleaf/host-runtime";
 import { builtinLabel, FALLBACK_LANG } from "./lang/index.js";
 
 const _g = globalThis as {
@@ -14,14 +15,20 @@ const _g = globalThis as {
 /**
  * Creates a typed DOM element with optional CSS class.
  * Never use innerHTML — always textContent for user-controlled strings.
+ *
+ * A local wrapper over `createEl` of `@geoleaf/host-runtime`, which this library bundles: the
+ * body is delegated, the signature is written here. ⚠️ Not a re-export, and not
+ * `typeof createEl` — either would name a private package in the published declarations.
+ *
+ * @param tag Tag name; the return type follows it via `HTMLElementTagNameMap`.
+ * @param className Assigned verbatim when non-empty.
+ * @returns the element, detached.
  */
 export function _el<K extends keyof HTMLElementTagNameMap>(
     tag: K,
     className?: string
 ): HTMLElementTagNameMap[K] {
-    const el = document.createElement(tag);
-    if (className) el.className = className;
-    return el;
+    return createEl(tag, className);
 }
 
 /**

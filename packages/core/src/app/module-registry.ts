@@ -346,7 +346,7 @@ export class ModuleRegistry implements IModuleRegistry {
             }
         }
 
-        // Re-arm the registry (S6 Lot 1). Without resetting `_initialized` `init()` returned on its
+        // Re-arm the registry. Without resetting `_initialized` `init()` returned on its
         // idempotent guard forever after, so create → destroy → recreate was a SILENT no-op.
         // Clearing `_started` also makes destroy() idempotent — a second call has nothing
         // left to walk instead of destroying every module twice.

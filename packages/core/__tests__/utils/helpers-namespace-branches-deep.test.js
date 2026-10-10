@@ -1,5 +1,5 @@
 /**
- * Deep branch coverage for src/utils/general/helpers-namespace.ts — T10.1
+ * Deep branch coverage for src/utils/general/helpers-namespace.ts
  * Uses await import() for Istanbul ESM instrumentation.
  *
  * Target: 0/130 branches → 80%+

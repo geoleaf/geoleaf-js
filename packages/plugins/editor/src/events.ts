@@ -9,7 +9,7 @@
  * https://geoleaf.dev
  */
 import type { Geometry } from "geojson";
-import { Log } from "@geoleaf/host-runtime";
+import { getGeoLeaf, Log } from "@geoleaf/host-runtime";
 // SINGLE, typed emission point — see `editor-events.ts` for the false green
 // that made it necessary (three of nine emitters escaped typing).
 import { dispatchEditorEvent } from "./editor-events.js";
@@ -355,7 +355,7 @@ function _commitEditedHost(
     const editorFeature: EditorFeature = {
         id: featureId,
         geometry: geom,
-        properties: _hostProps(adapter, terradrawId),
+        properties: _hostProps(adapter, snap),
     };
     void submitFeature(buildSubmitContext(_wiring), {
         feature: editorFeature,
@@ -507,13 +507,40 @@ function _toEditorFeature(
  */
 const _NOT_ATTRIBUTES = ["mode", "selected", "_syncStatus"] as const;
 
-/** Reads a host feature's persisted attributes, without the keys that are not attributes. */
+/**
+ * The attributes a host feature holds NOW on its layer, or `null` when the layer cannot say.
+ *
+ * Never throws: an unreadable layer falls back to the drawing engine's copy.
+ */
+function _layerProps(layerId: string, featureId: string): Record<string, unknown> | null {
+    try {
+        const held = getGeoLeaf()?.Layers?.getFeatureById?.(layerId, featureId) as
+            { properties?: Record<string, unknown> | null } | null | undefined;
+        return held?.properties ?? null;
+    } catch (e) {
+        Log?.debug?.("[editor/events] Layer unreadable, attributes taken from the copy:", e);
+        return null;
+    }
+}
+
+/**
+ * Reads a host feature's persisted attributes, without the keys that are not attributes.
+ *
+ * 🛑 FROM THE LAYER, AS IT IS WHEN THE EDIT IS VALIDATED. The drawing engine works on a copy
+ * taken when the feature was selected, and a geometry edit changes no attribute — but the
+ * entity can change under the selection: a photo delivered meanwhile rewrites the stored
+ * entity and the layer's copy, not the engine's. Built from that copy, the update sent the
+ * delivered photo's token back and lost its address. The engine's copy is the fallback, for a
+ * layer that cannot be read.
+ */
 function _hostProps(
     adapter: TerraDrawAdapterInstance,
-    terradrawId: string
+    snap: Pick<SelectionSnapshot, "terradrawId" | "featureId" | "layerId">
 ): Record<string, unknown> {
-    const feature = adapter.getFeature(terradrawId);
-    const props = { ...(feature?.properties ?? {}) } as Record<string, unknown>;
+    const current =
+        _layerProps(snap.layerId, snap.featureId) ??
+        adapter.getFeature(snap.terradrawId)?.properties;
+    const props = { ...(current ?? {}) } as Record<string, unknown>;
     for (const key of _NOT_ATTRIBUTES) delete props[key];
     return props;
 }

@@ -43,9 +43,9 @@
  * static ESM import is fully evaluated before the importing module's body runs,
  * so the side effect lands before Vitest spawns anything either way.
  *
- * ## Measured 24/07/2026 — what actually depends on tsx (backlog R.22)
+ * ## Measured 24/07/2026 — what actually depends on tsx
  *
- * R.22 asked whether build-config can stop loading tsx, on the premise that it
+ * The question was whether build-config can stop loading tsx, on the premise that it
  * exists to serve `require()` calls on `.ts` files and that the S5 conversion
  * removed the last of them. Both halves of that premise are wrong, and so was
  * the reason stated above this block. Measured by neutralising each channel and
@@ -57,7 +57,7 @@
  *     braces — the v3→v4 change that created this module is exactly the kind of
  *     thing that recurs — but it is not what holds the suite up today.
  *   • **Both channels neutralised → 6 files / 48 tests FAIL.** So tsx is still
- *     required. R.22 closes on "no, it cannot be removed".
+ *     required. The answer was "no, it cannot be removed".
  *   • **The failure is not `ERR_MODULE_NOT_FOUND` on the `.js` → `.ts`
  *     convention** described above — Vite's `resolveJsToTs` plugin covers that.
  *     It is `ReferenceError: module is not defined in ES module scope`, thrown by
@@ -80,7 +80,7 @@
  *       `__tests__/__mocks__/empty-module.js`, `__tests__/__mocks__/indexeddb.js`.
  *
  * ⚠️ The "6 files / 48 tests FAIL" figure above was measured against SEVEN blockers.
- * It has NOT been re-measured against three, so R.22's verdict — "no, tsx cannot be
+ * It has NOT been re-measured against three, so that verdict — "no, tsx cannot be
  * removed" — is now standing on a premise that no longer holds. Do not read this
  * note as saying tsx can go: read it as saying the question is open again and the
  * measurement is cheap. Converting the last three to ESM (or renaming them `.cjs`)

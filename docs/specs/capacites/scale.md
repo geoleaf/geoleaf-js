@@ -4,8 +4,8 @@ title: scale — la barre d'échelle graphique, l'échelle numérique éditable 
 capability_id: scale
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 07a582e2b
-date: 1er octobre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # scale — l'échelle graphique, l'échelle numérique éditable et le niveau de zoom

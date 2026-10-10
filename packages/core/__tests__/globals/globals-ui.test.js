@@ -8,7 +8,7 @@ vi.mock("../../src/capabilities/labels/label-button-manager.ts", () => ({
 }));
 vi.mock("../../src/capabilities/labels/label-renderer.ts", () => ({ LabelRenderer: stub }));
 vi.mock("../../src/capabilities/labels/labels.ts", () => ({ Labels: stub }));
-// legend migrated to capabilities/legend/install.ts (S2 Lot 4) — no longer imported here.
+// legend migrated to capabilities/legend/install.ts — no longer imported here.
 vi.mock("../../src/kernel/layer-manager/basemap-selector.ts", () => ({
     BasemapSelector: stub,
 }));
@@ -57,7 +57,7 @@ vi.mock("../../src/kernel/ui/theme.ts", () => ({
 import "../../src/globals/globals.ui.js";
 
 describe("globals/globals.ui (step 1.10)", () => {
-    // Labels (S2 Lot 1) and Legend (S2 Lot 4) migrated to their capabilities/<cap>/install.ts
+    // Labels and Legend migrated to their capabilities/<cap>/install.ts
     // — no longer set by setupUI (asserted in their installer tests).
     it("attache LayerManager, UI, le moteur de thème au namespace", () => {
         expect(globalThis.GeoLeaf).toBeDefined();

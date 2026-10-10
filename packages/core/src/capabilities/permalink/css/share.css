@@ -9,6 +9,9 @@
     /* Share modal — overlay                                                  */
     /* ---------------------------------------------------------------------- */
     .gl-share-modal__overlay {
+        /* On `document.body`, outside the application's root: without this the dialog took
+           the host page's default font. */
+        font-family: var(--gl-font-family);
         position: fixed;
         inset: 0;
         z-index: 2000;
@@ -32,7 +35,7 @@
 
     /* Panel */
     .gl-share-modal__panel {
-        background: var(--gl-color-bg, #fff);
+        background: var(--gl-color-bg-surface, #fff);
         color: var(--gl-color-text, #222);
         border-radius: 12px;
         box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
@@ -74,7 +77,7 @@
     .gl-share-modal__close:hover,
     .gl-share-modal__close:focus-visible {
         background: color-mix(in srgb, var(--gl-color-accent, #0a7) 12%, transparent);
-        color: var(--gl-color-accent, #0a7);
+        color: var(--gl-color-accent-text, #0a7);
         outline: none;
     }
 
@@ -90,7 +93,7 @@
         padding: 8px 10px;
         border: 1px solid var(--gl-color-border, #ccc);
         border-radius: 6px;
-        background: var(--gl-color-bg-alt, #f7f7f7);
+        background: var(--gl-color-bg-surface-muted, #f7f7f7);
         color: var(--gl-color-text, #222);
         font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
         font-size: 0.85rem;
@@ -98,7 +101,7 @@
     }
 
     .gl-share-modal__link:focus {
-        outline: 2px solid var(--gl-color-accent, #0a7);
+        outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent, #0a7));
         outline-offset: -1px;
     }
 
@@ -107,7 +110,7 @@
         border: 1px solid var(--gl-color-accent, #0a7);
         border-radius: 6px;
         background: var(--gl-color-accent, #0a7);
-        color: #fff;
+        color: var(--gl-color-accent-contrast, #020617);
         font-weight: 500;
         cursor: pointer;
         transition:
@@ -142,7 +145,7 @@
         padding: 8px 14px;
         border: 1px solid var(--gl-color-border, #ccc);
         border-radius: 6px;
-        background: var(--gl-color-bg-alt, #f7f7f7);
+        background: var(--gl-color-bg-surface-muted, #f7f7f7);
         color: var(--gl-color-text, #222);
         cursor: pointer;
         font-size: 0.9rem;

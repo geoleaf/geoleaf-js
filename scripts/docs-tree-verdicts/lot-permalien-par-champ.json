@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "permalien-par-champ",
+    "scope": ["packages/core/src/capabilities/permalink/permalink-field-filters.ts"],
+    "verdicts": {
+        "packages/core/src/capabilities/permalink/permalink-field-filters.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Grammaire du filtre d'un permalien, un paramètre par champ (`gl_f.<id>`) : ce qu'un champ devient dans l'URL, et ce qu'il est relu pour un descripteur",
+            "confidence": "haute",
+            "rationale": "N1 : basename `permalink-<sujet>.ts`, la forme de ses voisins `permalink-url.ts`, `permalink-sync.ts` et `permalink-restore.ts`. Module PUR — ni URL, ni DOM, ni capacité de filtre — parce que la grammaire a deux appelants qui ne doivent pas se la partager par copie : la couche d'URL, qui transporte les entrées comme une carte de chaînes et les borne, et la synchronisation, qui les écrit à la capture et les relit à la restauration, là où le genre d'un champ est connu. Le genre n'est pas dans l'URL : une entrée ne se lit que POUR un descripteur, et c'est ce module qui tient cette règle. Il n'est pas fondu dans `permalink-url.ts`, qui ignore délibérément les descripteurs, ni dans `permalink-sync.ts`, qui porte les écouteurs et le différé. Tests : `__tests__/capabilities/permalink/field-filters-grammar.test.ts`."
+        }
+    }
+}

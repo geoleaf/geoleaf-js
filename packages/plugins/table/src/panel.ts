@@ -17,6 +17,7 @@ import { events as _events } from "./utils/events.js";
 import { TableContract } from "./table-seam.js";
 import { tLabel as getLabel } from "@geoleaf/host-runtime";
 import { createResizeHandle } from "./panel-resize.js";
+import { DEFAULTS } from "./config.js";
 import { TableRenderer } from "./renderer.js";
 import * as viewModel from "./view-model.js";
 import type { TableConfig, TableLayerData, TableLayersApi, TableMap } from "./types.js";
@@ -132,7 +133,7 @@ function createToolbar(config: TableConfig) {
 
     // Export buttons (when enabled)
     if (config.enableExportButton) {
-        const formats: string[] = config.exportFormats ?? ["geojson", "csv", "kml", "gpx", "excel"];
+        const formats: string[] = config.exportFormats ?? DEFAULTS.exportFormats;
         toolbar.appendChild(
             createExportDropdown(
                 getLabel("ui.table.exportSelection"),

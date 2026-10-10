@@ -1,5 +1,5 @@
 /**
- * T10.3.2b — components-branches-deep.test.js
+ * components-branches-deep.test.js
  * Covers: src/kernel/ui/components.ts (171 branches)
  * Strategy: await import() + minimal mock (Log only)
  * Real DOM operations via jsdom.
@@ -10,7 +10,7 @@ vi.mock("../../src/utils/log/index.js", () => ({
     Log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-describe("_UIComponents (T10.3.2b)", () => {
+describe("_UIComponents", () => {
     let _UIComponents;
 
     beforeAll(async () => {

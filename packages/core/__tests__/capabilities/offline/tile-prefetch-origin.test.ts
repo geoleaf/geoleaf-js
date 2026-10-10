@@ -164,9 +164,68 @@ describe("a raster basemap on a third-party origin", () => {
     });
 });
 
+describe("what the preparation left out is KEPT, not only logged", () => {
+    // The refusal was a console warning, and the download ended on a success toast: the trace
+    // kept in the manifest now names the source and the origin, so an interface can say it.
+    it("a refused basemap is named in the preparation trace, with its origin", async () => {
+        profile({ osm: { id: "osm", offline: true, url: OSM } });
+        const trace = { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] };
+        const resources: Resource[] = [];
+
+        await ResourceEnumerator._addBasemapResources(resources, "p", null, trace);
+
+        expect(trace.refusedOrigins).toEqual([{ source: "basemap osm", origin: OSM_ORIGIN }]);
+    });
+
+    it("an allowed basemap leaves the trace empty", async () => {
+        profile({ own: { id: "own", offline: true, url: "tiles/{z}/{x}/{y}.png" } });
+        const trace = { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] };
+
+        await ResourceEnumerator._addBasemapResources([], "p", null, trace);
+
+        expect(trace.refusedOrigins).toEqual([]);
+    });
+});
+
 describe("a basemap served by the application's own origin", () => {
     it("is downloaded without any declaration — no third party is involved", async () => {
         profile({ own: { id: "own", offline: true, url: "tiles/{z}/{x}/{y}.png" } });
+
+        const resources = await basemapResources();
+
+        expect(resources.map((r) => r.url)).toEqual(["tiles/1/2/3.png"]);
+    });
+
+    // A declaration prevails over the own-origin rule: once the page's origin is DECLARED, it
+    // is judged on what it declares, like any other. Roles are not consulted, so declaring it
+    // for a same-origin data API alone also refuses the tiles it serves — one origin, one verdict.
+    it("declared `cacheable` only: is not downloaded — the declaration prevails", async () => {
+        profile({ own: { id: "own", offline: true, url: "tiles/{z}/{x}/{y}.png" } }, [
+            { origin: location.origin, roles: ["layerData"], cacheable: true },
+        ]);
+
+        expect(await basemapResources()).toEqual([]);
+        expect(warnings()).toContain(location.origin);
+    });
+
+    it("declared `authenticated`: is not downloaded, whatever else it says", async () => {
+        profile({ own: { id: "own", offline: true, url: "tiles/{z}/{x}/{y}.png" } }, [
+            {
+                origin: location.origin,
+                roles: ["api"],
+                cacheable: true,
+                prefetch: true,
+                authenticated: true,
+            },
+        ]);
+
+        expect(await basemapResources()).toEqual([]);
+    });
+
+    it("declared `cacheable` and `prefetch`: is downloaded", async () => {
+        profile({ own: { id: "own", offline: true, url: "tiles/{z}/{x}/{y}.png" } }, [
+            { origin: location.origin, roles: ["tiles"], cacheable: true, prefetch: true },
+        ]);
 
         const resources = await basemapResources();
 

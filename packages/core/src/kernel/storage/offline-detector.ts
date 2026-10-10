@@ -41,6 +41,10 @@ interface OfflineBadgeMapAdapter {
 /**
  * Builds the offline badge DOM node (styling + labels only; mounting is done
  * by `_createBadge()`).
+ *
+ * Its vertical offset is NOT set here: an inline declaration cannot follow the width of the
+ * screen, and on a phone the row it used to sit on is the one the theme selector takes. The
+ * kernel's control sheet (`css/geoleaf-controls.css`) places it.
  */
 function _createOfflineBadgeContainer(): HTMLElement {
     const container = domCreate("div", "geoleaf-offline-badge-control");
@@ -51,7 +55,7 @@ function _createOfflineBadgeContainer(): HTMLElement {
         color: white;
         padding: 8px 16px;
         border-radius: 20px;
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family: var(--gl-font-family, system-ui, -apple-system, sans-serif);
         font-size: 13px;
         font-weight: 500;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
@@ -60,7 +64,6 @@ function _createOfflineBadgeContainer(): HTMLElement {
         white-space: nowrap;
         position: absolute;
         left: 54px;
-        top: 0;
         margin: 0 !important;
         border: none;
     `
@@ -350,7 +353,7 @@ const OfflineDetector = {
      *
      * @returns {Promise<boolean>}
      * @example
-     * const isOnline = await GeoLeaf.Storage.OfflineDetector.checkConnectivity();
+     * const isOnline = await GeoLeaf?.Storage?.OfflineDetector?.checkConnectivity?.();
      */
     async checkConnectivity() {
         // With no ping URL configured, fall back to the browser state
@@ -438,11 +441,11 @@ const OfflineDetector = {
     },
 
     /**
-     * Returns the État de connexion current
+     * Returns the current connection state
      *
      * @returns {boolean}
      * @example
-     * if (GeoLeaf.Storage.OfflineDetector.isOnline()) {
+     * if (GeoLeaf?.Storage?.OfflineDetector?.isOnline()) {
      *   // Perform a network request
      * }
      */

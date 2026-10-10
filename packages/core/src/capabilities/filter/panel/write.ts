@@ -151,13 +151,28 @@ function _writeTag(group: HTMLElement, sf: SerializedFilterField | undefined): v
     });
 }
 
+/** Whether a slider sets the UPPER bound of a two-bound range (`bounds: "both"`). */
+function _isUpperBound(input: HTMLInputElement): boolean {
+    return input.dataset["glRangeBound"] === "max";
+}
+
+/** The value at which a slider constrains nothing: its end of the domain. */
+function _openValue(input: HTMLInputElement): string {
+    return _isUpperBound(input) ? input.max || "100" : input.min || "0";
+}
+
+/** Sets a slider and the value shown beside it — the two must never disagree. */
+function _setSlider(input: HTMLInputElement, value: string): void {
+    input.value = value;
+    const shown = input.parentElement?.querySelector(".gl-filter-panel__range-value");
+    if (shown) shown.textContent = input.value;
+}
+
 function _writeRange(group: HTMLElement, sf: SerializedFilterField | undefined): void {
-    const input = group.querySelector<HTMLInputElement>("input[type='range']");
-    if (!input) return;
-    const min = sf?.range?.min;
-    input.value = typeof min === "number" ? String(min) : input.min || "0";
-    const label = group.querySelector(".gl-filter-panel__range-value");
-    if (label) label.textContent = input.value;
+    group.querySelectorAll<HTMLInputElement>("input[type='range']").forEach((input) => {
+        const bound = _isUpperBound(input) ? sf?.range?.max : sf?.range?.min;
+        _setSlider(input, typeof bound === "number" ? String(bound) : _openValue(input));
+    });
 }
 
 function _writeBoolean(group: HTMLElement, sf: SerializedFilterField | undefined): void {
@@ -211,8 +226,10 @@ export function resetPanelControls(panel: HTMLElement | null): void {
     panel.querySelectorAll<HTMLInputElement>("input[type='text']").forEach((el) => {
         el.value = "";
     });
+    // Each slider back to ITS end of the domain — the upper bound of a two-bound range opens
+    // at the maximum — and the value shown beside it with it: it used to keep the old one.
     panel.querySelectorAll<HTMLInputElement>("input[type='range']").forEach((el) => {
-        el.value = el.min || "0";
+        _setSlider(el, _openValue(el));
     });
     panel.querySelectorAll(".gl-filter-panel__tag-badge.gl-is-selected").forEach((el) => {
         el.classList.remove("gl-is-selected");

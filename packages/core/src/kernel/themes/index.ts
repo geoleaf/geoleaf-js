@@ -8,7 +8,7 @@
 /**
  * @description Public barrel for the theme engine.
  *
- * Mediated entry point for the `capabilities/ → kernel/` boundary (backlog R.8).
+ * Mediated entry point for the `capabilities/ → kernel/` boundary (rule R.8).
  *
  * The split is the one ARCHI S8 F2 decided (Design B): the **engine** stays kernel
  * (`theme-loader`, `theme-applier/*`, the `geoleaf:theme:applied` event), the **selector

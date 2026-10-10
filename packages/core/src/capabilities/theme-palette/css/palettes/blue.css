@@ -103,6 +103,7 @@
         --gl-color-gallery-item-bg: rgba(15, 23, 42, 0.04);
         --gl-color-accent-contrast: #f9fafb;
         --gl-color-accent-hover: #1d4ed8;
+        --gl-color-accent-text: #1d4ed8;
 
         /* Aliases utilitaires pour harmoniser toutes les couches UI */
 
@@ -175,6 +176,12 @@
         /* Accent bleu adouci pour le dark */
         --gl-color-accent: #38bdf8;
         --gl-color-accent-soft: rgba(56, 189, 248, 0.22);
+        /* Redeclared HERE, not left to the palette root: a custom property declared on the
+           body by the base dark theme wins over one inherited from the root element, so the
+           base theme's white text and orange hover would land on this light blue. */
+        --gl-color-accent-contrast: #020617;
+        --gl-color-accent-hover: #7dd3fc;
+        --gl-color-accent-text: #38bdf8;
 
         --gl-color-legend-bg: rgba(15, 23, 42, 0.82);
         --gl-color-legend-border: rgba(30, 64, 175, 0.9);

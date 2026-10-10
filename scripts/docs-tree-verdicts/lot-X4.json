@@ -155,7 +155,7 @@
             "severity": null,
             "description": "Types-valeurs géographiques, de couche, de marqueur, de popup et de contrôle dans lesquels IMapAdapter est exprimé, extraits du contrat au franchissement des 700 lignes",
             "confidence": "haute",
-            "rationale": "14 exports type-only, 1 importeur — map-adapter.contract.ts, qui les ré-expose en `export type *` ; l'en-tête documente l'extraction pour le plafond de 700 lignes (règle 3), et le suffixe .types est déclaré canonique par N1"
+            "rationale": "14 exports type-only, 1 importeur — map-adapter.contract.ts, qui les ré-expose en `export type *` ; l'en-tête documente l'extraction pour le plafond de 700 lignes (règle 3), et le suffixe.types est déclaré canonique par N1"
         },
         "packages/core/src/contracts/notify.contract.ts": {
             "kind": "file",
@@ -337,7 +337,7 @@
             "severity": null,
             "description": "Initialiseurs synchrones de trois domaines appelés par UIModule.init : fonds de carte depuis cfg.basemaps, pipeline GeoJSON et LayerManager, barre mobile et panneau desktop",
             "confidence": "haute",
-            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026). N2 — le nom mentait. Ses 3 exports (`initBasemaps`, `initGeoJSON`, `initUIPanels`) ne touchent AUCUN `ICoreModule` : dans le même dossier, 7 des 8 emplois du mot « module » désignent le sens ADR-09 (`module-registry.ts` + les 6 `boot-modules/*.module.ts`), celui-ci était le seul à l'employer au sens retiré de « sous-système secondaire », fossile d'`app/init.js` Phase 8.2.3. Ses 2 frères de couche sont `init-reveal.ts` et `init-deferred-ui.ts`, tous deux en `init-<quoi>`. ⚠️ Un import interne y échappait au motif de la passe (`../init-feature-modules.js` depuis `boot-modules/ui.module.ts:23`, sans le préfixe `app/`) : il aurait cassé au build. `check-dynamic-key-writes.baseline.json` ré-épinglé."
+            "rationale": "✅ FERMÉ au STRUCT S8 (26/07/2026). N2 — le nom mentait. Ses 3 exports (`initBasemaps`, `initGeoJSON`, `initUIPanels`) ne touchent AUCUN `ICoreModule` : dans le même dossier, 7 des 8 emplois du mot « module » désignent le sens ADR-09 (`module-registry.ts` + les 6 `boot-modules/*.module.ts`), celui-ci était le seul à l'employer au sens retiré de « sous-système secondaire », fossile d'`app/init.js`. Ses 2 frères de couche sont `init-reveal.ts` et `init-deferred-ui.ts`, tous deux en `init-<quoi>`. ⚠️ Un import interne y échappait au motif de la passe (`../init-feature-modules.js` depuis `boot-modules/ui.module.ts:23`, sans le préfixe `app/`) : il aurait cassé au build. `check-dynamic-key-writes.baseline.json` ré-épinglé."
         },
         "packages/core/src/app/init-reveal.ts": {
             "kind": "file",
@@ -393,7 +393,7 @@
             "severity": null,
             "description": "Les 6 enveloppes ICoreModule du noyau fixe — config, carte, état partagé, GeoJSON, UI et moteur de thème — enregistrées par boot-install.ts",
             "confidence": "haute",
-            "rationale": "6 fichiers / 685 LOC ; INV-CAPABILITY-MODULE : depuis R.10 les 13 enveloppes de capacité vivent en capabilities/<id>/module.ts et ce dossier ne garde QUE les 6 wrappers kernel (T6 §3.2) — famille canonique `<id>.module.ts`, 6/6"
+            "rationale": "6 fichiers / 685 LOC ; INV-CAPABILITY-MODULE : les 13 enveloppes de capacité vivent en capabilities/<id>/module.ts et ce dossier ne garde QUE les 6 wrappers kernel (T6 §3.2) — famille canonique `<id>.module.ts`, 6/6"
         },
         "packages/core/src/app/boot-modules/config.module.ts": {
             "kind": "file",
@@ -407,7 +407,7 @@
             "severity": null,
             "description": "Enveloppe ICoreModule du sous-système de configuration : init() volontairement vide, les façades étant posées à l'import, et destroy() qui réinitialise le profil actif",
             "confidence": "haute",
-            "rationale": "53 LOC, id « config », 1 importeur (boot-install.ts) ; l'en-tête documente sa conservation au Lot 6 « for its teardown: four modules depend on it » là où security et api ont été supprimés — règle 3"
+            "rationale": "53 LOC, id « config », 1 importeur (boot-install.ts) ; l'en-tête documente sa conservation « for its teardown: four modules depend on it » là où security et api ont été supprimés — règle 3"
         },
         "packages/core/src/app/boot-modules/core-map.module.ts": {
             "kind": "file",
@@ -491,7 +491,7 @@
             "severity": null,
             "description": "Le comportement runtime derrière CoreMapModule — extraction des 7 responsabilités que son init() orchestrait",
             "confidence": "haute",
-            "rationale": "R.42 : CoreMapModule.init() était le SEUL des 19 wrappers ICoreModule à ne pas suivre le patron mince — ~148 lignes sous `eslint-disable complexity, max-lines-per-function`. Extraction dite « graph-preserving » (approche 3.A du plan `rapport_extraction-core-map-module.md`) : `id` et `dependencies` de CoreMapModule sont inchangés, donc le graphe de boot garde ses 6 nœuds et ses arêtes, et `boot-sequence-order` reste vert sans édition. L'approche 3.B (éclatement en plusieurs modules de feature) a été écartée : elle ajoute nœuds et arêtes, et forcerait à revalider l'ordre B1→B11. ⚠️ L'EMPLACEMENT dévie du plan, délibérément : §3.A visait `built-in/map/`, répertoire disparu (R.9/R.11 ont renommé `modules/built-in/` en `kernel/`), et son successeur `kernel/map/` ne peut PAS héberger ce fichier — le bloc 6ter (a) d'ESLint interdit à `kernel/**` d'importer `app/`, or le lifecycle a besoin d'AppNamespace, RevealPadding, PermalinkRuntimeConfig, asFn, member, perfWindow, buildFitBoundsOptions et asGeoLeafConfig, tous dans `app/app-types.ts`. Déplacer ce vocabulaire vers `kernel/` a été écarté en retour : c'est celui de la couche app, utilisé par 12 fichiers sous `app/`. Consommateur unique : `core-map.module.ts`."
+            "rationale": "CoreMapModule.init() était le SEUL des 19 wrappers ICoreModule à ne pas suivre le patron mince — ~148 lignes sous `eslint-disable complexity, max-lines-per-function`. Extraction dite « graph-preserving » (approche 3.A du plan `rapport_extraction-core-map-module.md`) : `id` et `dependencies` de CoreMapModule sont inchangés, donc le graphe de boot garde ses 6 nœuds et ses arêtes, et `boot-sequence-order` reste vert sans édition. L'approche 3.B (éclatement en plusieurs modules de feature) a été écartée : elle ajoute nœuds et arêtes, et forcerait à revalider l'ordre B1→B11. ⚠️ L'EMPLACEMENT dévie du plan, délibérément : §3.A visait `built-in/map/`, répertoire disparu (un déplacement ultérieur a renommé `modules/built-in/` en `kernel/`), et son successeur `kernel/map/` ne peut PAS héberger ce fichier — le bloc 6ter (a) d'ESLint interdit à `kernel/**` d'importer `app/`, or le lifecycle a besoin d'AppNamespace, RevealPadding, PermalinkRuntimeConfig, asFn, member, perfWindow, buildFitBoundsOptions et asGeoLeafConfig, tous dans `app/app-types.ts`. Déplacer ce vocabulaire vers `kernel/` a été écarté en retour : c'est celui de la couche app, utilisé par 12 fichiers sous `app/`. Consommateur unique : `core-map.module.ts`."
         },
         "packages/core/src/app/app-namespace.ts": {
             "kind": "file",

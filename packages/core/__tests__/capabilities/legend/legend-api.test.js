@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.20 - modules/legend/legend-api */
+/* modules/legend/legend-api */
 
 vi.mock("../../../src/utils/log/index.js", () => ({
     Log: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
@@ -17,7 +17,7 @@ vi.mock("../../../src/utils/loaders/profile-sprite-loader.js", () => ({
     hasProfileSprite: vi.fn(() => false),
 }));
 
-// --- Phase 5.20: modules/legend/legend-api (Legend module) ---
+// --- modules/legend/legend-api (Legend module) ---
 describe("Legend API (modules/legend/legend-api)", () => {
     let LegendAPI;
     const mockConfigGet = vi.fn();

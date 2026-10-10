@@ -97,7 +97,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "The CAPTURE projection — task 7.2.",
+            "description": "The CAPTURE projection.",
             "confidence": "haute",
             "rationale": "Fichier du plugin editor (drawing/, persistence/, add-form/), aligné sur le rangement que les shards P1 ont déjà jugé pour le reste du paquet — même convention, même granularité. La description est l'en-tête du module. RUBRIC §0 : justifié par défaut ; aucun signal de nom, d'emplacement ou de taille ne porte un verdict actionnable."
         },
@@ -111,7 +111,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "La moitié « à état » de la chaîne image, absorbée d'`addpoi` (tâche 5.1-d, décision **D5**).",
+            "description": "La moitié « à état » de la chaîne image, absorbée d'`addpoi`.",
             "confidence": "haute",
             "rationale": "Fichier du plugin editor (drawing/, persistence/, add-form/), aligné sur le rangement que les shards P1 ont déjà jugé pour le reste du paquet — même convention, même granularité. La description est l'en-tête du module. RUBRIC §0 : justifié par défaut ; aucun signal de nom, d'emplacement ou de taille ne porte un verdict actionnable."
         },
@@ -167,7 +167,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Le point d'émission UNIQUE des neuf événements publics de l'éditeur, typé contre `GeoLeafEventMap` — tâche 7.3.",
+            "description": "Le point d'émission UNIQUE des neuf événements publics de l'éditeur, typé contre `GeoLeafEventMap`.",
             "confidence": "haute",
             "rationale": "Fichier du plugin editor (drawing/, persistence/, add-form/), aligné sur le rangement que les shards P1 ont déjà jugé pour le reste du paquet — même convention, même granularité. La description est l'en-tête du module. RUBRIC §0 : justifié par défaut ; aucun signal de nom, d'emplacement ou de taille ne porte un verdict actionnable."
         },

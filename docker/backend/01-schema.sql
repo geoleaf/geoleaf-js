@@ -1,19 +1,19 @@
--- GeoLeaf — dev proof backend (task 4.H of roadmap_collecte-terrain-offline.md)
+-- GeoLeaf — dev proof backend
 --
--- Stands up the backend the Sprint 4 proof criterion requires: pull a bounded set of
--- entities, edit them offline, push them back, and reconcile identity. Until 4.H this
--- backend did not exist -- its host resolved to 127.0.0.1 with no Traefik router
--- behind it, and the only authenticated E2E mocked every response.
+-- Stands up the backend the offline proof criterion requires: pull a bounded set of
+-- entities, edit them offline, push them back, and reconcile identity. Without it the
+-- host resolved to 127.0.0.1 with no Traefik router behind it, and the only
+-- authenticated E2E mocked every response.
 --
 -- DEV ONLY. Runs against the shared PostGIS on the `backend` network. Never deployed.
 --
 -- Two consumers, one table:
---   * pygeoapi  -> OGC API Features, the READ side (task 4.1). `ogc-api-loader.ts`
+--   * pygeoapi  -> OGC API Features, the READ side. `ogc-api-loader.ts`
 --     already speaks it: `next` link pagination, `bbox`, `limit`, `AbortSignal`.
 --     ⚠️ pg_featureserv was tried first and REJECTED on a measurement -- it emits no
 --     `next` link, so the pull would stop after page one and report success. See
 --     docker/backend/README.md.
---   * PostgREST -> the WRITE side (tasks 4.4/4.5), `collection` dialect: the adapters
+--   * PostgREST -> the WRITE side, `collection` dialect: the adapters
 --     POST a flat `{ ...properties, geom }` body to `{baseUrl}/{layerId}`, which is
 --     exactly PostgREST's table endpoint.
 
@@ -120,7 +120,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON api.sites_rosario TO geoleaf_editor;
 
 COMMIT;
 
--- ── Read-side connection role (added at 4.H bring-up) ────────────────────────
+-- ── Read-side connection role ────────────────────────
 --
 -- 🛑 pg_featureserv does NOT `SET ROLE` per request the way PostgREST does: it queries
 -- as its connection role directly. Pointing it at `geoleaf_auth` therefore showed

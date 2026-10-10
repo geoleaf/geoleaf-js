@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "bandeau-mise-a-jour",
+    "scope": [
+        "packages/plugins/offline-ui/src/core/sw-update-banner.ts",
+        "packages/plugins/offline-ui/src/css/sw-update-banner.css"
+    ],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/core/sw-update-banner.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Bandeau « Une nouvelle version est prête » : pose la question quand une mise à jour de l'application attend, et porte la réponse au core",
+            "confidence": "haute",
+            "rationale": "Deux importeurs mesurés : `packages/plugins/offline-ui/src/entry.ts`, qui le câble au chargement, et `packages/plugins/offline-ui/src/ui/cache-button/toolbar-registration.ts`, qui le retire au démontage de l'application. Le service worker du core ne prend plus une page en cours d'usage : il attend, et le core le dit (`geoleaf:sw:update-waiting`, `GeoLeaf.PWA.isUpdateWaiting()`) sans poser la question — il n'a pas d'interface pour cela. Ce module est cette interface : « Recharger » appelle `GeoLeaf.PWA.applyUpdate()`, « Plus tard » laisse la mise à jour attendre. Il ne décide rien et ne recharge rien. Place canonique : `core/`, à côté de `engine-signals.ts`, l'autre module câblé à l'import parce que son signal arrive fenêtre fermée. Suite `sw-update-banner.test.ts` ; bout en bout par `e2e/79`."
+        },
+        "packages/plugins/offline-ui/src/css/sw-update-banner.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille du bandeau « Une nouvelle version est prête »",
+            "confidence": "haute",
+            "rationale": "Un importeur mesuré : `packages/plugins/offline-ui/src/entry.ts`. Fichier à part pour le motif de `cache-quarantine.css` : `cache-control.css` est au plafond de taille du contrat de plugin (PC-08). Les classes sont celles que `core/sw-update-banner.ts` écrit en toutes lettres. Le bandeau est en HAUT de la page : le bas appartient à la barre mobile et à la bannière d'installation du core."
+        }
+    }
+}

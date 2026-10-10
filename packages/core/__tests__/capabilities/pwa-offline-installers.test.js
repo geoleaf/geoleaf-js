@@ -1,5 +1,5 @@
 /**
- * Unit tests — S2 Lot 7 installers: pwa + offline (both WITHOUT a createModule).
+ * Unit tests — installers: pwa + offline (both WITHOUT a createModule).
  *
  * These two are app-global capabilities whose lifecycles are driven by `shared.module`
  * (#7 pwa → #8 offline, untouched by this lot), so their installers carry declaration +

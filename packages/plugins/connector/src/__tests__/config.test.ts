@@ -111,6 +111,80 @@ describe("validateConfig", () => {
             expect(warn).not.toHaveBeenCalled();
             warn.mockRestore();
         });
+
+        // The rule exists to keep the token out of cleartext, so it judges where the token
+        // GOES. It used to judge the page: a page served locally could send its token over
+        // http:// to any host, remote ones included.
+        it.each(["http://api.example.com", "http://192.168.1.20:8000", "http://gis.corp.local"])(
+            "throws for %s from a page served on localhost — the token would leave in cleartext",
+            (baseUrl: string) => {
+                setHostname("localhost");
+                expect(() => validateConfig({ baseUrl, getToken: () => "tok" })).toThrow(
+                    ConfigError
+                );
+            }
+        );
+
+        it("tolerates http:// to a development host whatever page asks", () => {
+            setHostname("app.example.com");
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            expect(() =>
+                validateConfig({ baseUrl: "http://localhost:3000", getToken: () => "tok" })
+            ).not.toThrow();
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("[GeoLeaf Connector]"));
+            warn.mockRestore();
+        });
+
+        it("reads a relative URL as the page's own host", () => {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            setHostname("localhost");
+            expect(() => validateConfig({ baseUrl: "/api", getToken: () => "tok" })).not.toThrow();
+            setHostname("app.example.com");
+            expect(() => validateConfig({ baseUrl: "/api", getToken: () => "tok" })).toThrow(
+                ConfigError
+            );
+            warn.mockRestore();
+        });
+    });
+
+    // `auth.endpoint` receives the PASSWORD, and it was only checked for being non-empty.
+    describe("auth.endpoint — HTTPS enforcement", () => {
+        afterEach(() => {
+            delete (globalThis as Record<string, unknown>)["location"];
+        });
+
+        it.each(["example.com", "localhost"])(
+            "throws for an http:// endpoint on a remote host, from a page on %s",
+            (page: string) => {
+                setHostname(page);
+                expect(() =>
+                    validateConfig({
+                        baseUrl: VALID_HTTPS,
+                        auth: { endpoint: "http://auth.example.com/login" },
+                    })
+                ).toThrow(/auth\.endpoint must use HTTPS/);
+            }
+        );
+
+        it("warns (not throws) for an http:// endpoint on a development host", () => {
+            setHostname("app.example.com");
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            expect(() =>
+                validateConfig({
+                    baseUrl: VALID_HTTPS,
+                    auth: { endpoint: "http://auth.local.test/login" },
+                })
+            ).not.toThrow();
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining("auth.endpoint"));
+            warn.mockRestore();
+        });
+
+        it("accepts an https:// endpoint without warning", () => {
+            const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+            expect(() => validateConfig(VALID_AUTH)).not.toThrow();
+            expect(warn).not.toHaveBeenCalled();
+            warn.mockRestore();
+        });
     });
 
     describe("getToken / auth exclusivity", () => {
@@ -222,6 +296,19 @@ describe("validateConfig", () => {
                     },
                 })
             ).toThrow(ConfigError);
+        });
+
+        it("throws for a signupUrl in http:// to a remote host, from a page on localhost", () => {
+            setHostname("localhost");
+            expect(() =>
+                validateConfig({
+                    baseUrl: VALID_HTTPS,
+                    auth: {
+                        endpoint: "https://api.example.com/auth",
+                        signupUrl: "http://example.com/signup",
+                    },
+                })
+            ).toThrow(/auth\.signupUrl must use HTTPS/);
         });
 
         it("warns (not throws) for signupUrl http:// on localhost", () => {

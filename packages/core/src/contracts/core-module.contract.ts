@@ -90,6 +90,17 @@ export interface IModuleUISlot {
         profileKey: string;
 
         /**
+         * Legacy profile key, read **only** when `profileKey` is not defined in the loaded
+         * configuration: the canonical key wins whenever present. It exists to absorb the
+         * `ui.show<Name>` keys that predate the rule placing a plugin's configuration under
+         * `modules.<pluginId>` — an old profile keeps its button, a migrated one never reads
+         * it. A new module must not declare one.
+         *
+         * @example `'ui.showPrint'`
+         */
+        legacyProfileKey?: string;
+
+        /**
          * Whether the icon is visible when `profileKey` is absent from the profile.
          *
          * @default true
@@ -170,6 +181,9 @@ export interface IModuleUISlot {
          * When `config.get(profileKey)` evaluates to `false`, the button is hidden.
          */
         profileKey?: string;
+
+        /** Legacy profile key — same semantics as `mobileIcon.legacyProfileKey`. */
+        legacyProfileKey?: string;
 
         /** Whether the button is visible when `profileKey` is absent. @default true */
         defaultVisible?: boolean;

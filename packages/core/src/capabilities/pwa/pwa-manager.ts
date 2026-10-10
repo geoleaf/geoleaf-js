@@ -29,6 +29,7 @@
  * }
  */
 
+import { SWRegister } from "../../kernel/storage/index.js";
 import { InstallPrompt } from "./install-prompt.js";
 import { IosBanner } from "./ios-banner.js";
 import { isIOS, isIOSInstallable } from "./platform.js";
@@ -142,6 +143,51 @@ export const PWAManager = {
      */
     isInstallable(): boolean {
         return isIOSInstallable() || InstallPrompt.isInstallable();
+    },
+
+    /**
+     * `true` when a newer version of the application is installed and this page has not
+     * been reloaded onto it.
+     *
+     * A new service worker no longer takes a page that is in use: it waits, and
+     * `geoleaf:sw:update-waiting` says so. This reads the same fact at any time — a
+     * listener set after the boot may have missed the event. It also answers `true` when
+     * the update was applied from another tab: the worker changed under this page, which
+     * still runs the previous version's code.
+     *
+     * Always `false` at a first install, when `modules.pwa.enabled` is not `true`, and
+     * before the service worker has been registered (it is registered at idle, up to three
+     * seconds after the boot).
+     *
+     * @returns `true` if {@link PWAManager.applyUpdate} has something to apply.
+     * @example
+     * document.addEventListener("geoleaf:sw:update-waiting", showMyReloadButton);
+     * if (GeoLeaf?.PWA?.isUpdateWaiting?.()) showMyReloadButton();
+     */
+    isUpdateWaiting(): boolean {
+        return SWRegister.isUpdateWaiting();
+    },
+
+    /**
+     * Applies the waiting update: the new service worker takes over, and **the page
+     * reloads** once it does.
+     *
+     * Call it from a user gesture — unsaved input in the page is lost with the reload.
+     * Captures already queued by the offline write cycle are not: they live in IndexedDB.
+     * The reload is not instantaneous: the browser lets the new worker take over once the
+     * previous one has finished the requests it is serving, and the page reloads then — once.
+     *
+     * ⚠️ Without this call the new version stays installed and unused until every tab of
+     * the application is closed. The offline plugin calls it from its « Reload » banner; an
+     * application that does not embed that plugin has to offer the gesture itself.
+     *
+     * @returns `true` when an update is being applied — the page will reload; `false`
+     *   when nothing was waiting, and nothing happens.
+     * @example
+     * myReloadButton.addEventListener("click", () => GeoLeaf?.PWA?.applyUpdate?.());
+     */
+    applyUpdate(): boolean {
+        return SWRegister.applyUpdate();
     },
 
     /**

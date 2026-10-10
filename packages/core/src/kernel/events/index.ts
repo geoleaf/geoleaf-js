@@ -9,7 +9,7 @@
  * @description Public barrel for the kernel event bus.
  *
  * This is the mediated entry point for the `capabilities/ → kernel/` boundary
- * (backlog R.8): a capability dispatches kernel events through here, never by
+ * (rule R.8): a capability dispatches kernel events through here, never by
  * reaching into `./event-bus.js` directly.
  *
  * Named re-exports only — never `export *`, which would widen the surface every

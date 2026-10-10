@@ -18,7 +18,8 @@
 import { validateCoordinates, validateNumber } from "../../kernel/security/index.js";
 import type { PermalinkConfig } from "../../kernel/config/geoleaf-config/config-types.js";
 import type { PermalinkState } from "./types.js";
-import { DEFAULT_PERMALINK_FIELDS } from "./constants.js";
+import { DEFAULT_PERMALINK_FIELDS, MAX_LIST_ITEMS, MAX_TEXT_LEN } from "./constants.js";
+import { FIELD_FILTER_PREFIX, sanitizeFieldFilters } from "./permalink-field-filters.js";
 
 export type { PermalinkState };
 
@@ -45,9 +46,10 @@ const P_RATING = "gl_rating";
 /** Auto-compact threshold in characters (param string length). */
 const AUTO_COMPACT_THRESHOLD = 200;
 /** Maximum number of serialized layer IDs (prevents URL abuse). */
-const MAX_LAYERS = 100;
-/** Maximum length of serialized text fields — applies to scalars AND to list elements. */
-export const MAX_TEXT_LEN = 200;
+const MAX_LAYERS = MAX_LIST_ITEMS;
+// Maximum length of serialized text fields — applies to scalars AND to list elements.
+// Declared in `constants.ts`, re-exported here under the name its importers know.
+export { MAX_TEXT_LEN };
 /**
  * Upper bound for the `rating` facet. It maps to the `min` bound of a range filter, so it
  * is not tied to a 0–5 scale; the cap only exists to keep the value finite and sane.
@@ -77,8 +79,24 @@ function _pruneToFields(state: PermalinkState, fields: readonly string[]): Perma
         const value = source[key];
         if (value !== undefined) target[key] = value;
     }
+    if (state.fieldFilters && _carriesFilter(fields)) pruned.fieldFilters = state.fieldFilters;
 
     return pruned;
+}
+
+/** The four facets of the whitelist that gate a filter field, one per kind. */
+const FILTER_FACETS = ["filter", "categories", "tags", "rating"] as const;
+
+/**
+ * Whether the whitelist lets ANY filter field through.
+ *
+ * ⚠️ The per-field entries are gated here all or nothing, and that is the most this layer can
+ * do: an entry does not name its kind (`permalink-field-filters.ts`), so « this one is a tag
+ * field, and tags are excluded » cannot be said from a URL. It is said where a descriptor is
+ * at hand — at the capture and at the restore (`permalink-sync.ts`).
+ */
+function _carriesFilter(fields: readonly string[]): boolean {
+    return FILTER_FACETS.some((facet) => fields.includes(facet));
 }
 
 /** Chunk size for byte→binary-string conversion — keeps the spread off the call stack. */
@@ -200,8 +218,27 @@ function _validateRaw(raw: Partial<PermalinkState>): PermalinkState | null {
     if (typeof raw.theme === "string" && raw.theme.length > 0) {
         state.theme = raw.theme.slice(0, MAX_TEXT_LEN);
     }
+    const fieldFilters = sanitizeFieldFilters(raw.fieldFilters);
+    if (fieldFilters) state.fieldFilters = fieldFilters;
 
     return state;
+}
+
+/**
+ * Gathers the per-field filter parameters of a verbose link — every `gl_f.<id>`.
+ *
+ * @security The parameter NAMES come from the URL: they are gathered as pairs and handed to
+ * `sanitizeFieldFilters`, which drops a key that would reach the prototype and caps their
+ * number and lengths. Nothing is written under a URL-supplied key here.
+ */
+function _parseFieldFilters(params: URLSearchParams): Record<string, string> | undefined {
+    const pairs: Array<[string, string]> = [];
+    params.forEach((value, name) => {
+        if (name.startsWith(FIELD_FILTER_PREFIX)) {
+            pairs.push([name.slice(FIELD_FILTER_PREFIX.length), value]);
+        }
+    });
+    return pairs.length ? sanitizeFieldFilters(Object.fromEntries(pairs)) : undefined;
 }
 
 /**
@@ -241,6 +278,10 @@ function _parseParams(params: URLSearchParams, config: PermalinkConfig): Permali
 
     _parseListStateFields(params, fields, state);
     _parseScalarStateFields(params, fields, state);
+    if (_carriesFilter(fields)) {
+        const fieldFilters = _parseFieldFilters(params);
+        if (fieldFilters) state.fieldFilters = fieldFilters;
+    }
 
     return state;
 }
@@ -356,6 +397,13 @@ export function buildUrl(
 
     _setStateListParams(params, state, fields);
     _setStateScalarParams(params, state, fields);
+    if (state.fieldFilters && _carriesFilter(fields)) {
+        // One parameter per filter field. `Object.entries` reads own keys only, and the
+        // name is built, never used as a key of an object.
+        for (const [key, value] of Object.entries(state.fieldFilters)) {
+            params.set(FIELD_FILTER_PREFIX + key, value);
+        }
+    }
 
     const paramStr = params.toString();
 

@@ -1,5 +1,5 @@
 /**
- * T10.3.2 — notifications-branches-deep.test.js
+ * notifications-branches-deep.test.js
  * Covers: src/capabilities/toast-renderer/notifications.ts (133 branches)
  * Strategy: await import() + mock minimal (Log, TimerManager, getLabel, events)
  * Does NOT mock $create — runs real DOM operations via jsdom.
@@ -64,7 +64,7 @@ function visibleToasts() {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("notifications — NotificationSystem (T10.3.2)", () => {
+describe("notifications — NotificationSystem", () => {
     let NotificationSystem;
     let _UINotifications;
     let container;

@@ -14,11 +14,15 @@ title: "GeoLeaf — Tutorial: build a project from start to finish"
 
 An interactive map showing local businesses with:
 
-- A GeoJSON layer of businesses (restaurants, shops)
+- A GeoJSON layer of businesses (restaurants, shops), coloured by category
 - Marker clustering
+- A tooltip on hover, a popup on click, and a side panel behind the popup
 - Text search plus a category filter
-- Light/dark theme
+- Light/dark theme, following the system
 - Permalink (state carried in the URL)
+
+Everything here runs on `@geoleaf/core` alone. Every JSON block below is a whole file: copy
+them as they are and the project boots.
 
 ---
 
@@ -27,21 +31,24 @@ An interactive map showing local businesses with:
 ```
 my-project/
 ├── index.html
-├── geoleaf.config.json          ← global config (active profile, PWA)
+├── geoleaf.config.json          ← global config (active profile)
 └── profiles/
     └── commerces/
-        ├── profile.json                    ← map, modules; its `Files` key points to the rest
+        ├── profile.json                    ← map; its `Files` key points to the rest
         ├── config/
         │   ├── core/
         │   │   ├── layers.json             ← layer list
         │   │   ├── basemaps.json           ← basemaps
-        │   │   └── ui.json                 ← UI controls, filters, theme
+        │   │   └── ui.json                 ← theme, language, layer manager
         │   └── plugins/
-        │       ├── taxonomy.json           ← categories and icons
-        │       └── cluster.json            ← clustering
+        │       ├── taxonomy.json           ← categories and their colours
+        │       ├── cluster.json            ← clustering
+        │       └── filter.json             ← the filter panel
         └── layers/
             └── commerces/
                 ├── commerces_config.json   ← detailed layer config
+                ├── styles/
+                │   └── defaut.json         ← how a business is drawn
                 └── data/
                     └── commerces.geojson   ← your data
 ```
@@ -75,7 +82,9 @@ Or from a CDN:
 ::: info
 
 MapLibre is **ESM-only since v6**: it no longer exposes a global, hence the two-line shim above.
-In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTED.md).
+In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTED.md). Served
+from a CDN, the worker that parses GeoJSON cannot start — a browser refuses a worker script
+from another origin — so parsing runs on the main thread and a console warning says so.
 
 :::
 
@@ -136,20 +145,15 @@ In production, prefer self-hosting — see [`GETTING_STARTED.md`](GETTING_STARTE
 
 ## Step 3 — geoleaf.config.json
 
-Global config at the project root. Sets the active profile and the global options.
+Global config at the project root. Names the active profile and where the profiles live.
+
+<!-- geoleaf:docs:schema geoleaf-config -->
 
 ```json
 {
     "data": {
         "activeProfile": "commerces",
         "profilesBasePath": "./profiles"
-    },
-    "pwa": {
-        "name": "Local Businesses",
-        "short_name": "Businesses",
-        "theme_color": "#2563eb",
-        "background_color": "#ffffff",
-        "installPrompt": { "enabled": false }
     }
 }
 ```
@@ -158,7 +162,8 @@ Global config at the project root. Sets the active profile and the global option
 
 ## Step 4 — profile.json
 
-Main profile config: geographic extent, clustering, modules.
+Main profile config: the map, and the `Files` manifest that names every other file. A module
+listed under `Files.modules` is configured by the file it points to.
 
 <!-- geoleaf:docs:schema profile -->
 
@@ -182,7 +187,8 @@ Main profile config: geographic extent, clustering, modules.
         "uiFile": "config/core/ui.json",
         "modules": {
             "taxonomy": "config/plugins/taxonomy.json",
-            "cluster": "config/plugins/cluster.json"
+            "cluster": "config/plugins/cluster.json",
+            "filter": "config/plugins/filter.json"
         }
     }
 }
@@ -192,46 +198,107 @@ Main profile config: geographic extent, clustering, modules.
 
 ## Step 5 — config/plugins/taxonomy.json
 
-Defines the POI categories, their icons and subcategories.
+Defines the categories, their subcategories and the colour of their marker. A taxonomy is
+named (`commerce-types`), and `layers` says which layer uses it; `categoryField` and
+`subCategoryField` name the feature properties that carry the two ids.
+
+<!-- geoleaf:docs:module taxonomy -->
 
 ```json
 {
-    "icons": {
-        "defaultIcon": "commerce-generic"
+    "layers": {
+        "commerces": { "use": "commerce-types" }
     },
-    "defaults": {
-        "icon": "commerce-generic"
-    },
-    "categories": {
-        "restaurant": {
-            "label": "Restaurants",
-            "icon": "food-restaurant",
-            "subcategories": {
-                "traditionnel": { "label": "Traditional", "icon": "food-restaurant" },
-                "rapide": { "label": "Fast food", "icon": "food-fast" },
-                "cafe": { "label": "Café / Bar", "icon": "food-cafe" }
-            }
-        },
-        "boutique": {
-            "label": "Shops",
-            "icon": "commerce-shop",
-            "subcategories": {
-                "alimentation": { "label": "Groceries", "icon": "commerce-grocery" },
-                "vetements": { "label": "Clothing", "icon": "commerce-clothing" },
-                "librairie": { "label": "Bookshop", "icon": "commerce-book" }
+    "taxonomies": {
+        "commerce-types": {
+            "categoryField": "categoryId",
+            "subCategoryField": "subcategoryId",
+            "categories": {
+                "restaurant": {
+                    "label": "Restaurants",
+                    "marker": { "fill": "#e65100", "stroke": "#ffffff", "strokeWidth": 2 },
+                    "subcategories": {
+                        "traditionnel": { "label": "Traditional" },
+                        "rapide": { "label": "Fast food" },
+                        "cafe": { "label": "Café / Bar" }
+                    }
+                },
+                "boutique": {
+                    "label": "Shops",
+                    "marker": { "fill": "#2563eb", "stroke": "#ffffff", "strokeWidth": 2 },
+                    "subcategories": {
+                        "alimentation": { "label": "Groceries" },
+                        "vetements": { "label": "Clothing" },
+                        "librairie": { "label": "Bookshop" }
+                    }
+                }
             }
         }
     }
 }
 ```
 
-> **Icons:** GeoLeaf uses an SVG sprite. Replace the `icon` values with the identifiers of your own sprite, or use the icons of the tourism profile supplied in `profiles/tourism/icons/`.
+> **Icons:** a category can also carry an icon, drawn from an SVG sprite you supply. See
+> [recipe 3 of the cookbook](COOKBOOK.md#recipe-3--styling-points-by-category).
 
 ---
 
-## Step 6 — config/core/layers.json
+## Step 6 — config/plugins/cluster.json
 
-List of the profile's GeoJSON layers.
+Clustering: markers closer than `clusterRadius` pixels merge into one, down to the zoom where
+clustering stops.
+
+<!-- geoleaf:docs:module cluster -->
+
+```json
+{
+    "clustering": true,
+    "clusterRadius": 60,
+    "disableClusteringAtZoom": 16
+}
+```
+
+---
+
+## Step 7 — config/plugins/filter.json
+
+The filter panel: a text search over two properties, and the category tree of step 5.
+
+<!-- geoleaf:docs:module filter -->
+
+```json
+{
+    "enabled": true,
+    "title": "Filter businesses",
+    "fields": [
+        {
+            "id": "searchText",
+            "kind": "text",
+            "label": "Text search",
+            "placeholder": "Name, address...",
+            "searchFields": ["properties.name", "properties.address"]
+        },
+        {
+            "id": "categories",
+            "kind": "taxonomy",
+            "taxonomyRef": "commerce-types",
+            "label": "Categories",
+            "field": "categoryId",
+            "subField": "subcategoryId",
+            "layers": ["commerces"]
+        }
+    ]
+}
+```
+
+---
+
+## Step 8 — config/core/layers.json
+
+List of the profile's layers. `layerManagerId` names the section of the layer manager the layer
+is listed in — the section itself is declared in step 12.
+
+<!-- geoleaf:docs:schema layers -->
 
 ```json
 {
@@ -247,9 +314,13 @@ List of the profile's GeoJSON layers.
 
 ---
 
-## Step 7 — layers/commerces/commerces_config.json
+## Step 9 — layers/commerces/commerces_config.json
 
-Detailed layer configuration: data, styles, popup, table.
+Detailed layer configuration: data, style, and `attributes` — the one list that says which
+property is shown where. Each field names the surfaces it appears on: `tooltip` (hover),
+`popup` (click) and `sidepanel` (opened from the popup).
+
+<!-- geoleaf:docs:schema layer-config -->
 
 ```json
 {
@@ -257,7 +328,6 @@ Detailed layer configuration: data, styles, popup, table.
     "label": "Businesses",
     "geometry": "point",
     "interactiveShape": true,
-    "showIconsOnMap": true,
 
     "data": {
         "directory": "data",
@@ -270,72 +340,48 @@ Detailed layer configuration: data, styles, popup, table.
         "available": [{ "id": "defaut", "label": "Default", "file": "defaut.json" }]
     },
 
-    "tooltip": {
-        "mode": "hover",
-        "fields": [{ "type": "text", "field": "properties.name" }]
-    },
-
-    "popup": {
-        "enabled": true,
+    "attributes": {
+        "titleField": "properties.name",
         "fields": [
-            { "type": "text", "field": "properties.name", "variant": "title" },
-            { "type": "badge", "label": "Type", "field": "properties.categoryId" },
-            { "type": "text", "label": "Address", "field": "properties.address" }
-        ]
-    },
-
-    "sidepanelConfig": {
-        "enabled": true,
-        "detailLayout": [
             {
-                "type": "badge",
-                "label": "Category",
-                "field": "properties.categoryId",
-                "accordion": false
-            },
-            {
-                "type": "text",
-                "label": "Name",
                 "field": "properties.name",
-                "style": "title",
-                "accordion": false
+                "label": "Name",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": { "emphasis": "title" }
+                }
             },
             {
-                "type": "text",
-                "label": "Address",
+                "field": "properties.categoryId",
+                "label": "Type",
+                "primitive": "string",
+                "widget": "badge",
+                "display": { "surfaces": ["popup", "sidepanel"] }
+            },
+            {
                 "field": "properties.address",
-                "accordion": false
+                "label": "Address",
+                "primitive": "string",
+                "widget": "text",
+                "display": { "surfaces": ["popup", "sidepanel"] }
             },
             {
-                "type": "text",
-                "label": "Opening hours",
                 "field": "properties.opening_hours",
-                "accordion": true,
-                "defaultOpen": true
+                "label": "Opening hours",
+                "primitive": "string",
+                "widget": "text",
+                "display": { "surfaces": ["sidepanel"] }
             },
             {
-                "type": "link",
-                "label": "Website",
                 "field": "properties.website",
-                "accordion": false
+                "label": "Website",
+                "primitive": "string",
+                "widget": "link",
+                "display": { "surfaces": ["sidepanel"] }
             }
         ]
-    },
-
-    "table": {
-        "enabled": true,
-        "columns": [
-            { "field": "properties.name", "label": "Name", "sortable": true, "width": "40%" },
-            {
-                "field": "properties.categoryId",
-                "label": "Category",
-                "sortable": true,
-                "width": "30%"
-            },
-            { "field": "properties.address", "label": "Address", "sortable": false, "width": "30%" }
-        ],
-        "searchFields": ["properties.name"],
-        "defaultSort": { "field": "properties.name", "order": "asc" }
     },
 
     "clustering": {
@@ -348,7 +394,32 @@ Detailed layer configuration: data, styles, popup, table.
 
 ---
 
-## Step 8 — layers/commerces/data/commerces.geojson
+## Step 10 — layers/commerces/styles/defaut.json
+
+How a business is drawn when its category sets no marker of its own. The layer config of
+step 9 names this file; without it the layer has no style to load.
+
+<!-- geoleaf:docs:schema style -->
+
+```json
+{
+    "id": "defaut",
+    "label": "Default",
+    "style": {
+        "shape": "circle",
+        "radius": 7,
+        "fillColor": "#64748b",
+        "fillOpacity": 1,
+        "color": "#ffffff",
+        "opacity": 1,
+        "weight": 2
+    }
+}
+```
+
+---
+
+## Step 11 — layers/commerces/data/commerces.geojson
 
 Sample GeoJSON data:
 
@@ -387,71 +458,42 @@ Sample GeoJSON data:
 
 ---
 
-## Step 9 — config/core/ui.json
+## Step 12 — config/core/ui.json
 
-Visible UI controls, search filters, theme, permalink.
+Theme, language, and the layer manager with the section the layer of step 8 is listed in.
+
+<!-- geoleaf:docs:schema ui -->
 
 ```json
 {
     "ui": {
         "theme": "auto",
         "language": "en",
-        "showLayerManager": true,
-        "showFilterPanel": true,
-        "showLegend": true,
-        "enableGeolocation": true,
-        "showCoordinates": false,
-        "showCacheButton": false,
-        "permalink": {
-            "enabled": true,
-            "mode": "hash"
-        }
+        "showLayerManager": true
     },
-    "search": {
-        "title": "Filter businesses",
-        "searchPlaceholder": "Search for a business...",
-        "filters": [
-            {
-                "id": "searchText",
-                "type": "search",
-                "label": "Text search",
-                "placeholder": "Name, address...",
-                "searchFields": ["properties.name", "properties.address"]
-            },
-            {
-                "id": "categories",
-                "type": "tree",
-                "label": "Categories"
-            },
-            {
-                "id": "proximity",
-                "type": "proximity",
-                "label": "Proximity",
-                "instructionText": "Click the map to set a radius"
-            }
-        ]
+    "layerManagerConfig": {
+        "title": "Layers",
+        "sections": [{ "id": "commerces-locaux", "label": "Local businesses", "order": 1 }]
     }
 }
 ```
 
-::: info
-
-The `ui.showTable` flag has moved to `modules.table.showButton` (MIT plugin
-`@geoleaf-plugins/table`). See the plugin README for the configuration (`modules.table.*`) and
-for the migration.
-
-:::
+`"theme": "auto"` follows the system's light or dark setting. The permalink needs no key: it is
+on by default, and `modules.permalink` configures it.
 
 ---
 
-## Step 10 — config/core/basemaps.json
+## Step 13 — config/core/basemaps.json
 
 Available basemaps.
+
+<!-- geoleaf:docs:schema basemaps -->
 
 ```json
 {
     "basemaps": {
         "osm": {
+            "id": "osm",
             "label": "OpenStreetMap",
             "type": "tile",
             "url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -461,6 +503,7 @@ Available basemaps.
             "defaultBasemap": true
         },
         "satellite": {
+            "id": "satellite",
             "label": "Satellite",
             "type": "tile",
             "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -491,10 +534,13 @@ my-project/
         │   │   └── ui.json
         │   └── plugins/
         │       ├── taxonomy.json
-        │       └── cluster.json
+        │       ├── cluster.json
+        │       └── filter.json
         └── layers/
             └── commerces/
                 ├── commerces_config.json
+                ├── styles/
+                │   └── defaut.json
                 └── data/
                     └── commerces.geojson
 ```
@@ -506,7 +552,11 @@ npx serve . -p 3000
 # → http://localhost:3000
 ```
 
-The map shows the businesses clustered, with a filter panel (search + categories + proximity), a data table, and a live permalink in the URL.
+The map opens on the two businesses merged into one cluster. Zoom in and each takes the colour
+of its category. Hovering a business shows its name; a click opens the popup, and the link at
+the bottom of the popup opens the side panel, with the opening hours and the website. The
+filter panel offers the text search and the category tree, the layer manager lists the layer
+under its section, and the URL follows the map position.
 
 ---
 
@@ -516,9 +566,9 @@ The map shows the businesses clustered, with a filter panel (search + categories
 | -------------------------------------------- | ---------------------------------------------------------------------- |
 | Add complex GeoJSON layers (polygons, lines) | [GEOJSON_LAYERS_GUIDE.md](geojson/GEOJSON_LAYERS_GUIDE.md)             |
 | Configure the filters in detail              | [API_REFERENCE.md](API_REFERENCE.md#filter--the-filter-panel-singular) |
-| Complete reference of the profile keys       | [PROFILES_GUIDE.md](PROFILES_GUIDE.md)                                 |
-| Exhaustive JSON reference                    | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)                 |
+| Reading guide of the profile keys            | [PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)                 |
 | Vector tiles (MVT)                           | [MVT_GUIDE.md](geojson/MVT_GUIDE.md)                                   |
+| Add a sortable data table                    | `@geoleaf-plugins/table` — its README covers `modules.table`           |
 | Enable the offline cache (Storage plugin)    | [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md)         |
 | Backend API authentication                   | `docs/CONNECTOR_GUIDE.md` in `@geoleaf-plugins/connector`              |
 | Contribute a plugin to the repository        | [PLUGIN_DEVELOPMENT_GUIDE.md](PLUGIN_DEVELOPMENT_GUIDE.md)             |

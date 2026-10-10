@@ -60,6 +60,9 @@ export default {
         pkg,
         css: true,
         typescript: { compilerOptions: { paths: {} } },
+        // The form library is bundled from its sources: taken from its built file, the editor
+        // carried a second copy of every `@geoleaf/host-runtime` module that file inlines.
+        fromSource: ["@geoleaf/field-renderer"],
         minify: true,
     }),
 };

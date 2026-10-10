@@ -91,7 +91,7 @@ export function walkNamespace(root, opts) {
         const d = Object.getOwnPropertyDescriptor(root, k);
         if (d && typeof d.get === "function") {
             kinds[k] = "getter";
-            continue; // never .value, never d.get(), never descend
+            continue; // never.value, never d.get(), never descend
         }
         const v = d ? d.value : undefined;
         kinds[k] =
@@ -145,7 +145,7 @@ export function diffSurface(expected, actual) {
  * ── Baseline history ──────────────────────────────────────────────────────────────────────
  * 64 keys — the pre-boot surface as the lazy phase left it (only `globals.core.ts` ran its
  *           setups at import; the other five were lazy, and the rustine compensated).
- * S6 Lot 2: 88 keys — phase A restored. Measured diff on the built bundle: +24, **-0**.
+ * 88 keys — phase A restored. Measured diff on the built bundle: +24, **-0**.
  *           Nothing was lost — this is the fix, not drift.
  * KERNEL S6: 87 keys — `_StyleUtils` removed (sole member `normalizeStyle`, no production
  *           reader). Internal `_`-prefixed surface → not a breaking change.
@@ -272,7 +272,7 @@ export const IMPORT_SURFACE = [
  * Asserted as a SUPERSET, not an equality: `deploy-core/init.js` legitimately mounts plugin
  * namespaces on top before boot, so the page surface is legitimately WIDER.
  *
- * ⚠️ `requireMap` was REMOVED from this list on 24/07/2026 (backlog R.10) — a correction of the
+ * ⚠️ `requireMap` was REMOVED from this list on 24/07/2026 — a correction of the
  * probe, not of the code. `GeoLeaf.requireMap` went away at S13 with `utils/general/map-helpers.ts`
  * (0 callers, 0 `global.d.ts` entry, 0 documentation) and is mounted nowhere. The artefact tier
  * had followed; this list had not. **They diverged for eleven days** although the comment then
@@ -792,6 +792,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "isProfileAvailableOffline",
         "listConflicts",
         "mayEdit",
+        "prefetchVerdict",
         "preflight",
         "pullLayer",
         "pushOutbox",

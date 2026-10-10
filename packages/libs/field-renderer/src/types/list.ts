@@ -3,7 +3,9 @@
  * © 2026 Mattieu Pottier
  * Released under the MIT License
  *
- * Stores string[]. Supports drag-and-drop reordering via HTML5 draggable API.
+ * Stores string[]. Reordering: two buttons per row (move up / move down), which a finger and
+ * a keyboard can use, and HTML5 drag-and-drop on the handle for the mouse — no mobile browser
+ * fires `dragstart` on touch, so the drag alone left a list unsortable on a phone.
  * fieldConfig extras:
  *   ordered?: boolean    — render as <ol> (default <ul>)
  *   minItems?: number    — minimum required items
@@ -35,6 +37,41 @@ function formRender(
 
     const errorEl = _el("span", "gl-form-error");
     errorEl.hidden = true;
+
+    /**
+     * A button that moves the row at `idx` one place — up (`-1`) or down (`+1`).
+     *
+     * Disabled at the end it cannot cross. After the move the list is rebuilt, so the focus
+     * is put back on the moved row: on the same button, or on the opposite one when the row
+     * reached an end and that button is now disabled.
+     */
+    function moveButton(idx: number, delta: -1 | 1): HTMLButtonElement {
+        const way = delta < 0 ? "up" : "down";
+        const target = idx + delta;
+        const btn = _el("button");
+        btn.type = "button";
+        btn.className = `gl-form-list__move gl-form-list__move--${way}`;
+        btn.textContent = delta < 0 ? "↑" : "↓";
+        btn.setAttribute(
+            "aria-label",
+            _getLabel(delta < 0 ? "form.aria.listMoveUp" : "form.aria.listMoveDown")
+        );
+        btn.disabled = !!ctx.readOnly || target < 0 || target >= items.length;
+        btn.addEventListener("click", () => {
+            const [moved] = items.splice(idx, 1);
+            if (moved === undefined) return;
+            items.splice(target, 0, moved);
+            onChange([...items]);
+            renderItems();
+            const row = listEl.children[target];
+            const same = row?.querySelector<HTMLButtonElement>(`.gl-form-list__move--${way}`);
+            const other = row?.querySelector<HTMLButtonElement>(
+                `.gl-form-list__move--${delta < 0 ? "down" : "up"}`
+            );
+            (same && !same.disabled ? same : other)?.focus();
+        });
+        return btn;
+    }
 
     function renderItems(): void {
         listEl.innerHTML = "";
@@ -94,6 +131,8 @@ function formRender(
 
             li.appendChild(handle);
             li.appendChild(input);
+            li.appendChild(moveButton(idx, -1));
+            li.appendChild(moveButton(idx, 1));
             li.appendChild(removeBtn);
             listEl.appendChild(li);
         });

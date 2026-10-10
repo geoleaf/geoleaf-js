@@ -20,6 +20,8 @@ const lang_fr: Record<string, string> = {
     "form.aria.coordsCopy": "Copier les coordonnées",
     "form.aria.imageRemove": "Supprimer l'image",
     "form.aria.latitude": "Latitude",
+    "form.aria.listMoveDown": "Descendre l'élément",
+    "form.aria.listMoveUp": "Monter l'élément",
     "form.aria.listRemove": "Supprimer l'élément",
     "form.aria.longitude": "Longitude",
     "form.aria.reviewRemove": "Supprimer l'avis",

@@ -1,5 +1,5 @@
 /**
- * Is `offline.maxFeatures` OPPOSABLE as soon as offline reading is on? (R9, task 2.4)
+ * Is `offline.maxFeatures` OPPOSABLE as soon as offline reading is on?
  *
  * 🛑 **THIS FILE EXISTS BECAUSE THE RULE HAS NO LIVE SUBJECT.** The repository's only two
  * offline layers — `tourism/sites_rosario` and `tourism/villes_principales` — already

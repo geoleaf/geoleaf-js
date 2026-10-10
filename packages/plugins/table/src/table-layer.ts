@@ -144,6 +144,11 @@ export function getAvailableVisibleLayers(): TableAvailableLayer[] {
     });
 }
 
+/** The quiet moment a burst of layer writes must leave before the open table re-reads. */
+const ROWS_REFRESH_QUIET_MS = 150;
+/** The longest the open table waits for that quiet moment: a stream of writes never gives it. */
+const ROWS_REFRESH_MAX_WAIT_MS = 500;
+
 /**
  * Attaches the map and DOM event listeners.
  *
@@ -202,12 +207,26 @@ export function attachMapEvents(
     // kept its rows until the next filter or visibility change, and they contradicted the map
     // exactly as they did while the subscription above was dead. Only the layer on display
     // refreshes, and a burst (a restore, a merge) refreshes once.
+    //
+    // ⚠️ A burst, not a STREAM: the wait is bounded. A trailing wait alone never ends under
+    // writes closer together than itself — the rows stayed those from before the burst for as
+    // long as it lasted. The deadline is armed by the first write of a burst and left alone
+    // by the next ones; whichever timer fires first refreshes and disarms the other.
     let refreshRowsTimer: ReturnType<typeof setTimeout> | null = null;
+    let refreshRowsDeadline: ReturnType<typeof setTimeout> | null = null;
+    const refreshRows = (): void => {
+        if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
+        if (refreshRowsDeadline) clearTimeout(refreshRowsDeadline);
+        refreshRowsTimer = null;
+        refreshRowsDeadline = null;
+        refreshCallback();
+    };
     const onLayerUpdated = (e: Event): void => {
         const layerId = (e as CustomEvent<{ layerId?: string }>).detail?.layerId;
         if (!tableState._isVisible || !layerId || tableState._currentLayerId !== layerId) return;
         if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
-        refreshRowsTimer = setTimeout(refreshCallback, 150);
+        refreshRowsTimer = setTimeout(refreshRows, ROWS_REFRESH_QUIET_MS);
+        refreshRowsDeadline ??= setTimeout(refreshRows, ROWS_REFRESH_MAX_WAIT_MS);
     };
     document.addEventListener("geoleaf:layer:updated", onLayerUpdated);
 
@@ -251,8 +270,10 @@ export function attachMapEvents(
         detached = true;
         if (refreshSelectorTimer) clearTimeout(refreshSelectorTimer);
         if (refreshRowsTimer) clearTimeout(refreshRowsTimer);
+        if (refreshRowsDeadline) clearTimeout(refreshRowsDeadline);
         refreshSelectorTimer = null;
         refreshRowsTimer = null;
+        refreshRowsDeadline = null;
         document.removeEventListener("geoleaf:filters:applied", onFiltersApplied);
         document.removeEventListener("geoleaf:layer:updated", onLayerUpdated);
         document.removeEventListener("geoleaf:theme:applied", onThemeApplied);

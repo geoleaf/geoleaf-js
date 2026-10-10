@@ -36,7 +36,6 @@ Rôle seulement — les exports se lisent dans le fichier.
 | `renewal-retry.ts`     | Relance du renouvellement après une panne : réseau, premier plan, saisie en file                                             |
 | `credential-button.ts` | Injection du bouton credential (desktop + mobile)                                                                            |
 | `login-ui.ts`          | Modal de connexion accessible (feuille de style adoptée)                                                                     |
-| `format-detector.ts`   | Détection du format de données depuis une URL — fonction pure                                                                |
 | `lang/`                | Dictionnaires i18n de la modal                                                                                               |
 
 ⚠️ **L'orchestrateur est `connector-api.ts`, pas `entry.ts`.** C'est l'erreur que l'ancien arbre des

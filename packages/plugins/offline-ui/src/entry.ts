@@ -33,6 +33,9 @@ import "./css/cache-modal.css";
 import "./css/cache-control.css";
 import "./css/cache-sync.css";
 import "./css/cache-preflight.css";
+import "./css/cache-quarantine.css";
+import "./css/cache-log-export.css";
+import "./css/sw-update-banner.css";
 // Offline UI only — the engine (IndexedDB / cache / download / sync / poi-restore) now
 // lives in-core (`@geoleaf/core` `capabilities/offline`) and is loaded on demand by the
 // capability loader (dynamic `import()` on `ensureLoaded`). S14 Phase B (B3).
@@ -49,6 +52,7 @@ import "./ui/cache-button/export-logic.js";
 import "./ui/cache-button.js";
 import { registerCacheToolbar } from "./ui/cache-button/toolbar-registration.js";
 import { wireEngineSignals } from "./core/engine-signals.js";
+import { wireSwUpdateBanner } from "./core/sw-update-banner.js";
 import langFr from "./lang/lang-fr.js";
 import langEn from "./lang/lang-en.js";
 import langEs from "./lang/lang-es.js";
@@ -109,6 +113,11 @@ registerCacheToolbar(_g);
 // fire at DOWNLOAD and WRITE time, i.e. while the cache UI is closed. Wiring them
 // at panel opening would have missed them precisely when they happen.
 wireEngineSignals();
+
+// « A new version is ready »: the core's worker now WAITS at an update, and announces it
+// from its own registration — at idle, seconds after the boot. Wired here for the same
+// reason as the signals above: nothing of this plugin is open when it happens.
+wireSwUpdateBanner();
 
 // ─── Published TYPE surface ──────────────────────────────────────────────────
 //

@@ -24,7 +24,7 @@ import {
     toCirclePaint,
     setPaintAt,
 } from "./maplibre-primitives.js";
-import { applyPendingBadgePaint } from "./maplibre-sync-badge.js";
+import { applyPendingBadgePaint, applyPendingLineBadgePaint } from "./maplibre-sync-badge.js";
 import { applyCircleSelectionPaint, applyLineSelectionPaint } from "./maplibre-selection-paint.js";
 import { applyTaxonomyMarkerPaint } from "./maplibre-taxonomy-paint.js";
 import {
@@ -127,7 +127,9 @@ export function applyLayerStyle(
                 paint = (
                     _hasRules(rules) ? styleRulesToPaint(rules, flat, "line") : toLinePaint(flat)
                 ) as Record<string, unknown>;
-                // Rebuilt from scratch here: without this, a theme switch drops the selection.
+                // Rebuilt from scratch here: without these, a theme switch drops the badge
+                // and the selection — badge first, selection around it.
+                applyPendingLineBadgePaint(paint);
                 applyLineSelectionPaint(paint);
                 break;
             case "casing":

@@ -66,7 +66,7 @@ The module is also exposed as the `Permalink` named ESM export of `@geoleaf/core
 
 ```json
 {
-    "ui": {
+    "modules": {
         "permalink": {
             "enabled": true,
             "mode": "hash"
@@ -75,27 +75,36 @@ The module is also exposed as the `Permalink` named ESM export of `@geoleaf/core
 }
 ```
 
-The permalink is **disabled by default** (`enabled: false`). It has no performance impact while disabled.
+The permalink is **enabled by default**: it is opt-out, and a profile turns it off with `enabled: false`. It has no performance impact while disabled.
 
 ### Configuration options
 
-| Option    | Type                                 | Default    | Description                              |
-| --------- | ------------------------------------ | ---------- | ---------------------------------------- |
-| `enabled` | `boolean`                            | `false`    | Enables the permalink.                   |
-| `mode`    | `"hash"` \| `"query"` \| `"compact"` | `"hash"`   | URL encoding strategy (see below).       |
-| `fields`  | `string[]`                           | all fields | Fields to include in the serialised URL. |
+<!-- geoleaf:docs:key-prefix modules.permalink -->
 
-**Valid values for `fields`:** `"lat"`, `"lng"`, `"zoom"`, `"layers"`, `"filter"`
+| Option    | Type                                 | Default                                                                        | Description                            |
+| --------- | ------------------------------------ | ------------------------------------------------------------------------------ | -------------------------------------- |
+| `enabled` | `boolean`                            | `true`                                                                         | Enables the permalink.                 |
+| `mode`    | `"hash"` \| `"query"` \| `"compact"` | `"hash"`                                                                       | URL encoding strategy (see below).     |
+| `fields`  | `string[]`                           | `["layers", "shownLayers", "filter", "categories", "tags", "rating", "theme"]` | Optional facets to include in the URL. |
+
+**Valid values for `fields`:** `"layers"`, `"shownLayers"`, `"filter"`, `"categories"`, `"tags"`,
+`"rating"`, `"theme"`. The view — latitude, longitude, zoom — is always written and cannot be
+listed: an empty list keeps the view alone.
+
+Four of the names gate the **filter**, by the kind of its fields (`modules.filter.fields[].kind`):
+`"filter"` the `text` fields, `"categories"` the `taxonomy` ones, `"tags"` the `tag` ones,
+`"rating"` the `range` ones. A filter field is written to the URL, and restored from it, only when
+the name of its kind is listed.
 
 #### Example — map position only, no filters
 
 ```json
 {
-    "ui": {
+    "modules": {
         "permalink": {
             "enabled": true,
             "mode": "hash",
-            "fields": ["lat", "lng", "zoom"]
+            "fields": []
         }
     }
 }
@@ -113,9 +122,37 @@ In `hash` or `query` mode, the following parameters are used. All of them are pr
 | `gl_lng`    | `2.347211`      | Longitude of the centre (6 decimal places).                |
 | `gl_zoom`   | `13`            | Zoom level (integer).                                      |
 | `gl_layers` | `layer1,layer2` | IDs of the layers **hidden** by the user, comma-separated. |
-| `gl_filter` | `restaurant`    | Value of the active text filter.                           |
+| `gl_shown`  | `layer3`        | IDs of the layers **shown** by the user beyond the theme.  |
+| `gl_theme`  | `environment`   | ID of the active data theme.                               |
+| `gl_f.<id>` | see below       | One parameter per constrained field of the filter panel.   |
 
 In `compact` mode, all of these parameters are replaced by a single `gl` parameter encoded as base64 JSON.
+
+### The filter — one parameter per field
+
+Since 3.15.0, each constrained field of the filter panel has its own parameter, named by the
+field's `id` in `modules.filter.fields`:
+
+| Field kind | Parameter             | Value                                                         |
+| ---------- | --------------------- | ------------------------------------------------------------- |
+| `text`     | `gl_f.search`         | the query, as typed                                           |
+| `tag`      | `gl_f.tags`           | `free,family` — the selected values, comma-separated          |
+| `range`    | `gl_f.altitude`       | `100..500` — an open bound is left empty: `100..`, `..500`    |
+| `taxonomy` | `gl_f.categories`     | `water,forest,spring` — the checked values                    |
+|            | `gl_f.categories.sub` | `water/spring` — each checked sub-category, with its category |
+
+```
+https://mymap.example.com/#gl_lat=48.857445&gl_lng=2.347211&gl_zoom=13&gl_f.search=lake&gl_f.altitude=100..500
+```
+
+Two fields of the same kind keep each their own value, a range keeps both its bounds, and a
+sub-category is restored under the category it was checked in. `boolean` and `proximity` fields
+are not carried. In a list, a `,`, `/` or `%` inside a value is escaped (`%2C`, `%2F`, `%25`).
+
+**Links shared before 3.15.0 keep working.** They ranged the filter by kind — `gl_filter` for the
+text, `gl_cats`, `gl_tags`, and `gl_rating` for the lower bound of a range — and are restored as
+they were: every field of a kind receives that kind's value. The application no longer writes
+those four parameters; a link carrying both forms is read per field.
 
 ---
 
@@ -195,9 +232,12 @@ Returns the permalink state currently loaded (parsed from the URL at start-up), 
 
 ```javascript
 const state = GeoLeaf.Permalink.getState();
-// → { lat: 48.857, lng: 2.347, zoom: 13, layers: [], filter: "coffee" }
+// → { lat: 48.857, lng: 2.347, zoom: 13, fieldFilters: { search: "coffee" } }
 // → null
 ```
+
+`fieldFilters` holds the per-field filter parameters, keyed by field id, valued as written in
+the URL. A link shared before 3.15.0 gives `filter`, `categories`, `tags` and `rating` instead.
 
 ### `GeoLeaf.Permalink.buildUrl(state?)`
 
@@ -269,7 +309,7 @@ document.addEventListener("geoleaf:map:ready", () => {
 
 ```json
 {
-    "ui": {
+    "modules": {
         "permalink": {
             "enabled": true,
             "mode": "compact"
@@ -278,17 +318,18 @@ document.addEventListener("geoleaf:map:ready", () => {
 }
 ```
 
-### Enabling the permalink on an existing profile (minimal addition)
+### Turning the permalink off
+
+The permalink is active unless a profile says otherwise, in `hash` mode with every field
+included: a profile that declares nothing has it. To turn it off:
 
 ```json
 {
-    "ui": {
-        "permalink": { "enabled": true }
+    "modules": {
+        "permalink": { "enabled": false }
     }
 }
 ```
-
-GeoLeaf then uses the default values: `hash` mode, every field included.
 
 ---
 
@@ -296,9 +337,10 @@ GeoLeaf then uses the default values: `hash` mode, every field included.
 
 The Permalink module applies the following measures to prevent injection or exploitation through the URL:
 
-- Numeric values (`lat`, `lng`, `zoom`) are validated with `validateCoordinates()` and `validateNumber()` from the `security` module (`packages/core/src/modules/built-in/security/index.ts`). Any out-of-range or non-numeric value is silently ignored (permalink state = `null`).
+- Numeric values (`lat`, `lng`, `zoom`) are validated with `validateCoordinates()` and `validateNumber()` from the `security` module (`packages/core/src/kernel/security/index.ts`). Any out-of-range or non-numeric value is silently ignored (permalink state = `null`).
 - Layer lists are capped at **100 entries**.
 - Text fields (`filter`) are truncated to **200 characters**.
+- The per-field filter parameters are capped in number and in length; a range must read as a finite interval, or it is ignored; a parameter name that would reach an object's prototype is dropped; and a parameter is applied only to a field whose kind the `fields` list lets through.
 - In compact mode, the base64 data is parsed with `JSON.parse()` inside a `try/catch`. Any invalid or malformed payload is ignored.
 - No `innerHTML` is used in this module.
 

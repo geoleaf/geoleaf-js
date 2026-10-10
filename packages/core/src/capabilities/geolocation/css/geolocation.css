@@ -137,7 +137,7 @@
         border-radius: 50%;
         border: none;
         background: #ffffff;
-        color: var(--gl-color-accent, #2563eb);
+        color: var(--gl-color-accent-text, #2563eb);
         cursor: pointer;
         display: flex;
         align-items: center;

@@ -125,7 +125,7 @@
     }
 
     .gl-filter-tree__arrow:hover {
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
     }
 
     .gl-filter-tree__spacer {

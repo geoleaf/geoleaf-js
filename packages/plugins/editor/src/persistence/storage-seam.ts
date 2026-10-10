@@ -52,6 +52,11 @@ export interface OutboxAccess {
 
 /** A stored entity, reduced to what the image reconciliation reads from it. */
 export interface StoredEntity {
+    /**
+     * The identity the server gave the entity, once pushed — the one a layer read back from
+     * the device holds it under. `null` or absent before the push.
+     */
+    serverId?: string | number | null;
     feature?: { properties?: Record<string, unknown> | null } | null;
 }
 

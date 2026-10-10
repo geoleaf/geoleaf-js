@@ -50,6 +50,21 @@ export interface PermalinkState {
     rating?: number;
     /** Active data theme ID (e.g. "tourism", "administration"). */
     theme?: string;
+    /**
+     * Active filter, ONE ENTRY PER FIELD — keyed by the field's descriptor id
+     * (`modules.filter.fields[].id`), valued in the URL's own grammar: a `text` field's
+     * query, `a,b,c` for a `tag` or `taxonomy` field, `min..max` for a `range`. A taxonomy
+     * field's checked sub-categories ride under `<id>.sub`, as `category/sub-category` pairs.
+     *
+     * This is what a permalink WRITES since 3.15.0 (`gl_f.<id>` parameters). The four members
+     * above it — `filter`, `categories`, `tags`, `rating` — are the former by-kind slots:
+     * still read from a link that carries them, never captured any more.
+     *
+     * ⚠️ Raw strings, on purpose: the kind of a field is not in the URL, so an entry can only
+     * be read FOR a descriptor (`permalink-field-filters.ts`). When this member is present,
+     * the by-kind slots are ignored on restore.
+     */
+    fieldFilters?: Record<string, string>;
 }
 
 // ── Runtime accessor shapes (narrowed `GeoLeaf.*` surface) ───────────────────────
@@ -63,6 +78,8 @@ export interface PermalinkFilterField {
     id: string;
     kind: string;
     values?: string[];
+    /** Checked sub-categories of a `taxonomy` field, each with the category it sits under. */
+    subValues?: Array<{ value: string; category: string }>;
     text?: string;
     range?: { min?: number; max?: number };
     bool?: boolean;

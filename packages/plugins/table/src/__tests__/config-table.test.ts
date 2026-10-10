@@ -209,6 +209,39 @@ describe("config — modules.table (table-api.ts / table-layer.ts)", () => {
         expect(readSitesOf("virtualScrolling")).toEqual([]);
     });
 
+    // ── the three export defaults live in the table ───────────────────────────
+    describe("modules.table.exportFormats / csvSeparator / csvIncludeGeometry", () => {
+        it("absent → the table's defaults", () => {
+            setTableConfig({});
+            Table.init({ map: fakeMap() });
+            expect(tableState._config).toMatchObject({
+                exportFormats: ["geojson", "csv", "kml", "gpx", "excel"],
+                csvSeparator: ",",
+                csvIncludeGeometry: false,
+            });
+        });
+        // These were `??` fallbacks where the value is consumed: a `null` in the profile
+        // has always meant the default, and a plain spread over the table would lose that.
+        it("written null → the default is kept", () => {
+            setTableConfig({ exportFormats: null, csvSeparator: null, csvIncludeGeometry: null });
+            Table.init({ map: fakeMap() });
+            expect(tableState._config).toMatchObject({
+                exportFormats: ["geojson", "csv", "kml", "gpx", "excel"],
+                csvSeparator: ",",
+                csvIncludeGeometry: false,
+            });
+        });
+        it("written → honoured", () => {
+            setTableConfig({ exportFormats: ["csv"], csvSeparator: ";", csvIncludeGeometry: true });
+            Table.init({ map: fakeMap() });
+            expect(tableState._config).toMatchObject({
+                exportFormats: ["csv"],
+                csvSeparator: ";",
+                csvIncludeGeometry: true,
+            });
+        });
+    });
+
     // ── reference fixture resolves end-to-end ─────────────────────────────────
     it("reference fixture modules.table resolves end-to-end", () => {
         setTableConfig({

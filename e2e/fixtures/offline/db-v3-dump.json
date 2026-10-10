@@ -42,7 +42,7 @@
     "data": {
         "sync_queue": [
             {
-                "_comment": "LES TROIS SUIVANTES PORTENT L'ORDRE DE SAISIE, à la milliseconde près. Elles portaient jusqu'à la tâche 3.10 des suffixes ALÉATOIRES choisis pour que l'ordre lexicographique soit l'INVERSE de la saisie (zzz > mmm > aaa) — c'était la reproduction de la collision. La clé porte désormais un compteur monotone (`_mintKey`, db/sync.ts) et ces trois entrées sont écrites au format courant : relues, elles doivent rendre 1,2,3. ⚠️ La REPRODUCTION du défaut vit désormais dans l'unitaire (`sync-queue-order.test.js`), qui pilote Math.random et a été vu rouge par mutation ; ici on éprouve que l'ordre traverse un boot réel.",
+                "_comment": "LES TROIS SUIVANTES PORTENT L'ORDRE DE SAISIE, à la milliseconde près. Elles portaient d'abord des suffixes ALÉATOIRES choisis pour que l'ordre lexicographique soit l'INVERSE de la saisie (zzz > mmm > aaa) — c'était la reproduction de la collision. La clé porte désormais un compteur monotone (`_mintKey`, db/sync.ts) et ces trois entrées sont écrites au format courant : relues, elles doivent rendre 1,2,3. ⚠️ La REPRODUCTION du défaut vit désormais dans l'unitaire (`sync-queue-order.test.js`), qui pilote Math.random et a été vu rouge par mutation ; ici on éprouve que l'ordre traverse un boot réel.",
                 "id": "sync_1785600000000_000001_fixt01",
                 "profileId": "tourism",
                 "type": "add_poi",
@@ -88,7 +88,7 @@
                 }
             },
             {
-                "_comment": "Vestige v3 conservé DÉLIBÉRÉMENT : cette fixture décrit une base v3 RÉELLE, et c'est son seul usage — 27-offline-idb prouve qu'une telle base migre encore. ⚠️ Le CRITÈRE 4 qu'elle portait a déménagé sur l'outbox (28-offline-queue, tâche 4.11) et ne lit plus rien d'ici.",
+                "_comment": "Vestige v3 conservé DÉLIBÉRÉMENT : cette fixture décrit une base v3 RÉELLE, et c'est son seul usage — 27-offline-idb prouve qu'une telle base migre encore. ⚠️ Le CRITÈRE 4 qu'elle portait a déménagé sur l'outbox (28-offline-queue) et ne lit plus rien d'ici.",
                 "id": "sync_1785600000001_000004_fixt01",
                 "profileId": "tourism",
                 "type": "update_poi",

@@ -119,6 +119,54 @@ describe("a lazy plugin's toolbar slot, before and after its bundle loads", () =
         expect(await drawn()).toEqual({ pill: false, tab: false });
     });
 
+    it("🛑 the descriptor takes what the reference application declares — `variant`, `legacyProfileKey`", async () => {
+        // `apps/geoleaf-app/init.js` writes both on its lazy slots, the two toolbars read them,
+        // and the type refused them: a JavaScript file is confronted to no type, so nothing
+        // said it. This call is the compile-time witness — and the two reads are checked.
+        const { PluginRegistry } = await setup();
+        const flags: Record<string, unknown> = { "ui.showOrphan": false };
+        (globalThis as { GeoLeaf?: { Config?: unknown } }).GeoLeaf!.Config = {
+            get: (key: string, fallback?: unknown) => (key in flags ? flags[key] : fallback),
+        };
+        PluginRegistry.registerLazy("legacy", () => Promise.resolve());
+        PluginRegistry.registerLazyForAction("legacy", "legacy", {
+            mobileIcon: {
+                icon: ICON,
+                labelKey: "table.button",
+                profileKey: "modules.legacy.showButton",
+                legacyProfileKey: "ui.showOrphan",
+                action: "legacy",
+            },
+            desktopTabButton: {
+                icon: ICON,
+                labelKey: "table.button",
+                profileKey: "modules.legacy.showButton",
+                legacyProfileKey: "ui.showOrphan",
+                action: "legacy",
+                variant: "tab",
+            },
+        });
+
+        const { createToolbarDom } =
+            await import("../../src/kernel/ui/mobile/mobile-toolbar-pill.ts");
+        const { appendRegistryTabButtons } =
+            await import("../../src/kernel/ui/desktop/desktop-panel-slots.ts");
+        const tabs = document.createElement("div");
+
+        // The canonical key is absent, the legacy one says `false`: both buttons are hidden.
+        appendRegistryTabButtons(tabs);
+        expect(createToolbarDom().querySelector('[data-gl-sheet="legacy"]')).toBeNull();
+        expect(tabs.querySelector('[data-gl-desktop-tab="legacy"]')).toBeNull();
+
+        // The legacy key says `true`: drawn, and the desktop one as a TAB, not an icon button.
+        flags["ui.showOrphan"] = true;
+        const shown = document.createElement("div");
+        appendRegistryTabButtons(shown);
+        const tab = shown.querySelector('[data-gl-desktop-tab="legacy"]');
+        expect(tab).not.toBeNull();
+        expect(tab?.classList.contains("gl-rp-tab")).toBe(true);
+    });
+
     it("a lifecycle module without a slot does not take the button away", async () => {
         const { PluginRegistry, registry } = await setup();
         // What a plugin loaded on demand registers: its teardown, and no slot.

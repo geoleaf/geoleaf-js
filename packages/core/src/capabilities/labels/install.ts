@@ -26,7 +26,7 @@ import "./css/labels.css";
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { LABELS_CAPABILITY } from "./labels-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { LabelsModule } from "./module.js";
 import { LabelButtonManager } from "./label-button-manager.js";

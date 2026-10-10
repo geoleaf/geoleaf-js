@@ -30,7 +30,7 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // (placeholder tokens are not valid TS) and outside the `workspaces` globs that
 // `count-any.cjs` walks. Every plugin ever scaffolded was therefore born with the two
 // `as any` that `@geoleaf/host-runtime` exists to remove. Do not reintroduce them.
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 
 import langFr from "./lang/lang-fr.js";
 import langEn from "./lang/lang-en.js";
@@ -43,6 +43,17 @@ getGeoLeaf()?.I18n?.registerDict?.("navigation", {
     fr: langFr,
     en: langEn,
 });
+
+/** The API this plugin mounts as `GeoLeaf.Navigation`. */
+export type NavigationApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Navigation` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Navigation: NavigationApi;
+    }
+}
 
 // 2 — Mount the GeoLeaf.Navigation namespace.
 //
@@ -86,34 +97,36 @@ const _ICON =
 // THIS call is the ONLY declaration of the slot and it is honoured.
 //
 // After `init()` — the LAZY path, where a host declares the slot itself with
-// `registerLazyForAction()` and loads the bundle on demand — the toolbar is already built: the
-// registration would be stored, never drawn, and would log a warning whose intended reader has
-// already done what it recommends elsewhere.
+// `registerLazyForAction()` and loads the bundle on demand — the toolbar is already built: a
+// slot registered now would be stored, never drawn. `registerPluginModule` tells the two
+// paths apart (`@geoleaf/host-runtime`) and leaves the slot out on the second.
 //
-// ⚠️ `!== true`, not `=== false`: a host without `isInitialized` yields `undefined`, and the
-// slot IS declared. Failing open is the right way round — a spurious warning costs a console
-// line, a missing declaration costs the button.
-if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
-    getGeoLeaf()?.registry?.register?.({
-        id: "navigation",
-        ui: {
-            mobileIcon: {
-                icon: _ICON,
-                labelKey: "navigation.toolbar.button",
-                profileKey: "modules.navigation.showButton",
-                requiresPlugin: "navigation",
-                action: "navigation",
-            },
-            desktopTabButton: {
-                icon: _ICON,
-                labelKey: "navigation.toolbar.button",
-                profileKey: "modules.navigation.showButton",
-                requiresPlugin: "navigation",
-                action: "navigation",
-            },
+// 🛑 AND A TEARDOWN ON BOTH. This registration carried the slot and nothing else, so a
+// guidance session did not end with the application: measured in a browser, after an
+// `unmount()` the banner stayed in the page, the position watch and the screen wake lock
+// stayed held, and the session kept reading fixes for a map that was gone. `stop()` is read
+// off the namespace, like the toolbar listener below: it is idempotent, and a no-op when no
+// session runs. A module registered after `init()` is torn down by a core ≥ 3.14.2.
+registerPluginModule({
+    id: "navigation",
+    destroy: () => (getGeoLeaf()?.Navigation as { stop?: () => void } | undefined)?.stop?.(),
+    ui: {
+        mobileIcon: {
+            icon: _ICON,
+            labelKey: "navigation.toolbar.button",
+            profileKey: "modules.navigation.showButton",
+            requiresPlugin: "navigation",
+            action: "navigation",
         },
-    });
-}
+        desktopTabButton: {
+            icon: _ICON,
+            labelKey: "navigation.toolbar.button",
+            profileKey: "modules.navigation.showButton",
+            requiresPlugin: "navigation",
+            action: "navigation",
+        },
+    },
+});
 
 if (typeof document !== "undefined") {
     document.addEventListener("geoleaf:toolbar:action", (e: Event) => {

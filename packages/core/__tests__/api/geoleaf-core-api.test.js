@@ -1,5 +1,5 @@
 /**
- * T10.4.2 — geoleaf-core-api.test.js
+ * geoleaf-core-api.test.js
  * Verifies all 30 named exports from bundle-esm-entry.ts:
  *   - Presence (non-null/undefined)
  *   - Type (object / function)
@@ -7,7 +7,7 @@
  *
  * Strategy: direct facade imports + minimal mocks.
  * Each facade file (geoleaf.*.ts) is thin: importing it exercises its code,
- * which is the primary coverage goal for T10.4.
+ * which is the primary coverage goal of this file.
  */
 "use strict";
 
@@ -93,7 +93,7 @@ _g.GeoLeaf.Utils = {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe("T10.4.2 — Core infrastructure exports", () => {
+describe("Core infrastructure exports", () => {
     let Core, Config, GeoLeafAPI;
 
     beforeAll(async () => {
@@ -141,7 +141,7 @@ describe("T10.4.2 — Core infrastructure exports", () => {
     });
 });
 
-describe("T10.4.2 — UI & Notifications exports", () => {
+describe("UI & Notifications exports", () => {
     let UI, Notifications;
 
     beforeAll(async () => {
@@ -191,7 +191,7 @@ describe("T10.4.2 — UI & Notifications exports", () => {
     });
 });
 
-describe("T10.4.2 — Optional module exports (Legend)", () => {
+describe("Optional module exports (Legend)", () => {
     let Legend, Baselayers, LayerManager;
 
     beforeAll(async () => {
@@ -226,7 +226,7 @@ describe("T10.4.2 — Optional module exports (Legend)", () => {
     });
 });
 
-describe("T10.4.2 — Events, Permalink, PWA exports", () => {
+describe("Events, Permalink, PWA exports", () => {
     let Events, Permalink, PWA;
 
     beforeAll(async () => {
@@ -251,7 +251,7 @@ describe("T10.4.2 — Events, Permalink, PWA exports", () => {
     });
 });
 
-describe("T10.4.2 — Utility exports (Log, Errors, CONSTANTS, Utils, Helpers, Validators)", () => {
+describe("Utility exports (Log, Errors, CONSTANTS, Utils, Helpers, Validators)", () => {
     let Log, Errors, CONSTANTS, Utils, Helpers, Validators;
 
     beforeAll(async () => {
@@ -295,7 +295,7 @@ describe("T10.4.2 — Utility exports (Log, Errors, CONSTANTS, Utils, Helpers, V
     });
 });
 
-describe("T10.4.2 — API sub-module exports", () => {
+describe("API sub-module exports", () => {
     let APIController, APIFactoryManager, APIInitializationManager, APIModuleManager;
     let PluginRegistry, BootInfo, showBootInfo;
 

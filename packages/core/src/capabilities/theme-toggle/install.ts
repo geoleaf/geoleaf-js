@@ -14,7 +14,7 @@
 
 import type { CapabilityInstaller } from "../../contracts/preset.contract.js";
 import { THEME_TOGGLE_CAPABILITY } from "./theme-toggle-capability.js";
-// The boot wrapper now lives INSIDE this capability (backlog R.10) — no app/ path,
+// The boot wrapper now lives INSIDE this capability — no app/ path,
 // no exception, and the ICoreModule lifecycle is co-located with what it drives.
 import { ThemeToggleModule } from "./module.js";
 import { ThemeToggle } from "../../api/geoleaf.theme-toggle.js";

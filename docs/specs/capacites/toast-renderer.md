@@ -4,8 +4,8 @@ title: toast-renderer — le rendu DOM des notifications
 capability_id: toast-renderer
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ada9b8bf1
-date: 1er octobre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # toast-renderer — le rendu DOM des notifications
@@ -380,6 +380,10 @@ no-op muet. C'est le même patron de localisateur de service que `vector-tiles`,
 
 `install.ts` importe `./css/toast-renderer.css` — la feuille entre dans le graphe de modules par
 l'installeur, donc une entrée qui l'omet ne livre ni le code ni le style.
+
+Le conteneur des toasts est posé sur `document.body`, hors de la racine de l'application : il lit
+`--gl-font-family`, le jeton que `css/geoleaf-theme.css` déclare sur `:root` (06/10/2026). Sans lui
+un toast prenait la police par défaut de la page hôte — mesuré, Times New Roman.
 
 ---
 

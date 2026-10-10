@@ -77,7 +77,7 @@ export interface CapabilityInstaller {
      *
      * (This used to say "composed by the boot via the `module-setup` seam". That was wrong
      * even then — `registerGlobals` was always driven by `apply-preset.ts` — and the seam
-     * itself is gone since S6 Lot 5.)
+     * itself is gone.)
      *
      * @param gl - the boot-populated `GeoLeaf` global namespace.
      */

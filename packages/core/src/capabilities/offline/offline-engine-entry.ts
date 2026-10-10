@@ -28,13 +28,13 @@ import "./db/images.js";
 import { CacheStorage } from "./cache/storage.js";
 import "./cache/calculator.js";
 import "./cache/metrics.js";
-import "./cache/resource-enumerator.js";
+import { prefetchVerdictOf } from "./cache/resource-enumerator.js";
 import "./cache/progress-tracker.js";
 import "./cache/retry-handler.js";
 import "./cache/fetch-manager.js";
 import "./cache/downloader.js";
 import { CacheManager } from "./cache/cache-manager.js";
-import { registerPoiRestore } from "./poi-restore/poi-restore-boot.js";
+import { registerPoiRestore, registerSessionBadge } from "./poi-restore/poi-restore-boot.js";
 import { pullLayer } from "./pull/layer-pull.js";
 import { buildSyncReport } from "./report/sync-report.js";
 import { buildPreflight } from "./report/preflight.js";
@@ -90,7 +90,12 @@ if (_g.GeoLeaf?.Storage) {
         // needed it: the core's own strip and `offline-ui`'s modal, and the second cannot
         // import the first (deep imports of `@geoleaf/core` are bundled as copies, with a
         // `StorageContract` singleton that stays empty).
-        report: { buildSyncReport, readSyncStatus, buildPreflight },
+        report: {
+            buildSyncReport,
+            readSyncStatus,
+            buildPreflight,
+            prefetchVerdict: prefetchVerdictOf,
+        },
         // The optimistic write, sole writer of the `outbox`.
         // ⚠️ `mayEdit` is NOT injected here, and that is measured: the permission is
         // read from the PROFILE, not IndexedDB, and `editor` declares `requires: []`
@@ -126,4 +131,7 @@ if (_g.GeoLeaf?.Storage) {
     // D5 (POI dissolution, inverse merge): push queued offline POIs onto their host
     // GeoJSON layer via `GeoLeaf.Layers` instead of the core pulling them.
     registerPoiRestore();
+    // The "pending" badge of what is queued in THIS session: the restore above only speaks of
+    // what a previous session left, so a capture just made was drawn like any other entity.
+    registerSessionBadge();
 }

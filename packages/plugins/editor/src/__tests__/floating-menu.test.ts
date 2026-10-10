@@ -247,6 +247,18 @@ describe("floating-menu", () => {
         expect(onToolSelect).not.toHaveBeenCalled();
     });
 
+    // What `GeoLeaf.Editor.cancelDrawing()` hands its caller: whether there was a tool to
+    // disarm. The façade is this function, so its answer is the public member's.
+    it("deactivateActiveTool answers whether a tool was armed", () => {
+        initEditorMenu(getEditorConfig(), { onToolSelect: vi.fn() });
+        toggleEditorMenu();
+        expect(deactivateActiveTool()).toBe(false);
+        setEditorActiveTool("polygon");
+        expect(deactivateActiveTool()).toBe(true);
+        // Disarmed: a second call has nothing left to abandon.
+        expect(deactivateActiveTool()).toBe(false);
+    });
+
     it("tools disabled via enabledTools are not rendered", () => {
         const cfg = { ...getEditorConfig(), enabledTools: ["point"] as EditorTool[] };
         initEditorMenu(cfg, {});

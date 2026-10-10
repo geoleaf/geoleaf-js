@@ -43,6 +43,14 @@ interface LocalImageData {
     localId?: string;
     /** Schema path of the field holding the token (e.g. `properties.photo_principale`). */
     fieldPath?: string;
+    /**
+     * `true` when the caller reads a record kept as its bytes. Where the engine refuses the
+     * `Blob`, the bytes are written ONLY then; absent or `false`, the refusal is the
+     * caller's to handle. It is asked for and not assumed because a record kept as bytes is
+     * useless to a reader that only knows `blob` — it could neither upload nor paint it.
+     * Never written into the record.
+     */
+    acceptBytes?: boolean;
 }
 
 /**
@@ -67,7 +75,16 @@ type UploadedFlag = 0 | 1;
 
 interface LocalImageRecord {
     id: string;
-    blob: Blob;
+    /**
+     * The image, as the engine accepted it. ONE of `blob` and `bytes` is present:
+     * `blob` whenever the engine stores a `Blob`, `bytes` — with `type` below — when it
+     * refused one, which WebKit does for an ephemeral session (a private tab), and the
+     * caller asked for them ({@link LocalImageData.acceptBytes}). A reader accepts both;
+     * nothing migrates a record from one shape to the other.
+     */
+    blob?: Blob;
+    /** See {@link LocalImageRecord.blob}. */
+    bytes?: ArrayBuffer;
     filename: string;
     type: string;
     size: number;
@@ -180,6 +197,37 @@ export interface ImagesDBInstance {
 }
 
 /**
+ * Writes one image record in a transaction of its own.
+ *
+ * Its own, because a refused `put` aborts the transaction it ran in: the second step of
+ * `storeImageLocally` cannot reuse it.
+ *
+ * @param db - The open database.
+ * @param entry - The record to write.
+ * @returns Resolves once the request succeeded; rejects on a refusal, whether the engine
+ *   reports it on the request or throws it from `put`.
+ */
+function putImage(db: IDBDatabase, entry: LocalImageRecord): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const failed = (cause: unknown) =>
+            new Error(`[ImagesDB] Failed to store image: ${String(cause)}`, { cause });
+        try {
+            const store = db.transaction(["local_images"], "readwrite").objectStore("local_images");
+            const request = store.put(entry);
+            request.onsuccess = () => resolve();
+            request.onerror = (event) => {
+                // The refusal is handled here: left to bubble, it would also surface as an
+                // unhandled error on the database.
+                event.preventDefault();
+                reject(failed(request.error));
+            };
+        } catch (thrown) {
+            reject(failed(thrown));
+        }
+    });
+}
+
+/**
  * Local image management module in IndexedDB
  * @namespace GeoLeaf.Storage.DB.Images
  */
@@ -221,45 +269,54 @@ const ImagesDB: ImagesDBInstance = {
      * @param {string} [imageData.layerId] - Layer of the owning feature
      * @param {string} [imageData.localId] - Client identity of the owning feature
      * @param {string} [imageData.fieldPath] - Schema path of the field holding the token
-     * @returns {Promise<void>}
+     * @param {boolean} [imageData.acceptBytes] - `true` to keep the bytes where the engine
+     *   refuses the `Blob`
+     * @returns {Promise<void>} Rejects when the engine refused the `Blob` and the bytes were
+     *   not asked for, or were refused too.
      */
-    async storeImageLocally(imageData: LocalImageData) {
+    async storeImageLocally(imageData: LocalImageData): Promise<void> {
         this._ensureInitialized();
         const db = this._db!;
 
-        return new Promise((resolve, reject) => {
-            const transaction = db.transaction(["local_images"], "readwrite");
-            const store = transaction.objectStore("local_images");
+        const record: Omit<LocalImageRecord, "blob" | "bytes"> = {
+            id: imageData.id,
+            filename: imageData.filename,
+            type: imageData.type,
+            size: imageData.size,
+            timestamp: Date.now(),
+            uploaded: 0 as UploadedFlag,
+            url: null,
+            // ⚠️ The return address. Rebuilding the record field by field is what dropped
+            // it: these four are written EXPLICITLY so a caller passing them keeps them,
+            // and `?? null` so an old caller that does not is still a valid record.
+            endpoint: imageData.endpoint ?? null,
+            layerId: imageData.layerId ?? null,
+            localId: imageData.localId ?? null,
+            fieldPath: imageData.fieldPath ?? null,
+        };
 
-            const entry: LocalImageRecord = {
-                id: imageData.id,
-                blob: imageData.blob,
-                filename: imageData.filename,
-                type: imageData.type,
-                size: imageData.size,
-                timestamp: Date.now(),
-                uploaded: 0 as UploadedFlag,
-                url: null,
-                // ⚠️ The return address. Rebuilding the record field by field is what dropped
-                // it: these four are written EXPLICITLY so a caller passing them keeps them,
-                // and `?? null` so an old caller that does not is still a valid record.
-                endpoint: imageData.endpoint ?? null,
-                layerId: imageData.layerId ?? null,
-                localId: imageData.localId ?? null,
-                fieldPath: imageData.fieldPath ?? null,
-            };
-
-            const request = store.put(entry);
-
-            request.onsuccess = () => {
-                Log.debug(`[ImagesDB] Stored local image: ${imageData.id}`);
-                resolve();
-            };
-
-            request.onerror = () => {
-                reject(new Error(`[ImagesDB] Failed to store image: ${request.error}`));
-            };
-        });
+        // 🛑 TWO STEPS, AND THE ORDER IS THE ARBITRATION. The `Blob` first: it is what every
+        // engine that accepts one stores, and what the records already written carry. On its
+        // refusal, the bytes — WebKit refuses a `Blob` or a `File` in IndexedDB for an
+        // ephemeral session, on purpose, and stores an `ArrayBuffer` in the same session
+        // without complaint. Without the second step the caller fell back on a data-URL: the
+        // capture was kept, and no later upload could reconcile it.
+        //
+        // ⚠️ The second step is taken ONLY for a caller that asked for it. One that did not
+        // reads `blob` alone: handed a record kept as bytes, it would hold a token for a
+        // photo it can neither upload nor paint — where the rejection leaves it its own
+        // fallback, and the capture.
+        try {
+            await putImage(db, { ...record, blob: imageData.blob });
+        } catch (refused) {
+            if (imageData.acceptBytes !== true) throw refused;
+            Log.warn(
+                `[ImagesDB] The store refused the image ${imageData.id} as a Blob — kept as its bytes:`,
+                String(refused)
+            );
+            await putImage(db, { ...record, bytes: await imageData.blob.arrayBuffer() });
+        }
+        Log.debug(`[ImagesDB] Stored local image: ${imageData.id}`);
     },
 
     /**

@@ -32,6 +32,17 @@ getGeoLeaf()?.I18n?.registerDict?.("position-share", {
     en: langEn,
 });
 
+/** The API this plugin mounts as `GeoLeaf.PositionShare`. */
+export type PositionShareApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.PositionShare` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        PositionShare: PositionShareApi;
+    }
+}
+
 // 2 — Mount the GeoLeaf.PositionShare namespace.
 //
 // The assignment must read `.<Namespace> = buildPublicApi()` LITERALLY. Two guards match

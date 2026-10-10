@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: c5f0dc772
-date: 3 octobre 2026
+verifie_contre: 1673c0432
+date: 7 octobre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -105,10 +105,15 @@ hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'o
 | **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                           |
 
 ⚠️ **Deux aides publiques portent un préfixe `_`** — `_el` et `_getLabel`. Le préfixe est la
-convention du dépôt pour « interne », et elles sont pourtant exportées **et** consommées par trois
-plugins. Même contradiction convention / surface que `_getExporter` de
+convention du dépôt pour « interne », et elles sont pourtant exportées **et** consommées hors de
+la bibliothèque, par `editor`. Même contradiction convention / surface que `_getExporter` de
 [`print`](../plugins/CDC_print.md), relevée au registre du
 registre.
+
+`_el` et `applyCssText` n'ont plus de corps à eux : ce sont des enveloppes locales de `createEl`
+et `applyStyleText` de [`@geoleaf/host-runtime`](host-runtime.md), que la bibliothèque embarque
+déjà. Les signatures restent écrites ici — un ré-export nommerait un paquet privé dans les
+déclarations publiées. La paire que `verify-seam-drift.cjs` tenait égale est partie avec les copies.
 
 ⚠️ **Ce qui est délibérément NON exporté** : l'application de texte CSS, et la **classe**
 d'implémentation du registre — seule l'instance singleton l'est. Un consommateur ne peut donc pas
@@ -245,9 +250,27 @@ Trois défauts, un seul geste : remplir une fiche sur un téléphone.
   la copie gagnait. La règle du tiroir double sa classe (0,2,0), et les tailles tactiles passent par
   des minimums, que le `height: 36px` de la copie ne peut pas défaire.
 
-⚠️ **`host-runtime` n'est pas touché, délibérément** : sa copie est inlinée aussi dans `offline-ui`,
-qu'il aurait fallu republier. Aucune gate ne garde l'équivalence de ces copies — le « byte-equivalent »
-de `modal-shell.lazy.css` n'est qu'un commentaire.
+**Les règles de la coque et du dialogue n'ont plus qu'une source (04/10/2026).** Cette bibliothèque
+portait une copie des dix-huit règles que `@geoleaf/host-runtime` livre avec ses dialogues —
+l'overlay, le panneau, le pied, les boutons — « byte-equivalent », disait un commentaire que rien ne
+vérifiait. Mesurées égales le jour du retrait, elles sont retirées d'ici : `ui/host-sheets.ts` adopte
+les deux feuilles de `host-runtime`, et il est importé **avant** les feuilles du formulaire, pour que
+celles-ci viennent après dans la cascade. Trois conséquences :
+
+- **l'ordre d'adoption n'est pas une garantie**, et il ne l'a jamais été : chaque bundle embarque sa
+  copie de `host-runtime` et adopte ses feuilles à son premier dialogue, donc parfois APRÈS celles du
+  formulaire. Ce que le formulaire ajoute sur ces classes s'écrit à (0,2,0) — le tiroir, et depuis ce
+  jour le bouton de fermeture, qui redevenait carré et changeait de couleur dès qu'un autre greffon
+  ouvrait un dialogue (mesuré) ;
+- **le bloc tactile des trois boutons du dialogue a suivi leurs règles** dans `confirm-dialog.lazy.css` :
+  un dialogue ouvert sans le formulaire — `offline-ui` — gardait des boutons de 36 px sous le doigt ;
+- **`css/form-touch.css` ne nomme plus ces trois boutons** ; il garde le bouton de fermeture et tout
+  ce qui n'appartient qu'au formulaire.
+
+Gardé par `modal-rules-single-source` (suite de gardes du core) : aucun sélecteur des deux feuilles
+de `host-runtime` n'est récrit par une feuille de cette bibliothèque, `@media` compris, et l'adoption
+reste le premier import à effet de bord de `ui/responsive-modal.ts`. ⚠️ Ce qu'elle ne juge pas — une
+règle du formulaire qui ferait jeu ÉGAL sous un autre sélecteur — se lit dans `e2e/42` (T6).
 
 **Preuves.** `src/__tests__/modal-viewport.test.ts` : suivi, libération sur chacune des sorties, champ
 ramené — deux mutants vus rouges. `e2e/42-form-drawer-keyboard.touch.spec.js` : occultation sous
@@ -285,9 +308,13 @@ attente — vu rouge sur la croix encore active ; fermeture forcée ; croix rend
   sur la zone ELLE-MÊME le donne désormais à la saisie (`types/tags.ts`) — une pastille garde son
   propre geste.
 
-⚠️ **Reste, et ce n'est pas un correctif** : réordonner une liste au doigt. La poignée repose sur
-le glisser HTML5 (`types/list.ts`), qu'aucun navigateur mobile n'émet au toucher ; le geste qui le
-remplace reste à choisir.
+- **Réordonner une liste était impossible au doigt** (1.4.3). La poignée repose sur le glisser
+  HTML5 (`types/list.ts`), qu'aucun navigateur mobile n'émet au toucher. Chaque ligne porte
+  désormais deux boutons, monter et descendre — cibles de 44 px sous `pointer: coarse`, nommés
+  pour un lecteur d'écran dans les six langues, désactivés au bout que la ligne ne peut pas
+  franchir. La liste étant rebâtie à chaque déplacement, le focus est reposé sur la ligne
+  déplacée : même bouton, ou l'autre quand elle a atteint un bout. Le glisser reste, pour la
+  souris.
 
 **Preuves.** `src/__tests__/shared-scaffolding.test.ts` (« opens above the form overlay », vu rouge
 à 9999 — jsdom ne calcule pas la cascade : le test ne juge que la valeur en ligne, qui est celle
@@ -336,6 +363,14 @@ d'`addpoi`.** Le déplacement du piège de focus et du dialogue de confirmation 
 `@geoleaf/field-renderer` du tout. La liste se mesure, elle ne se recopie pas —
 `grep -rn '"@geoleaf/field-renderer"' packages/*/*/package.json`.
 
+⚠️ **`editor` regroupe cette bibliothèque depuis ses SOURCES, pas depuis son fichier bâti
+(04/10/2026).** Le fichier bâti embarque `host-runtime` ; pris tel quel par un paquet qui importe
+aussi `host-runtime`, il en apportait un second exemplaire. Conséquences à connaître : le bundle de
+l'éditeur ne contient plus les octets du `dist/` de la bibliothèque mais une transpilation de ses
+sources, à la version du dépôt ; ses feuilles de style y sont injectées par le build de l'éditeur ;
+et les **types** que l'éditeur voit restent ceux du `.d.ts` de la bibliothèque — rien ne change pour
+un intégrateur qui consomme `field-renderer` seul.
+
 | Consommateur                         | Ce qu'il importe                                                                                                                                         |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`editor`](../plugins/CDC_editor.md) | Le **plus gros usage** : catalogue complet, modale responsive, registre, dialogue de confirmation, aides et sécurité. ⚠️ Hérité d'`addpoi`, fusionné ici |
@@ -344,7 +379,7 @@ d'`addpoi`.** Le déplacement du piège de focus et du dialogue de confirmation 
 
 **`packages/core` n'en dépend PAS**, et ne doit pas commencer.
 
-### Ce que la migration `formSchema` (tâche 7.2) n'a PAS changé ici
+### Ce que la migration `formSchema` n'a PAS changé ici
 
 ✅ **Rien, structurellement — et c'est le résultat, pas un hasard.** La clé `formSchema` du profil
 a été supprimée le 07/08/2026 au profit d'une projection de `attributes.fields[]`. Cette

@@ -302,6 +302,30 @@ describe("legend-api — branch coverage", () => {
         expect(Legend.getAllLayers().get("l1").geometryType).toBe("point");
     });
 
+    // 🛑 The legend knew `line`, `polyline` and `polygon`, and called everything else a point —
+    // `multipolygon`, `multiline` and `fill-extrusion` included, which the layer schema admits.
+    it.each([
+        ["multipolygon", "polygon"],
+        ["fill-extrusion", "polygon"],
+        ["multiline", "line"],
+        ["multipoint", "point"],
+    ])("loadLayerLegend lit %s comme la famille %s", (declared, family) => {
+        _g.GeoLeaf.Config = {
+            get: vi.fn((k) => (k === "data" ? { profilesBasePath: "profiles" } : null)),
+            getAll: vi.fn(() => ({})),
+            getActiveProfile: vi.fn(() => ({ id: "p", layers: [{ id: "l1" }] })),
+        };
+        Legend.init({});
+        Legend.loadLayerLegend("l1", "s1", {
+            label: "L",
+            geometry: declared,
+            styles: { directory: "styles", available: [{ id: "s1", file: "s.json" }] },
+            _profileId: "p",
+            _layerDirectory: "dir",
+        });
+        expect(Legend.getAllLayers().get("l1").geometryType).toBe(family);
+    });
+
     // ── _loadTaxonomy (S10 F5 — reads the taxonomy capability) ─────────────
     it("_loadTaxonomy reads categories from GeoLeaf.Taxonomy (poi-cat)", () => {
         const getCategories = vi.fn(() => ({ NATURE: { svgId: "leaf" } }));

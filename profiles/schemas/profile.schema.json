@@ -171,6 +171,28 @@
                     "minimum": 0,
                     "maximum": 85,
                     "description": "Maximum map pitch in degrees (0-85). MapLibre default: 60."
+                },
+                "target": {
+                    "type": "string",
+                    "description": "Id of the HTML element that hosts the map, without `#` - it is resolved with `document.getElementById`, not as a CSS selector. Read by `GeoLeaf.boot()`; absent, the boot looks for `geoleaf-map`. `GeoLeaf.mount()` hosts the map in the element it is given and does not read this key."
+                },
+                "id": {
+                    "type": "string",
+                    "description": "Alias of `target`, read only when `target` is absent."
+                }
+            }
+        },
+        "performance": {
+            "type": "object",
+            "description": "Loading tuning. One key: the three once documented here (`maxConcurrentLayers`, `layerLoadDelay`, `fitBoundsOnThemeChange`) have no reader and are refused.",
+            "additionalProperties": false,
+            "patternProperties": { "^_comment": {} },
+            "properties": {
+                "themeBatchSize": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 6,
+                    "description": "How many layers of a theme are revealed at a time when a theme is applied. Read by the theme applier; absent, 6."
                 }
             }
         },

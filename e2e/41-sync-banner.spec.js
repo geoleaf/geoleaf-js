@@ -1,6 +1,6 @@
 // @ts-check
 /**
- * 41 — THE SYNC BANNER EXISTS, AND IT BELONGS TO THE CORE (R7, task 1.13)
+ * 41 — THE SYNC BANNER EXISTS, AND IT BELONGS TO THE CORE
  *
  * 🛑 RUN ON THE `core` VARIANT, FOR THE SAME REASON AS SPEC 40. A live queue counter existed
  * before this lot — in the editor plugin's floating menu — so it left with the plugin.
@@ -128,6 +128,34 @@ test.describe("41 — le bandeau de synchronisation", () => {
         // SHOW. This is the assertion that would have caught a lot silencing it too broadly.
         await expect(banner).toHaveAttribute("data-idle", "false");
         await expect(banner).toBeVisible();
+    });
+
+    test("🛑 à 375 px, les pastilles de thème passent SOUS le bandeau affiché", async ({
+        page,
+    }) => {
+        // The strip publishes its height in `--gl-map-top-inset`; every surface anchored at
+        // the top adds it to its own `top`. The phone rule of the theme pills restated their
+        // `top` with `!important` and without the token: on a phone, and only there, the
+        // pills painted over the counters. Rectangles are compared, not a `top` value — the
+        // strip's height doubles under `(pointer: coarse)` and no constant survives that.
+        await page.setViewportSize({ width: 375, height: 700 });
+        await page.evaluate(() => {
+            Object.defineProperty(navigator, "onLine", { value: false, configurable: true });
+            window.dispatchEvent(new Event("offline"));
+        });
+        const banner = page.locator(".gl-sync-banner");
+        await expect(banner).toBeVisible();
+        const pills = page.locator("#gl-theme-primary-container");
+        await expect(pills).toBeVisible();
+
+        await expect
+            .poll(async () => {
+                const strip = await banner.boundingBox();
+                const box = await pills.boundingBox();
+                if (!strip || !box) return null;
+                return box.y >= strip.y + strip.height;
+            })
+            .toBe(true);
     });
 
     test("🛑 une écriture fait monter le compteur, un drain le fait redescendre", async ({

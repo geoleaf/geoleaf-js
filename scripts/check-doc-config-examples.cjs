@@ -37,6 +37,15 @@
  *           rule. No baseline: the marker is opt-in, so there is no debt to freeze. A
  *           marker naming no schema, followed by no fence, or over a block that does not
  *           parse is an error too — a declared proof that silently skips proves nothing.
+ *   CDE-05  A block DECLARED a module's file is judged by no profile schema, and the
+ *           declaration itself is checked. A ```json fence preceded by
+ *           `<!-- geoleaf:docs:module <name> -->` is (a part of) `config/plugins/<name>.json`:
+ *           no schema describes a module file — `validate-profiles.cjs` skips them for the
+ *           same reason — so the rules above, which match by NAME, would judge it against a
+ *           container that is not its own. Measured: a taxonomy file binds its layers under
+ *           `layers`, a MAP, and was judged against the items of the `layers` ARRAY of
+ *           `layers.json`. The marker must name a module that exists — an in-core capability
+ *           or a plugin of the registry — and be followed by a fence that parses.
  *
  * ## Two design decisions, each motivated by a MEASURED defect
  *
@@ -124,6 +133,7 @@ const Ajv = require("ajv").default;
 
 const { productDocsFiles } = require("./lib/tsdoc-examples.cjs");
 const { SCHEMA_SUFFIX, listSchemaNames } = require("./lib/profile-schemas.cjs");
+const registry = require("./lib/packages.cjs");
 
 const ROOT = path.resolve(__dirname, "..");
 const SCHEMA_DIR = path.join(ROOT, "profiles", "schemas");
@@ -224,6 +234,12 @@ function closedContainers() {
     return index;
 }
 
+/** CDE-05's marker — same `geoleaf:docs:` family as CDE-04's. */
+const MODULE_MARKER = /<!--\s*geoleaf:docs:module\b([^>]*?)-->/g;
+
+/** Whether the text ENDS with that marker, blank lines only after it. */
+const MODULE_MARKER_BEFORE = /<!--\s*geoleaf:docs:module\b[^>]*?-->\s*$/;
+
 /**
  * A Markdown file's ```json blocks, parsed. Unparseable blocks are silently ignored:
  * a deliberately truncated snippet (`…`) is a legitimate illustration, not a
@@ -235,6 +251,8 @@ function closedContainers() {
 function jsonBlocks(src) {
     const out = [];
     for (const m of src.matchAll(/```json\s*\n([\s\S]*?)```/g)) {
+        // CDE-05: a block declared a module's file is not a profile file — see the header.
+        if (MODULE_MARKER_BEFORE.test(src.slice(0, m.index))) continue;
         try {
             out.push(JSON.parse(m[1]));
         } catch {
@@ -443,6 +461,93 @@ function declaredBlocks() {
 }
 
 /**
+ * The names a module file can carry: the in-core capabilities and the plugins.
+ *
+ * Derived, never listed — a name written here would go stale at the first capability added.
+ * Throws rather than answer an empty set: against nothing, every marker would be refused, and
+ * against a set that silently lost half its names, right markers would turn red for no reason
+ * a reader could find.
+ *
+ * @returns {Set<string>}
+ */
+function knownModuleNames() {
+    const core = registry.byName("@geoleaf/core");
+    if (!core) throw new Error("CDE-05: @geoleaf/core introuvable dans le registre des paquets.");
+    const capabilitiesDir = path.join(ROOT, core.dir, "src", "capabilities");
+    const names = new Set(
+        fs
+            .readdirSync(capabilitiesDir, { withFileTypes: true })
+            .filter((d) => d.isDirectory())
+            .map((d) => d.name)
+    );
+    const plugins = registry.plugins();
+    if (names.size === 0 || plugins.length === 0) {
+        throw new Error("CDE-05: aucune capacité ou aucun plugin résolu — la gate serait aveugle.");
+    }
+    for (const p of plugins) names.add(p.pluginName);
+    return names;
+}
+
+/**
+ * CDE-05 — every block declared a module's file names a module that exists, and is a block.
+ *
+ * @returns {{ declared: number, errors: string[] }} markers honoured, and each failure named
+ *   `file:line — reason`
+ */
+function moduleBlocks() {
+    const known = knownModuleNames();
+    const errors = [];
+    let declared = 0;
+    for (const file of productDocsFiles()) {
+        if (!file.endsWith(".md")) continue;
+        const rel = path.relative(ROOT, file).split(path.sep).join("/");
+        const src = fs.readFileSync(file, "utf8");
+        for (const m of src.matchAll(MODULE_MARKER)) {
+            const where = `${rel}:${src.slice(0, m.index).split("\n").length}`;
+            const name = m[1].trim();
+            if (!known.has(name)) {
+                errors.push(`${where} — « ${name} » n'est ni une capacité du core ni un plugin`);
+                continue;
+            }
+            const fence = DECLARED_FENCE.exec(src.slice(m.index + m[0].length));
+            if (!fence) {
+                errors.push(`${where} — marqueur sans bloc \`\`\`json qui le suive`);
+                continue;
+            }
+            try {
+                JSON.parse(fence[1]);
+            } catch (err) {
+                errors.push(`${where} — bloc non parsable : ${/** @type {Error} */ (err).message}`);
+                continue;
+            }
+            declared++;
+        }
+    }
+    return { declared, errors };
+}
+
+/**
+ * Prints CDE-05's failures, if any.
+ *
+ * @param {{ declared: number, errors: string[] }} modules
+ * @returns {boolean} `true` when CDE-05 failed
+ */
+function reportModules(modules) {
+    if (modules.errors.length === 0) return false;
+    console.error(
+        `❌ [DOC-CONFIG-EXAMPLES/CDE-05] ${modules.errors.length} marqueur(s) de fichier de ` +
+            "module en défaut :"
+    );
+    for (const e of modules.errors) console.error(`     ✗ ${e}`);
+    console.error(
+        "\n  Un bloc marqué `<!-- geoleaf:docs:module <nom> -->` se déclare fichier de module :\n" +
+            "  il sort du jugement par nom, donc le marqueur doit dire vrai — un module qui\n" +
+            "  existe, suivi d'un bloc ```json qui se lit."
+    );
+    return true;
+}
+
+/**
  * Prints CDE-04's failures, if any.
  *
  * @param {{ checked: number, errors: string[] }} declared
@@ -466,6 +571,7 @@ function reportDeclared(declared) {
 
 const { violations, files, blocks, containers, rootsJudged } = scan();
 const declared = declaredBlocks();
+const modules = moduleBlocks();
 const bar = "─".repeat(72);
 
 // ── CDE-03 — a gate that scanned nothing, or resolved nothing, proved nothing ────────────
@@ -503,8 +609,10 @@ if (UPDATE) {
         ) + "\n"
     );
     console.log(`✅ [DOC-CONFIG-EXAMPLES] baseline régénérée — ${violations.length} entrée(s).`);
-    // CDE-04 has no baseline: regenerating CDE-01's does not silence it.
-    process.exit(reportDeclared(declared) ? 1 : 0);
+    // CDE-04 and CDE-05 have no baseline: regenerating CDE-01's does not silence them.
+    const declaredFailed = reportDeclared(declared);
+    const modulesFailed = reportModules(modules);
+    process.exit(declaredFailed || modulesFailed ? 1 : 0);
 }
 
 if (!fs.existsSync(BASELINE)) {
@@ -523,7 +631,8 @@ const stale = [...baseline].filter((v) => !seen.has(v)).sort(); // CDE-02
 console.log(bar);
 
 const declaredFailed = reportDeclared(declared);
-if (fresh.length === 0 && stale.length === 0 && !declaredFailed) {
+const modulesFailed = reportModules(modules);
+if (fresh.length === 0 && stale.length === 0 && !declaredFailed && !modulesFailed) {
     console.log(
         `✅ [DOC-CONFIG-EXAMPLES] ${violations.length} clé(s) invalide(s) gelée(s) — baseline à ` +
             `jour (${files} docs produit, ${blocks} blocs JSON, ${containers} conteneurs fermés).`
@@ -531,6 +640,10 @@ if (fresh.length === 0 && stale.length === 0 && !declaredFailed) {
     console.log(
         `   CDE-04 — ${declared.checked} bloc(s) déclaré(s) complet(s), validé(s) entier(s) ` +
             "contre le schéma qu'ils nomment."
+    );
+    console.log(
+        `   CDE-05 — ${modules.declared} bloc(s) déclaré(s) fichier de module, hors du ` +
+            "jugement par nom."
     );
     console.log(bar);
     process.exit(0);

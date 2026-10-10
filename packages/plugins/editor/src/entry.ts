@@ -5,6 +5,7 @@
  */
 import "./css/geoleaf-editor.css";
 import { buildPublicApi, toggleEditorMenu, setDestroyHook } from "./public-api.js";
+export type { EditorApi } from "./public-api.js";
 import { destroyEditor } from "./editor-api.js";
 import { wireOncePerMap } from "./map-wiring.js";
 import { getEditorConfig } from "./config.js";
@@ -103,7 +104,7 @@ const _VERSION = "__GEOLEAF_VERSION__";
 /**
  * Returns the capture form of a profile layer, projected from `attributes.fields[]`.
  *
- * ⚠️ Read `formSchema` until task 7.2. That key was a SECOND list of fields, parallel to
+ * ⚠️ It used to read `formSchema`. That key was a SECOND list of fields, parallel to
  * `attributes.fields[]` and reconciled with it by nothing — the projection lives in
  * {@link attributesToFormSchema}, this stays a lookup.
  */
@@ -419,7 +420,7 @@ function _initTerraDraw(): void {
     // 🛑 THE IMAGE RETRY MUST RUN BEFORE THE DRAIN — and it is now the CORE that holds
     // that order, for every caller and not just this plugin's own wrapper. Full motive on
     // `registerBeforeDrainStep`.
-    initImageUpload();
+    initImageUpload(() => _formModal?.isOpen() === true);
     initOptionLists();
     registerBeforeDrainStep(retryPendingImages);
     // 🛑 NO `initSyncReplay` ANY MORE — the core arms the drain. This plugin's `online`

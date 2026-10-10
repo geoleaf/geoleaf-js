@@ -40,6 +40,17 @@ getGeoLeaf()?.I18n?.registerDict?.("table", {
     de: langDe,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Table`. */
+export type TableApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Table` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Table: TableApi;
+    }
+}
+
 // 2 — Mount the GeoLeaf.Table namespace.
 const _host = getGeoLeaf();
 if (_host) {

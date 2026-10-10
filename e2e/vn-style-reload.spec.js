@@ -31,6 +31,7 @@
 
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
+import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 import { bootMap, waitMapLoaded, captureConsole } from "./helpers/boot.js";
 import { awaitSettledCamera } from "./helpers/camera.js";
 
@@ -88,6 +89,15 @@ async function waitBasemapsReady(page) {
 }
 
 test.describe("VN — rendu carte et cycle de style (A.1, A.2, A.3)", () => {
+    // The subject is the style CYCLE — a switch that holds, labels that come back — not how
+    // fast a third party answers. The profile's default basemap takes its tiles from one, and
+    // when it is slow the style never finishes loading within the 20 s the camera wait
+    // allows: this `beforeEach` failed that way once under the full suite, and tiles held
+    // 25 s reproduce the very message. Declared before the navigation, as the helper asks.
+    test.beforeEach(async ({ context }) => {
+        await serveBasemapTilesLocally(context);
+    });
+
     test.beforeEach(async ({ page }) => {
         await page.goto("/");
         await bootMap(page);

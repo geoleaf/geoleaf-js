@@ -114,9 +114,11 @@ export function buildGeoJSONLayer(
 
     const sourceId = toSourceId(id);
     const fc = data as { type: string; features?: { geometry?: { type: string } }[] };
-    // Prefer a config-declared geometry type (GeoJSON vocabulary) to skip the
-    // per-feature scan; falls back to scanning when undeclared (the common case).
-    const geomTypes = resolveGeometryTypes(fc, options?.geometryType);
+    // The declared kind is UNITED with what the data shows — the sub-layer set is frozen
+    // here, so a layer served empty must still get the sub-layers it says it will need.
+    // Both spellings are read: `geometry` is the one most profiles use, and it used to
+    // bring nothing to this union.
+    const geomTypes = resolveGeometryTypes(fc, [options?.geometryType, options?.geometry]);
 
     // Add GeoJSON source (with or without clustering)
     const shouldCluster = options?.cluster === true;

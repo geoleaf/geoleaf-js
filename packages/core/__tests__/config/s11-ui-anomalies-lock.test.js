@@ -11,9 +11,9 @@
  *                                  `scaleConfig` + `map/scale-control`)
  *
  * Orphans ANO-038/039 (pageSize / virtualScrolling) migrated to modules.table
- * (plugin-table, extraction roadmap table S4). Both are CLOSED since task 2.7 (sprint 6 of
- * lot 2) — and closed by SPEECH, not by wiring: neither key had a consumer and neither ever
- * will, virtualisation being decided by a row-count threshold and pagination not existing.
+ * (plugin-table). Both are CLOSED — and closed by SPEECH, not by wiring: neither key had
+ * a consumer and neither ever will, virtualisation being decided by a row-count threshold
+ * and pagination not existing.
  * They left `DEFAULTS` and the shipped profiles, stayed in the published type marked
  * `@deprecated` so an integrator's compilation does not break, and are exempted by name in
  * CC-10. Their lock lives in `plugins/table/src/__tests__/config-table.test.ts`.

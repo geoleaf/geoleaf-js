@@ -55,7 +55,7 @@ type BindingAbsence =
 /**
  * Reads a layer's legacy `capabilities.feature-info` binding.
  *
- * ⚠️ Kept only until the three profiles are migrated (task 2.10). It is the
+ * ⚠️ Kept only until the three profiles are migrated. It is the
  * `getConfig` façade member's return type, so it also outlives the migration as a
  * public API shape — that removal is a separate, breaking decision.
  *
@@ -83,7 +83,7 @@ function legacyFieldsForSurface(
     binding: FeatureInfoLayerBinding,
     surface: RenderSurface
 ): readonly FeatureInfoFieldConfig[] | null {
-    // ⚠️ ONE check rather than four. `"all"` is retired (decision U2) and `SurfaceConfig`
+    // ⚠️ ONE check rather than four. `"all"` is retired and `SurfaceConfig`
     // no longer admits it, so comparing against it would need a widening cast — an
     // assertion born to guard a value the type says cannot exist. Asking "is this a
     // list?" answers the same question and covers more: `false`, `null`, `undefined`,

@@ -1,0 +1,85 @@
+/* ==========================================================================
+   @geoleaf-plugins/offline-ui — the captures set aside (`cache/quarantine-block.ts`)
+   Their rows and the two exits, shown in the offline window under the sync status,
+   whose count they explain. A file of its own: `cache-control.css` sits at the
+   700-line cap (PC-08). Hidden while nothing is set aside — the `hidden` attribute,
+   set by the block itself.
+   ========================================================================== */
+
+.gl-cache-quarantine {
+    margin: -8px 0 16px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 18px;
+    color: var(--gl-color-text-main, #1f2937);
+    border: 1px solid var(--gl-color-danger, #dc2626);
+    border-radius: 6px;
+}
+
+.gl-cache-quarantine__title {
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--gl-color-danger, #dc2626);
+}
+
+.gl-cache-quarantine__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.gl-cache-quarantine__group {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.gl-cache-quarantine__label {
+    flex: 1 1 12em;
+}
+
+.gl-cache-quarantine__requeue,
+.gl-cache-quarantine__discard {
+    flex: 0 0 auto;
+    min-height: 28px;
+    padding: 4px 12px;
+    font: inherit;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.gl-cache-quarantine__requeue {
+    color: var(--gl-color-accent-contrast, #020617);
+    background: var(--gl-color-accent, #f97316);
+    border: 0;
+}
+
+.gl-cache-quarantine__discard {
+    color: var(--gl-color-danger, #dc2626);
+    background: none;
+    border: 1px solid currentColor;
+}
+
+.gl-cache-quarantine__requeue:disabled,
+.gl-cache-quarantine__discard:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.gl-cache-quarantine__requeue:focus-visible,
+.gl-cache-quarantine__discard:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, currentColor);
+    outline-offset: 2px;
+}
+
+/* A finger needs 44px — same rule as the dialogs these buttons open. */
+@media (pointer: coarse) {
+    .gl-cache-quarantine__requeue,
+    .gl-cache-quarantine__discard {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

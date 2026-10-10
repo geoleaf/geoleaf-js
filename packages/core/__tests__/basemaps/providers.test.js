@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.27 — src/kernel/basemaps/providers.ts */
+/* src/kernel/basemaps/providers.ts */
 
 import {
     DEFAULT_BASELAYERS,
@@ -8,7 +8,7 @@ import {
     applyLibertyFilters,
 } from "../../src/kernel/basemaps/providers.ts";
 
-describe("basemaps/providers (Phase 5.27)", () => {
+describe("basemaps/providers", () => {
     it("DEFAULT_BASELAYERS has street, topo, satellite", () => {
         expect(DEFAULT_BASELAYERS.street).toBeDefined();
         expect(DEFAULT_BASELAYERS.street.label).toBe("Street");

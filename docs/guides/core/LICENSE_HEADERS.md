@@ -92,7 +92,7 @@ const myVar = 1;
 > ⚠️ **Réécrit le 27/07/2026.** Cette section classait les fichiers en 4 catégories de
 > priorité, sur une liste de **~28 chemins `src/modules/*`** (`src/modules/poi/`,
 > `src/modules/filters/`, `src/modules/table/`, `src/modules/helpers/`…). **La racine
-> `src/modules/` n'existe plus** : elle a été éclatée en quatre au R.9, et plusieurs des
+> `src/modules/` n'existe plus** : elle a été éclatée en quatre, et plusieurs des
 > sous-systèmes cités ont été dissous (`poi`) ou sont devenus des capacités ou des plugins.
 > La priorisation reposait donc entièrement sur une arborescence disparue — et elle n'a plus
 > d'objet de toute façon : la couverture des en-têtes est **gatée**, pas priorisée à la main.

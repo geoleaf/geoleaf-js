@@ -106,10 +106,18 @@ describe("captureExtent — happy path", () => {
         expect(r.scaleDenominator).toBe(locked);
     });
 
-    it("passes bearing:0, pitch:0 and preserveDrawingBuffer:true to the Map constructor", async () => {
+    // 🛑 THE OPTION IS NESTED, AND THE FLAT FORM IS REFUSED: MapLibre reads the context
+    // attributes from `canvasContextAttributes` and ignores a top-level key without a word.
+    // This test used to pin the flat form, so it agreed with an option nothing read.
+    it("passes bearing:0, pitch:0 and a preserved drawing buffer to the Map constructor", async () => {
         await captureExtent(BBOX_PARIS, { format: "A4" });
         const opts = _mockMapCtor.mock.calls[0][0];
-        expect(opts).toMatchObject({ bearing: 0, pitch: 0, preserveDrawingBuffer: true });
+        expect(opts).toMatchObject({
+            bearing: 0,
+            pitch: 0,
+            canvasContextAttributes: { preserveDrawingBuffer: true },
+        });
+        expect(opts).not.toHaveProperty("preserveDrawingBuffer");
     });
 
     // 🛑 THE SHAPE IS MAPLIBRE'S OWN: `_requestManager` holds a `RequestManager`, whose public

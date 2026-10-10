@@ -8,7 +8,7 @@
 /**
  * @description Public barrel for the kernel UI primitives consumed by capabilities.
  *
- * Mediated entry point for the `capabilities/ → kernel/` boundary (backlog R.8).
+ * Mediated entry point for the `capabilities/ → kernel/` boundary (rule R.8).
  *
  * ⚠️ **Deliberately narrow.** `kernel/ui/` is the largest kernel sub-tree, and most of
  * it is internal (desktop panel, mobile toolbar, layer manager rendering). This barrel

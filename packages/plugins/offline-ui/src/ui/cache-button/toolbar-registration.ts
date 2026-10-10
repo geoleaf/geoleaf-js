@@ -20,13 +20,32 @@
 // re-declaration: the 7 plugins carried 4 diverging shapes of it. This one's
 // (`{ action?: string }`) was the laxest — the emitter always sets `action`.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
+import { registerPluginModule } from "@geoleaf/host-runtime";
+import { removeSwUpdateBanner } from "../../core/sw-update-banner.js";
+import { ModalManager } from "./modal-manager.js";
 
 /** Minimal shape of the global GeoLeaf surface used here. */
 interface GeoLeafToolbarHost {
     GeoLeaf?: {
-        registry?: { register?: (mod: { id: string; ui?: Record<string, unknown> }) => void };
         UI?: { CacheButton?: { openModal?: () => void } };
     };
+}
+
+/**
+ * Takes the offline window down with the application it belonged to.
+ *
+ * 🛑 THE WINDOW OUTLIVED AN UNMOUNT. Measured in a browser: opened, then `unmount()` — it
+ * stayed open over the page, with the thirty-odd listeners its blocks had put on `document`,
+ * and covered the next application. Closing first releases the focus trap; destroying
+ * releases the control in its body, then removes the node. The next opening builds it again.
+ */
+function destroyCacheWindow(): void {
+    ModalManager.closeModal();
+    ModalManager.destroy();
+    // The « new version » banner is on `document.body`, outside everything the core removes:
+    // it would stay over the page of a host that unmounted the application. The next boot
+    // shows it again if the update still waits.
+    removeSwUpdateBanner();
 }
 
 // Offline-cache icon (refresh, 22px, stroke currentColor) — sanitised by core
@@ -51,11 +70,16 @@ const CACHE_ICON =
 const CACHE_TOOLBAR_ACTION = "offline-ui";
 
 /**
- * Registers the cache toolbar slot and wires the open-modal listener.
+ * Registers the plugin's lifecycle module — its teardown, and its toolbar slot when it loads
+ * before the boot — and wires the open-modal listener.
  * Visibility is gated by the `ui.showCacheButton` profile key (handled by the
  * core) and `requiresPlugin: "offline-ui"`.
  *
- * @param host - the global object exposing `GeoLeaf` (defaults to globalThis).
+ * ⚠️ The module goes to the registry of the PAGE's `GeoLeaf` (`registerPluginModule`), not to
+ * `host`: the registry that unmounts an application is the one the core mounted.
+ *
+ * @param host - the global object exposing `GeoLeaf` (defaults to globalThis); read for the
+ *   modal's opening.
  */
 export function registerCacheToolbar(
     host: GeoLeafToolbarHost = globalThis as unknown as GeoLeafToolbarHost
@@ -78,8 +102,9 @@ export function registerCacheToolbar(
         action: CACHE_TOOLBAR_ACTION,
     };
 
-    host.GeoLeaf?.registry?.register?.({
+    registerPluginModule({
         id: "offline-ui",
+        destroy: destroyCacheWindow,
         ui: { mobileIcon: { ...slot }, desktopTabButton: { ...slot } },
     });
 

@@ -13,24 +13,18 @@
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 
-/** Subset of `GeoLeaf.Storage.DB` consumed by the theme cache (plugin-storage). */
-interface StorageDBLike {
-    getLayer(layerId: string): Promise<CachedLayerEntry | null | undefined>;
-    cacheLayer(
-        layerId: string,
-        data: unknown,
-        profileId: string | null,
-        metadata: Record<string, unknown>
-    ): Promise<unknown>;
-    removeLayer(layerId: string): Promise<unknown>;
-}
+/**
+ * The three relays of `GeoLeaf.Storage.DB` the theme cache reads — a `Pick` of the
+ * namespace's own declaration, itself typed from the engine. Not a view written here: one
+ * was, and it declared a `profileId` the engine did not.
+ */
+type StorageDBLike = Required<Pick<GeoLeafStorageDB, "getLayer" | "cacheLayer" | "removeLayer">>;
 
-/** Cached layer record as returned by `StorageDB.getLayer`. */
-interface CachedLayerEntry {
-    data: unknown;
-    timestamp: number;
-    profileId?: string | null;
-}
+/** A cached layer record, as `Storage.DB.getLayer` returns it. */
+type CachedLayerEntry = NonNullable<Awaited<ReturnType<StorageDBLike["getLayer"]>>>;
+
+/** What `Storage.DB.cacheLayer` stores: a string, a buffer or an object. */
+type LayerPayload = Parameters<StorageDBLike["cacheLayer"]>[1];
 
 /**
  * Phase 7 — Package Separation: IndexedDB lives in the Storage plugin.
@@ -106,7 +100,7 @@ const ThemeCache = {
     async store(
         layerId: string,
         profileId: string | null | undefined,
-        data: unknown,
+        data: LayerPayload,
         metadata: Record<string, unknown> = {}
     ): Promise<void> {
         if (!this._config.enabled) {

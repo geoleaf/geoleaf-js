@@ -192,6 +192,19 @@ describe("OfflineLifecycle.init — mode badge seul", () => {
         );
     });
 
+    test("🛑 `badgePosition` du profil arrive au détecteur dans CE mode aussi", () => {
+        // The position was honoured with the offline engine on, and written `"topleft"` here:
+        // an application showing the badge alone could not place it.
+        const detector = { init: vi.fn(), destroy: vi.fn() };
+        OfflineLifecycle.init(
+            { offlineDetector: detector },
+            { offlineDetectorEnabled: true, badgePosition: "bottomright" }
+        );
+        expect(detector.init).toHaveBeenCalledWith(
+            expect.objectContaining({ showBadge: true, badgePosition: "bottomright" })
+        );
+    });
+
     test("tout désactivé → aucun effet", () => {
         const detector = { init: vi.fn() };
         OfflineLifecycle.init({ offlineDetector: detector }, {});

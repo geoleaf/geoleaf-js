@@ -40,9 +40,10 @@
                 "multipolygon",
                 "multiline",
                 "multipoint",
-                "fill-extrusion"
+                "fill-extrusion",
+                "mixed"
             ],
-            "description": "Geometry type of this layer's features."
+            "description": "Geometry type of this layer's features. `mixed` is for a vector-tile layer whose source-layer holds points, lines and polygons at once — it is refused on any other layer, where it names no geometry."
         },
         "geometryType": {
             "type": "string",
@@ -54,7 +55,8 @@
                 "multipolygon",
                 "multiline",
                 "multipoint",
-                "fill-extrusion"
+                "fill-extrusion",
+                "mixed"
             ],
             "description": "Root-level alias of `geometry`. Canonical form READ BY THE CODE (editor layer-dropdown.ts, storage data-fetching.ts) — do NOT migrate. Enum mirrors `geometry` (gate-safe: profile values ⊆ enum)."
         },
@@ -457,7 +459,7 @@
                 "auth": {
                     "type": "string",
                     "enum": ["bearer", "none"],
-                    "description": "How the endpoint is authenticated — declarative only: no code reads it. Writes are authenticated by the connector plugin, which adds its bearer token to the requests it intercepts. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify."
+                    "description": "How the endpoint is authenticated. `none`: it takes no credential — the connector plugin attaches no token to the layer's writes, even under its base URL. `bearer`: it requires a session — while no session is open the capture stays queued instead of being sent without one. Absent: the request goes out, with the connector's token when it falls under its base URL. The core sends no authentication header of its own. `csrf` was removed in core 3.4.0 with the CSRF module, which no server could verify."
                 },
                 "geometryProperty": {
                     "type": "string",
@@ -508,7 +510,7 @@
             "properties": {
                 "titleField": {
                     "type": "string",
-                    "description": "Dotted path of the field whose value titles the popup and the side panel."
+                    "description": "Names one entry of `fields`, by its `field` path. That field becomes the title of each surface it is displayed on: a popup or a side panel whose `display.surfaces` does not list it opens without a title."
                 },
                 "fields": {
                     "type": "array",
@@ -606,6 +608,32 @@
             }
         },
         {
+            "$comment": "`mixed` is a geometry only a VECTOR-TILE layer can mean: the adapter builds a fill, a line and a circle sub-layer over one source-layer. Anywhere else it names no geometry family, so the legend, the editor and the offline selector would have nothing to read. The `if` asks for a tile block that names its URL — without `tilesUrl` the layer falls back to GeoJSON — and `required` at each level is what keeps a layer WITHOUT a tile block from matching vacuously. The cases live in `packages/core/__tests__/config/layer-geometry-mixed-schema.test.ts`.",
+            "if": {
+                "type": "object",
+                "required": ["data"],
+                "properties": {
+                    "data": {
+                        "type": "object",
+                        "required": ["vectorTiles"],
+                        "properties": {
+                            "vectorTiles": {
+                                "type": "object",
+                                "required": ["tilesUrl"],
+                                "properties": { "tilesUrl": true }
+                            }
+                        }
+                    }
+                }
+            },
+            "else": {
+                "properties": {
+                    "geometry": { "not": { "const": "mixed" } },
+                    "geometryType": { "not": { "const": "mixed" } }
+                }
+            }
+        },
+        {
             "$comment": "A field in edition obliges its layer to declare BOTH its editability (`edition.update: true`) and its write target (`write`). Pure schema, no script: `required` in the `if` is what stops a layer WITHOUT attributes from matching vacuously. Anchored on `update` and NOT on `create`, deliberately: `edit` on an attribute describes modifying an EXISTING value, so anchoring on `create` would let a layer that can only create declare fields it will never be able to edit. The repository's profiles only exercise the positive case; the negative ones live in `packages/core/__tests__/config/attributes-opposability.test.js`.",
             "if": {
                 "type": "object",
@@ -674,30 +702,12 @@
                         "^_comment": {}
                     },
                     "properties": {
-                        "family": {
-                            "type": "string",
-                            "default": "Arial"
-                        },
                         "sizePt": {
                             "type": "number",
                             "minimum": 1,
                             "maximum": 72,
                             "default": 12,
-                            "description": "Label text size in points — LIVE (mapped to MapLibre text-size via _buildLabelSymbolLayout). The other font.* keys are not consumed by the MapLibre renderer."
-                        },
-                        "weight": {
-                            "type": "number",
-                            "minimum": 1,
-                            "maximum": 100,
-                            "default": 50
-                        },
-                        "bold": {
-                            "type": "boolean",
-                            "default": false
-                        },
-                        "italic": {
-                            "type": "boolean",
-                            "default": false
+                            "description": "Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style."
                         }
                     }
                 },
@@ -723,19 +733,10 @@
                             "type": "boolean",
                             "default": false
                         },
-                        "noFill": {
-                            "type": "boolean"
-                        },
                         "color": {
                             "type": "string",
                             "pattern": "^#[0-9a-fA-F]{6}$",
                             "default": "#ffffff"
-                        },
-                        "opacity": {
-                            "type": "number",
-                            "minimum": 0,
-                            "maximum": 1,
-                            "default": 1
                         },
                         "sizePx": {
                             "type": "number",
@@ -895,7 +896,7 @@
                 },
                 "maxSizeMb": {
                     "type": "number",
-                    "description": "Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ Ce n'était un plafond de refus sec que jusqu'à la tâche 5.1-d — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours."
+                    "description": "Taille VISÉE après compression, en Mo (défaut 5). Une image plus lourde est redimensionnée et recompressée pour tenir sous cette borne ; elle n'est refusée que si elle dépasse 5 fois cette valeur AVANT compression, ou si elle dépasse encore après. ⚠️ C'était d'abord un plafond de refus sec — une photo de téléphone (4 à 12 Mo) était alors refusée sans recours."
                 },
                 "maxStars": {
                     "type": "number"

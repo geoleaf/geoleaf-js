@@ -77,7 +77,7 @@ export const Permalink = {
      */
     applyStoredState(map: IMapAdapter): void {
         if (_storedState) {
-            applyState(_storedState, map);
+            applyState(_storedState, map, _config);
         }
     },
 

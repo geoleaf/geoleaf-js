@@ -46,7 +46,10 @@ const _applyEdit = vi.fn(
     })
 );
 /** The entities the device holds, by `<layerId>|<localId>` — what the reconciliation reads. */
-let _entities: Record<string, { feature: { properties: Record<string, unknown> } } | null> = {};
+let _entities: Record<
+    string,
+    { serverId?: string | number | null; feature: { properties: Record<string, unknown> } } | null
+> = {};
 vi.mock("../persistence/storage-seam.js", () => ({
     storageFacade: () => ({ applyEdit: _applyEdit }),
     readStoredEntity: (layerId: string, localId: string) =>
@@ -95,7 +98,10 @@ const _stored: unknown[] = [];
 let _pending: unknown[] = [];
 const _statusCalls: Array<[string, { uploaded: boolean; url?: string }]> = [];
 const _bindCalls: Array<[string, { layerId: string; localId: string }]> = [];
-let _localImages: Record<string, { blob?: Blob; uploaded?: number }> = {};
+let _localImages: Record<
+    string,
+    { blob?: Blob; bytes?: ArrayBuffer; type?: string; uploaded?: number }
+> = {};
 
 function mountCore(opts: { db?: boolean; csrf?: string | null } = {}) {
     const db = {
@@ -183,18 +189,33 @@ describe("storeImageLocally — la mise de côté", () => {
         expect((_stored[0] as { endpoint: unknown }).endpoint).toBeNull();
     });
 
-    it("🛑 écrit `uploaded: 0` — un booléen sortirait l'entrée de l'index", async () => {
+    // 🛑 THIS CASE ASSERTED A FIELD NOBODY READ. It read "écrit `uploaded: 0`", against a
+    // stub that stored whatever it was handed. The engine builds the record field by field
+    // and writes the pending flag and the timestamp itself: the plugin's were never read, and
+    // its view of the store, declared locally, let them through. The flag being a NUMBER is
+    // the engine's contract, locked on its side (`images-idb-keys.test.js`).
+    it("ne passe que ce que le magasin lit — ni drapeau d'envoi, ni horodatage", async () => {
         mountCore();
         await storeImageLocally(imageFile(), "/api/up");
-        const rec = _stored[0] as { uploaded: unknown; blob: unknown; endpoint: string };
-        expect(rec.uploaded).toBe(0);
-        expect(typeof rec.uploaded).toBe("number");
+        const rec = _stored[0] as Record<string, unknown>;
+        expect(Object.keys(rec).sort()).toEqual([
+            "acceptBytes",
+            "blob",
+            "endpoint",
+            "filename",
+            "id",
+            "size",
+            "type",
+        ]);
         // The blob MUST be there: what was missing in the original defect
         // (a `base64` key written where the store declares `blob`), and the
         // record was unusable.
         expect(rec.blob).toBeInstanceOf(File);
         // The endpoint is kept, otherwise the retry would not know where to resend.
         expect(rec.endpoint).toBe("/api/up");
+        // The bytes are ASKED for: without it the core rejects where the engine refuses a
+        // Blob, and a private tab falls back on the data-URL.
+        expect(rec.acceptBytes).toBe(true);
     });
 
     // The data-URL survives as a LAST RESORT only: losing a capture to protect a queue is
@@ -565,6 +586,125 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
         expect(_applyEdit).not.toHaveBeenCalled();
     });
 
+    // --- the copy the LAYER holds ----------------------------------------------
+    //
+    // 🛑 THE STORED ENTITY IS NOT THE ONLY HOLDER OF A TOKEN. The layer keeps its own copy of
+    // the feature, and a geometry commit sends that copy's attributes back. Left as it was, a
+    // list holding a delivered token AND a waiting one went back whole — an edit only leaves
+    // out a list with nothing waiting — and replaced, on the device and on the server, the
+    // URL by a token whose file had been purged. Measured in a browser before these cases.
+
+    /** Mounts `GeoLeaf.Layers` holding ONE copy of the gallery's entity, under `id`. */
+    function layerHolding(id: string | number, galerie: unknown) {
+        const copy = { id, properties: { id, galerie, nom: "S-1" } as Record<string, unknown> };
+        const layers = {
+            getFeatureById: vi.fn((layerId: string, wanted: string | number) =>
+                layerId === "sites" && wanted === id ? copy : null
+            ),
+            // As the core does: the patch is merged into the copy's properties.
+            patchFeature: vi.fn(
+                (_layerId: string, _id: string | number, patch: Record<string, unknown>) => {
+                    Object.assign(copy.properties, patch);
+                }
+            ),
+        };
+        Object.assign((globalThis as Record<string, unknown>).GeoLeaf as object, {
+            Layers: layers,
+        });
+        return { copy, layers };
+    }
+
+    /** The upload endpoint accepts the first photo and refuses every later one. */
+    function onlyTheFirstUploadLands() {
+        vi.mocked(fetch).mockImplementation(() =>
+            vi.mocked(fetch).mock.calls.length === 1
+                ? (Promise.resolve({
+                      ok: true,
+                      json: () => Promise.resolve({ url: "https://srv/1" }),
+                  }) as unknown as Promise<Response>)
+                : (Promise.resolve({ ok: false, status: 500 }) as unknown as Promise<Response>)
+        );
+    }
+
+    it("🛑 ACCORDE LA COPIE DE LA COUCHE : une photo livrée, l'autre en attente", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        const { copy, layers } = layerHolding("loc:g1", ["gl-img:a", "gl-img:b"]);
+        onlyTheFirstUploadLands();
+
+        await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 1, failed: 1 });
+
+        // What a move of the point would now send back: the URL, and the token still waiting.
+        expect(copy.properties.galerie).toEqual(["https://srv/1", "gl-img:b"]);
+        expect(layers.patchFeature).toHaveBeenCalledTimes(1);
+        expect(layers.patchFeature).toHaveBeenCalledWith(
+            "sites",
+            "loc:g1",
+            { galerie: ["https://srv/1", "gl-img:b"] },
+            { rerender: true }
+        );
+    });
+
+    it("🛑 la copie est trouvée sous l'identité du SERVEUR, une fois l'entité poussée", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        _entities["sites|loc:g1"]!.serverId = 7401;
+        const { copy } = layerHolding(7401, ["gl-img:a", "gl-img:b"]);
+        onlyTheFirstUploadLands();
+
+        await retryPendingImages();
+
+        expect(copy.properties.galerie).toEqual(["https://srv/1", "gl-img:b"]);
+    });
+
+    it("le jeton est remplacé dans la valeur que la COUCHE tient, pas dans celle du magasin", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        // The layer's list is not assumed equal to the stored one.
+        const { copy } = layerHolding("loc:g1", ["gl-img:b", "https://srv/old.jpg", "gl-img:a"]);
+        onlyTheFirstUploadLands();
+
+        await retryPendingImages();
+
+        expect(copy.properties.galerie).toEqual([
+            "gl-img:b",
+            "https://srv/old.jpg",
+            "https://srv/1",
+        ]);
+    });
+
+    it("n'écrit pas une copie qui ne porte plus le jeton", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        const { layers } = layerHolding("loc:g1", ["https://srv/kept.jpg"]);
+
+        await retryPendingImages();
+
+        expect(_applyEdit).toHaveBeenCalledTimes(2);
+        expect(layers.patchFeature).not.toHaveBeenCalled();
+    });
+
+    it("une couche qui ne tient pas l'entité n'empêche pas la réconciliation", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        const { layers } = layerHolding("loc:another", ["gl-img:a"]);
+
+        await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 2 });
+        expect(_applyEdit).toHaveBeenCalledTimes(2);
+        expect(layers.patchFeature).not.toHaveBeenCalled();
+    });
+
+    it("🛑 une réconciliation REFUSÉE n'écrit pas la copie — elle resterait seule à porter l'URL", async () => {
+        mountCore();
+        galleryWaiting(["gl-img:a", "gl-img:b"]);
+        const { layers } = layerHolding("loc:g1", ["gl-img:a", "gl-img:b"]);
+        _applyEdit.mockResolvedValue({ entryId: "", refused: "layerNotEditable" });
+
+        await retryPendingImages();
+
+        expect(layers.patchFeature).not.toHaveBeenCalled();
+    });
+
     // A photo whose feature was never bound is uploaded and kept — patching a record we
     // cannot name would be worse than leaving it unreconciled.
     it("n'écrit RIEN quand l'image ne connaît pas son entité", async () => {
@@ -577,6 +717,63 @@ describe("retryPendingImages — l'orphelin qui reçoit son appelant", () => {
 
         await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 1 });
         expect(_applyEdit).not.toHaveBeenCalled();
+    });
+
+    // 🛑 A PHOTO NO ENTITY OWNS YET BELONGS TO THE FORM STILL OPEN. Uploaded then, it had
+    // nothing to reconcile, was marked delivered and purged — and the save that followed
+    // wrote the entity with a token designating nothing. It waits for its form: the save
+    // binds it, and the drain the save asks for sends it.
+    describe("un formulaire de saisie est ouvert", () => {
+        const answerUpload = (): void => {
+            vi.mocked(fetch).mockResolvedValue({
+                ok: true,
+                json: () => Promise.resolve({ url: "u" }),
+            } as Response);
+        };
+
+        it("🛑 une photo non liée n'est PAS téléversée : elle attend l'enregistrement", async () => {
+            mountCore();
+            initImageUpload(() => true);
+            _pending = [
+                { id: "i1", blob: new Blob([new Uint8Array(2)]), endpoint: "/u", fieldPath: "p" },
+            ];
+            answerUpload();
+
+            await expect(retryPendingImages()).resolves.toMatchObject({
+                attempted: 0,
+                uploaded: 0,
+            });
+            expect(fetch).not.toHaveBeenCalled();
+        });
+
+        it("une photo DÉJÀ liée part quand même — elle n'est pas celle du formulaire", async () => {
+            mountCore();
+            initImageUpload(() => true);
+            _pending = [
+                {
+                    id: "i1",
+                    blob: new Blob([new Uint8Array(2)]),
+                    endpoint: "/u",
+                    fieldPath: "p",
+                    layerId: "sites",
+                    localId: "loc:1",
+                },
+            ];
+            answerUpload();
+
+            await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 1 });
+        });
+
+        it("formulaire fermé : la photo non liée part, comme celle d'un formulaire annulé", async () => {
+            mountCore();
+            initImageUpload(() => false);
+            _pending = [
+                { id: "i1", blob: new Blob([new Uint8Array(2)]), endpoint: "/u", fieldPath: "p" },
+            ];
+            answerUpload();
+
+            await expect(retryPendingImages()).resolves.toMatchObject({ uploaded: 1 });
+        });
     });
 
     it("ne reprend pas hors réseau", async () => {
@@ -800,5 +997,64 @@ describe("resolveImagePreview — afficher ce qui n'est que local", () => {
     it("rend `null` quand l'image n'est plus là", async () => {
         mountCore();
         await expect(wiredResolver()("gl-img:absent")).resolves.toBeNull();
+    });
+
+    // A photo the store refused as a `Blob` is kept as its bytes (core ≥ 3.15.0): the preview
+    // must paint it all the same, or a private tab shows a broken image for a photo it holds.
+    it("🛑 rend une URL d'objet pour une photo gardée en OCTETS", async () => {
+        mountCore();
+        _localImages["i1"] = { bytes: new Uint8Array([1, 2, 3]).buffer, type: "image/png" };
+        const made = vi.spyOn(URL, "createObjectURL");
+        const url = await wiredResolver()("gl-img:i1");
+        expect(url).toMatch(/^blob:/);
+        const blob = made.mock.calls[0]![0] as Blob;
+        expect(blob.type).toBe("image/png");
+        expect(blob.size).toBe(3);
+        made.mockRestore();
+    });
+});
+
+describe("retryPendingImages — une photo gardée en octets", () => {
+    // The core keeps the bytes and their type when the engine refuses the `Blob` — WebKit in
+    // an ephemeral session. The retry must send them as it sends a `Blob`.
+    it("🛑 la téléverse, avec son type et son nom", async () => {
+        mountCore();
+        _pending = [
+            {
+                id: "i1",
+                bytes: new Uint8Array([1, 2, 3, 4]).buffer,
+                type: "image/png",
+                filename: "a.png",
+                endpoint: "/u",
+            },
+        ];
+        vi.mocked(fetch).mockResolvedValue({
+            ok: true,
+            json: () => Promise.resolve({ url: "ok" }),
+        } as Response);
+
+        await expect(retryPendingImages()).resolves.toEqual({
+            attempted: 1,
+            uploaded: 1,
+            failed: 0,
+            skipped: 0,
+        });
+        const body = vi.mocked(fetch).mock.calls[0]![1]!.body as FormData;
+        const sent = [...body.values()].find((v) => v instanceof File) as File;
+        expect(sent.name).toBe("a.png");
+        expect(sent.type).toBe("image/png");
+        expect(sent.size).toBe(4);
+    });
+
+    it("une entrée qui ne porte NI blob NI octets n'est pas tentée", async () => {
+        mountCore();
+        _pending = [{ id: "i1", filename: "a.png", endpoint: "/u" }];
+        await expect(retryPendingImages()).resolves.toEqual({
+            attempted: 0,
+            uploaded: 0,
+            failed: 0,
+            skipped: 0,
+        });
+        expect(fetch).not.toHaveBeenCalled();
     });
 });

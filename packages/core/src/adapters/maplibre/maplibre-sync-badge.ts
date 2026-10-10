@@ -8,10 +8,10 @@
 /**
  * MapLibre pending-sync badge paint (addpoi D4).
  *
- * The badge marks POIs queued for offline sync with an orange stroke. It is
- * shared by the generic point sub-layer builder (`maplibre-primitives`) and the POI
- * cluster renderer (`maplibre-poi-builders`) so the paint stays byte-identical
- * across both render pipelines.
+ * The badge marks an entity queued for offline sync with an orange stroke: a point's circle
+ * stroke, a line's own stroke, a polygon's outline. It is shared by the generic sub-layer
+ * builders (`maplibre-primitives`), the re-style path (`maplibre-style-applier`) and the POI
+ * cluster renderer (`maplibre-poi-builders`) so the paint stays byte-identical across them.
  */
 
 import { DEFAULT_FEATURE_COLOR } from "../../utils/constants/constants.js";
@@ -51,4 +51,29 @@ export function applyPendingBadgePaint(paint: Record<string, unknown>): void {
     const existingWidth = paint["circle-stroke-width"] ?? 0;
     paint["circle-stroke-color"] = ["case", SYNC_PENDING, SYNC_PENDING_STROKE_COLOR, existingColor];
     paint["circle-stroke-width"] = ["case", SYNC_PENDING, SYNC_PENDING_STROKE_WIDTH, existingWidth];
+}
+
+/**
+ * Wraps a line paint's colour and width so a line — or a polygon outline — flagged `pending`
+ * shows the orange sync badge. Mutates `paint` in place.
+ *
+ * 🛑 THE BADGE WAS A CIRCLE STROKE AND NOTHING ELSE. A line or a polygon owed to the server was
+ * drawn like any other: the flag was on the feature, and no paint read it.
+ *
+ * The width is the stroke's own, raised to the badge's when it is thinner — a hairline outline
+ * turned orange would not be seen. Visually neutral for a feature with neither flag. To apply
+ * BEFORE the selection paint, as on a circle: the selection outranks the badge while it lasts.
+ *
+ * @param paint - The line paint of a `line` sub-layer.
+ */
+export function applyPendingLineBadgePaint(paint: Record<string, unknown>): void {
+    const existingColor = paint["line-color"] ?? DEFAULT_FEATURE_COLOR;
+    const existingWidth = paint["line-width"] ?? 1;
+    paint["line-color"] = ["case", SYNC_PENDING, SYNC_PENDING_STROKE_COLOR, existingColor];
+    paint["line-width"] = [
+        "case",
+        SYNC_PENDING,
+        ["max", existingWidth, SYNC_PENDING_STROKE_WIDTH],
+        existingWidth,
+    ];
 }

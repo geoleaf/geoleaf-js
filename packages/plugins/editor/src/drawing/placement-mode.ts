@@ -6,7 +6,7 @@
 
 /**
  * One-shot point placement driven by a caller: arm, let the user tap once, hand back the
- * chosen position, disarm. Absorbed from `addpoi/src/poi-placement.ts` at task 5.1-a.
+ * chosen position, disarm. Absorbed from `addpoi/src/poi-placement.ts`.
  *
  * ⚠️ THIS IS NOT A DUPLICATE OF THE TERRA DRAW POINT MODE, and the roadmap's R6 rests on the
  * difference. Terra Draw's point mode is a DRAWING TOOL: the user arms it from the editor
@@ -21,11 +21,11 @@
  * 5.1-f landed. Worse, this file's declarations ship in `dist/types/`, so the false clause
  * was on its way to npm.
  *
- * What is true now: task 5.1-f did **not** repoint the seam, it **deleted** it. `editor`
+ * What is true now: the seam was **not** repointed, it was **deleted**. `editor`
  * being lazy where `addpoi` was eager, the core's boot-time probe could not survive a
  * repoint (R20), so the mobile "add a POI" button became a LAZY SLOT declared in
  * `apps/geoleaf-app/init.js`, and the 180 LOC of the core's POI add-form seam were removed
- * outright (decision D9) — the file is gone, so it is deliberately not cited by path here:
+ * outright — the file is gone, so it is deliberately not cited by path here:
  * TSDOC-PATHS rejects a citation to a path that no longer resolves, even one made to say it
  * was deleted. This module is reached through `GeoLeaf.Editor.PlacementMode`
  * (`./placement-api.js`), which is now the only surface — there is no `GeoLeaf.AddPOI`.

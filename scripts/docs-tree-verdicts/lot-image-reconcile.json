@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "image-reconcile",
+    "scope": ["packages/plugins/editor/src/persistence/image-reconcile.ts"],
+    "verdicts": {
+        "packages/plugins/editor/src/persistence/image-reconcile.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Réconciliation d'une photo livrée : le jeton que l'entité portait devient l'URL du serveur, sur l'entité stockée et sur la copie que la couche dessine",
+            "confidence": "haute",
+            "rationale": "Un lecteur mesuré : `packages/plugins/editor/src/persistence/image-store.ts`, qui l'appelle après chaque téléversement réussi. Sortie de ce module quand l'accord de la copie de la couche l'a fait passer le plafond de taille du contrat de plugin (PC-08) : la réconciliation est la seconde moitié d'un envoi différé, et elle ne lit ni le magasin d'images ni le réseau — elle reçoit le jeton et l'URL. Coupe à comportement égal, la suite `image-store.test.ts` la traverse par `retryPendingImages` sans retouche. Place canonique : `persistence/`, à côté de `storage-seam.ts` qu'elle importe."
+        }
+    }
+}

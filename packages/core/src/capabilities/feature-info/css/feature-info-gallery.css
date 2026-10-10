@@ -49,14 +49,14 @@
     }
 
     .gl-accordion__header:hover {
-        background: var(--gl-color-bg-surface-elevated);
+        background: var(--gl-color-surface-elevated);
     }
 
     /* Custom arrow, provided in the HTML. */
     .gl-accordion__arrow {
         font-size: 0.8rem;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
         flex-shrink: 0;
         display: inline-block;
         margin-left: auto;
@@ -123,7 +123,7 @@
         display: inline-block;
         padding: 4px 10px;
         background: var(--gl-color-accent-soft);
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
         border-radius: 16px;
         font-size: 0.8rem;
         font-weight: 500;
@@ -228,7 +228,7 @@
     }
 
     .gl-poi-gallery__thumb.active {
-        border-color: var(--gl-color-accent);
+        border-color: var(--gl-color-accent-text, var(--gl-color-accent));
         box-shadow: var(--gl-shadow-medium);
     }
 

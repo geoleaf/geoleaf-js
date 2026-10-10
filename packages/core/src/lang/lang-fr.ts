@@ -217,6 +217,7 @@ const lang_fr: LangDict = {
     // ── Feature-info / side-panel ─────────────────────────
     "feature-info.sidepanel.landmark": "Panneau de d\u00e9tails",
     "feature-info.sidepanel.close": "Fermer",
+    "feature-info.popup.more": "Voir plus",
 
     // ── UI texts / Filter panel ──────────────────────────────────────────────
     "ui.filter_panel.title": "Filtres",
@@ -224,6 +225,8 @@ const lang_fr: LangDict = {
     "ui.filter_panel.close": "Fermer",
     "ui.filter_panel.apply": "Appliquer",
     "ui.filter_panel.reset": "R\u00e9initialiser",
+    "ui.filter_panel.range_min": "Minimum",
+    "ui.filter_panel.range_max": "Maximum",
     "ui.filter_panel.categories_title_fallback": "Afficher les cat\u00e9gories",
     "ui.filter_panel.tags_title_fallback": "Afficher les tags",
     "ui.filter_panel.no_categories": "Aucune cat\u00e9gorie disponible sur les layers visibles",
@@ -255,8 +258,10 @@ const lang_fr: LangDict = {
     "ui.sync.pending_many": "{0} en attente",
     "ui.sync.all_sent": "Tout est envoyé",
     "ui.sync.quarantined": "{0} bloquée(s)",
+    "ui.sync.session_required": "connexion requise",
     "ui.sync.last_never": "jamais synchronisé",
     "ui.sync.last_at": "synchro {0}",
+    "ui.sync.unit_day": "{0} j",
     "ui.sync.action": "Synchroniser",
     "ui.sync.dismiss": "Masquer ce bandeau",
     "aria.sync.banner": "État de la synchronisation",

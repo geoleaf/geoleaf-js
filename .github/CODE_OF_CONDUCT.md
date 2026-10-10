@@ -22,7 +22,7 @@ Tout comportement contraire à ce code peut être signalé à **contact@geoleaf.
 
 ---
 
-> Récupéré au T3.4 depuis `packages/core/CONTRIBUTING.md`, un guide hérité de l'époque
+> Récupéré depuis `packages/core/CONTRIBUTING.md`, un guide hérité de l'époque
 > où `packages/core` était un dépôt autonome. Le reste de ce guide était périmé (Node ≥ 18
 > alors que le projet exige ≥ 22, branche `develop` inexistante, workflow fork/upstream) et
 > a été supprimé au profit du [CONTRIBUTING.md](../CONTRIBUTING.md) racine, qui décrit le

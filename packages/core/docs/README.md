@@ -18,8 +18,8 @@ title: "Documentation — @geoleaf/core"
 
 - **[GETTING_STARTED.md](GETTING_STARTED.md)** — quick start (5 min)
 - **[USER_GUIDE.md](USER_GUIDE.md)** — complete user guide
-- **[CONFIGURATION_GUIDE.md](CONFIGURATION_GUIDE.md)** — reference for the JSON configuration files
-- **[PROFILES_GUIDE.md](PROFILES_GUIDE.md)** — creating and customizing business profiles
+- **[QUICKSTART_TUTORIAL.md](QUICKSTART_TUTORIAL.md)** — a profile built step by step
+- **[PROFILE_JSON_REFERENCE.md](PROFILE_JSON_REFERENCE.md)** — reading guide of a profile's JSON files
 - **[API_REFERENCE.md](API_REFERENCE.md)** — API reference (80+ methods)
 - **[ARCHITECTURE_GUIDE.md](ARCHITECTURE_GUIDE.md)** — architecture, boot sequence, modules
 

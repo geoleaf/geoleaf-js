@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "config-defaults-read",
+    "scope": ["scripts/lib/config-defaults-read.cjs"],
+    "verdicts": {
+        "scripts/lib/config-defaults-read.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Lecture d'un défaut de configuration dans une table Markdown — grammaire de cellule, tables, index de l'inventaire — partagée entre une gate et une garde",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs mesurés : `scripts/check-doc-config-defaults.cjs` (guide intégrateur ↔ inventaire) et `packages/core/__tests__/guards/doc-capability-config.guard.test.js` (inventaire ↔ `configSchema` des capacités). Extraite de la première quand la seconde a dû lire la même colonne « Défaut » : deux instruments sur une colonne ne doivent pas la lire avec deux grammaires, sinon une cellule que l'un tient pour un littéral est de la prose pour l'autre. Sortie de la gate comparée au `diff` avant et après l'extraction, identique. Place canonique : `scripts/lib/`, à côté de `md-fences.cjs` qu'elle requiert."
+        }
+    }
+}

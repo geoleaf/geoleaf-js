@@ -116,7 +116,7 @@ import {
     styleRulesToPaint,
     type CasingConfig,
 } from "./maplibre-style-converter.js";
-import { applyPendingBadgePaint } from "./maplibre-sync-badge.js";
+import { applyPendingBadgePaint, applyPendingLineBadgePaint } from "./maplibre-sync-badge.js";
 import { applyCircleSelectionPaint, applyLineSelectionPaint } from "./maplibre-selection-paint.js";
 import { applyTaxonomyMarkerPaint, resolveIconSize } from "./maplibre-taxonomy-paint.js";
 import { registerHatchPattern } from "./maplibre-hatch-patterns.js";
@@ -439,6 +439,8 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
             ? styleRulesToPaint(options.styleRules, flat, "line")
             : toLinePaint(flat)
     ) as Record<string, unknown>;
+    // The pending-sync badge first, then the selection around it — the order of the circle.
+    applyPendingLineBadgePaint(linePaint);
     // The `selected` feature-state, set by `GeoLeaf.Layers.focus` (maplibre-selection-paint.ts).
     applyLineSelectionPaint(linePaint);
     map.addLayer(

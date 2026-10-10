@@ -31,6 +31,17 @@ getGeoLeaf()?.I18n?.registerDict?.("measure", {
     de: langDe,
 });
 
+/** The API this plugin mounts as `GeoLeaf.Measure`. */
+export type MeasureApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.Measure` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        Measure: MeasureApi;
+    }
+}
+
 // 2 — Mount GeoLeaf.Measure namespace (only when the core is present).
 const _gl = getGeoLeaf();
 if (_gl) {

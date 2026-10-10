@@ -7,7 +7,7 @@
 
 /**
  * GeoLeaf App – Feature Module Initializers
- * Extracted from app/init.js (Phase 8.2.3)
+ * Extracted from app/init.js
  * Each function initializes one feature domain after secondary modules are loaded.
  */
 

@@ -249,7 +249,16 @@ function violationOf(stmt, ctx) {
     }
     if (ts.isClassDeclaration(stmt)) return "class declaration";
     if (ts.isEnumDeclaration(stmt)) return "enum declaration";
-    if (ts.isModuleDeclaration(stmt)) return "namespace with a runtime body";
+    if (ts.isModuleDeclaration(stmt)) {
+        // `declare global { … }` and `declare namespace X { … }` are AMBIENT: erased at emit
+        // like the interface and the type alias above, they hold declarations and no
+        // statement that runs. A plugin augments the core's registry of namespace types
+        // through one — a type, written next to the factory whose return it names.
+        const ambient = (ts.getModifiers(stmt) || []).some(
+            (m) => m.kind === ts.SyntaxKind.DeclareKeyword
+        );
+        return ambient ? null : "namespace with a runtime body";
+    }
 
     if (ts.isVariableStatement(stmt)) {
         const exported = (ts.getModifiers(stmt) || []).some(

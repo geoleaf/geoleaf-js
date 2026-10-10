@@ -4,8 +4,8 @@ title: cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte
 plugin_id: cog
 package: "@geoleaf-plugins/cog"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: d78caf730
-date: 27 septembre 2026
+verifie_contre: c702d0cb1
+date: 6 octobre 2026
 ---
 
 # cog — l'affichage direct de Cloud Optimized GeoTIFF sur la carte
@@ -289,13 +289,15 @@ il n'y a rien à déclarer en dépendance de pair.
   `GeoLeaf.COG` et s'enregistre ; ensuite il lit `GeoLeaf.Core` (`listMaps`, `getMap`), par le seam
   de `host-runtime`, pour trouver l'adaptateur qui pilote la carte reçue — rien d'autre : ni la
   configuration, ni l'état des couches. ⚠️ Ce montage
-  a une **contrepartie dans le core** que cette fiche ne nommait pas : `COG?: unknown` est déclaré
+  a une **contrepartie dans le core** que cette fiche ne nommait pas : `COG` est déclaré
   dans `packages/core/src/global.d.ts`, faute de quoi un intégrateur compilant contre les types
   publiés prend un `TS2339` sur une API que le plugin monte pourtant à l'exécution. La chaîne est
   gardée aux deux bouts — `plugin-namespace-declared.guard.test.js` refuse un namespace monté et
   non déclaré, `scripts/verify-host-contract-sync.cjs` (`npm run check:host-sync`) refuse un membre
-  déclaré et absent d'un boot core seul sans motif écrit. `unknown` y suffit délibérément : ce qui
-  est défendu est l'**existence** de la propriété, et il ne s'élargit jamais vers `any`.
+  déclaré et absent d'un boot core seul sans motif écrit. Le core ne peut pas typer ce membre —
+  il n'importe aucun greffon — : il lit le registre `GeoLeafPluginApis`, que `src/entry.ts` augmente
+  de `COG: CogApi`. Qui installe le paquet a `GeoLeaf.COG` typé ; sans lui le membre reste `unknown`,
+  jamais `any`.
 - **Aucune CSS**, aucune écriture de HTML : rien à assainir, rien à purger.
 - **Aucun couplage à un autre plugin** — `requires` et `optional` sont vides, et c'est vrai au sens
   fort : il n'y a aucune lecture d'un namespace de plugin.

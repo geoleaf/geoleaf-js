@@ -27,7 +27,7 @@ describe("app/boot (R5)", () => {
         // Reset double-boot guard so each test gets a fresh startApp
         _app._appStarted = false;
         // Reset ModuleRegistry state so startApp can re-register modules.
-        // S6 Lot 1: `destroy()` now re-arms the registry, so we use the public API instead of
+        // `destroy()` now re-arms the registry, so we use the public API instead of
         // forcing the private `_initialized = false`. That crutch was hiding the bug it could
         // have revealed — destroy() never reset the flag, so create → destroy → recreate was a
         // silent no-op in production.
@@ -225,7 +225,7 @@ describe("app/boot (R5)", () => {
             const cb = vi.fn();
             const origStartApp = _app.startApp;
             // `app-types.ts` declares startApp as `() => Promise<void>` — the double must
-            // honour it: GeoLeaf.boot() attaches .catch() to the returned promise (Q1.4).
+            // honour it: GeoLeaf.boot() attaches.catch() to the returned promise (Q1.4).
             _app.startApp = vi.fn(() => Promise.resolve());
             GeoLeaf.boot({ onPerformanceMetrics: cb });
             expect(GeoLeaf._perfCallback).toBe(cb);
@@ -239,7 +239,7 @@ describe("app/boot (R5)", () => {
             const hook = vi.fn();
             const origStartApp = _app.startApp;
             // `app-types.ts` declares startApp as `() => Promise<void>` — the double must
-            // honour it: GeoLeaf.boot() attaches .catch() to the returned promise (Q1.4).
+            // honour it: GeoLeaf.boot() attaches.catch() to the returned promise (Q1.4).
             _app.startApp = vi.fn(() => Promise.resolve());
             GeoLeaf.boot({ beforeBoot: hook });
             expect(GeoLeaf._beforeBootCallback).toBe(hook);

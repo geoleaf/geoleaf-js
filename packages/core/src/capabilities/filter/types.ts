@@ -64,6 +64,13 @@ export interface FilterFieldDescriptor {
     min?: number;
     max?: number;
     step?: number;
+    /**
+     * Which bounds the user sets (`range`). `"min"` — the default, and what any other value
+     * reads as — offers one slider, the lower bound. `"both"` adds the upper one: two
+     * sliders that cannot cross. `min` / `max` above are the DOMAIN the sliders move in,
+     * whatever this says.
+     */
+    bounds?: "min" | "both";
     /** Proximity radius bounds/step/default, in the profile's distance unit (`proximity`). */
     radiusMin?: number;
     radiusMax?: number;
@@ -144,8 +151,8 @@ export interface SerializedFilterField {
      *
      * On restore, a sub-category is checked only if its id is in `values` and its pair is
      * listed here. Malformed entries are ignored, and a state with no usable entry is
-     * restored from `values` alone, as before. The filter engine does not read this key,
-     * and the permalink does not carry it.
+     * restored from `values` alone, as before. The filter engine does not read this key.
+     * The permalink carries it since 3.15.0, under the field's own parameter.
      */
     subValues?: TaxonomySubValue[];
     /** Search query — `text`. */

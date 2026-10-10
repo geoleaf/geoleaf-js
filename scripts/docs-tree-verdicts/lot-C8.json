@@ -76,7 +76,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` de la capacité route, dépendante du seul module `geojson`",
             "confidence": "haute",
-            "rationale": "42 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2) : depuis R.10 le wrapper de boot vit dans `capabilities/<id>/module.ts` sans exception — le remonter dans `app/boot-modules/` contredirait la gate eslint `capabilities/ ⊄ app/`."
+            "rationale": "42 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2) : le wrapper de boot vit dans `capabilities/<id>/module.ts` sans exception — le remonter dans `app/boot-modules/` contredirait la gate eslint `capabilities/ ⊄ app/`."
         },
         "packages/core/src/capabilities/route/config.ts": {
             "kind": "file",
@@ -398,7 +398,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` du bandeau, dépendante du seul module `geojson` et enregistrée quand la porte est ouverte",
             "confidence": "haute",
-            "rationale": "46 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2) : depuis R.10 le wrapper vit dans la capacité, sans exception — le déplacer vers `app/boot-modules/` ferait rougir eslint."
+            "rationale": "46 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2) : le wrapper vit dans la capacité, sans exception — le déplacer vers `app/boot-modules/` ferait rougir eslint."
         },
         "packages/core/src/capabilities/branding/public-api.ts": {
             "kind": "file",
@@ -538,7 +538,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` du bouton de thème, dépendante du seul module `geojson`",
             "confidence": "haute",
-            "rationale": "45 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2), le wrapper de boot est colocalisé avec ce qu'il pilote depuis R.10, sans exception eslint."
+            "rationale": "45 LOC, 1 importeur (install.ts) ; INV-CAPABILITY-MODULE (T6 §3.2), le wrapper de boot est colocalisé avec ce qu'il pilote, sans exception eslint."
         },
         "packages/core/src/capabilities/theme-toggle/public-api.ts": {
             "kind": "file",

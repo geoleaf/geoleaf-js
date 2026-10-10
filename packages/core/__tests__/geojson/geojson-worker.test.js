@@ -262,7 +262,7 @@ describe("geojson-worker (R2)", () => {
             );
         });
 
-        it("T9.3.2 — transmet les headers de requête fetch-text (branche msg.headers truthy)", async () => {
+        it("transmet les headers de requête fetch-text (branche msg.headers truthy)", async () => {
             fetchFn.mockResolvedValue({
                 ok: true,
                 text: () => Promise.resolve("<gpx/>"),
@@ -288,8 +288,8 @@ describe("geojson-worker (R2)", () => {
         });
     });
 
-    // ── T9.3.2 — branches additionnelles ──────────────────────────────────────
-    describe("T9.3.2 — branches _normalizeFeatures + handleFetch headers", () => {
+    // ── branches additionnelles ──────────────────────────────────────
+    describe("branches _normalizeFeatures + handleFetch headers", () => {
         it("_normalizeFeatures — FeatureCollection avec features non-array (branche && false)", async () => {
             // data.type === 'FeatureCollection' BUT Array.isArray(null) === false
             // → tombe sur data?.features ?? []

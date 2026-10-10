@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 3.5 — src/kernel/api/plugin-registry.ts */
+/* src/kernel/api/plugin-registry.ts */
 
 /*
  * ⚠️ DEBT — strict duplicate of `api/plugin-registry.test.js`.
@@ -19,7 +19,7 @@ vi.mock("../../src/utils/log/index.js", () => ({
 
 import { PluginRegistry } from "../../src/kernel/api/plugin-registry.js";
 
-describe("api/plugin-registry — Phase 3.5", () => {
+describe("api/plugin-registry", () => {
     beforeEach(() => {
         PluginRegistry._registry.clear();
         PluginRegistry._lazyResolvers.clear();

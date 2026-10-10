@@ -37,7 +37,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Les libellés `form.*` que la bibliothèque **possède** (décision **D6**, tâche 5.1c).",
+            "description": "Les libellés `form.*` que la bibliothèque **possède**.",
             "confidence": "haute",
             "rationale": "Dictionnaire de langue de field-renderer — huit fichiers d'une même famille (lang-XX.ts), un par locale, plus le baril. La famille est le rangement attendu d'un i18n par fichiers plats ; le shard P4 a déjà jugé le reste du paquet à la même convention. RUBRIC §0 : justifié."
         },

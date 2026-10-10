@@ -1,6 +1,6 @@
 /**
  */
-/* Phase 5.22 - legend-control */
+/* legend-control */
 
 const mockClearElementFast = vi.fn((el) => {
     if (el) el.innerHTML = "";
@@ -37,7 +37,7 @@ import { Log } from "../../../src/utils/log/index.js";
 // not the namespace binding — an ESM namespace is sealed, its objects are not.
 import * as lrMod from "../../../src/capabilities/legend/legend-renderer.js";
 
-describe("legend/legend-control (Phase 5.22)", () => {
+describe("legend/legend-control", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         document.body.innerHTML = '<svg data-geoleaf-sprite="profile"></svg>';

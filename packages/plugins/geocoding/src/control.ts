@@ -22,6 +22,7 @@ import type { GeocodingConfig, GeocodingResult } from "./types.js";
 import { createPillSearchInput } from "./ui/pill-search.js";
 import type { PillSearchHandles, PillSearchOptions } from "./ui/pill-search.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
+import { withDefaults } from "./config.js";
 
 /**
  * Handle returned by {@link mountGeocodingControl}.
@@ -60,12 +61,9 @@ export function mountGeocodingControl(
     config: GeocodingConfig,
     onSelect: (result: GeocodingResult) => void
 ): GeocodingControlHandle {
-    const debounceMs = config.debounceMs ?? 300;
-    const minChars = config.minChars ?? 3;
-    const limit = config.resultLimit ?? 5;
+    const { debounceMs, minChars, resultLimit: limit, position } = withDefaults(config);
     const placeholder =
         config.placeholder ?? t("geocoding.control.placeholder", "Rechercher une adresse…");
-    const position = config.position ?? "top-left";
 
     // ── DOM construction ──────────────────────────────────────────────────────
     // Outer wrapper: carries positioning classes and event-stop listeners.

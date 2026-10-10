@@ -1,5 +1,5 @@
 /**
- * Unit tests — S2 Lot 6 installer: permalink (+ its `share` sub-feature).
+ * Unit tests — installer: permalink (+ its `share` sub-feature).
  *
  * Two peculiarities this lot introduces, both asserted here:
  *   - the capability owns NO module of its own (two boot hooks drive it) — the

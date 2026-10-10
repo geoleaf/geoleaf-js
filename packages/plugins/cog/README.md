@@ -38,11 +38,11 @@ The public API is intentionally minimal: three functions.
 Loads a COG, decodes it, and adds it to the map. Returns a handle for later updates/removal.
 
 ```typescript
-const handle = await GeoLeaf.COG.addLayer(
-    "https://example.com/imagery.tif",
-    GeoLeaf.Core.getMap().getNativeMap(),
-    { opacity: 0.8 }
-);
+// The engine map behind the adapter — `getMap()` is `null` before a map exists.
+const map = GeoLeaf.Core.getMap()?.getNativeMap?.() as maplibregl.Map;
+const handle = await GeoLeaf.COG.addLayer("https://example.com/imagery.tif", map, {
+    opacity: 0.8,
+});
 
 handle.id; // MapLibre source + layer id
 await handle.update({ opacity: 0.4 }); // re-render with new options (reuses cached headers)

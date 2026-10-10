@@ -85,18 +85,18 @@ That is all the UI needs — the pill appears and works on its own. You can also
 
 ## Configuration (`modules.geocoding.*`)
 
-| Key            | Type                                                                                                                  | Default                     | Description                                                                          |
-| -------------- | --------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| `enabled`      | `boolean`                                                                                                             | `false`                     | Enables the search pill (the control mounts only when `true`).                       |
-| `provider`     | `"addok" \| "nominatim" \| "photon" \| "layers" \| string` (https URL or registered name), or an ordered list of them | `"addok"`                   | Provider(s) asked (see above).                                                       |
-| `debounceMs`   | `number`                                                                                                              | `300`                       | Debounce delay before firing a search (ms).                                          |
-| `minChars`     | `number`                                                                                                              | `3`                         | Minimum characters before a search is triggered.                                     |
-| `resultLimit`  | `number`                                                                                                              | `5`                         | Maximum number of results.                                                           |
-| `position`     | `"top-left" \| "top-right" \| "bottom-left" \| "bottom-right"`                                                        | `"top-left"`                | Pill position on the map.                                                            |
-| `placeholder`  | `string`                                                                                                              | `"Rechercher une adresse…"` | Input placeholder text.                                                              |
-| `flyToZoom`    | `number`                                                                                                              | `15`                        | Zoom level when flying to a point result.                                            |
-| `bbox`         | `[west, south, east, north]` (WGS-84)                                                                                 | —                           | Restrict results to an area. Nominatim/Photon: strict filter; Addok: proximity bias. |
-| `countrycodes` | `string` (ISO 3166-1 alpha-2, comma-separated)                                                                        | —                           | Restrict results to countries — **Nominatim only**.                                  |
+| Key            | Type                                                                                                                  | Default      | Description                                                                                                                  |
+| -------------- | --------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `boolean`                                                                                                             | `false`      | Enables the search pill (the control mounts only when `true`).                                                               |
+| `provider`     | `"addok" \| "nominatim" \| "photon" \| "layers" \| string` (https URL or registered name), or an ordered list of them | `"addok"`    | Provider(s) asked (see above).                                                                                               |
+| `debounceMs`   | `number`                                                                                                              | `300`        | Debounce delay before firing a search (ms).                                                                                  |
+| `minChars`     | `number`                                                                                                              | `3`          | Minimum characters before a search is triggered.                                                                             |
+| `resultLimit`  | `number`                                                                                                              | `5`          | Maximum number of results.                                                                                                   |
+| `position`     | `"top-left" \| "top-right" \| "bottom-left" \| "bottom-right"`                                                        | `"top-left"` | Pill position on the map.                                                                                                    |
+| `placeholder`  | `string`                                                                                                              | —            | Input placeholder text. Left unset, the label `geocoding.control.placeholder` is used, translated in the interface language. |
+| `flyToZoom`    | `number`                                                                                                              | `15`         | Zoom level when flying to a point result.                                                                                    |
+| `bbox`         | `[west, south, east, north]` (WGS-84)                                                                                 | —            | Restrict results to an area. Nominatim/Photon: strict filter; Addok: proximity bias.                                         |
+| `countrycodes` | `string` (ISO 3166-1 alpha-2, comma-separated)                                                                        | —            | Restrict results to countries — **Nominatim only**.                                                                          |
 
 ```json
 {
@@ -122,7 +122,7 @@ function isEnabled(): boolean;
 
 ### `search(query, limit?)`
 
-Searches programmatically — no UI required — across the configured provider(s). Resolves to an array of results (empty on no match or network error; never rejects). `limit` defaults to `resultLimit` or 5.
+Searches programmatically — no UI required — across the configured provider(s). Resolves to an array of results (empty on no match or network error; never rejects). `limit` defaults to `resultLimit`.
 
 ```typescript
 interface GeocodingResult {

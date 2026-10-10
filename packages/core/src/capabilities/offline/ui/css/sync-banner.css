@@ -23,8 +23,11 @@
     /* Above the map, and out of its gesture surface. */
     position: relative;
     z-index: 2;
-    /* A field device holds this in one hand: the strip never wraps to two rows. */
+    /* A field device holds this in one hand: the strip never wraps to two rows. Its FACTS
+       scroll sideways on a narrow screen; its two buttons do not — see below. */
     white-space: nowrap;
+    /* The close button's side, read by the action to stop short of it. */
+    --gl-sync-banner-close: 28px;
     overflow-x: auto;
     scrollbar-width: none;
 }
@@ -42,7 +45,14 @@
     display: none;
 }
 
+/* 🛑 BOTH BUTTONS ARE PINNED TO THE END OF THE STRIP. The strip scrolls sideways with no
+   visible scrollbar: on a phone the action and the close button were carried off-screen by
+   that scroll, with nothing saying they were there. Each keeps an opaque ground, in the
+   strip's own colour, so the facts pass under it instead of showing through. */
 .gl-sync-banner__close {
+    position: sticky;
+    inset-inline-end: 0;
+    box-shadow: 0 0 0 5px var(--gl-color-bg-surface, #ffffff);
     flex: 0 0 auto;
     /* 28 px of target next to the 32 px action, and no `margin-inline-start: auto` — the
        action already carries it, so this one sits tight against it rather than at the far
@@ -57,7 +67,7 @@
     font-size: 14px;
     line-height: 1;
     color: var(--gl-color-text-muted, #6b7280);
-    background: transparent;
+    background: var(--gl-color-bg-surface, #ffffff);
     border: 0;
     border-radius: 6px;
     cursor: pointer;
@@ -65,7 +75,11 @@
 
 .gl-sync-banner__close:hover {
     color: var(--gl-color-text-main, #1f2937);
-    background: color-mix(in srgb, var(--gl-color-text-main, #1f2937) 8%, transparent);
+    background: color-mix(
+        in srgb,
+        var(--gl-color-text-main, #1f2937) 8%,
+        var(--gl-color-bg-surface, #ffffff)
+    );
 }
 
 .gl-sync-banner__close:focus-visible {
@@ -102,27 +116,54 @@
     font-weight: 600;
 }
 
+/* A write that waits for a session is not an error and not a loss: it leaves at sign-in.
+   So it does NOT take the danger colour of the quarantine count just above — and the theme
+   defines no warning colour: a `var()` naming one would fall back to its hex, dead in dark
+   mode. The weight alone sets it apart, in the strip's own text colour. */
+.gl-sync-banner__session {
+    font-weight: 600;
+}
+
 .gl-sync-banner__action {
     /* 44 px of touch target, kept legible at 12 px of text — the strip is read on a
        phone held in one hand, and a 20 px button there is a button nobody presses. */
+    position: sticky;
+    inset-inline-end: calc(var(--gl-sync-banner-close) + 10px);
+    box-shadow: 0 0 0 5px var(--gl-color-bg-surface, #ffffff);
+    flex: 0 0 auto;
     min-height: 32px;
     margin-inline-start: auto;
     padding: 6px 14px;
     font: inherit;
     font-weight: 600;
-    color: var(--gl-color-bg-surface, #ffffff);
+    color: var(--gl-color-accent-contrast, #020617);
     background: var(--gl-color-accent, #f97316);
     border: 0;
     border-radius: 6px;
     cursor: pointer;
 }
 
+/* Dimmed by MIXING with the strip's ground, not by `opacity`: a translucent button would let
+   the facts that scroll under it show through. */
 .gl-sync-banner__action:disabled {
-    opacity: 0.45;
+    color: color-mix(
+        in srgb,
+        var(--gl-color-accent-contrast, #020617) 45%,
+        var(--gl-color-bg-surface, #ffffff)
+    );
+    background: color-mix(
+        in srgb,
+        var(--gl-color-accent, #f97316) 45%,
+        var(--gl-color-bg-surface, #ffffff)
+    );
     cursor: default;
 }
 
 @media (pointer: coarse) {
+    .gl-sync-banner {
+        --gl-sync-banner-close: 44px;
+    }
+
     .gl-sync-banner__action {
         min-height: 44px;
         padding-inline: 18px;

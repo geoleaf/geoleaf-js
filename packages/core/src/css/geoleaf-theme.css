@@ -72,6 +72,10 @@
     --gl-color-gallery-item-bg: rgba(0, 0, 0, 0.04);
     --gl-color-accent-contrast: #020617;
     --gl-color-accent-hover: #ff9d57;
+    /* The accent AS a text colour. The accent itself is a fill: written as text on a surface
+       it measures 2.80:1 here and 1.46:1 in the light theme. This is its text counterpart —
+       4.5:1 or more on the surface, the muted surface and the accent's own soft veil. */
+    --gl-color-accent-text: #b93b0b;
 
     /* Aliases utilitaires pour harmoniser toutes les couches UI.
 
@@ -136,6 +140,11 @@
        fallbacks des sites deviennent dormants. Invariants au thème (une taille de
        police ne change pas en dark) → déclarés dans :root uniquement.
        Valeurs canoniques = pluralité mesurée sur les sites existants. */
+    /* The application's font stack. On `:root`, not on the application's own root: a node
+       put on `document.body` — the share dialog, the toasts, an install banner — sits
+       OUTSIDE `.gl-page` and inherited the host page's default instead, a serif in a
+       document that declares none. Those roots read this token; `.gl-page` does too. */
+    --gl-font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     --gl-font-size-sm: 0.78rem;
     --gl-font-size-base: 0.875rem;
     --gl-border-radius: 6px;
@@ -258,6 +267,11 @@ body.gl-theme-dark,
     --gl-color-accent-soft: rgba(251, 146, 60, 0.2);
     /* Text on accent background: white gives 4.8:1 on #b75708 (WCAG AA ✓) */
     --gl-color-accent-contrast: #ffffff;
+    /* The accent as a text colour, on the dark surfaces: 9.3:1 on black. */
+    --gl-color-accent-text: #fb923c;
+    /* The hover goes DARKER here: the text on it is white, and the root hover (a lighter
+       orange, meant for dark text) left it at 2.1:1. White gives 6.3:1 on #9a4a07. */
+    --gl-color-accent-hover: #9a4a07;
 
     --gl-color-poi-fill: #3b82f6; /* bleu légèrement plus clair */
     --gl-color-poi-stroke: #ffffff;

@@ -96,6 +96,10 @@ export const Utils = createUtilsNamespace();
 export type { UtilsNamespace } from "./utils/general/utils-namespace.js";
 // applyCssText — CSP-safe inline-style helper (security roadmap B.5), consumed by plugins.
 export { applyCssText } from "./utils/general/dom-helpers.js";
+// The typed way to the namespace for a module that mounts a member on it. The helper existed
+// and no entry of the package exported it: a plugin author reached for `window.GeoLeaf` and an
+// `any`.
+export { ensureGeoLeaf } from "./utils/general/geoleaf-global.js";
 export { Config } from "./kernel/config/geoleaf-config/config-core.js";
 
 // ── Extension contract — TYPES ONLY (API publique S3, arbitrage Q1 = « oui ») ────────────────

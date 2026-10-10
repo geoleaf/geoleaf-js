@@ -1,6 +1,6 @@
 /**
  */
-/* T33.1 — desktop-panel.ts — branches ≥ 70 % */
+/* desktop-panel.ts — branches ≥ 70 % */
 
 vi.mock("../../src/utils/i18n/i18n.js", () => ({
     getLabel: vi.fn((k) => k),

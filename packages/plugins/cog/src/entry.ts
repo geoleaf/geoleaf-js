@@ -42,6 +42,17 @@ function buildPublicApi() {
 
 // ─── Mount GeoLeaf.COG ────────────────────────────────────────────────────────
 
+/** The API this plugin mounts as `GeoLeaf.COG`. */
+export type CogApi = ReturnType<typeof buildPublicApi>;
+
+// The core declares `GeoLeaf.COG` and cannot type it: it never imports a plugin. The type
+// comes from here, through the registry the core reads — for whoever installs this package.
+declare global {
+    interface GeoLeafPluginApis {
+        COG: CogApi;
+    }
+}
+
 if (_g.GeoLeaf) {
     _g.GeoLeaf.COG = buildPublicApi();
 }

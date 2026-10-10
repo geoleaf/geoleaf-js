@@ -1,5 +1,5 @@
 /**
- * T17.2.3 — geojson/loader/single-layer.ts branch coverage
+ * geojson/loader/single-layer.ts branch coverage
  * Focus: uncovered branches — VectorTiles, GPX, worker paths, preloadStyle,
  *         clustering (shared/pending/independent), zIndex, fitBounds, labels, postProcess.
  * Static imports for Istanbul instrumentation.
@@ -134,7 +134,7 @@ function baseGeoLeaf(overrides = {}) {
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
 
-describe("geojson/loader/single-layer — T17.2.3 branch coverage", () => {
+describe("geojson/loader/single-layer — branch coverage", () => {
     beforeEach(() => {
         state.layers = new Map();
         state.map = { addLayer: vi.fn(), fitBounds: vi.fn() };
@@ -1087,7 +1087,7 @@ describe("geojson/loader/single-layer — style/data overlap", () => {
         ogcGate.promise = null;
     });
 
-    // ── R9, task 2.4 — the cut stops being mute on the DISPLAY path ─────────────────
+    // ── The cut stops being mute on the DISPLAY path ─────────────────
     //
     // 🛑 THE MEMBER EXISTED AND NOBODY READ IT. `ogc-api-loader.ts` has set `truncated`
     // since 19/08/2026, with a comment saying a truncated collection is
@@ -1135,5 +1135,57 @@ describe("geojson/loader/single-layer — style/data overlap", () => {
         // the caller does not duplicate it — and a caller that stopped calling would be
         // caught by the case above.
         expect(announceTruncation).toHaveBeenCalledWith("lyrWhole", "Couche entière", undefined);
+    });
+
+    // ── The automatic refresh takes the way a first load takes ───────
+    //
+    // 🛑 A REFRESH HANDED THE SOURCE WHAT THE NETWORK GAVE. The first load maps, converts and
+    // injects the symbol ids; the `moveend` refresh skipped all three, so a layer drawing
+    // icons lost them at the first map move — no refreshed feature carried a `symbolId`.
+    // Only a test that fires the refresh callback itself can see it.
+    it("🛑 le rafraîchissement automatique PRÉPARE la collection comme le premier chargement", async () => {
+        withHeldData().releaseData();
+        const resolveIcon = vi.fn(() => ({ useIcon: true, symbolId: "poi-musee" }));
+        setupSingleLayerDeps({
+            ...makeDeps(globalThis.GeoLeaf),
+            getTaxonomyResolvePoiIcon: () => resolveIcon,
+        });
+        const updateLayerData = vi.fn();
+        state.adapter.updateLayerData = updateLayerData;
+        const { fetchOgcApiFeatures, setupAutoRefresh } =
+            await import("../../src/kernel/geojson/loader/ogc-api-loader.js");
+        setupAutoRefresh.mockClear();
+
+        await LoaderSingleLayer._loadSingleLayer(
+            "lyrRefresh",
+            "Couche rafraîchie",
+            {
+                data: {
+                    ogcApi: { url: "https://ogc.test/collections/x/items", autoRefresh: true },
+                },
+                showIconsOnMap: true,
+            },
+            {}
+        );
+        expect(setupAutoRefresh).toHaveBeenCalledTimes(1);
+        const onMove = setupAutoRefresh.mock.calls[0][2];
+
+        fetchOgcApiFeatures.mockResolvedValueOnce({
+            type: "FeatureCollection",
+            features: [
+                {
+                    type: "Feature",
+                    id: "a",
+                    geometry: { type: "Point", coordinates: [1, 2] },
+                    properties: { id: "a" },
+                },
+            ],
+        });
+        onMove([0, 0, 3, 3]);
+        await vi.waitFor(() => expect(updateLayerData).toHaveBeenCalledTimes(1));
+
+        const [id, pushed] = updateLayerData.mock.calls[0];
+        expect(id).toBe("lyrRefresh");
+        expect(pushed.features[0].properties.symbolId).toBe("poi-musee");
     });
 });

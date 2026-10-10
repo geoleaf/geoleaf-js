@@ -147,6 +147,62 @@ describe("handleDownload", () => {
         expect(elements.downloadBtn.disabled).toBe(false);
     });
 
+    test("🛑 une source que la règle d'origine a refusée n'est pas annoncée réussie", async () => {
+        // The download resolved, and it left a basemap out: the core says so in its result
+        // (`preparation.refusedOrigins`, core ≥ 3.15.0). A plain "profile downloaded" over it
+        // told the user the basemap was prepared.
+        installStorage({
+            cacheProfileResult: {
+                profileId: "prof-1",
+                resourcesCount: 5,
+                totalSize: 2048,
+                preparation: {
+                    zone: null,
+                    skippedZooms: [],
+                    capped: false,
+                    refusedOrigins: [
+                        { source: "basemap osm", origin: "https://a.tiles.example" },
+                        { source: "basemap sat", origin: "https://sat.example" },
+                    ],
+                },
+            },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(notif.success).not.toHaveBeenCalled();
+        expect(notif.warning).toHaveBeenCalledTimes(1);
+        const [message] = notif.warning.mock.calls[0];
+        // The count, and what was left out — named, so the user knows which basemap.
+        expect(message).toContain("2");
+        expect(message).toContain("https://a.tiles.example");
+        expect(message).toContain("https://sat.example");
+        // The bar still ends: the rest of the profile WAS downloaded.
+        expect(elements.progressText.textContent).toContain("5");
+    });
+
+    test("sans rien de refusé, le succès s'annonce comme avant", async () => {
+        installStorage({
+            cacheProfileResult: {
+                profileId: "prof-1",
+                resourcesCount: 5,
+                totalSize: 2048,
+                preparation: { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] },
+            },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(notif.success).toHaveBeenCalledTimes(1);
+        expect(notif.warning).not.toHaveBeenCalled();
+    });
+
     test("🛑 un téléchargement ARRÊTÉ ne s'annonce pas réussi", async () => {
         // « Arrêter » has already said so: on `geoleaf:cache:cancelled`, the control showed
         // "stopped" and handed the button back. When `cacheProfile` resolves afterwards, its

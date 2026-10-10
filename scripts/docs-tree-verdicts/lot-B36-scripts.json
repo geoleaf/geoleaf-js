@@ -170,7 +170,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Le bandeau de licence — sa forme canonique, en un seul endroit (npm S3, tâche 3.1).",
+            "description": "Le bandeau de licence — sa forme canonique, en un seul endroit.",
             "confidence": "haute",
             "rationale": "Câblage MESURÉ, pas affirmé : requis par `scripts/verify-repo-hygiene.cjs`. La description est celle de l'en-tête du fichier lui-même, dérivée par le générateur d'arbre — elle décrit donc ce que le module dit de lui, pas une supposition. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par au moins un runner ou un consommateur nommé ; la charge de la preuve pèserait sur un verdict actionnable, et rien dans le nom, l'emplacement ou le câblage ne la porte."
         },

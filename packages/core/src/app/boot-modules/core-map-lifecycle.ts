@@ -10,9 +10,7 @@
  *
  * Extraction of `CoreMapModule.init()`, which orchestrated seven responsibilities in
  * ~148 lines under `/* eslint-disable complexity, max-lines-per-function *\/` — the only
- * one of the 19 `ICoreModule` wrappers not following the thin pattern (R.42, backlog
- * résiduel S5; plan: `archives/rapport_extraction-core-map-module.md`, archived once
- * executed).
+ * one of the 19 `ICoreModule` wrappers not following the thin pattern.
  *
  * **Graph-preserving (approach 3.A).** `CoreMapModule` keeps `id = "core-map"` and
  * `dependencies = ["config"]` unchanged, so the boot graph (6 nodes, same edges) does
@@ -21,7 +19,7 @@
  * would force the B1→B11 order to be re-validated.
  *
  * ⚠️ **Location deviates from the plan, deliberately.** §3.A targets
- * `built-in/map/core-map-lifecycle.ts` — a directory that no longer exists (R.9/R.11
+ * `built-in/map/core-map-lifecycle.ts` — a directory that no longer exists (a later move
  * renamed `modules/built-in/` to `kernel/`), and its successor `kernel/map/` **cannot**
  * host this file: ESLint block 6ter (a) forbids `kernel/**` from importing `app/`, and
  * the lifecycle needs `AppNamespace`, `RevealPadding`, `PermalinkRuntimeConfig`,
@@ -161,14 +159,21 @@ function resolveProfileExtent(cfgMap: MapConfig, AppLog: AppLog): ProfileExtent 
     };
 }
 
-/** Build the MapLibre construction options from the profile's map block. */
+/**
+ * Build the map construction options from the profile: its `map` block, and the root
+ * `mapOptions` block (the profile's core features file, merged at the profile root).
+ *
+ * Of the root block, `preserveDrawingBuffer` alone is read — the one key its schema admits.
+ * It was declared, validated and read by nobody: a profile asking for a canvas that can be
+ * captured got one only when the print plugin happened to be registered first.
+ */
 function buildMapOptions(
     cfgMap: MapConfig,
     profileBounds: GeoLeafBounds | null,
-    boundsMargin: number
+    boundsMargin: number,
+    rootMapOptions: unknown
 ): Record<string, unknown> {
     const mapOptions: Record<string, unknown> = {};
-    const pitch = member(cfgMap, "pitch");
     if (cfgMap.positionFixed === true && profileBounds) {
         mapOptions.maxBounds = padBounds(profileBounds, boundsMargin);
         mapOptions.minZoom =
@@ -179,7 +184,8 @@ function buildMapOptions(
     if (typeof cfgMap.maxZoom === "number") mapOptions.maxZoom = cfgMap.maxZoom;
     if (typeof member(cfgMap, "maxPitch") === "number")
         mapOptions.maxPitch = member(cfgMap, "maxPitch");
-    if (typeof pitch === "number") mapOptions.pitch = pitch;
+    if (member(rootMapOptions, "preserveDrawingBuffer") === true)
+        mapOptions.preserveDrawingBuffer = true;
     return mapOptions;
 }
 
@@ -341,7 +347,12 @@ export const CoreMapLifecycle = {
 
         const boundsMargin =
             typeof cfgMap.boundsMargin === "number" ? cfgMap.boundsMargin : DEFAULT_BOUNDS_MARGIN;
-        const mapOptions = buildMapOptions(cfgMap, extent.profileBounds, boundsMargin);
+        const mapOptions = buildMapOptions(
+            cfgMap,
+            extent.profileBounds,
+            boundsMargin,
+            member(cfg, "mapOptions")
+        );
         // `GeoLeaf.mount(el)` names the container itself (`_app._mountTarget`, set for its boot
         // alone): it wins over the profile's `map.target`, which stays the rule for `boot()`.
         const mountTarget = readMountTarget(app);
@@ -355,7 +366,10 @@ export const CoreMapLifecycle = {
                     zoom: extent.profileMaxZoom,
                     mapOptions,
                 },
-                ui: { theme: (cfg.ui && cfg.ui.theme) || "light" },
+                // The declared theme, or none: the UI orchestrator resolves an absent one
+                // (`ui.theme ?? "auto"`, `kernel/ui/ui-api.ts`). This line used to invent
+                // "light", which that resolution overwrote before anyone saw it.
+                ui: { theme: cfg.ui?.theme },
                 ...(mountTarget?.element && { _container: mountTarget.element }),
             },
             AppLog,

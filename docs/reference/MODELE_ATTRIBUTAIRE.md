@@ -30,7 +30,7 @@ diverger de sa source.
 | Couches **non migrées** (bloc legacy restant) | 0 |
 | Couches sans aucune déclaration de lecture | 6 |
 
-✅ **Aucune couche ne reste sur le bloc legacy.** Le compteur de migration de la tâche 2.10 est à zéro.
+✅ **Aucune couche ne reste sur le bloc legacy.** Le compteur de migration est à zéro.
 
 ⚠️ Les couches sans aucune déclaration n'ont **rien à migrer** : elles n'entrent jamais dans le
 chemin de rendu, et le retrait du mode `"all"` ne les touche donc pas.

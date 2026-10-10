@@ -38,7 +38,7 @@ Le validateur boot est embarqué dans `@geoleaf/core` (`_validateProfileStructur
 
 ⚠️ **AJV n'est plus « opt-in ».** `validate-profiles.cjs` est une gate **bloquante**, câblée dans
 `ci:local` et dans le hook `pre-commit` (il sort 1 à la moindre violation) — les deux se retrouvent
-par `grep -n "validate:profiles" scripts/ci-local.cjs .husky/pre-commit`.
+par `grep -n "validate:profiles" scripts/ci-local.cjs.husky/pre-commit`.
 Aucun commit ne passe sur un profil invalide. Ne pas recopier ici le nombre de profils validés —
 `npm run validate:profiles` l'imprime.
 
@@ -97,7 +97,7 @@ Depuis le layout profil v2 (2026-06), `profile.json` ne contient que l'identité
 }
 ```
 
-> ⚠️ **`Files.taxonomyFile` n'existe plus** (retiré au Lot 2, 11/07/2026). Le bloc `Files` est en
+> ⚠️ **`Files.taxonomyFile` n'existe plus** (retiré le 11/07/2026). Le bloc `Files` est en
 > `additionalProperties: false` : le déclarer fait **échouer** `npm run validate:profiles`. La
 > taxonomie se déclare comme un module — `Files.modules.taxonomy` → `config/plugins/taxonomy.json`.
 
@@ -535,13 +535,14 @@ GeoLeaf.Log.getEntries().filter((e) => e.level === "warn" && e.message.includes(
 
 Ce diagnostic **ne bloque rien** et ne change rien au rendu.
 
-| Règle                       | Ce qu'elle dit                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Une **clé**, pas une valeur | Une propriété présente à `null` est portée — une donnée clairsemée n'est pas une faute de nom                       |
-| L'échantillon               | Jusqu'à 1 000 entités, **réparties** sur la collection (une sur ⌈n / 1 000⌉), toutes en deçà                        |
-| Couche vide                 | Rien n'est jugé — une collection vide ne prouve rien                                                                |
-| Fréquence                   | Une fois par couche, clé et champ, pour la vie de la page ; un démontage de l'application réarme le diagnostic      |
-| Changement de style         | Le style appliqué est jugé à son tour — ses règles peuvent tester des champs que le style par défaut ne testait pas |
+| Règle                        | Ce qu'elle dit                                                                                                                                                                                                                           |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Une **clé**, pas une valeur  | Une propriété présente à `null` est portée — une donnée clairsemée n'est pas une faute de nom                                                                                                                                            |
+| L'échantillon                | Jusqu'à 1 000 entités, **réparties** sur la collection (une sur ⌈n / 1 000⌉), toutes en deçà                                                                                                                                             |
+| Couche vide                  | Rien n'est jugé — une collection vide ne prouve rien                                                                                                                                                                                     |
+| Fréquence                    | Une fois par couche, clé et champ, pour la vie de la page ; un démontage de l'application réarme le diagnostic                                                                                                                           |
+| Changement de style          | Le style appliqué est jugé à son tour — ses règles peuvent tester des champs que le style par défaut ne testait pas                                                                                                                      |
+| Écriture après le chargement | Rafraîchissement OGC, flux temps réel, `GeoLeaf.Layers.setData` ou `mergeFeatures`, relecture après un rapatriement : la couche est rejugée sur ce qu'elle tient, sous le style qu'elle porte. Une rafale d'écritures est jugée une fois |
 
 ### 9.2 Chaque clé est jugée avec la règle de SON lecteur
 
@@ -559,15 +560,16 @@ dirait « présent » avec une règle plus lâche que celle du lecteur ne s'affi
 
 **Ce qui n'est pas jugé**, et pourquoi :
 
-- un descripteur de filtre sans `layers`, ou de sorte `text` : il vaut pour plusieurs couches, et un
-  champ qui n'en habite que certaines est normal ;
+- un descripteur de filtre sans `layers`, ou de sorte `text`, **couche par couche** : il vaut pour
+  plusieurs couches, et un champ qui n'en habite que certaines est normal. Son verdict est sur toute
+  sa portée — porté par AU MOINS une couche —, et une page ne tient que les couches de son thème
+  actif : c'est la gate du dépôt qui le rend (§9.3) ;
 - une ligne d'attributs de **saisie** seule (un bloc `edit`, aucun `display`) : elle se remplit à la
   création, son absence de la donnée chargée est normale ;
 - les clés d'un greffon (colonnes de la table, identifiant du temps réel, étiquette d'itinéraire) :
   le cœur ne valide pas la configuration d'un greffon ;
-- les entités que le chargeur ne convertit pas : tuiles vectorielles, couche d'un greffon
-  (FlatGeobuf), et tout ce qui arrive après le premier chargement (rafraîchissement OGC, flux temps
-  réel, `GeoLeaf.Layers.setData`).
+- les entités que le magasin de couche ne tient pas : tuiles vectorielles — aucune entité en
+  mémoire — et couche d'un greffon qui contourne le chargeur (FlatGeobuf).
 
 ### 9.3 Dans ce dépôt : une gate
 
@@ -582,3 +584,17 @@ npx turbo run test:guards --filter=@geoleaf/core
 
 Chaque couche qu'elle ne peut pas lire comme le chargeur (greffon, tuiles, OGC, `dataUrl` distante,
 source convertie par `data.mapping`, collection vide) est **nommée**, jamais passée en silence.
+
+**Le filtre, sur toute sa portée.** La gate tient toutes les couches d'un profil : elle rend le
+verdict que le chargement ne peut pas rendre, pour chaque `searchFields` d'un descripteur `text` et
+pour le `field` d'un descripteur sans `layers`. Trois réponses, pas deux :
+
+| Verdict         | Quand                                                                                   | Effet                                         |
+| --------------- | --------------------------------------------------------------------------------------- | --------------------------------------------- |
+| porté           | au moins une couche de la portée porte le champ                                         | rien n'est dit                                |
+| **manquant**    | aucune ne le porte, et toutes ont été lues                                              | la gate est rouge                             |
+| **indécidable** | aucune couche LUE ne le porte, mais une autre n'a pas pu l'être — distante, OGC, tuiles | listé avec les couches en cause, jamais rouge |
+
+« Indécidable » est un verdict : dire « manquant » accuserait un champ que la couche non lue porte
+peut-être, et se taire cacherait que personne n'a vérifié. La liste se lit dans la sortie de la
+garde.

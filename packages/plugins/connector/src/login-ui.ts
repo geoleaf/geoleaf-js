@@ -26,7 +26,7 @@ const _CSS = `
   align-items: center;
   justify-content: center;
   z-index: 99999;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--gl-font-family, system-ui, -apple-system, sans-serif);
 }
 .gc-modal {
   position: relative;
@@ -52,6 +52,12 @@ const _CSS = `
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--gl-color-text-muted, #374151);
+}
+/* A form control does not inherit its font: left alone, the fields and the buttons are drawn
+   in the browser's own, next to labels written in the application's. */
+.gc-modal input,
+.gc-modal button {
+  font-family: inherit;
 }
 .gc-modal input {
   display: block;
@@ -137,7 +143,7 @@ const _CSS = `
   color: var(--gl-color-text-muted, #6b7280);
 }
 .gc-links a {
-  color: var(--gl-color-accent, #3b82f6);
+  color: var(--gl-color-accent-text, var(--gl-color-accent, #3b82f6));
   text-decoration: none;
 }
 .gc-links a:hover { text-decoration: underline; }
@@ -379,11 +385,36 @@ function _wireDismiss(
 
 // ─── Submit wiring ────────────────────────────────────────────────────────────
 
+/** How much of a server's motive the window shows. */
+const REASON_MAX_CHARS = 300;
+
+/**
+ * Tells the host a sign-in was refused or could not conclude —
+ * `geoleaf:connector:login-failed`.
+ *
+ * The window shows the server's motive as the server wrote it; a host that wants its own
+ * wording, or its own next step (asking for a second factor), reads `status` and `problem`
+ * here. Distinct from `:auth-error`, which says an established session died.
+ */
+function _announceFailure(baseUrl: string, err: AuthError): void {
+    document.dispatchEvent(
+        new CustomEvent("geoleaf:connector:login-failed", {
+            detail: {
+                baseUrl,
+                error: err.message,
+                ...(err.status !== undefined && { status: err.status }),
+                ...(err.problem && { problem: err.problem }),
+            },
+        })
+    );
+}
+
 /**
  * Wire the form submit: field validation, loading state, the auth call, and
  * success / error handling. On success it saves the token, cleans up, dispatches
  * `connector:authenticated`, and resolves; on failure it surfaces a localized
- * message and clears the password field (OWASP A02).
+ * message — with the server's own motive under it when the refusal declared one —,
+ * clears the password field (OWASP A02) and dispatches `connector:login-failed`.
  */
 function _wireSubmit(
     els: ModalElements,
@@ -391,8 +422,17 @@ function _wireSubmit(
     cleanup: () => void,
     resolve: () => void
 ): void {
-    const showError = (msg: string): void => {
+    // `reason` is the SERVER's text — the motive of a refusal, in its own language. It is
+    // set through `textContent`, never parsed, and cut to a length a window can hold.
+    const showError = (msg: string, reason?: string): void => {
         els.errorEl.textContent = msg;
+        if (reason) {
+            const line = document.createElement("span");
+            line.className = "gc-error-reason";
+            line.textContent =
+                reason.length > REASON_MAX_CHARS ? reason.slice(0, REASON_MAX_CHARS) + "…" : reason;
+            els.errorEl.append(document.createElement("br"), line);
+        }
         els.errorEl.hidden = false;
     };
     const clearError = (): void => {
@@ -457,12 +497,15 @@ function _wireSubmit(
             els.passwordInput.value = "";
 
             if (err instanceof AuthError) {
+                // What the server said of its refusal, under the window's own label.
+                const reason = err.problem?.detail ?? err.problem?.title;
                 if (err.message === "Invalid credentials") {
                     showError(
                         t(
                             "connector.error.invalidCredentials",
                             "Identifiant ou mot de passe incorrect."
-                        )
+                        ),
+                        reason
                     );
                 } else if (err.message === "Network unavailable") {
                     showError(
@@ -472,8 +515,9 @@ function _wireSubmit(
                         )
                     );
                 } else {
-                    showError(t("connector.error.generic", "Erreur : ") + err.message);
+                    showError(t("connector.error.generic", "Erreur : ") + err.message, reason);
                 }
+                _announceFailure(config.baseUrl, err);
             } else {
                 showError(t("connector.error.unexpected", "Une erreur inattendue est survenue."));
             }

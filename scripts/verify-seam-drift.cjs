@@ -177,20 +177,20 @@ const SEAMS = [
             "detail (host adds a `typeof cfg.get === 'function'` guard). coreConfigGet is the " +
             "very function whose drift motivated verify-plugin-shared-fork; this pair had never " +
             "been pinned. " +
-            "⚠️ Tâche 4.1 (04/08/2026) — `config-seam.ts` a gagné `coreProfileLayerConfig()`, et " +
+            "⚠️ 04/08/2026 — `config-seam.ts` a gagné `coreProfileLayerConfig()`, et " +
             "la copie de host-runtime N'A PAS ÉTÉ SUIVIE, délibérément : le seam n'apparie que " +
             "getGeoLeaf / ensureGeoLeaf / coreConfigGet, et aucun plugin n'a besoin de lire la " +
             "config AUTORÉE d'une couche. La porter côté hôte élargirait GeoLeafHost, ce que " +
             "HOST-03 n'autorise que dans le sens inverse. Le pair a été relu avant d'être " +
             "ré-épinglé. " +
-            "⚠️ Tâche 4.8 (04/08/2026) — MÊME CAS, même verdict : `coreProfileLayers()` est " +
+            "⚠️ 04/08/2026 encore — MÊME CAS, même verdict : `coreProfileLayers()` est " +
             "l'extraction de la boucle de `coreProfileLayerConfig()`, que le rapport de " +
             "synchronisation parcourt couche par couche. Elle lit la même source non " +
             "appariée, donc elle ne se mirroite pas davantage. RELU avant ré-épinglage : " +
             "`host.ts` porte toujours exactement getGeoLeaf / ensureGeoLeaf / coreConfigGet, " +
             "et AUCUNE des trois n'a été touchée par 4.8 — seul du code non apparié s'est " +
             "ajouté au fichier. C'est ce que le hachage a vu bouger, pas le seam lui-même. " +
-            "⚠️ Tâche 8.7 (07/08/2026) — TROISIÈME fois, et cette fois par SOUSTRACTION : " +
+            "⚠️ 07/08/2026 — TROISIÈME fois, et cette fois par SOUSTRACTION : " +
             "`coreProfileLayerConfig()` et `coreProfileLayers()` ont QUITTÉ ce fichier pour " +
             "`kernel/shared/edition-permissions.ts` (graphe de boot), parce que la façade " +
             "`GeoLeaf.Storage` doit lire une permission de couche sans que le chunk hors-ligne " +
@@ -274,40 +274,14 @@ const SEAMS = [
                 // ⚠️ 2026-09-24 — re-pinned for TYPES again: `Core.listMaps()`, `getMap(mapId)`
                 // and the adapter shape a plugin calls (`HostMapAdapter`). The three paired
                 // functions did not move. Targeted re-pin, this one hash.
-                hash: "fd324dd80796889dfbaced31a7fbe448a097c6ce31e988bac04013d966f8bcee",
-            },
-        ],
-    },
-    {
-        label: "dom-primitives (host-runtime ↔ field-renderer)",
-        why:
-            "STRUCT S2 (F4) canonised _el/applyCssText into dom-seam.ts under non-colliding " +
-            "names (createEl/applyStyleText) because field-renderer DEFINES the underscore " +
-            "names and IS scanned by verify-plugin-shared-fork. field-renderer keeps its copies " +
-            "— it has no dependency on host-runtime, and adding one to share seven lines would " +
-            "pull a second library into every consumer's type graph. Four un-confronted copies " +
-            "therefore became ONE pinned pair, which is this seam. applyCssText was measured " +
-            "byte-identical between the two sides.",
-        files: [
-            {
-                pkg: "host-runtime",
-                rel: "src/dom-seam.ts",
-                hash: "bd37156260b76f14e2c7eec0a47942430fdf7c5600e77f4cd48396cb053c0f4d",
-            },
-            {
-                pkg: "field-renderer",
-                // ⚠️ RE-PINNED on 2026-08-05, after re-reading the paired copy: the
-                // change bears on `_getLabel` alone — the host → built-in catalogue →
-                // key resolution — and `dom-seam.ts` has NO occurrence of `_getLabel`.
-                // The two copies thus stay paired on what they really share
-                // (`_el` / `applyCssText`).
-                rel: "src/helpers.ts",
-                hash: "26f8efdd63e914f9cc132b94774ed06d103f95922fa6121e959bc5e1d4f7b7ca",
-            },
-            {
-                pkg: "field-renderer",
-                rel: "src/dom.ts",
-                hash: "ee79b96662a9763e9fe537900f7185fe00c7af652505bda11dee6a0e1da9fbb7",
+                // ⚠️ 2026-10-06 — re-pinned for a REMOVED type member: `GeoJSON.addData`,
+                // which the core had withdrawn from its own declaration on 09/08/2026 because
+                // the façade never carried it, and which this copy still named. `git diff`
+                // renders that one line; the three paired functions did not move. Same day,
+                // same re-pin: `Utils.validateUrl` declared a `boolean` where the core returns
+                // the resolved URL or `null` — the compiler's comparison of the two contracts
+                // found it, no plugin read the wrong type.
+                hash: "da6bcef5ff5e1f0c65cb0270845cfa23cfd0e9d21b0e7eaec2d15b47e7a9fb1c",
             },
         ],
     },
@@ -335,7 +309,15 @@ const SEAMS = [
 // ⚠️ The CORE half SURVIVES: `poi-to-feature.ts` is mounted on `GeoLeaf.Utils`, covered
 // by 10 tests and called by `e2e/18-security.spec.js` on `deploy-full` — the variant
 // that never had addpoi. The seam disappears, not the function.
-const FLOOR = { seams: 5, files: 13 };
+//
+// LOWERED again, from 5/13 to 4/10: the `dom-primitives (host-runtime ↔ field-renderer)`
+// pair CEASED TO EXIST. field-renderer kept its own `_el` and `applyCssText` because it did
+// not depend on host-runtime; it has bundled it since 06/08/2026, so the two bodies became
+// local wrappers delegating to `createEl` / `applyStyleText`. There is one copy left, and
+// nothing to hold equal. ⚠️ The NAMES survive on the field-renderer side — `_el` is a public
+// export of the library — with written signatures: only a type could drift now, and `tsc`
+// compiles the wrapper against the function it calls.
+const FLOOR = { seams: 4, files: 10 };
 
 /**
  * Strip comments and collapse whitespace so cosmetic edits do not trip the gate.

@@ -64,6 +64,15 @@
  */
 
 /**
+ * The engine behind `Storage.DB`, as the offline capability builds it.
+ *
+ * ⚠️ A TYPE-ONLY read of `capabilities/offline/`: erased at compile time, it adds nothing to the
+ * boot graph and nothing to the bundle. It is what lets a reader ASSIGN `StorageContract.DB` to
+ * the view it needs instead of casting it — a cast is not judged, an assignment is.
+ */
+type StorageDBEngine = typeof import("../../capabilities/offline/db/indexeddb.js").IndexedDB;
+
+/**
  * Structural view of the optional Storage plugin facade (`geoleaf.storage.js`).
  * Only the members read by this contract are declared; everything else is
  * tolerated via the index signature. Members are `unknown` because their
@@ -124,12 +133,15 @@ const StorageContract = {
     },
 
     /**
-     * Access to the IndexedDB module (Storage.DB).
-     * @returns {Object|null}
+     * Access to the IndexedDB engine (`Storage.DB`), typed as the engine is built.
+     *
+     * The facade registers itself with an untyped `DB`: the one cast is here, at the seam, so
+     * that no reader needs its own.
+     *
+     * @returns The engine, or `null` while the Storage facade has not registered.
      */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment -- Storage.DB shape is defined in the external, optional Storage plugin; core must not couple to it. The single in-core consumer (capabilities/offline/poi-restore) narrows it locally.
-    get DB(): any {
-        return _storageRef?.DB ?? null;
+    get DB(): StorageDBEngine | null {
+        return (_storageRef?.DB ?? null) as StorageDBEngine | null;
     },
 
     /**

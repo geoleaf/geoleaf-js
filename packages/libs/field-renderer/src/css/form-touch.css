@@ -7,9 +7,11 @@
      and the user has to zoom back out after every field.
    - 44×44px on every target. A cross keeps its small glyph; its BOX grows — with negative
      margins where it sits inside a chip — so the layout does not jump.
-   - `min-width` / `min-height` on the buttons, never `width` / `height`: the dialog sheet of
-     `@geoleaf/host-runtime`, adopted later in the page, sets `height: 36px` on the same
-     classes, and a minimum wins over a height whatever the order of the sheets.
+   - `min-width` / `min-height` on the buttons, never `width` / `height`: a minimum wins over
+     a height whatever the order of the sheets.
+   - Cancel, Save and Delete are NOT here: they are the dialog's buttons, and their 44px
+     travels with the dialog sheet of `@geoleaf/host-runtime` — a dialog opened without the
+     form needs it too.
 
    Keyed on `(pointer: coarse)`, not on the drawer's width: a tablet shows the centred modal
    and still has a finger; a narrow desktop window shows the drawer and has a mouse.
@@ -26,10 +28,8 @@
     }
 
     .gl-form-modal__btn--close,
-    .gl-form-modal__btn-cancel,
-    .gl-form-modal__btn-save,
-    .gl-form-modal__btn-delete,
     .gl-form-list__add,
+    .gl-form-list__move,
     .gl-form-list__remove,
     .gl-form-table__add-row,
     .gl-form-table__remove-row,

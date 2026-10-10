@@ -95,7 +95,7 @@ services:
             - web
         restart: unless-stopped
 
-    # ── Proof backend (task 4.H) ────────────────────────────────────────────────
+    # ── Proof backend ────────────────────────────────────────────────
     #
     # The offline-cycle proof criterion reads: coupure réseau → édition d'une entité
     # RAPATRIÉE → rechargement → push → l'entité porte son identifiant serveur. Every
@@ -135,7 +135,7 @@ services:
             PGRST_JWT_SECRET: ${GEOLEAF_JWT_SECRET}
             PGRST_SERVER_PORT: 3000
             # Returns the inserted row, hence the server id: that response IS the identity
-            # reconciliation of task 4.5.
+            # reconciliation the offline write cycle relies on.
             PGRST_DB_PREPARED_STATEMENTS: "false"
         depends_on:
             - geoleaf-featureserv

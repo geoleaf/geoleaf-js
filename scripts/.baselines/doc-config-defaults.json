@@ -1,18 +1,14 @@
 {
     "_comment": "DOC-CONFIG-DEFAULTS — défauts que le guide intégrateur et l'inventaire de configuration n'annoncent pas de la même façon (`divergence`), et lignes que la gate ne sait pas juger (`non-jugé` : clé inconnue de l'inventaire, ou défaut écrit en prose). Cette liste ne peut que RÉTRÉCIR (DCD-02) et aucune entrée ne peut y NAÎTRE (DCD-01, DCD-04). Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé la doc, jamais pour faire taire un écart neuf.",
     "_generated": "node scripts/check-doc-config-defaults.cjs --update-baseline",
-    "count": 11,
+    "count": 7,
     "entries": [
         "non-jugé :: §26 :: offline.source.delta :: clé inconnue de l'inventaire",
         "non-jugé :: §29 :: maxBytes :: clé inconnue de l'inventaire",
         "non-jugé :: §29 :: opacity :: clé inconnue de l'inventaire",
         "non-jugé :: §29 :: overview :: clé inconnue de l'inventaire",
-        "non-jugé :: §3 :: map.id :: clé inconnue de l'inventaire",
-        "non-jugé :: §3 :: map.mapOptions :: clé inconnue de l'inventaire",
-        "non-jugé :: §3 :: map.target :: clé inconnue de l'inventaire",
         "non-jugé :: §7 :: styles.available[].file :: clé inconnue de l'inventaire",
         "non-jugé :: §7 :: styles.available[].id :: clé inconnue de l'inventaire",
-        "non-jugé :: §7 :: styles.available[].label :: clé inconnue de l'inventaire",
-        "non-jugé :: §8 :: label.background.enabled :: clé inconnue de l'inventaire"
+        "non-jugé :: §7 :: styles.available[].label :: clé inconnue de l'inventaire"
     ]
 }

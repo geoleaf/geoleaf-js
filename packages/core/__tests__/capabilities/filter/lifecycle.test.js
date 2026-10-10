@@ -135,6 +135,68 @@ describe("FilterLifecycle — wiring", () => {
     });
 });
 
+// A layer's store changed while a filter is active: the filter judges it again — after a
+// quiet moment, and no later than a bound when the writes never stop.
+describe("FilterLifecycle — geoleaf:layer:updated", () => {
+    const updated = () =>
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:layer:updated", { detail: { layerId: "ly1" } })
+        );
+
+    /** Mounts the panel and types a search text: a filter is active. */
+    function mountWithActiveFilter() {
+        FilterLifecycle.init();
+        appReady();
+        const input = document.querySelector("#gl-filter-panel input");
+        input.value = "pont";
+        return input;
+    }
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("un filtre actif est rejugé une fois, après le silence", () => {
+        mountWithActiveFilter();
+        updated();
+        updated();
+        vi.advanceTimersByTime(299);
+        expect(h.applyFilterFromPanel).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(1);
+        expect(h.applyFilterFromPanel).toHaveBeenCalledTimes(1);
+    });
+
+    it("aucun filtre actif : rien à rejuger", () => {
+        FilterLifecycle.init();
+        appReady();
+        updated();
+        vi.advanceTimersByTime(2000);
+        expect(h.applyFilterFromPanel).not.toHaveBeenCalled();
+    });
+
+    // 🛑 A TRAILING WAIT NEVER ENDS UNDER A STREAM: writes closer together than the wait kept
+    // the map on the verdict from before the burst for as long as it lasted.
+    it("🛑 des écritures plus serrées que la temporisation sont rejugées PENDANT la rafale", () => {
+        mountWithActiveFilter();
+        for (let i = 0; i < 30; i++) {
+            updated();
+            vi.advanceTimersByTime(100);
+        }
+        expect(h.applyFilterFromPanel.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    // The bound is the stream's, not the keyboard's: typing keeps the trailing wait alone.
+    it("la SAISIE reste en attente traînante : une frappe continue n'applique qu'à son arrêt", () => {
+        const input = mountWithActiveFilter();
+        for (let i = 0; i < 30; i++) {
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            vi.advanceTimersByTime(100);
+        }
+        expect(h.applyFilterFromPanel).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(300);
+        expect(h.applyFilterFromPanel).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe("FilterLifecycle — reset", () => {
     it("_reset() unmounts the panel and detaches the listener", () => {
         FilterLifecycle.init();

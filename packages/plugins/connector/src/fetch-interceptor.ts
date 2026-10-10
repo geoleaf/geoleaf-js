@@ -10,7 +10,6 @@ import { bearer, isSameOrigin } from "@geoleaf/host-runtime";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
 import type { RefreshOutcome } from "./token-store.js";
-import { detectFormat } from "./format-detector.js";
 import { armRenewalRetry } from "./renewal-retry.js";
 import { isThenable, pullHostToken } from "./host-token.js";
 
@@ -32,10 +31,15 @@ function _extractUrl(input: RequestInfo | URL): string {
 
 /**
  * Returns true if the request URL should have a token injected via window.fetch.
- * Vector tiles (`mvt`, `pbf`) are left to the MapLibre bridge: MapLibre loads them in its own
- * worker, which this patch never sees.
  *
- * 🛑 **PMTiles archives are NOT — they were, and carried a token in neither mode.** The
+ * 🛑 **No format is left out — vector tiles (`mvt`, `pbf`) were, "because the MapLibre bridge
+ * handles them".** The bridge does, for the MAP: MapLibre loads its tiles in its own worker,
+ * which this patch never sees, so the exclusion changed nothing there. What it did change is
+ * the one `.pbf` request that DOES come through this `fetch`: the offline preparation, which
+ * downloads tiles and glyphs on the main thread. It left without a token what the map, a
+ * moment later, displays with one. The preparation presents what the display presents.
+ *
+ * 🛑 **PMTiles archives were excluded the same way, and carried a token in neither mode.** The
  * `pmtiles` library reads an archive through THIS `fetch`, on the main thread; the bridge only
  * ever sees its `pmtiles://` URL, whose origin is `"null"` to `isSameOrigin`, and the protocol
  * ignores a request's headers anyway. Excluded here "because the bridge handles it", the archive
@@ -60,8 +64,30 @@ function _shouldIntercept(url: string): boolean {
     //     header of a token it is trying to replace.
     // Excluding it here rather than reaching for the pre-patch `fetch` keeps the rule
     // where the perimeter is decided, in one readable predicate.
-    if (_config.auth?.endpoint && isSameOrigin(url, _config.auth.endpoint)) return false;
-    return detectFormat(url) !== "mvt";
+    return !(_config.auth?.endpoint && isSameOrigin(url, _config.auth.endpoint));
+}
+
+/**
+ * Member of a request's `init` under which the core's write drain relays what the layer
+ * declared as `write.auth`.
+ *
+ * ⚠️ **Written twice, and held equal by a guard.** The core sets it
+ * (`capabilities/offline/write/push-engine.ts`) and this plugin never imports the core: the
+ * core guard `write-auth-mark.guard.test.ts` fails the day the two names differ.
+ */
+const WRITE_AUTH_MARK = "geoleafWriteAuth";
+
+/**
+ * Whether the request says of itself that it takes no credential — a write to a layer
+ * declared `write.auth: "none"`.
+ *
+ * Such a request is not this plugin's to touch: no token is attached, none is even resolved,
+ * and a 401 on it is the server's answer to an anonymous write — not a session to renew.
+ * Only `"none"` opts out; any other value, the declared `"bearer"` included, leaves the
+ * request to the ordinary rule of `baseUrl`.
+ */
+function _declaredAnonymous(init: RequestInit): boolean {
+    return (init as Record<string, unknown>)[WRITE_AUTH_MARK] === "none";
 }
 
 /**
@@ -203,7 +229,8 @@ function _dispatchAuthError(baseUrl: string, error: string): void {
 /**
  * Installs the window.fetch monkey-patch.
  * All requests starting with config.baseUrl (except MVT/PMTiles) will have
- * an Authorization: Bearer <token> header injected.
+ * an Authorization: Bearer <token> header injected — except a write the core marks as
+ * declared `write.auth: "none"`, which goes out as it came.
  */
 export function install(config: ConnectorConfig): void {
     _config = config;
@@ -214,7 +241,7 @@ export function install(config: ConnectorConfig): void {
     ): Promise<Response> {
         const url = _extractUrl(input);
 
-        if (_shouldIntercept(url)) {
+        if (_shouldIntercept(url) && !_declaredAnonymous(init)) {
             const token = await _resolveToken();
             // A `Request` carrying a body is spent by its first send: the 401 replay needs a
             // fresh one, taken BEFORE that send.

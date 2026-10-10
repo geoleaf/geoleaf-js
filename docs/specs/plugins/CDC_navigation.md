@@ -4,8 +4,8 @@ title: navigation — le guidage temps réel, et les trois adaptateurs qui le re
 plugin_id: navigation
 package: "@geoleaf-plugins/navigation"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 517bdbba5
-date: 27 septembre 2026
+verifie_contre: 45c7c0eb2
+date: 7 octobre 2026
 ---
 
 # navigation — le guidage temps réel, et les trois adaptateurs qui le rendent portable
@@ -28,11 +28,12 @@ date: 27 septembre 2026
 >    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
 >    dépôt**.
 
-> 🛑 **Ce paquet est un SQUELETTE à ce jour.** Il monte son namespace, il déclare sa dépendance et
-> il passe le contrat de plugin — **il ne guide personne.** Aucun suivi de position, aucun énoncé
-> de manœuvre, aucun recalcul. Les sections ci-dessous distinguent à chaque fois ce qui est livré
-> de ce qui est spécifié : une fiche qui ne fait pas cette distinction se lit comme un compte rendu
-> et devient un mensonge daté.
+> ⚠️ **Ce paquet n'est plus le squelette que cette fiche annonçait ici.** L'encadré « il ne guide
+> personne » a survécu aux livraisons que les sections ci-dessous datent, à partir du 21/08/2026.
+> Mesuré le 04/10/2026 dans Chromium, sur le déployé : une session démarre sur un itinéraire, pose
+> son bandeau et sa flèche, tient une veille de position et un verrou d'écran. Les sections
+> distinguent toujours ce qui est livré de ce qui est spécifié : une fiche qui ne fait pas cette
+> distinction se lit comme un compte rendu et devient un mensonge daté — celle-ci l'a été.
 
 ---
 
@@ -97,7 +98,7 @@ Le plugin ne touche `navigator.geolocation`, `speechSynthesis` et `navigator.wak
 non une relecture du plugin entier. C'est la seule raison de cette contrainte — elle n'est pas une
 préférence de style.
 
-Livrés le 21/08/2026 (sprint 4, tâches 4.1 à 4.3).
+Livrés le 21/08/2026.
 
 | Adaptateur     | Ce qu'il rend                                                             | Le piège qu'il porte                                                                                      |
 | -------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -160,7 +161,7 @@ chargé.
 
 ## Le moteur de guidage — `src/engine/`
 
-Livré le 21/08/2026 (sprint 4, tâches 4.4 à 4.8 et 4.12). Cinq modules purs, sans état global,
+Livré le 21/08/2026. Cinq modules purs, sans état global,
 sans accès au navigateur — les adaptateurs de plateforme sont un lot distinct, encore à venir.
 
 | Module             | Ce qu'il rend                                                                                |
@@ -193,7 +194,7 @@ rougisse.
 
 ## Le recalcul, et ce que « en couverture » veut dire ici
 
-`src/engine/runtime.ts` — `createGuidanceRuntime`, livré le 21/08/2026 (tâche 4.11). Il noue la
+`src/engine/runtime.ts` — `createGuidanceRuntime`, livré le 21/08/2026. Il noue la
 veille de position, la projection, la progression, la détection de sortie et la machine à états.
 
 🛑 **« En couverture » se découvre en ESSAYANT, jamais en consultant `navigator.onLine`.** Ce
@@ -323,7 +324,7 @@ repassera à `true` avec ce qu'il ouvre.
 
 ## L'interface — bandeau de manœuvre et caméra suivie
 
-`src/ui/{maneuver-banner,maneuver-labels,camera}.ts`, livrés le 21/08/2026 (tâches 4.9 et 4.10),
+`src/ui/{maneuver-banner,maneuver-labels,camera}.ts`, livrés le 21/08/2026,
 **câblés le 22/08/2026** par `src/ui/session-view.ts`.
 
 ### 🛑 Ils ont été écrits, testés, publiés en types — et INJOIGNABLES pendant un jour
@@ -477,7 +478,7 @@ d'arrivée et non une flèche à gauche.
 
 ## Ce que le guidage DIT quand il ne peut pas recalculer
 
-Livré le 22/08/2026 (tâche 5.6). `NavProgress` porte `rerouteFailure` — la cause de la dernière
+Livré le 22/08/2026. `NavProgress` porte `rerouteFailure` — la cause de la dernière
 tentative refusée, parmi les six que nomme le modèle de `@geoleaf-plugins/routing`.
 
 🛑 **« Hors trajet » et « hors trajet, et je ne peux pas recalculer faute de réseau » étaient le
@@ -522,7 +523,7 @@ n'existait pas.
 
 ## Le point d'entrée — et son garde est l'ABSENCE du handler
 
-Livré le 21/08/2026 (tâche 4.15). `navigation` est enregistré **paresseux** dans l'`init.js` de
+Livré le 21/08/2026. `navigation` est enregistré **paresseux** dans l'`init.js` de
 l'application ; le bouton qui le charge vit dans le panneau de `@geoleaf-plugins/routing`.
 
 🛑 **Aucun `registerLazyForAction`, délibérément.** Un guidage n'a rien à suivre tant qu'aucun
@@ -534,6 +535,17 @@ d'entrée vit là où vit l'itinéraire.
 caché ou désactivé. « Ça existe, mais pas pour vous » est faux : un intégrateur qui n'a pas installé
 le plugin n'a pas cette fonctionnalité, et sa forme grisée l'enverrait chercher un réglage qui
 n'existe pas.
+
+🛑 **Une session s'arrête avec l'application** (1.0.3, `75c417223`). `entry.ts` n'inscrivait au
+registre du core qu'un créneau de barre : aucun démontage. Mesuré dans Chromium
+(`scripts/probe-remount-other-plugins.mjs`) : après `unmount()`, le bandeau restait dans la page, la
+veille de position et le verrou d'écran restaient tenus, et la session lisait des positions pour une
+carte qui n'existait plus. `registerPluginModule` (`@geoleaf/host-runtime`) inscrit désormais un
+`destroy` qui appelle `GeoLeaf.Navigation.stop()` — lu sur le namespace, idempotent, sans effet
+quand aucune session ne tourne — sur les deux chemins de chargement ; sur le chemin tardif, qui est
+celui de l'application livrée, il faut un core ≥ 3.14.2. Le montage suivant **ne reprend pas** la
+session : un guidage se relance par le geste qui l'a lancé. Gardé par
+`src/__tests__/entry-lifecycle.test.ts` et `e2e/75-remount-plugins.spec.js`.
 
 ⚠️ **La disponibilité se teste par `isLazyAvailable`, JAMAIS par `isLoaded`.** Un plugin paresseux
 n'entre au registre qu'après son chargement, et le seul geste qui le chargerait est ce bouton :

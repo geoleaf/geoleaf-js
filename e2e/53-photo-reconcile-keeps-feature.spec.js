@@ -5,7 +5,7 @@
  * 🛑 THE DEFECT THIS SPEC EXISTS FOR. A photo taken off-network waits in `local_images` with its
  * return address. When the network comes back, the editor uploads it and writes the URL onto the
  * owning entity with an `update` whose `feature` carries that ONE attribute
- * (`packages/plugins/editor/src/persistence/image-store.ts`, `_reconcile`). The core's store kept
+ * (`packages/plugins/editor/src/persistence/image-reconcile.ts`). The core's store kept
  * `input.feature ?? current.feature`: a partial `feature` REPLACED the entity, so the local record
  * lost its position and every other attribute — the point vanished from the offline map, and the
  * next edit would have been built from a feature with nothing left in it.

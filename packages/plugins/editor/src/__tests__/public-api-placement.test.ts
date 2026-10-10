@@ -34,6 +34,7 @@ vi.mock("../config.js", () => ({ getEditorConfig: () => _config }));
 vi.mock("../sub-menu/floating-menu.js", () => ({
     setEditorActiveTool: vi.fn(),
     getEditorActiveTool: vi.fn(),
+    deactivateActiveTool: vi.fn(),
     updateUndoRedoState: vi.fn(),
 }));
 vi.mock("../editor-api.js", () => ({
@@ -44,6 +45,7 @@ vi.mock("../editor-api.js", () => ({
 
 const { buildPublicApi } = await import("../public-api.js");
 const { discardDraft } = await import("../draft-state.js");
+const { deactivateActiveTool } = await import("../sub-menu/floating-menu.js");
 
 /** The facade slice under test, narrowed from the untyped façade bag. */
 function placement() {
@@ -139,5 +141,13 @@ describe("GeoLeaf.Editor.PlacementMode — le rayon du garde-fou", () => {
 describe("GeoLeaf.Editor.discardDraft — la surface", () => {
     it("est exposée, et c'est la fonction de l'état des brouillons", () => {
         expect(buildPublicApi().discardDraft).toBe(discardDraft);
+    });
+});
+
+// A shape still being TRACED had no public way out: `setActiveTool(null)` clears the menu's
+// highlight and leaves the drawing engine armed, `discardDraft` only knows a finished shape.
+describe("GeoLeaf.Editor.cancelDrawing — la surface", () => {
+    it("est exposée, et c'est le désarmement que le menu fait en se fermant", () => {
+        expect(buildPublicApi().cancelDrawing).toBe(deactivateActiveTool);
     });
 });

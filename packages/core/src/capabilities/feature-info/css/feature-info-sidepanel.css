@@ -42,7 +42,7 @@
     }
 
     .gl-poi-table thead {
-        background-color: var(--gl-color-bg-subtle);
+        background-color: var(--gl-color-bg-surface-muted);
     }
 
     .gl-poi-table th {
@@ -56,7 +56,7 @@
     }
 
     .gl-poi-table tbody tr:hover {
-        background-color: var(--gl-color-bg-hover, rgba(0, 0, 0, 0.02));
+        background-color: var(--gl-color-bg-surface-muted, rgba(0, 0, 0, 0.02));
     }
 
     /* -------------------------------------------------------------------------
@@ -206,7 +206,7 @@
         align-self: flex-end;
         font-size: 0.8rem;
         font-weight: 500;
-        color: var(--gl-color-accent);
+        color: var(--gl-color-accent-text);
         text-decoration: none;
         border-bottom: 1px solid currentColor;
     }

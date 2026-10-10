@@ -1,6 +1,6 @@
 /**
  * runtime-metrics.test.js
- * Sprint T21.4.4 — Full test coverage for runtime-metrics.ts
+ * Full test coverage for runtime-metrics.ts
  *
  *
  * NOTE: runtime-metrics.ts uses `export {}` (no named exports).

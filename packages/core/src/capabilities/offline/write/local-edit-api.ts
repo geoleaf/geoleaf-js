@@ -270,7 +270,7 @@ export async function applyEdit(input: EditInput): Promise<EditReport> {
 
     _warnIfNotPushable(input.layerId, config);
 
-    const db = StorageContract.DB as EditWriter | null;
+    const db: EditWriter | null = StorageContract.DB;
     if (!db?.applyLocalEdit) return { ...nothing, refused: "engineUnavailable" };
 
     const tally = await db.applyLocalEdit({

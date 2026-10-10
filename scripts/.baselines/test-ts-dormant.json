@@ -84,8 +84,6 @@
         "packages/plugins/connector/src/__tests__/fetch-interceptor.test.ts:TS2304",
         "packages/plugins/connector/src/__tests__/fetch-interceptor.test.ts:TS2532",
         "packages/plugins/connector/src/__tests__/fetch-interceptor.test.ts:TS2582",
-        "packages/plugins/connector/src/__tests__/format-detector.test.ts:TS2304",
-        "packages/plugins/connector/src/__tests__/format-detector.test.ts:TS2582",
         "packages/plugins/connector/src/__tests__/login-ui.test.ts:TS2532",
         "packages/plugins/connector/src/__tests__/maplibre-bridge.test.ts:TS2304",
         "packages/plugins/connector/src/__tests__/maplibre-bridge.test.ts:TS2379",

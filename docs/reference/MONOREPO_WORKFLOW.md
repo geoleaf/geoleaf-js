@@ -307,7 +307,7 @@ couverture, seuils par paquet) → smoke-test → budget de bundle → knip → 
 orphelins du core) → gates de pureté, liens morts, duplication, i18n, CSS mort.
 
 ⚠️ Deux corrections par rapport aux versions antérieures de cette ligne : **`benchmark` n'est
-plus une étape CI** (`node scripts/benchmark.cjs --ci` retiré au T6.3 — ses 3 assertions étaient
+plus une étape CI** (`node scripts/benchmark.cjs --ci` retiré le 25/07/2026 — ses 3 assertions étaient
 inertes ; le script et `npm run benchmark` subsistent comme outil manuel), et **knip ne couvre
 plus les exports** — depuis le 26/07/2026 il gate les fichiers morts, les dépendances et sa
 propre config morte, la catégorie exports/types étant coupée sur `packages/core/src/**`
@@ -331,7 +331,7 @@ Les 3 dépôts satellites subsistent, figés. Leur sort se tranche avec le passa
 
 ### ~~`deploy-docs.yml`~~ (dans `GeoLeaf-Core`) — **caduc**
 
-Il publiait `docs:build` sur GitHub Pages, sous `docs.geoleaf.dev`, depuis le dépôt satellite. Plus rien n'alimente ce dépôt depuis le retrait des miroirs, et le sous-domaine rend NXDOMAIN. La doc se publie désormais à la main : `npm run docs:deploy` — voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2. `docs-dist/` (racine — T4.4 l'a sorti de `packages/`) n'est jamais commité dans git.
+Il publiait `docs:build` sur GitHub Pages, sous `docs.geoleaf.dev`, depuis le dépôt satellite. Plus rien n'alimente ce dépôt depuis le retrait des miroirs, et le sous-domaine rend NXDOMAIN. La doc se publie désormais à la main : `npm run docs:deploy` — voir [DOCS_SOURCE_AND_SYNC.md](DOCS_SOURCE_AND_SYNC.md) §2. `docs-dist/` (racine — sorti de `packages/`) n'est jamais commité dans git.
 
 ---
 

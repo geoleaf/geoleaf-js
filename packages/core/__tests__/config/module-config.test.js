@@ -20,7 +20,7 @@ describe("config/module-config — Plugin Contract v1", () => {
     });
 
     // ────────────────────────────────────────────────────────────────────────
-    // Deep dot-notation on modules.* (roadmap S0 task 1 — lock-in tests)
+    // Deep dot-notation on modules.* (lock-in tests)
     // ────────────────────────────────────────────────────────────────────────
 
     describe("dot-notation modules.* (ConfigStore)", () => {

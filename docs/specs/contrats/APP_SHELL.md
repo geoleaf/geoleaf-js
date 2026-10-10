@@ -41,6 +41,13 @@ dépôt **et** par un vhost nginx hors dépôt, donc invisible à toute gate.
 Émis à l'étape **9b** de `scripts/build-deploy.cjs` depuis `scripts/lib/server-contract.cjs` (un seul
 corpus), gardés par `scripts/verify-deploy-server-contract.cjs`, câblé des **deux** côtés de la CI.
 
+**Le cache s'accorde par DOSSIER, pas par extension.** Un an, `immutable`, pour `dist/` seul — le
+seul dossier dont chaque fichier est nommé par son contenu ou demandé avec son jeton. Le moteur
+(`vendor/`) est revalidé à chaque visite, les icônes (`icons/`) tenues une journée, les données de
+profil une heure, sprites compris : ces trois familles gardent leur nom d'une version à l'autre, et
+rien ne peut les invalider. La table (`SERVEUR.md` §8) est écrite depuis `declaredCacheControl()`,
+et la gate tient les deux recettes à cette fonction, fichier servi par fichier servi.
+
 🛑 **Le motif, parce qu'il se reproduira ailleurs.** Le 09/08/2026, un `deploy-full` copié tel quel
 sur un serveur nginx de production a rendu un spinner infini : la table `mime.types` de nginx ne
 connaît que `js`, les `.mjs` du moteur MapLibre partaient en `application/octet-stream`, et le
@@ -108,21 +115,22 @@ raisons : [`INITIALIZATION_FLOW.md`](INITIALIZATION_FLOW.md) §Gestion d'erreurs
 
 ---
 
-## Les marqueurs fonctionnels — six paires, à garder au caractère près
+## Les marqueurs fonctionnels — à garder au caractère près
 
 `scripts/build-deploy.cjs` patche ces deux fichiers par regex `/gm` **sans** `/s` côté HTML, et par
 `indexOf` côté JS. Un marqueur supprimé ou reformaté **ne casse pas le build : il cesse
 silencieusement de matcher**. C'est la classe de faux vert que tout ce dispositif existe pour
 empêcher.
 
-| Fichier      | Marqueur                                         | Gate                           | Exigence                     |
-| ------------ | ------------------------------------------------ | ------------------------------ | ---------------------------- |
-| `index.html` | `<!-- __GEOLEAF_MODULEPRELOAD__ -->`             | APP-08                         | présent **et sur UNE ligne** |
-| `index.html` | `<!-- Optional plugins — variant-gated: … -->`   | APP-04                         | présent **et sur UNE ligne** |
-| `index.html` | `GEOLEAF-DEPLOY:DEV-CONNECTOR ─── START` / `END` | APP-11                         | la **paire** présente        |
-| `index.html` | balise `<script src="connector.local.js">`       | APP-11                         | **sur UNE ligne**            |
-| `init.js`    | `GEOLEAF-DEPLOY:GATED-BLOCK editor` START/END    | APP-07 + `stripGatedInitBlock` | la **paire** présente        |
-| `init.js`    | `GEOLEAF-DEPLOY:GATED-BLOCK cog` START/END       | APP-07 + `stripGatedInitBlock` | la **paire** présente        |
+| Fichier      | Marqueur                                         | Gate                           | Exigence                                                    |
+| ------------ | ------------------------------------------------ | ------------------------------ | ----------------------------------------------------------- |
+| `index.html` | `<!-- __GEOLEAF_MODULEPRELOAD__ -->`             | APP-08                         | présent **et sur UNE ligne**                                |
+| `index.html` | `<!-- Optional plugins — variant-gated: … -->`   | APP-04                         | présent **et sur UNE ligne**                                |
+| `index.html` | `GEOLEAF-DEPLOY:DEV-CONNECTOR ─── START` / `END` | APP-11                         | la **paire** présente                                       |
+| `index.html` | balise `<script src="connector.local.js">`       | APP-11                         | **sur UNE ligne**                                           |
+| `init.js`    | `GEOLEAF-DEPLOY:GATED-BLOCK editor` START/END    | APP-07 + `stripGatedInitBlock` | la **paire** présente                                       |
+| `init.js`    | `GEOLEAF-DEPLOY:GATED-BLOCK cog` START/END       | APP-07 + `stripGatedInitBlock` | la **paire** présente                                       |
+| `init.js`    | `// __GEOLEAF_WORKER_URL__`                      | APP-13 + `stampInitScript`     | **une fois**, seule sur sa ligne, **avant** `GeoLeaf.boot(` |
 
 Les deux gardes se complètent et aucune ne peut sortir verte en ne contrôlant plus rien :
 `stripGatedInitBlock` **jette** quand il ne trouve pas une paire, et APP-07 tient la direction
@@ -246,6 +254,12 @@ que le plugin documente et celui auquel le bouton obéit n'étaient pas le même
 `resolveUISlotVisibility` essaie la clé canonique et ne consulte l'héritée **que** si la première
 est absente : déclarer les deux rend la clé canonique opérante sans changer le sort d'un profil
 qui écrit encore l'ancienne.
+
+📌 **Le type du descripteur porte ces champs depuis le core 3.15.0** (`PluginLazyUI`,
+`kernel/api/api-types.ts`) : `legacyProfileKey` sur les deux créneaux, `variant` sur celui du
+bureau. `init.js` est du JavaScript, donc rien ne le confrontait au type, qui les refusait
+pendant que les deux barres les lisaient. `registerLazyForAction` est typée au namespace, et
+`legacyProfileKey` est au contrat publié `IModuleUISlot`, que cinq greffons déclarent déjà.
 
 📌 **L'ancienne clé est `ui.showPrint`, pas `showPrint`.** Le fichier `uiFile` d'un profil
 enveloppe sa charge dans un objet `"ui"`, que le chargeur étale ensuite à la racine du profil —

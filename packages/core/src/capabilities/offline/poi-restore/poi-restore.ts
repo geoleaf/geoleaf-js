@@ -75,7 +75,6 @@ interface LayerLike {
 
 /** An outbox entry, reduced to what restoration reads from it. */
 interface QueueRow {
-    [key: string]: unknown;
     kind?: unknown;
     layerId?: unknown;
     localId?: unknown;
@@ -137,16 +136,22 @@ function _resolveLayers(): LayerLike | undefined {
     return g.GeoLeaf?.Layers;
 }
 
-/** Access to the database sub-modules, through the contract — never a `db/` import. */
-function _module<T>(name: string): T | null {
-    const db = StorageContract.DB as { _ensureModule?: (n: string) => unknown } | null;
+/** The name of a database sub-module, as the engine's own accessor types it. */
+type DbModuleName = Parameters<NonNullable<typeof StorageContract.DB>["_ensureModule"]>[0];
+
+/**
+ * Access to a database sub-module, through the contract — never a `db/` import. Typed by the
+ * engine: a reader below is checked against the module it actually reads.
+ */
+function _module<K extends DbModuleName>(name: K) {
+    const db = StorageContract.DB;
     if (!StorageContract.isAvailable() || typeof db?._ensureModule !== "function") return null;
-    return (db._ensureModule(name) as T | null) ?? null;
+    return db._ensureModule(name) ?? null;
 }
 
 /** Reads the whole `outbox` through the contract; `[]` when the engine is absent. */
 function _readOutbox(): Promise<QueueRow[]> {
-    const outbox = _module<OutboxReader>("Outbox");
+    const outbox: OutboxReader | null = _module("Outbox");
     if (!outbox?.list) return Promise.resolve([]);
     return outbox.list();
 }
@@ -180,13 +185,12 @@ function _drop(
  * timestamp, so `add` then `delete` collapses to `delete` regardless of order.
  */
 function _reduceNetOps(
-    entries: Record<string, unknown>[],
+    entries: QueueRow[],
     result: PoiRestoreResult,
     logDropped?: PoiRestoreDeps["logDropped"]
 ): Map<string, Map<string, NetOp>> {
     const byLayer = new Map<string, Map<string, NetOp>>();
-    for (const entry of entries) {
-        const rec = entry as QueueRow;
+    for (const rec of entries) {
         const kind = typeof rec.kind === "string" ? rec.kind : "";
         // ⚠️ NO producer filter: this is what finally brings a geometry drawn with
         // the editor back on screen.
@@ -194,11 +198,11 @@ function _reduceNetOps(
         const layerId = _resolveLayerId(rec);
         const id = _entityId(rec);
         if (!layerId) {
-            _drop(result, kind, "null/absent layerId", entry, logDropped);
+            _drop(result, kind, "null/absent layerId", { ...rec }, logDropped);
             continue;
         }
         if (!id) {
-            _drop(result, kind, "missing localId", entry, logDropped);
+            _drop(result, kind, "missing localId", { ...rec }, logDropped);
             continue;
         }
         const ts = typeof rec.createdAt === "number" ? rec.createdAt : 0;
@@ -224,6 +228,7 @@ function _applyRestoredStatus(feature: GeoJSON.Feature): void {
 /** The layer members {@link clearRestoredStatus} reads, beyond the restore's own. */
 interface BadgeLayerLike {
     hasLayer?(layerId: string): boolean;
+    removeFeature?(layerId: string, id: string | number): boolean;
     getFeatureById?(layerId: string, id: string | number): GeoJSON.Feature | null;
     patchFeature?(
         layerId: string,
@@ -234,17 +239,91 @@ interface BadgeLayerLike {
 }
 
 /**
- * Lifts the restored "pending" badge off an entity the drain has just pushed.
+ * The identity an entity of the store has on its LAYER — the one {@link clearRestoredStatus}
+ * and the restore address it by.
  *
- * The restore bakes the badge into the feature it puts back on its layer; the drain writes the
- * server's answer into the RECORD only. Without this, the layer kept saying "owed" of an entity
- * the server already held, until the next load. The module that sets the badge is the one that
- * lifts it.
+ * Read from the record: a creation is named by its client key until the server names it, a
+ * served entity by the server's id, which is not the key the queue holds it under.
+ *
+ * @param layerId - The entity's layer.
+ * @param localId - The key the queue holds the entity under.
+ * @returns The identity on the layer; the key itself when the record cannot be read.
+ */
+export async function layerIdentityOf(layerId: string, localId: string): Promise<string | number> {
+    try {
+        const features: FeaturesReader | null = _module("Features");
+        const record = features?.get ? await features.get(layerId, localId) : null;
+        if (!record) return localId;
+        const presented = presentRecordFeature({
+            feature: record.feature,
+            localId,
+            serverId: record.serverId ?? null,
+        }) as { id?: string | number; properties?: { id?: unknown } } | null | undefined;
+        return (
+            presented?.id ?? (presented?.properties?.id as string | number | undefined) ?? localId
+        );
+    } catch (err) {
+        Log.warn(`[PoiRestore] identity of ${layerId}/${localId} not read:`, err);
+        return localId;
+    }
+}
+
+/**
+ * Bakes the "pending" badge on an entity queued in THIS session, if its layer holds it.
+ *
+ * 🛑 THE RESTORE WAS THE ONLY ONE TO SET IT, at boot. A capture made since was owed to the
+ * server and drawn like any other entity, until the page was reloaded — the badge told the
+ * truth about yesterday's work and nothing about today's.
+ *
+ * Same property as the restore's, on purpose: {@link clearRestoredStatus} lifts either one when
+ * the entity is pushed, and a re-read of the layer carries either one over.
+ *
+ * Never throws: a decoration must not fail the write that asked for it.
+ *
+ * @param layerId - The entity's layer.
+ * @param id - Its identity on that layer ({@link layerIdentityOf}).
+ * @returns Whether the layer HOLDS the entity — marked now, or carrying the badge already.
+ *   `false` means it is not there yet: the caller asks again when the layer is written.
+ * @example
+ * const id = await layerIdentityOf("sites", "loc:3f2…");
+ * if (!markPendingStatus("sites", id)) waiting.add("loc:3f2…");
+ */
+export function markPendingStatus(layerId: string, id: string | number): boolean {
+    if (!RESTORED_SYNC_STATUS) return true;
+    try {
+        const layers = _resolveLayers() as BadgeLayerLike | undefined;
+        if (!layers?.patchFeature || !layers.getFeatureById || !layers.hasLayer?.(layerId)) {
+            return false;
+        }
+        const held = layers.getFeatureById(layerId, id);
+        if (!held) return false;
+        if (held.properties?.["_syncStatus"] !== RESTORED_SYNC_STATUS) {
+            layers.patchFeature(
+                layerId,
+                id,
+                { _syncStatus: RESTORED_SYNC_STATUS },
+                { rerender: true }
+            );
+        }
+        return true;
+    } catch (err) {
+        Log.warn(`[PoiRestore] pending badge not set on ${layerId}:`, err);
+        return false;
+    }
+}
+
+/**
+ * Lifts the "pending" badge off an entity the drain has just pushed.
+ *
+ * The badge is baked into the layer's copy of an entity — by the restore at boot, or by
+ * {@link markPendingStatus} for a capture of the session; the drain writes the server's answer
+ * into the RECORD only. Without this, the layer kept saying "owed" of an entity the server
+ * already held, until the next load. The module that sets the badge is the one that lifts it.
  *
  * The feature is addressed by the identity the restore gave it, derived from the record AS
  * SENT — before the server's identity was written back: a pushed creation is still named by its
- * client key on its layer. Only a feature carrying the restored badge is touched, so a push
- * never re-renders a layer the restore did not decorate.
+ * client key on its layer. Only a feature carrying the badge is touched, so a push never
+ * re-renders a layer nothing decorated.
  *
  * Never throws: a decoration must not fail a drain.
  *
@@ -274,6 +353,45 @@ export function clearRestoredStatus(
         layers.patchFeature(layerId, id, { _syncStatus: null }, { rerender: true });
     } catch (err) {
         Log.warn(`[PoiRestore] pending badge not lifted on ${layerId}:`, err);
+    }
+}
+
+/**
+ * Takes off its layer an entity whose capture was abandoned and that the server does not hold.
+ *
+ * A creation that never landed, or an entity the server deleted: once the queue entry is
+ * destroyed and the record removed, nothing will ever push it nor pull it back. Left on the
+ * layer it stayed drawn — badge included — until the next page load. An abandoned EDIT of an
+ * entity the server still holds is not this gesture's: it keeps its drawing and loses its badge
+ * ({@link clearRestoredStatus}).
+ *
+ * Addressed the way the badge is: by the identity the record gives the entity on its layer.
+ * Never throws: the capture is already destroyed, and a layer that cannot follow must not turn
+ * the operator's confirmed gesture into a failure.
+ *
+ * @param layerId - The entity's layer.
+ * @param abandoned - The record as it was BEFORE its removal: its feature, key and server identity.
+ * @returns Whether the layer held the entity and let it go.
+ * @example
+ * removeAbandonedFeature("sites", { feature, localId: "loc:3f2…", serverId: null });
+ */
+export function removeAbandonedFeature(
+    layerId: string,
+    abandoned: { feature?: unknown; localId: string; serverId?: string | null }
+): boolean {
+    try {
+        const layers = _resolveLayers() as BadgeLayerLike | undefined;
+        if (!layers?.removeFeature || !layers.hasLayer?.(layerId)) return false;
+        const presented = presentRecordFeature({
+            feature: abandoned.feature,
+            localId: abandoned.localId,
+            serverId: abandoned.serverId ?? null,
+        }) as { id?: string | number; properties?: { id?: unknown } } | null | undefined;
+        const id = presented?.id ?? (presented?.properties?.id as string | number | undefined);
+        return id == null ? false : layers.removeFeature(layerId, id);
+    } catch (err) {
+        Log.warn(`[PoiRestore] abandoned entity not removed from ${layerId}:`, err);
+        return false;
     }
 }
 
@@ -345,7 +463,7 @@ export async function restorePendingPois(deps: PoiRestoreDeps = {}): Promise<Poi
         Log.debug("[PoiRestore] GeoLeaf.Layers unavailable — skip");
         return result;
     }
-    let entries: Record<string, unknown>[];
+    let entries: QueueRow[];
     try {
         entries = deps.getEntries ? await deps.getEntries() : await _readOutbox();
     } catch (err: unknown) {
@@ -357,7 +475,7 @@ export async function restorePendingPois(deps: PoiRestoreDeps = {}): Promise<Poi
     const readFeature =
         deps.readFeature ??
         ((layerId: string, localId: string) => {
-            const features = _module<FeaturesReader>("Features");
+            const features: FeaturesReader | null = _module("Features");
             return features?.get ? features.get(layerId, localId) : Promise.resolve(null);
         });
     await _applyNetOps(

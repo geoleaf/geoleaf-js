@@ -201,6 +201,85 @@ describe("list.formRender — glisser-déposer", () => {
 
 // ─── list.validator ──────────────────────────────────────────────────────────────
 
+// ─── list.formRender — moving an item with buttons ───────────────────────────────────
+
+// The handle relies on HTML5 drag-and-drop, which no mobile browser fires on touch: on a
+// phone a list could not be reordered at all. Two buttons per row do it, for the finger and
+// for the keyboard; the drag stays for the mouse.
+describe("list.formRender — monter et descendre", () => {
+    function threeItems(onChange = vi.fn(), ctx: RenderCtx = CTX) {
+        const el = listComponent.formRender!(["a", "b", "c"], field(), onChange, ctx);
+        document.body.appendChild(el);
+        const button = (row: number, way: "up" | "down") => {
+            const rows = el.querySelectorAll<HTMLElement>(".gl-form-list__item");
+            return rows[row]!.querySelector<HTMLButtonElement>(`.gl-form-list__move--${way}`)!;
+        };
+        const values = () =>
+            [...el.querySelectorAll<HTMLInputElement>("input")].map((i) => i.value);
+        return { el, onChange, button, values };
+    }
+
+    it("chaque ligne porte ses deux boutons, nommés pour un lecteur d'écran", () => {
+        const { button } = threeItems();
+        for (const way of ["up", "down"] as const) {
+            const btn = button(1, way);
+            expect(btn.type).toBe("button");
+            expect(btn.getAttribute("aria-label")).toBeTruthy();
+        }
+        expect(button(1, "up").getAttribute("aria-label")).not.toBe(
+            button(1, "down").getAttribute("aria-label")
+        );
+    });
+
+    it("descendre échange l'entrée avec la suivante, et notifie", () => {
+        const { button, onChange, values } = threeItems();
+        button(0, "down").click();
+        expect(onChange).toHaveBeenCalledWith(["b", "a", "c"]);
+        expect(values()).toEqual(["b", "a", "c"]);
+    });
+
+    it("monter échange l'entrée avec la précédente, et notifie", () => {
+        const { button, onChange, values } = threeItems();
+        button(2, "up").click();
+        expect(onChange).toHaveBeenCalledWith(["a", "c", "b"]);
+        expect(values()).toEqual(["a", "c", "b"]);
+    });
+
+    it("la première ne monte pas, la dernière ne descend pas", () => {
+        const { button } = threeItems();
+        expect(button(0, "up").disabled).toBe(true);
+        expect(button(0, "down").disabled).toBe(false);
+        expect(button(2, "down").disabled).toBe(true);
+        expect(button(2, "up").disabled).toBe(false);
+    });
+
+    it("en lecture seule, aucun bouton ne déplace", () => {
+        const { button, onChange } = threeItems(vi.fn(), CTX_RO);
+        for (const row of [0, 1, 2]) {
+            expect(button(row, "up").disabled).toBe(true);
+            expect(button(row, "down").disabled).toBe(true);
+        }
+        button(1, "down").click();
+        expect(onChange).not.toHaveBeenCalled();
+    });
+
+    // The list is rebuilt at each move: without this, the focus fell back on the document and
+    // a keyboard user had to walk the whole form again to move the same entry once more.
+    it("le focus suit l'entrée déplacée, sur le même bouton", () => {
+        const { button } = threeItems();
+        button(0, "down").click();
+        expect(document.activeElement).toBe(button(1, "down"));
+    });
+
+    it("arrivée au bout, l'entrée garde le focus sur le bouton qui lui reste", () => {
+        const { button } = threeItems();
+        button(1, "down").click();
+        // Now last: its "down" is disabled and cannot hold the focus.
+        expect(button(2, "down").disabled).toBe(true);
+        expect(document.activeElement).toBe(button(2, "up"));
+    });
+});
+
 describe("list.validator", () => {
     it("accepte une liste vide quand rien n'est exigé", () => {
         expect(listComponent.validator!([], field())).toBeNull();

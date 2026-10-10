@@ -3,7 +3,7 @@
  *
  * 🛑 **Nothing here touches the network.** `fetch` is replaced for the whole file, and the bodies
  * it answers come from the versioned corpus — the same files the normalisers are tested against.
- * That is decision D4, and it is not caution: a test hitting a public instance is subject to a
+ * That is a decision, and it is not caution: a test hitting a public instance is subject to a
  * fair-use quota and makes the run non-reproducible, so its red would say "the internet moved".
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";

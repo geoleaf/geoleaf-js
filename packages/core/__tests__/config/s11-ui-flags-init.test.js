@@ -116,9 +116,36 @@ describe("config B3 — ui.* flags (boot module sequence seam)", () => {
             const initArg = await run({ theme: "dark" });
             expect(initArg.ui.theme).toBe("dark");
         });
-        it("absent → defaults to 'light'", async () => {
+        it("absent → the boot invents NO theme — the UI orchestrator resolves it", async () => {
+            // The boot used to pass "light" here, a value the user never saw: `UI.init()` runs
+            // right after and applies `ui.theme ?? "auto"`, which follows the system. A test
+            // pinning "light" was green on a default nobody could observe.
             const initArg = await run({});
-            expect(initArg.ui.theme).toBe("light");
+            expect(initArg.ui.theme).toBeUndefined();
+        });
+    });
+
+    // ── map.target / map.id — the container the boot hands to GeoLeaf.init() ──
+    describe("map.target, map.id", () => {
+        /** The `map.target` the boot passes to `GeoLeaf.init()` for a given `map` block. */
+        async function target(mapExtra) {
+            populateInitGeoLeaf(GeoLeaf, fakeMap, {});
+            const cfg = { map: { ...VALID_MAP, ...mapExtra }, ui: {} };
+            new CoreMapModule().init(null, cfg);
+            return GeoLeaf.init.mock.calls[0]?.[0]?.map?.target;
+        }
+
+        it("`target` names the container", async () => {
+            expect(await target({ target: "carte" })).toBe("carte");
+        });
+        it("`id` is its alias, read when `target` is absent", async () => {
+            expect(await target({ id: "carte" })).toBe("carte");
+        });
+        it("`target` wins over `id`", async () => {
+            expect(await target({ target: "a", id: "b" })).toBe("a");
+        });
+        it("absent → `geoleaf-map`", async () => {
+            expect(await target({})).toBe("geoleaf-map");
         });
     });
 

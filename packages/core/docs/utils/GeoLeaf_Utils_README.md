@@ -66,7 +66,7 @@ packages/core/src/modules/utils/
 Validates a URL through `GeoLeaf.Security`. Returns the normalised string, or `null`.
 
 ```ts
-const safe = GeoLeaf.Utils.validateUrl("https://example.com/data.json");
+const safe = GeoLeaf.Utils.validateUrl?.("https://example.com/data.json");
 // => "https://example.com/data.json" | null
 ```
 
@@ -140,7 +140,7 @@ const onScroll = GeoLeaf.Utils.throttle(updateUI, 100);
 Computes the haversine distance between two geographic points. Returns the distance in kilometres.
 
 ```ts
-const km = GeoLeaf.Utils.getDistance(48.85, 2.35, 43.29, 5.38);
+const km = GeoLeaf.Utils.getDistance?.(48.85, 2.35, 43.29, 5.38);
 ```
 
 ---
@@ -186,7 +186,7 @@ DOM security sub-module. It exposes in particular:
 - `DOMSecurity.setSafeHTML(el, html)` — sanitised HTML injection
 
 ```ts
-GeoLeaf.Utils.DOMSecurity.clearElementFast(container);
+GeoLeaf.Utils.DOMSecurity?.clearElementFast(container);
 ```
 
 ---

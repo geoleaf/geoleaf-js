@@ -349,8 +349,12 @@ function _controlTag(opts: FieldOptions): HTMLElement | null {
     return container;
 }
 
-function _controlRange(field: FilterFieldDescriptor): HTMLElement {
-    const wrap = domCreate("div", "gl-filter-panel__control gl-filter-panel__control--range");
+/** One slider over the descriptor's domain, with the value shown beside it. */
+function _rangeSlider(
+    field: FilterFieldDescriptor,
+    start: number,
+    attributes: Record<string, string> = {}
+): { input: HTMLInputElement; value: HTMLElement } {
     const input = createElement("input", {
         type: "range",
         className: "gl-filter-panel__range",
@@ -358,18 +362,84 @@ function _controlRange(field: FilterFieldDescriptor): HTMLElement {
             min: String(field.min ?? 0),
             max: String(field.max ?? 100),
             step: String(field.step ?? 1),
+            ...attributes,
         },
     }) as HTMLInputElement;
-    input.value = String(field.min ?? 0);
+    input.value = String(start);
     const value = createElement("span", {
         className: "gl-filter-panel__range-value",
-        textContent: String(field.min ?? 0),
+        textContent: String(start),
     });
-    input.addEventListener("input", () => {
-        value.textContent = input.value;
+    return { input, value };
+}
+
+/**
+ * One row of a two-bound range: the bound's name, its slider, its value.
+ *
+ * Each slider says which bound it sets — `data-gl-range-bound` for the panel's own readers
+ * (`state.ts`, `write.ts`), an `aria-label` for whoever does not see the row.
+ */
+function _rangeRow(
+    field: FilterFieldDescriptor,
+    bound: "min" | "max"
+): { row: HTMLElement; input: HTMLInputElement; value: HTMLElement } {
+    const caption = getLabel(`ui.filter_panel.range_${bound}`);
+    const start = bound === "min" ? (field.min ?? 0) : (field.max ?? 100);
+    const { input, value } = _rangeSlider(field, start, {
+        "data-gl-range-bound": bound,
+        "aria-label": `${field.label ?? field.field ?? field.id} — ${caption}`,
     });
-    wrap.appendChild(input);
-    wrap.appendChild(value);
+    const row = domCreate("div", "gl-filter-panel__range-row");
+    row.appendChild(
+        createElement("span", { className: "gl-filter-panel__range-bound", textContent: caption })
+    );
+    row.appendChild(input);
+    row.appendChild(value);
+    return { row, input, value };
+}
+
+/**
+ * The `range` control: one slider — the lower bound — unless the descriptor declares
+ * `bounds: "both"`.
+ *
+ * 🛑 THE ENGINE ALWAYS APPLIED BOTH BOUNDS, AND THE PANEL OFFERED ONE. An upper bound could
+ * only come from a host's `applyFilter()`, and the panel then showed a slider that did not say
+ * so. Declared, not default: a second slider on every range would change every shipped panel.
+ *
+ * The two sliders cannot cross: the one being dragged pushes the other, so the pair always
+ * reads as an interval.
+ */
+function _controlRange(field: FilterFieldDescriptor): HTMLElement {
+    const wrap = domCreate("div", "gl-filter-panel__control gl-filter-panel__control--range");
+    if (field.bounds !== "both") {
+        const { input, value } = _rangeSlider(field, field.min ?? 0);
+        input.addEventListener("input", () => {
+            value.textContent = input.value;
+        });
+        wrap.appendChild(input);
+        wrap.appendChild(value);
+        return wrap;
+    }
+
+    wrap.classList.add("gl-filter-panel__control--range-both");
+    const lower = _rangeRow(field, "min");
+    const upper = _rangeRow(field, "max");
+    /** The dragged slider keeps its value; the other follows when it would be crossed. */
+    const follow = (dragged: typeof lower, other: typeof lower, crossed: boolean): void => {
+        if (crossed) {
+            other.input.value = dragged.input.value;
+            other.value.textContent = other.input.value;
+        }
+        dragged.value.textContent = dragged.input.value;
+    };
+    lower.input.addEventListener("input", () => {
+        follow(lower, upper, Number(lower.input.value) > Number(upper.input.value));
+    });
+    upper.input.addEventListener("input", () => {
+        follow(upper, lower, Number(upper.input.value) < Number(lower.input.value));
+    });
+    wrap.appendChild(lower.row);
+    wrap.appendChild(upper.row);
     return wrap;
 }
 

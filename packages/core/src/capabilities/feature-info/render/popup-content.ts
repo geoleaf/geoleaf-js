@@ -20,7 +20,7 @@
  * https://geoleaf.dev
  */
 
-import { el, type RenderContext, type RenderField } from "./dom.js";
+import { el, i18n, type RenderContext, type RenderField } from "./dom.js";
 import { safeUrl } from "./dom.js";
 import { formatFieldTextEscaped, isEmptyFieldValue, renderFieldNode } from "./widget-dispatch.js";
 import { buildNormalizedModel, resolvePath, type NormalizedFeature } from "../resolve.js";
@@ -36,18 +36,14 @@ function createBody(): HTMLElement {
 }
 
 /**
- * Builds the "see details" side-panel link.
- *
- * ⚠️ Its text is hard-coded French, served to all six languages. Known defect,
- * a known class in this repo, and it is on a deletion list rather
- * than fixed in passing here.
+ * Builds the "see details" side-panel link, labelled in the interface language.
  *
  * @returns The link element.
  */
 function buildVoirPlusLink(): HTMLElement {
     const a = el("a", "gl-poi-popup__link", { href: "#" });
     a.dataset["poiId"] = "";
-    a.textContent = "Voir plus >>>";
+    a.textContent = `${i18n("feature-info.popup.more", "Voir plus")} >>>`;
     return a;
 }
 

@@ -17,6 +17,9 @@
    - Uses flexbox so it adapts properly
 */
     #gl-filter-panel.gl-filter-panel {
+        /* Mounted on `document.body` when the host has no `.gl-main`: outside the
+           application's root, it would take the host page's default font. */
+        font-family: var(--gl-font-family);
         position: fixed;
         top: 0;
         left: 0;
@@ -106,7 +109,7 @@
 
     .gl-filter-panel__toggle-btn:hover {
         background: var(--gl-color-bg-surface-muted);
-        border-color: var(--gl-color-border-main);
+        border-color: var(--gl-color-border-strong);
     }
 
     /* Hide the external toggle button while the panel is open. */
@@ -145,7 +148,7 @@
     }
 
     .gl-filter-panel__body::-webkit-scrollbar-thumb {
-        background: var(--gl-color-border-main);
+        background: var(--gl-color-border-strong);
         border-radius: 4px;
         transition: background 140ms ease;
     }
@@ -188,9 +191,9 @@
     }
 
     .gl-filter-panel__control:focus-visible {
-        border-color: var(--gl-color-accent);
+        border-color: var(--gl-color-focus-ring, var(--gl-color-accent));
         box-shadow:
-            0 0 0 1px var(--gl-color-accent),
+            0 0 0 1px var(--gl-color-focus-ring, var(--gl-color-accent)),
             var(--gl-shadow-soft);
     }
 
@@ -210,6 +213,31 @@
     .gl-filter-panel__range-value {
         min-width: 2.2rem;
         text-align: right;
+        font-size: 0.8rem;
+        color: var(--gl-color-text-muted);
+    }
+
+    /* A range that declares `bounds: "both"`: two rows, the lower bound above the upper —
+       the bound's name, its slider, its value. */
+    .gl-filter-panel__control--range-both {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+    }
+
+    .gl-filter-panel__range-row {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .gl-filter-panel__range-row .gl-filter-panel__range {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .gl-filter-panel__range-bound {
+        min-width: 4.5rem;
         font-size: 0.8rem;
         color: var(--gl-color-text-muted);
     }
@@ -458,7 +486,7 @@
     }
 
     .gl-proximity-bar__instruction.point-placed {
-        color: var(--gl-color-accent, #2563eb);
+        color: var(--gl-color-accent-text, #2563eb);
     }
 
     .gl-proximity-bar__slider {
@@ -491,7 +519,7 @@
         border-radius: 9999px;
         border: none;
         background: var(--gl-color-accent, #2563eb);
-        color: #fff;
+        color: var(--gl-color-accent-contrast, #f9fafb);
         cursor: pointer;
         transition:
             background 0.15s ease,

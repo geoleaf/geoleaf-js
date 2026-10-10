@@ -7,7 +7,7 @@
 /**
  * The half of the download button that fetched nothing.
  *
- * 🛑 **WHY THIS FILE EXISTS (R9, tâche 2.3).** The download button filled the `layers`
+ * 🛑 **WHY THIS FILE EXISTS.** The download button filled the `layers`
  * store — configuration files, icons, static GeoJSON blobs, tiles — and never touched
  * `features`, the store the loader reads when a layer declares `offline.enabled`. The
  * only writer of that store, `pull/layer-pull.ts`, had **no production caller at all**:

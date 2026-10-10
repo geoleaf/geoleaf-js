@@ -6,19 +6,13 @@
         "visibleByDefault": false,
         "field": "properties.name",
         "font": {
-            "family": "Open Sans",
-            "sizePt": 11,
-            "weight": 60,
-            "bold": true,
-            "italic": false
+            "sizePt": 11
         },
         "color": "#1d3557",
         "opacity": 1,
         "buffer": {
             "enabled": true,
-            "noFill": false,
             "color": "#ffffff",
-            "opacity": 1,
             "sizePx": 2
         },
         "offset": {

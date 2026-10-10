@@ -222,5 +222,4 @@ Basemaps can be switched from the DOM using elements carrying:
 ## 8. Links
 
 - `profiles/schemas/basemaps.schema.json` — JSON schema of the basemaps
-- [PROFILES_GUIDE.md](../PROFILES_GUIDE.md) — profile structure
-- [CONFIGURATION_GUIDE.md](../CONFIGURATION_GUIDE.md) — basemaps.json file
+- [PROFILE_JSON_REFERENCE.md](../PROFILE_JSON_REFERENCE.md#basemaps-section) — the `basemaps` section of a profile

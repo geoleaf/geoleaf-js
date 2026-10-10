@@ -71,7 +71,7 @@ const GeoLeafAPI = existing;
 
 if (Log) {
     Log.info(`[GeoLeaf.API] Public API namespace exported`);
-    // NOTE (S6 Lot 3) — do NOT read `existing._APIController` here.
+    // NOTE — do NOT read `existing._APIController` here.
     //
     // This block used to log the controller's health at module eval. `_APIController` is an
     // ACCESSOR (`controller.ts`), so merely READING it built and initialised the whole API

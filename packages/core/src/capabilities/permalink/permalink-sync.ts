@@ -38,7 +38,7 @@
 
 import { GeoJSONShared } from "../../kernel/geojson/index.js";
 import type { PermalinkConfig } from "../../kernel/config/geoleaf-config/config-types.js";
-import { readUrl, buildUrl, MAX_TEXT_LEN } from "./permalink-url.js";
+import { readUrl, buildUrl } from "./permalink-url.js";
 import type { PermalinkState } from "./permalink-url.js";
 import { getPermalinkGeoLeaf } from "./types.js";
 import { getLog } from "../../utils/general/di-accessors.js";
@@ -46,6 +46,12 @@ import type { PermalinkFilterField } from "./types.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 import { applyPermalinkLayerVisibility } from "./permalink-restore.js";
 import { DEFAULT_PERMALINK_FIELDS, FILTER_PANEL_ID } from "./constants.js";
+import {
+    decodeFieldFilter,
+    encodeFieldFilter,
+    facetOfKind,
+    sanitizeFieldFilters,
+} from "./permalink-field-filters.js";
 
 export type { PermalinkState };
 export { readUrl, buildUrl };
@@ -132,41 +138,32 @@ function _captureVisibilityFields(state: PermalinkState, fields: readonly string
 }
 
 /**
- * Captures the active filter (text / taxonomy / tag / rating) from the Filter
- * capability's serialisation contract (`GeoLeaf.Filter.getActiveFilter()`) — no DOM
- * scraping, no ghost inputs. Taxonomy values (categories + sub-categories, flat) map
- * to `categories`; `permalink-url` keeps the `gl_*` params on serialise.
+ * Captures the active filter from the Filter capability's serialisation contract
+ * (`GeoLeaf.Filter.getActiveFilter()`) — no DOM scraping, no ghost inputs — as ONE ENTRY PER
+ * FIELD, keyed by the field's descriptor id (`PermalinkState.fieldFilters`).
+ *
+ * 🛑 **It used to range the filter by KIND**, in four slots: two `range` fields shared
+ * `rating`, a range kept its lower bound, and a taxonomy field's sub-categories lost their
+ * category. The four slots are no longer written by a capture; they are still read from a
+ * link that carries them (`_restoreFilterState`).
+ *
+ * The whitelist gates by kind, as it always did — each of its four filter facets now reads
+ * « the fields of that kind » (`facetOfKind`). A kind the permalink does not carry (`boolean`,
+ * `proximity`) has no facet, and is not captured.
  */
 function _captureFilterState(state: PermalinkState, fields: readonly string[]): void {
     const active = getPermalinkGeoLeaf()?.Filter?.getActiveFilter?.();
     if (!active?.fields?.length) return;
-    for (const f of active.fields) _captureFilterField(state, fields, f);
-}
-
-/** Maps one serialised filter field onto the matching permalink state slot. */
-function _captureFilterField(
-    state: PermalinkState,
-    fields: readonly string[],
-    f: PermalinkFilterField
-): void {
-    switch (f.kind) {
-        case "text":
-            if (f.text && fields.includes("filter")) state.filter = f.text.slice(0, MAX_TEXT_LEN);
-            break;
-        case "taxonomy":
-            if (f.values?.length && fields.includes("categories")) state.categories = [...f.values];
-            break;
-        case "tag":
-            if (f.values?.length && fields.includes("tags")) state.tags = [...f.values];
-            break;
-        case "range":
-            if (typeof f.range?.min === "number" && f.range.min > 0 && fields.includes("rating")) {
-                state.rating = f.range.min;
-            }
-            break;
-        default:
-            break;
+    const pairs: Array<[string, string]> = [];
+    for (const field of active.fields) {
+        const facet = facetOfKind(field.kind);
+        if (facet === null || !fields.includes(facet)) continue;
+        pairs.push(...encodeFieldFilter(field));
     }
+    // Through the same door as an entry read from a URL: caps, and no key that would reach
+    // the prototype — a descriptor id is whatever a profile wrote.
+    const fieldFilters = pairs.length ? sanitizeFieldFilters(Object.fromEntries(pairs)) : undefined;
+    if (fieldFilters) state.fieldFilters = fieldFilters;
 }
 
 /** Captures the currently active theme id from the ThemeSelector. */
@@ -203,13 +200,13 @@ function _captureThemeField(state: PermalinkState, fields: readonly string[]): v
  * waiting for it costs no perceptible delay; `FilterLifecycle` registered its own
  * `app:ready` listener at boot, i.e. strictly before this one, so the panel is up.
  */
-function _restoreFilterState(state: PermalinkState): void {
+function _restoreFilterState(state: PermalinkState, fields: readonly string[]): void {
     const filter = getPermalinkGeoLeaf()?.Filter;
     if (!filter?.applyFilter || !filter.getConfig) return;
     const descriptors = filter.getConfig()?.fields ?? [];
     const out: PermalinkFilterField[] = [];
     for (const d of descriptors) {
-        const field = _mapDescriptorToField(d, state);
+        const field = _restoredField(d, state, fields);
         if (field) out.push(field);
     }
     if (!out.length) return;
@@ -221,7 +218,33 @@ function _restoreFilterState(state: PermalinkState): void {
     document.addEventListener("geoleaf:app:ready", apply, { once: true });
 }
 
-/** Maps one filter descriptor to a serialised field from the permalink state (or null). */
+/**
+ * What a link restores for one filter field — two readers, one per format.
+ *
+ * A link carrying per-field entries (`gl_f.<id>`, since 3.15.0) is read field by field: the
+ * entry named by the descriptor's id, read by its kind. A link from before carries the four
+ * by-kind slots, and is read as it always was — every descriptor of a kind gets that kind's
+ * slot. The two are never mixed: per-field entries, when present, are the whole filter.
+ *
+ * 🛑 **The whitelist is applied HERE for a per-field entry**, and nowhere earlier: the entry
+ * does not name its kind, so the URL layer cannot tell a tag field from a text one. A forged
+ * link naming a field whose kind the profile excluded restores nothing for it.
+ */
+function _restoredField(
+    d: { id: string; kind: string },
+    state: PermalinkState,
+    fields: readonly string[]
+): PermalinkFilterField | null {
+    if (!state.fieldFilters) return _mapDescriptorToField(d, state);
+    const facet = facetOfKind(d.kind);
+    if (facet === null || !fields.includes(facet)) return null;
+    return decodeFieldFilter(d, state.fieldFilters);
+}
+
+/**
+ * Maps one filter descriptor to a serialised field from the BY-KIND slots of a link written
+ * before 3.15.0 (or null). The slots were pruned to the whitelist when the link was parsed.
+ */
 function _mapDescriptorToField(
     d: { id: string; kind: string },
     state: PermalinkState
@@ -257,8 +280,15 @@ function _mapDescriptorToField(
  *
  * @param state - State to restore.
  * @param map - Map adapter instance.
+ * @param config - Active permalink configuration. Its `fields` whitelist gates the per-field
+ *   filter entries of the state, by the kind of the field each one names; absent, every
+ *   facet is let through.
  */
-export function applyState(state: PermalinkState, map: IMapAdapter): void {
+export function applyState(
+    state: PermalinkState,
+    map: IMapAdapter,
+    config: PermalinkConfig = {}
+): void {
     // Immediate: restore map view
     map.setView({ lat: state.lat, lng: state.lng }, state.zoom);
 
@@ -270,6 +300,7 @@ export function applyState(state: PermalinkState, map: IMapAdapter): void {
     const hasCategories = !!state.categories?.length;
     const hasTags = !!state.tags?.length;
     const hasRating = typeof state.rating === "number" && state.rating > 0;
+    const hasFieldFilters = !!state.fieldFilters && Object.keys(state.fieldFilters).length > 0;
     const hasTheme = typeof state.theme === "string" && state.theme.length > 0;
     const hasDeferred =
         hasLayers ||
@@ -278,12 +309,14 @@ export function applyState(state: PermalinkState, map: IMapAdapter): void {
         hasCategories ||
         hasTags ||
         hasRating ||
+        hasFieldFilters ||
         hasTheme;
     if (!hasDeferred) return;
 
+    const fields = config.fields ?? DEFAULT_PERMALINK_FIELDS;
     function _applyLayersAndFilter(): void {
         applyPermalinkLayerVisibility(state, hasLayers, hasShownLayers);
-        _restoreFilterState(state);
+        _restoreFilterState(state, fields);
     }
 
     if (hasTheme) {

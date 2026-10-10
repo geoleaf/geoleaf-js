@@ -74,7 +74,7 @@ function _buildReviewForm(
 
     const submitBtn = _el("button");
     submitBtn.type = "button";
-    submitBtn.className = "gl-btn gl-btn--primary";
+    submitBtn.className = "gl-btn gl-btn--accent";
     submitBtn.textContent = _getLabel("form.label.add");
 
     const cancelBtn = _el("button");

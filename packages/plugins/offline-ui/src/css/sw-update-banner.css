@@ -1,0 +1,78 @@
+/* ==========================================================================
+   @geoleaf-plugins/offline-ui — « a new version is ready » (`core/sw-update-banner.ts`)
+   A bar at the TOP of the page: the bottom belongs to the mobile toolbar and to the
+   core's install banner, and the three can be on screen together. A file of its own
+   for the reason `cache-quarantine.css` gives: `cache-control.css` sits at the
+   700-line cap (PC-08).
+   ========================================================================== */
+.gl-sw-update {
+    position: fixed;
+    top: calc(12px + env(safe-area-inset-top, 0px));
+    /* Centred by its margins between two insets, NOT by `left: 50%` and a transform: a fixed
+       box set at half the viewport shrinks to fit the half that is left, and on a phone the
+       banner wrapped into a column 195 px wide. */
+    right: 12px;
+    left: 12px;
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 12px;
+    width: fit-content;
+    margin: 0 auto;
+    padding: 10px 14px;
+    /* The application's own stack, by its token: the banner is on `document.body`, outside
+       the application's root, and `inherit` gave it the page's default — a serif. */
+    font-family: var(--gl-font-family, system-ui, sans-serif);
+    font-size: 14px;
+    line-height: 20px;
+    color: var(--gl-color-text-main, #1f2937);
+    background: var(--gl-color-bg-surface, #ffffff);
+    border: 1px solid var(--gl-color-border-strong, #9ca3af);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.25);
+}
+
+.gl-sw-update__text {
+    flex: 1 1 auto;
+}
+
+.gl-sw-update__btn {
+    flex: 0 0 auto;
+    min-height: 32px;
+    padding: 4px 12px;
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    background: none;
+    border: 1px solid var(--gl-color-border-strong, #9ca3af);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* The core's accent button, token for token (`.gl-btn--accent`, `geoleaf-ui-base.css`): the
+   theme declares WHICH text reads on its accent, and it is not the inverse text — the light
+   theme's accent is pale, and white on it measured unreadable. */
+.gl-sw-update__btn--apply {
+    color: var(--gl-color-accent-contrast, #020617);
+    background: var(--gl-color-accent, #f97316);
+    border-color: transparent;
+}
+
+.gl-sw-update__btn:disabled {
+    cursor: progress;
+    opacity: 0.6;
+}
+
+.gl-sw-update__btn:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, currentColor);
+    outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+    .gl-sw-update__btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}

@@ -58,4 +58,15 @@ describe("layer-config — the `labels` block", () => {
             false
         );
     });
+
+    it.each([
+        ["font.family", { font: { family: "Arial" } }],
+        ["font.weight", { font: { weight: 50 } }],
+        ["font.bold", { font: { bold: true } }],
+        ["font.italic", { font: { italic: true } }],
+        ["buffer.opacity", { buffer: { enabled: true, opacity: 0.5 } }],
+        ["buffer.noFill", { buffer: { enabled: true, noFill: true } }],
+    ])("refuses `%s`, which left the style file's object too", (_key, fragment) => {
+        expect(validate({ id: "parcels", labels: { enabled: true, ...fragment } })).toBe(false);
+    });
 });

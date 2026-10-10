@@ -496,7 +496,7 @@
             "severity": null,
             "description": "Registre extension → convertisseur (.gpx, .kml, .kmz, .csv, .tsv, .topojson) et détection du format par extension de fichier",
             "confidence": "haute",
-            "rationale": "Homonyme de connector/src/format-detector.ts mais T1 §1 l'écarte explicitement : exports disjoints (detectConverter/isKmz/getSupportedExtensions vs detectFormat) — ne pas signaler. Son unique importeur, import-api.ts, est dans le même dossier → E1 ne s'active pas"
+            "rationale": "Son homonyme du connector a été retiré le 06/10/2026. Son unique importeur, import-api.ts, est dans le même dossier → E1 ne s'active pas"
         },
         "packages/plugins/file-import/src/import-api.ts": {
             "kind": "file",

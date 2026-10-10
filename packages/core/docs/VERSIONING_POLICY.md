@@ -83,10 +83,22 @@ stays, and is declared unsupported instead.
 
 ::: warning
 
-**One removal skipped the announcement:** `GeoLeaf.Security.CSRFToken` and the `csrf` write
-authentication, in 3.4.0. The module minted its token in the browser and checked it there, so no
-server could verify it — nothing it did could be relied on. The exception is recorded, with its
-justification, in the 3.4.0 notes; it is not a precedent.
+**Three removals skipped the announcement**, and each is recorded with its justification in the
+notes of its version. None is a precedent.
+
+- `GeoLeaf.Security.CSRFToken` and the `csrf` write authentication, in 3.4.0. The module minted
+  its token in the browser and checked it there, so no server could verify it — nothing it did
+  could be relied on.
+- The index signature that ended the ambient type of `GeoLeaf.Storage`, in 3.15.0 — a TYPE-only
+  removal: nothing changes at run time. It let any name pass as a member, so a misspelled call
+  was never reported as one. An index signature is not a symbol a `@deprecated` tag can strike
+  through in an editor, which is what an announcement is for.
+- Six keys of a label configuration, in 3.15.0 — `font.family`, `font.weight`, `font.bold`,
+  `font.italic`, `buffer.opacity` and `buffer.noFill`, removed from the profile schemas. No
+  renderer ever read them: a style that declared one drew exactly what it draws without it. What
+  breaks is `validate:profiles`, which now refuses such a style; nothing changes at run time. A
+  JSON key has no `@deprecated` tag to carry, and the only honest announcement — that the key
+  does nothing — was already what the reference said of each of them.
 
 :::
 

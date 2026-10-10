@@ -20,12 +20,12 @@ docs/reference/ARBORESCENCE_QUALIFIEE.html
 # le prix, et il est plus faible que l'inverse : prettier réaligne les colonnes de la table
 # générée, ce qui rend `RC-01` rouge en permanence sans qu'aucune source ait bougé.
 _docs_projet/travail/roadmaps/ARCHIVEES.md
-# Doc V3 Étape 3 item 7 — même régime, même motif : GÉNÉRÉ par
+# Même régime, même motif : GÉNÉRÉ par
 # `npm run gen:profile-schema` depuis `profiles/schemas/*.json`, vérifié à l'octet près par
 # `gen:profile-schema:check`. Prettier réaligne les colonnes de tableau, ce qui suffirait à
 # rendre la gate rouge en permanence sans qu'un schéma ait bougé.
 docs/reference/PROFILE_SCHEMA_REFERENCE.md
-# Sprint 2 de `roadmap_collecte-terrain-offline` — même régime, même motif : GÉNÉRÉ par
+# Même régime, même motif : GÉNÉRÉ par
 # `npm run gen:attributes-report` depuis le bloc `attributes` des configs de couche, vérifié
 # à l'octet près par `gen:attributes-report:check`. ⚠️ L'oubli n'était pas théorique : la
 # gate est sortie ROUGE au premier `ci:local` post-commit, uniquement parce que Prettier

@@ -192,6 +192,24 @@ describe("Core.destroy() démonte la pilule mobile", () => {
         expect(document.querySelector(".gl-sheet-overlay")).toBeNull();
     });
 
+    it("🛑 un nœud que son propriétaire a RETIRÉ de la feuille n'est pas ramené dans la page", () => {
+        // The sheet gives back what it moved — and it gave back what it no longer held. A
+        // plugin's teardown runs before this one at an unmount and removes its own panel:
+        // restored anyway, the panel came back into the document, orphaned.
+        const glMain = bootToolbar("mobile-teardown-removed");
+        const panel = document.createElement("div");
+        panel.id = "gl-filter-panel";
+        glMain.appendChild(panel);
+        openSheet("filters");
+        expect(panel.closest(".gl-sheet-overlay"), "déplacé dans la feuille").not.toBeNull();
+
+        panel.remove();
+        Core.destroy("mobile-teardown-removed");
+
+        expect(panel.isConnected, "le nœud retiré est revenu dans le document").toBe(false);
+        expect(document.getElementById("gl-filter-panel")).toBeNull();
+    });
+
     it("le ResizeObserver de la pilule est déconnecté", () => {
         // Guards against a vacuous pass: no ResizeObserver in the environment would mean
         // the pill never built one and this test asserted nothing.

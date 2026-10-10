@@ -110,7 +110,7 @@ export function installBoot(preset: PresetManifest): BootInstallation {
     // Modules are registered here, at module-init time, before startApp() is called.
     // Registration order does NOT determine initialization order — the registry
     // resolves the dependency graph at init() time.
-    // S6 Lot 6: 6 kernel modules, not 8. `SecurityModule` and `APIModule` were wrappers whose
+    // 6 kernel modules, not 8. `SecurityModule` and `APIModule` were wrappers whose
     // init()/destroy() had become empty — their subsystems are pure FACADES, posted at import
     // by phase A (`globals.core.ts` / `globals.api.ts`), with nothing that needs the map, the
     // merged config, or an ordering. They carried a graph node and nothing else.
@@ -128,7 +128,7 @@ export function installBoot(preset: PresetManifest): BootInstallation {
     // its init() (which dispatches `geoleaf:theme:applied`) after setupReveal (#23).
     _registry.register(new ThemeEngineModule());
 
-    // Expose on GeoLeaf namespace (task 3.3.4):
+    // Expose on GeoLeaf namespace:
     //   GeoLeaf._registry — internal access (boot internals)
     //   GeoLeaf.registry  — public API for third-party module self-registration:
     //                       GeoLeaf.registry.register(new MyCustomModule())

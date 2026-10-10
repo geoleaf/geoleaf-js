@@ -169,38 +169,77 @@ test.describe("31 — le second chargement hors ligne", () => {
             expect(href).toMatch(/^dist\/chunks\/.+\.js$/);
         }
 
+        // The stylesheet's URL AS THE DOCUMENT ASKS FOR IT — read off its `<link>`, never
+        // spelled here. It carries the sheet's content token since the folder it lives in is
+        // served `immutable`; what this spec holds is that the pre-cache carries THAT key.
+        const cssHref = await page.evaluate(
+            () =>
+                document
+                    .querySelector('link[rel="stylesheet"][href*="geoleaf-main"]')
+                    ?.getAttribute("href") ?? null
+        );
+        expect(cssHref, "le document ne demande plus la feuille par son contenu").toMatch(
+            /^dist\/geoleaf-main\.min\.css\?v=[0-9a-f]{8}$/
+        );
+
+        // The GeoJSON worker's URL, as the application SETS it — read off the served `init.js`,
+        // comments out. The core builds that URL at run time: no markup names it, and before it
+        // was set there, the worker was neither asked for by content nor pre-cached at all.
+        const workerUrl = await page.evaluate(async () => {
+            const code = (await (await fetch("init.js")).text())
+                .replace(/\/\*[\s\S]*?\*\//g, "")
+                .replace(/^\s*\/\/.*$/gm, "");
+            return /\.setWorkerUrl\(\s*["']([^"']+)["']\s*\)/.exec(code)?.[1] ?? null;
+        });
+        expect(workerUrl, "init.js ne pose plus l'URL du worker GeoJSON").toMatch(
+            /^dist\/geojson-worker\.js\?v=[0-9a-f]{8}$/
+        );
+
         // `caches.match` sweeps all the origin's caches: the spec thus need not
         // know the cache's name, which carries the package version.
-        const verdict = await page.evaluate(async (chunks) => {
-            const probe = async (url) => ({ url, hit: !!(await caches.match(url)) });
-            return {
-                shell: await probe("index.html"),
-                // ⚠️ THE BARE KEY, the one the document's <link rel="stylesheet">
-                // carries. The entry that was dead: it was pre-cached with a `?v=`.
-                css: await probe("dist/geoleaf-main.min.css"),
-                config: await probe("profiles/geoleaf.config.json"),
-                chunks: await Promise.all(chunks.map(probe)),
-                // The ENGINE, in full. Since MapLibre 6 it is no longer a file but
-                // a graph: the document names only the shim, which imports the
-                // entry, which imports the shared chunk, which instantiates the
-                // worker. Three of the four are named NOWHERE in the markup — so
-                // no naive derivation sees them.
-                engine: await Promise.all(
-                    [
-                        "vendor/maplibre-gl/global.mjs",
-                        "vendor/maplibre-gl/maplibre-gl.mjs",
-                        "vendor/maplibre-gl/maplibre-gl-shared.mjs",
-                        "vendor/maplibre-gl/maplibre-gl-worker.mjs",
-                        "vendor/maplibre-gl/maplibre-gl.css",
-                    ].map(probe)
-                ),
-            };
-        }, preloaded);
+        const verdict = await page.evaluate(
+            async ({ chunks, css, worker }) => {
+                const probe = async (url) => ({ url, hit: !!(await caches.match(url)) });
+                return {
+                    shell: await probe("index.html"),
+                    // ⚠️ THE KEY THE DOCUMENT CARRIES, token included: `cache.match()` does not
+                    // ignore the query. The entry that was dead had been pre-cached under a key
+                    // the document never asked for — a `?v=` on one side only.
+                    css: await probe(css),
+                    worker: await probe(worker),
+                    config: await probe("profiles/geoleaf.config.json"),
+                    chunks: await Promise.all(chunks.map(probe)),
+                    // The ENGINE, in full. Since MapLibre 6 it is no longer a file but
+                    // a graph: the document names only the shim, which imports the
+                    // entry, which imports the shared chunk, which instantiates the
+                    // worker. Three of the four are named NOWHERE in the markup — so
+                    // no naive derivation sees them.
+                    engine: await Promise.all(
+                        [
+                            "vendor/maplibre-gl/global.mjs",
+                            "vendor/maplibre-gl/maplibre-gl.mjs",
+                            "vendor/maplibre-gl/maplibre-gl-shared.mjs",
+                            "vendor/maplibre-gl/maplibre-gl-worker.mjs",
+                            "vendor/maplibre-gl/maplibre-gl.css",
+                        ].map(probe)
+                    ),
+                };
+            },
+            {
+                chunks: preloaded,
+                css: /** @type {string} */ (cssHref),
+                worker: /** @type {string} */ (workerUrl),
+            }
+        );
 
         expect(verdict.shell.hit, "le shell doit être pré-caché sous `index.html`").toBe(true);
         expect(
             verdict.css.hit,
-            "le CSS doit être pré-caché sous la clé NUE que le document demande"
+            "le CSS doit être pré-caché sous la clé que le document demande, jeton compris"
+        ).toBe(true);
+        expect(
+            verdict.worker.hit,
+            "le worker GeoJSON doit être pré-caché sous l'URL que init.js pose, jeton compris"
         ).toBe(true);
         expect(verdict.config.hit, "le config racine doit être pré-caché").toBe(true);
         for (const c of verdict.chunks) {

@@ -18,6 +18,7 @@
 // use for `no-unused-vars`. Comments NAME it by its path rather than by a link — a
 // reference depending on an import no code uses breaks at the first cleanup.
 import type { IControllerHealthStatus, IModuleAccessFn } from "../../contracts/api.contract.ts";
+import type { IModuleUISlot } from "../../contracts/core-module.contract.ts";
 
 // ─── Plugin registration ────────────────────────────────────────────────────────
 
@@ -75,13 +76,26 @@ interface PluginUIDescriptor {
     icon: string;
     labelKey: string;
     profileKey?: string;
+    /**
+     * Legacy profile key, read only when `profileKey` is not defined in the loaded
+     * configuration — same field, same semantics as `IModuleUISlot`'s. The reference
+     * application declares it on five of its slots, and both toolbars read it
+     * (`kernel/ui/ui-slot-builder.ts`); this type used to refuse it.
+     */
+    legacyProfileKey?: string;
     action: string;
+}
+
+/** The desktop tab-strip descriptor: the same fields, plus how the button is drawn. */
+interface PluginDesktopTabDescriptor extends PluginUIDescriptor {
+    /** `"icon"` (default) or `"tab"` — see `IModuleUISlot.desktopTabButton.variant`. */
+    variant?: NonNullable<IModuleUISlot["desktopTabButton"]>["variant"];
 }
 
 /** Optional UI descriptor pair passed to `registerLazyForAction`. */
 export interface PluginLazyUI {
     mobileIcon?: PluginUIDescriptor;
-    desktopTabButton?: PluginUIDescriptor;
+    desktopTabButton?: PluginDesktopTabDescriptor;
     /**
      * Hide this slot when `modules.<pluginName>.enabled` is explicitly `false`.
      *

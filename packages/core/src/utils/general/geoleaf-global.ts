@@ -26,7 +26,16 @@ export function getGeoLeaf(): GeoLeafGlobal | undefined {
 
 /**
  * Returns the global `GeoLeaf` namespace, creating an empty one if absent.
- * Use from boot-time setup (`globals.*.ts`) that must assign members onto it.
+ *
+ * The typed way to the namespace for code that must MOUNT a member on it — the core's own
+ * boot-time setup (`globals.*.ts`), and a module loaded beside the core. Exported from the
+ * package since 3.15.0.
+ *
+ * @returns The namespace `globalThis.GeoLeaf` holds — never `undefined`.
+ * @example
+ * import { ensureGeoLeaf } from "@geoleaf/core";
+ *
+ * const loaded = ensureGeoLeaf().plugins?.isLoaded?.("table") ?? false;
  */
 export function ensureGeoLeaf(): GeoLeafGlobal {
     const host = (

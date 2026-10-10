@@ -35,8 +35,8 @@
     background: var(--gl-color-bg-surface-muted, #f9fafb);
     border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
     border-radius: 6px;
-    /* The row never wraps; on a narrow modal it scrolls sideways instead of becoming a
-       two-line status bar nobody reads. */
+    /* The row never wraps; on a narrow modal the FACTS scroll sideways instead of becoming a
+       two-line status bar nobody reads. The action does not scroll with them. */
     white-space: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -75,22 +75,38 @@
     font-weight: 600;
 }
 
+/* 🛑 Pinned to the end of the row, which scrolls sideways with no visible scrollbar: carried
+   away by that scroll, the action sat off-screen on a phone. The ring in the row's own
+   background keeps the facts off the button's edge as they pass under it. */
 .gl-cache-sync-status__action {
+    position: sticky;
+    inset-inline-end: 0;
+    box-shadow: 0 0 0 8px var(--gl-color-bg-surface-muted, #f9fafb);
     flex: 0 0 auto;
     min-height: 28px;
     margin-inline-start: auto;
     padding: 4px 12px;
     font: inherit;
     font-weight: 600;
-    color: var(--gl-color-bg-surface, #ffffff);
+    color: var(--gl-color-accent-contrast, #020617);
     background: var(--gl-color-accent, #f97316);
     border: 0;
     border-radius: 6px;
     cursor: pointer;
 }
 
+/* Dimmed by MIXING with the row's ground: `opacity` would let the facts show through. */
 .gl-cache-sync-status__action:disabled {
-    opacity: 0.45;
+    color: color-mix(
+        in srgb,
+        var(--gl-color-accent-contrast, #020617) 45%,
+        var(--gl-color-bg-surface-muted, #f9fafb)
+    );
+    background: color-mix(
+        in srgb,
+        var(--gl-color-accent, #f97316) 45%,
+        var(--gl-color-bg-surface-muted, #f9fafb)
+    );
     cursor: default;
 }
 
@@ -225,7 +241,7 @@
 
 .gl-btn--primary {
     background: var(--gl-color-accent, #f97316);
-    color: var(--gl-color-text-inverse, #f9fafb);
+    color: var(--gl-color-accent-contrast, #020617);
     box-shadow: 0 2px 8px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
 }
 
@@ -515,7 +531,7 @@
 
 .gl-cache-layers__style-select:focus-visible {
     outline: none;
-    border-color: var(--gl-color-accent, #f97316);
+    border-color: var(--gl-color-focus-ring, var(--gl-color-accent, #f97316));
     box-shadow: 0 0 0 2px var(--gl-color-accent-soft, rgba(249, 115, 22, 0.14));
 }
 
@@ -598,7 +614,7 @@
 
 .gl-cache-zone__estimate {
     font-size: 12px;
-    color: var(--gl-color-accent, #f97316);
+    color: var(--gl-color-accent-text, var(--gl-color-accent, #f97316));
     font-weight: 600;
 }
 

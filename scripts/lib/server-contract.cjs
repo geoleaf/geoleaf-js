@@ -103,10 +103,12 @@ const MJS_MIME_TOKEN = "text/javascript";
  *   ② **Both tokens must be on the SAME line.** A directive associates a type with an
  *      extension; two distant mentions prove nothing.
  *
- * ⚠️ The final lookahead excludes `.mjs.gz`. The `.htaccess` carries a second line,
- * `AddType text/javascript .mjs.gz .js.gz`, serving the pre-compressed archives: without
- * this exclusion it would satisfy the rule on its own and the MAIN directive could
- * disappear with nothing turning red.
+ * ⚠️ The final lookahead excludes `.mjs.gz`. The `.htaccess` used to carry a second line,
+ * `AddType text/javascript .mjs.gz .js.gz`, for the pre-compressed archives: without this
+ * exclusion it satisfied the rule on its own and the MAIN directive could disappear with
+ * nothing turning red. That line is gone — measured on an Apache, it typed nothing, the
+ * archive's own `.gz` winning — and the archives are typed by `ForceType`; the exclusion
+ * stays for whoever writes the line back.
  *
  * @param {string} body Raw content of an `nginx.conf.example` or a `.htaccess`.
  * @returns {boolean}
@@ -187,6 +189,134 @@ function declaresProfilesRootNoCache(body) {
         }
     }
     return false;
+}
+
+/**
+ * The files §8 of `SERVEUR.md` declares `no-cache` — the entry points, which reference
+ * everything else, and the profiles root, which carries the token that invalidates the rest.
+ */
+const NO_CACHE_PATHS = [
+    "index.html",
+    "init.js",
+    "manifest.json",
+    "sw-core.js",
+    "profiles/geoleaf.config.json",
+];
+
+const CACHE_REVALIDATE = "no-cache";
+const CACHE_HOUR = "public, max-age=3600";
+const CACHE_DAY = "public, max-age=86400";
+const CACHE_YEAR = "public, max-age=31536000, immutable";
+
+/** The extensions `dist/` is pinned for — `.mjs` included, or the largest files go bare. */
+const DIST_PINNED_EXT = /\.(mjs|js|css|woff2?|png|svg)$/;
+
+/**
+ * The `Cache-Control` §8 of `SERVEUR.md` DECLARES for a file — the one statement both recipes
+ * are held to (SC-08).
+ *
+ * 🛑 **A year, `immutable`, is granted by FOLDER, not by extension.** The recipes used to pin
+ * every `.mjs`, `.js`, `.css`, `.png` and `.svg` wherever it lived. Only `dist/` earns it: each
+ * of its files is named after its content or asked for with its token. The map engine, the
+ * application's icons and the profile sprites sat under the same rule with a STABLE name and no
+ * token — a visitor kept the old engine for a year after an upgrade, and a sprite the
+ * integrator had just rewritten never reached them, while `curl` returned the new file.
+ *
+ * @param {string} file Path relative to the served folder, with `/` separators.
+ * @returns {string | null} The declared header, or `null` for a file the table does not name.
+ */
+function declaredCacheControl(file) {
+    if (NO_CACHE_PATHS.includes(file)) return CACHE_REVALIDATE;
+    if (file.startsWith("profiles/")) return CACHE_HOUR;
+    if (file.startsWith("vendor/")) return CACHE_REVALIDATE;
+    if (file.startsWith("icons/")) return CACHE_DAY;
+    if (file.startsWith("dist/") && DIST_PINNED_EXT.test(file)) return CACHE_YEAR;
+    return null;
+}
+
+/**
+ * The `Cache-Control` a recipe EFFECTIVELY gives a file — the header its server would send, not
+ * the one a block of the recipe names (SC-06).
+ *
+ * 🛑 **Naming a file next to `no-cache` proves nothing: the server decides which block wins, and
+ * the two servers decide in OPPOSITE directions.** nginx tests its regular-expression locations
+ * in the order they are written and stops at the FIRST that matches; Apache merges every
+ * `<FilesMatch>` that matches, in order, so the LAST one sets the header. The nginx recipe put
+ * its `\.(mjs|js|css|…)$` block — one year, `immutable` — ABOVE the block naming `init.js` and
+ * `sw-core.js`: both end in `.js`, the first block took them, and the `no-cache` written for
+ * them, with its comment, was never reached. The Apache recipe, written in the same order, was
+ * right. {@link declaresProfilesRootNoCache} could not see it: it reads one block.
+ *
+ * ⚠️ A MODEL of each server's documented precedence, not a server: nothing here starts nginx.
+ * It reads only what the two recipes use — `location ~` / `location ~*` blocks on one side,
+ * `<FilesMatch>` and `<If "%{THE_REQUEST} =~ m#…#">` on the other — and returns `null` for a
+ * file no cache block reaches, which is a verdict too: the browser's heuristic then decides.
+ *
+ * ⚠️ The Apache recipe matches on `THE_REQUEST`, the request line as the client sent it, and
+ * that is deliberate: the recipe rewrites a request to its `.gz` twin, and a `<FilesMatch>`
+ * judges the file SERVED — `init.js.gz`, which neither `^init\.js$` nor `\.js$` matches.
+ *
+ * @param {string} body Raw content of an `nginx.conf.example` or a `.htaccess`.
+ * @param {"nginx" | "apache"} server Whose precedence rule applies.
+ * @param {string} file Path of the file, relative to the served folder (`"init.js"`).
+ * @returns {string | null} The header's value, or `null` when no block sets one.
+ */
+function effectiveCacheControl(body, server, file) {
+    const active = body.split("\n").filter((line) => !/^\s*#/.test(line));
+    if (server === "nginx") {
+        const open = /^\s*location\s+(~\*?)\s+(\S+)\s*\{\s*$/;
+        for (let i = 0; i < active.length; i += 1) {
+            const m = open.exec(active[i]);
+            if (!m) continue;
+            if (!new RegExp(m[2], m[1] === "~*" ? "i" : "").test(`/${file}`)) continue;
+            // First match wins, with or without a header.
+            return blockCacheControl(active, i, /^\s*\}/);
+        }
+        return null;
+    }
+    // Apache merges `<FilesMatch>` first, then `<If>` — whatever their order in the file — and
+    // within each kind the LAST section that matches and sets the header wins.
+    /** @type {string | null} */
+    let verdict = null;
+    const kinds = [
+        {
+            open: /^\s*<FilesMatch\s+"([^"]+)">\s*$/,
+            close: /^\s*<\/FilesMatch>/,
+            subject: file.slice(file.lastIndexOf("/") + 1),
+        },
+        {
+            open: /^\s*<If\s+"%\{THE_REQUEST\}\s+=~\s+m#(.+)#">\s*$/,
+            close: /^\s*<\/If>/,
+            subject: `GET /${file} HTTP/1.1`,
+        },
+    ];
+    for (const kind of kinds) {
+        for (let i = 0; i < active.length; i += 1) {
+            const m = kind.open.exec(active[i]);
+            if (!m || !new RegExp(m[1]).test(kind.subject)) continue;
+            const header = blockCacheControl(active, i, kind.close);
+            if (header !== null) verdict = header;
+        }
+    }
+    return verdict;
+}
+
+/**
+ * The `Cache-Control` a block sets, read from its opening line to its closing one.
+ *
+ * @param {string[]} lines The recipe's active lines.
+ * @param {number} from Index of the block's opening line.
+ * @param {RegExp} close What ends the block.
+ * @returns {string | null}
+ */
+function blockCacheControl(lines, from, close) {
+    /** @type {string | null} */
+    let header = null;
+    for (let j = from + 1; j < lines.length && !close.test(lines[j]); j += 1) {
+        const set = /Cache-Control\s+"([^"]+)"/.exec(lines[j]);
+        if (set) header = set[1];
+    }
+    return header;
 }
 
 const SERVEUR_MD = `# Servir ce dossier — contrat serveur
@@ -287,7 +417,7 @@ une page blanche et une console pleine de 404 s'il manque le slash.
 
 **Pourquoi.** Chaque artefact texte de ce dossier est accompagné d'un jumeau \`.gz\` **déjà
 produit**. Sans la directive, ces fichiers existent et ne sont **jamais servis** : l'original part
-sur le fil. Le plus gros module du moteur pèse 559 Ko bruts contre 139 Ko compressés.
+sur le fil. Le plus gros module du moteur est plus de quatre fois plus léger compressé.
 
 **Le symptôme.** Aucun — c'est précisément le problème. Rien ne casse, le transfert est simplement
 quatre fois plus lourd que ce que le dossier permet.
@@ -363,11 +493,19 @@ puis \`; preload\`, quasi irréversible) se décide séparément et après coup.
 
 | Ressource | En-tête | Motif |
 | --- | --- | --- |
-| \`dist/**\`, \`vendor/**\` | \`public, max-age=31536000, immutable\` | noms empreintés, jamais réécrits |
+| \`dist/**\` | \`${CACHE_YEAR}\` | chaque fichier est nommé par son contenu, ou demandé avec son jeton (\`?v=\`) — et c'est le SEUL dossier dans ce cas |
+| \`vendor/**\` | \`${CACHE_REVALIDATE}\` | le moteur de carte : noms STABLES, importés l'un par l'autre — revalidé à chaque visite (un \`304\` s'il n'a pas changé), sans quoi une montée de version n'arrive pas |
+| \`icons/**\` | \`${CACHE_DAY}\` | icônes de l'application : noms stables, changent rarement |
 | \`index.html\`, \`init.js\`, \`manifest.json\` | \`no-cache\` | référencent les artefacts empreintés |
 | \`sw-core.js\` | \`no-cache\` | le navigateur doit voir les mises à jour du worker |
 | \`profiles/geoleaf.config.json\` | **\`no-cache\`, obligatoire** | il porte \`data.profileVersion\` — voir l'encadré |
-| \`profiles/**\` (autres) | \`max-age=3600\` (ou \`no-cache\`) | données métier, selon votre fréquence |
+| \`profiles/**\` (autres) | \`${CACHE_HOUR}\` (ou \`no-cache\`) | données métier, selon votre fréquence — sprites d'icônes compris |
+
+⚠️ **Un an ne s'accorde qu'à ce qui est demandé par son contenu.** Une règle écrite par
+EXTENSION (\`\\.(js|css|png|svg)$\`) épingle aussi le moteur, les icônes et le sprite de vos
+profils, qui gardent leur nom d'une version à l'autre : un visiteur déjà venu garde l'ancien
+jusqu'à l'échéance, et \`curl\` rend le nouveau. Les deux recettes fournies épinglent par
+DOSSIER ; si vous écrivez la vôtre, ne revenez pas à l'extension.
 
 🛑 **Le fichier racine des profils ne se met JAMAIS en cache longtemps, et ce n'est pas une
 préférence.** \`profiles/geoleaf.config.json\` porte \`data.profileVersion\`, l'empreinte qui
@@ -437,6 +575,9 @@ const NGINX_CONF_EXAMPLE = `# ── GeoLeaf — recette nginx ─────�
 #   → attendu : content-type: text/javascript
 types {
     text/javascript mjs;
+    # Les données des couches. nginx ne connaît pas l'extension : sans cette ligne un
+    # \`.geojson\` part en \`application/octet-stream\`.
+    application/json geojson;
 }
 
 # Sert les jumeaux \`.gz\` déjà présents à côté de chaque artefact texte. Sans cette
@@ -477,11 +618,13 @@ server {
         try_files $uri $uri/ =404;
     }
 
-    # Artefacts empreintés : leur nom change à chaque build, donc cache maximal.
-    # Le motif couvre \`.mjs\` — un \`\\.(js|css)$\` ne le matcherait PAS, et laisserait les
-    # plus gros fichiers du dossier sans Cache-Control.
-    location ~* \\.(mjs|js|css|woff2?|png|svg)$ {
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés — ils
+    # référencent tout le reste, par nom ou par jeton de contenu.
+    # 🛑 CE BLOC DOIT RESTER LE PREMIER. nginx retient la PREMIÈRE location à expression
+    # régulière qui matche : écrit sous le bloc des extensions, \`init.js\` et \`sw-core.js\`
+    # — deux \`.js\` — partaient en \`immutable\` pour un an, et ce bloc n'était jamais atteint.
+    location ~* /(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)$ {
+        add_header Cache-Control "no-cache" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
@@ -500,21 +643,48 @@ server {
         add_header Strict-Transport-Security "max-age=31536000" always;
     }
 
-    # Données de profil : revalidées à l'heure. Sans ce bloc elles tombent dans \`location /\`
-    # SANS aucun \`Cache-Control\`, et le navigateur applique alors son heuristique — plusieurs
-    # jours sur un fichier ancien, ce qui est exactement le défaut que §8 décrit.
-    location ~* /profiles/.*\\.(json|geojson)$ {
-        add_header Cache-Control "public, max-age=3600" always;
+    # Données de profil : revalidées à l'heure — JSON, GeoJSON, et le sprite d'icônes que
+    # vous réécrivez quand vous ajoutez un symbole. Sans ce bloc elles tombent dans
+    # \`location /\` SANS aucun \`Cache-Control\`, et le navigateur applique alors son
+    # heuristique — plusieurs jours sur un fichier ancien (SERVEUR.md §8).
+    # ⚠️ AVANT le bloc \`/icons/\` : un sprite vit sous \`profiles/<id>/icons/\`.
+    location ~* /profiles/ {
+        add_header Cache-Control "${CACHE_HOUR}" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
         add_header Strict-Transport-Security "max-age=31536000" always;
     }
 
-    # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés, ils
-    # référencent les artefacts empreintés ci-dessus.
-    location ~* /(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)$ {
-        add_header Cache-Control "no-cache" always;
+    # Moteur de carte : ses fichiers gardent leur NOM d'une version à l'autre et s'importent
+    # l'un l'autre par ce nom — aucun jeton ne peut les marquer. Revalidés à chaque visite :
+    # un \`304\` tant que rien n'a changé, le nouveau moteur dès qu'il est déposé.
+    location ~* /vendor/ {
+        add_header Cache-Control "${CACHE_REVALIDATE}" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+    }
+
+    # Icônes de l'application : noms stables, changent rarement — une journée.
+    location ~* /icons/ {
+        add_header Cache-Control "${CACHE_DAY}" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header Content-Security-Policy "frame-ancestors 'self'" always;
+        add_header Strict-Transport-Security "max-age=31536000" always;
+    }
+
+    # Artefacts empreintés : leur nom, ou le jeton \`?v=\` de leur URL, change avec leur
+    # contenu — donc cache maximal.
+    # 🛑 BORNÉ À \`/dist/\`, et ce n'est pas une préférence : c'est le seul dossier dont
+    # chaque fichier est demandé par son contenu. Écrit par extension seule, ce bloc épinglait
+    # un an le moteur, les icônes et les sprites — des fichiers au nom stable, que rien ne
+    # peut invalider.
+    # Le motif couvre \`.mjs\` — un \`\\.(js|css)$\` ne le matcherait PAS.
+    location ~* /dist/.*\\.(mjs|js|css|woff2?|png|svg)$ {
+        add_header Cache-Control "${CACHE_YEAR}" always;
         add_header X-Content-Type-Options "nosniff" always;
         add_header X-Frame-Options "DENY" always;
         add_header Content-Security-Policy "frame-ancestors 'self'" always;
@@ -547,6 +717,11 @@ const HTACCESS = `# ── GeoLeaf — recette Apache ────────�
 # infini, et une console dont seule la PREMIÈRE ligne rouge est la cause.
 AddType text/javascript .mjs
 
+# Les données des couches. Apache ne connaît pas l'extension : mesuré, un \`.geojson\` partait
+# SANS \`Content-Type\`, alors que son jumeau \`.gz\` partait typé — deux réponses pour un
+# même fichier, selon ce que le client accepte.
+AddType application/json .geojson
+
 # ⚠️ MultiViews doit rester désactivé. Avec lui, la présence de \`fichier.js.gz\` à côté
 # de \`fichier.js\` peut faire servir l'archive sans son \`Content-Encoding\` —
 # « Uncaught SyntaxError: Invalid or unexpected token ».
@@ -569,10 +744,27 @@ DirectoryIndex index.html
         Header append Vary Accept-Encoding
     </FilesMatch>
 </IfModule>
-# Les archives doivent conserver le type de l'original, pas celui de l'archive.
-AddType text/javascript .mjs.gz .js.gz
-AddType text/css .css.gz
-AddType application/json .json.gz
+# 🛑 Les archives doivent conserver le type de l'ORIGINAL, pas celui de l'archive : un module
+# servi \`application/x-gzip\` est REFUSÉ par le navigateur, comme un \`.mjs\` sans son type.
+# \`ForceType\`, et non \`AddType .js.gz\` : Apache lit les extensions une à une, et celle de
+# l'archive — \`.gz\`, que sa configuration par défaut associe à \`application/x-gzip\` —
+# l'emporte sur celle de l'original. Mesuré : avec \`AddType\`, tout jumeau partait sous le
+# type de l'archive.
+<FilesMatch "\\.m?js\\.gz$">
+    ForceType text/javascript
+</FilesMatch>
+<FilesMatch "\\.css\\.gz$">
+    ForceType text/css
+</FilesMatch>
+<FilesMatch "\\.(json|geojson)\\.gz$">
+    ForceType application/json
+</FilesMatch>
+<FilesMatch "\\.svg\\.gz$">
+    ForceType image/svg+xml
+</FilesMatch>
+<FilesMatch "\\.html\\.gz$">
+    ForceType text/html
+</FilesMatch>
 
 # 🛑 HTTPS N'EST PAS OPTIONNEL — la page déclare \`upgrade-insecure-requests\`, et le
 # service worker exige un contexte sécurisé. Décommenter si la redirection n'est pas
@@ -591,26 +783,45 @@ AddType application/json .json.gz
     # difficile à révoquer, renforcer par \`; includeSubDomains\`/\`; preload\` délibérément).
     Header always set Strict-Transport-Security "max-age=31536000"
 
-    <FilesMatch "\\.(mjs|js|css|woff2?|png|svg)$">
-        Header set Cache-Control "public, max-age=31536000, immutable"
-    </FilesMatch>
-    # Données de profil : revalidées à l'heure. Sans cette règle elles n'ont AUCUN
-    # \`Cache-Control\` et le navigateur applique son heuristique — plusieurs jours sur un
-    # fichier ancien (SERVEUR.md §8).
-    <FilesMatch "\\.(json|geojson)$">
-        Header set Cache-Control "public, max-age=3600"
-    </FilesMatch>
-    # ⚠️ Apache applique les blocs DANS L'ORDRE et le dernier l'emporte : celui-ci doit rester
-    # APRÈS le précédent, sinon \`manifest.json\` repasserait en cache d'une heure.
-    <FilesMatch "^(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)$">
-        Header set Cache-Control "no-cache"
-    </FilesMatch>
+    # Cache. 🛑 Les blocs jugent la LIGNE DE REQUÊTE (\`THE_REQUEST\`), pas le fichier servi, et
+    # c'est délibéré : la réécriture ci-dessus sert \`init.js.gz\` à la place de \`init.js\`, et
+    # un \`<FilesMatch "^init\\.js$">\` ne matche pas l'archive — la règle ne s'appliquerait
+    # qu'aux clients qui refusent gzip. \`THE_REQUEST\` ne change pas avec la réécriture.
+    # Demande Apache 2.4 (\`<If>\`). ⚠️ Apache applique ces blocs DANS L'ORDRE et le dernier
+    # qui matche l'emporte : du plus général au plus précis.
+
+    # Artefacts empreintés — BORNÉ À \`dist/\`, le seul dossier dont chaque fichier est demandé
+    # par son contenu. Par extension seule, le moteur, les icônes et les sprites partaient
+    # épinglés un an sous un nom stable (SERVEUR.md §8).
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/dist/[^ ?]*\\.(mjs|js|css|woff2?|png|svg)[ ?]#">
+        Header set Cache-Control "${CACHE_YEAR}"
+    </If>
+    # Icônes de l'application : noms stables, changent rarement — une journée.
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/icons/#">
+        Header set Cache-Control "${CACHE_DAY}"
+    </If>
+    # Moteur de carte : noms stables, importés l'un par l'autre — revalidé à chaque visite.
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/vendor/#">
+        Header set Cache-Control "${CACHE_REVALIDATE}"
+    </If>
+    # Données de profil : revalidées à l'heure — JSON, GeoJSON et sprite d'icônes. Sans cette
+    # règle elles n'ont AUCUN \`Cache-Control\` et le navigateur applique son heuristique.
+    # ⚠️ APRÈS le bloc \`/icons/\` : un sprite vit sous \`profiles/<id>/icons/\`.
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/profiles/#">
+        Header set Cache-Control "${CACHE_HOUR}"
+    </If>
+    # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés — ils
+    # référencent tout le reste. Le motif prend aussi la requête sur le dossier (\`/\`), qui
+    # sert \`index.html\`.
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/(index\\.html|init\\.js|manifest\\.json|sw-core\\.js)?[ ?]#">
+        Header set Cache-Control "${CACHE_REVALIDATE}"
+    </If>
     # 🛑 Racine des profils : elle porte \`data.profileVersion\`, l'empreinte qui invalide tout
     # le reste. On ne peut pas invalider par un jeton le fichier qui porte ce jeton — épinglé,
     # il défait le mécanisme entier. Ce bloc est le DERNIER pour cette raison.
-    <FilesMatch "^geoleaf\\.config\\.json$">
-        Header set Cache-Control "no-cache"
-    </FilesMatch>
+    <If "%{THE_REQUEST} =~ m#^\\S+ [^ ?]*/profiles/geoleaf\\.config\\.json[ ?]#">
+        Header set Cache-Control "${CACHE_REVALIDATE}"
+    </If>
 </IfModule>
 
 # ⚠️ NE PAS ajouter de repli « SPA » (FallbackResource / RewriteRule vers index.html).
@@ -639,6 +850,9 @@ module.exports = {
     MJS_MIME_TOKEN,
     declaresMjsType,
     declaresProfilesRootNoCache,
+    NO_CACHE_PATHS,
+    declaredCacheControl,
+    effectiveCacheControl,
     SECURITY_HEADER_TOKENS,
     missingSecurityHeaders,
     serverContractFiles,

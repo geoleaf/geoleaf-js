@@ -711,11 +711,11 @@ jobs:
 
             # PLATFORM-ISO — the three adapters of `@geoleaf-plugins/navigation` are its only
             # point of contact with the browser, which is what makes a later native port
-            # tractable. Scoped to the plugin and NEVER to the repository (decision D9): the
+            # tractable. Scoped to the plugin and NEVER to the repository, by decision: the
             # repo already carries seven legitimate `navigator.geolocation` sites outside any
             # `platform/` — the core geolocation capability and the GPS tool of `measure` — so
             # a repo-wide sweep would be BORN RED on code it has no business judging, and a
-            # gate born red gets disarmed. Until the plugin exists (sprint 1) it returns a
+            # gate born red gets disarmed. Until the plugin exists it returns a
             # MOTIVATED SKIP that says it is not a green. Mirrored in ci-local.cjs.
             - name: Platform isolation (PLATFORM-ISO)
               run: node scripts/check-platform-isolation.cjs
@@ -755,8 +755,14 @@ jobs:
             # employé, celle-ci la variable CSS EMPLOYÉE et jamais définie. Les deux sens
             # d'un même défaut, et aucune des deux ne voit celui de l'autre.
             # Keep in sync with scripts/ci-local.cjs.
-            - name: CSS token vars defined (plugins/libs)
+            - name: CSS token vars defined (core/plugins/libs)
               run: npm run verify:css-tokens
+
+            # La précédente juge qu'un jeton EXISTE ; celle-ci qu'il se LIT sur l'accent où
+            # il est écrit, dans chaque thème et chaque palette — le contraste est calculé.
+            # Keep in sync with scripts/ci-local.cjs.
+            - name: CSS text on accent reaches 4.5:1 (core/plugins/libs)
+              run: npm run verify:css-accent-contrast
 
             - name: No Leaflet references (gate migration MapLibre)
               run: node scripts/verify-no-leaflet.cjs
@@ -1128,4 +1134,22 @@ jobs:
                       artifacts/playwright/report/
                       artifacts/playwright/results/
                   retention-days: 7
+                  if-no-files-found: warn
+
+            # La CHRONOLOGIE du run, téléversée même sur vert — et surtout sur vert. Un test
+            # instable rougit puis passe au rejeu : le run sort vert, l'étape ci-dessus ne téléverse
+            # rien, et c'est précisément ce run-là dont il faut lire l'ordre. Le reporter `list` ne
+            # nomme pas le worker : un test tué par le démontage du précédent ne se distinguait
+            # d'un test instable par lui-même qu'en devinant qui tournait avant lui.
+            # Un seul fichier JSON (reporter `json` de `playwright.config.js`) : chaque essai de
+            # chaque test, son worker, son heure. `always()` porte la même garde d'événement que
+            # l'étape ci-dessus, pour la même raison.
+            - name: Upload Playwright timeline (E2E, toujours)
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              if: >-
+                  always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'schedule' && github.repository == 'geoleaf/geoleaf-js'))
+              with:
+                  name: playwright-e2e-timeline
+                  path: artifacts/playwright/timeline.json
+                  retention-days: 14
                   if-no-files-found: warn

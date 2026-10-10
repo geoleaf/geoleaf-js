@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "sonde-remontage-autres-greffons",
+    "scope": ["scripts/probe-remount-other-plugins.mjs"],
+    "verdicts": {
+        "scripts/probe-remount-other-plugins.mjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N1",
+            "severity": null,
+            "description": "Sonde Chromium de ce que sept greffons sans créneau paresseux laissent derrière un `unmount()` et de ce que trouve le `mount()` suivant, sur `deploy-full`",
+            "confidence": "haute",
+            "rationale": "N1 : basename `probe-<sujet>.mjs`, la forme des autres sondes de ce répertoire. Elle n'est pas redondante avec `probe-remount-plugins.mjs`, qui amène à leur état construit les greffons à créneau paresseux et `connector` : `navigation`, `offline-ui`, `routing`, `websocket`, `flatgeobuf`, `cog` et `file-import` n'y sont pas, et ce qu'ils tiennent n'est pour moitié pas dans le DOM — une veille de position, un verrou d'écran, un socket, une requête sur un déplacement de caméra. Chacun a donc sa fixture et ses lectures, sur une page à lui ; `routing` est lu sous ses deux hôtes de volet. Elle n'est pas fusionnée dans sa voisine, qui approche déjà sept cents lignes. Ce qu'elle a montré est gardé par `e2e/75-remount-plugins.spec.js` ; la sonde reste le seul geste qui relit les sept d'un coup, les trois qui ne laissent rien compris. C'est une mesure, pas une garde."
+        }
+    }
+}

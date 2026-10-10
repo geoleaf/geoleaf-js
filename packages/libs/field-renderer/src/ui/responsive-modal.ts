@@ -5,6 +5,8 @@
  * https://geoleaf.dev
  */
 
+// First on purpose: the sheets the form builds on come before the form's own.
+import "./host-sheets.js";
 import "../css/form-modal-base.css";
 import "../css/form-field-components.css";
 // Last on purpose: the touch block wins the ties inside this package.

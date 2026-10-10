@@ -184,8 +184,11 @@ export class MaplibreAdapter implements IMapAdapter {
                 // collapses only below 640 px — expanded at load, collapsed at the first drag —
                 // and stays expanded where it fits, which is what the providers' terms ask for.
                 attributionControl: {},
+                // 🛑 UNDER `canvasContextAttributes`: that is where the engine reads it. Passed
+                // at the top level it was ignored without a word — a spread escapes the
+                // excess-property check — and a context asked to keep its buffer did not.
                 ...((options.preserveDrawingBuffer || _printRegistered) && {
-                    preserveDrawingBuffer: true,
+                    canvasContextAttributes: { preserveDrawingBuffer: true },
                 }),
             });
         } catch (err) {
@@ -345,7 +348,7 @@ export class MaplibreAdapter implements IMapAdapter {
         // 🛑 A FRAMING IS NOT A CHANGE OF VIEWPOINT. `fitBounds` computes a camera from scratch
         // and, given no `pitch`/`bearing`, applies ZERO — silently redressing a tilted map and
         // CUTTING any camera animation in flight. Measured on a plain boot: a basemap declaring
-        // `terrain.default3D` posts `easeTo({ pitch: 60 })`, the reveal's own re-framing lands
+        // `terrain.default3D` posted `easeTo({ pitch: 60 })`, the reveal's own re-framing landed
         // ~120 ms later (`app/init-reveal.ts`), and the camera settled at the requested 60° once
         // in six runs — at 6–9° the other five. The user's "Relief 3D" basemap stayed flat, with
         // the terrain on and nothing logged. Carrying the current angle over makes a re-framing

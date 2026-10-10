@@ -25,7 +25,7 @@ pnpm-debug.log*
 # Build final
 dist/
 
-# Sortie du build VitePress — artefact, jamais commité. T4.4 l'a sortie de `packages/` :
+# Sortie du build VitePress — artefact, jamais commité. Elle a été sortie de `packages/` :
 # le glob workspace `packages/*` la captait, et `scripts/lib/packages.cjs` ne faisait que
 # la TOLÉRER (répertoire sans manifeste). Produite par
 # `packages/core/docs/.vitepress/config.ts#outDir`, lue par `scripts/deploy-docs.cjs`.
@@ -35,7 +35,7 @@ dist/
 # `packages/<x>/docs-dist/` au lieu de le laisser rougir au check 5.
 /docs-dist/
 
-# Doc de référence GÉNÉRÉE (T4.1) — régénérable à la demande par `npm run docs:deploy` :
+# Doc de référence GÉNÉRÉE — régénérable à la demande par `npm run docs:deploy` :
 # step 1 `typedoc --options typedoc.json` (out = docs/api), step 2 recopie api/ →
 # public/api/, step 2b y dépose le logo. `docs/public/` est généré à 100 % (api/ + logo.png) ;
 # le reste de `packages/core/docs/` est RÉDIGÉ (`.md` + .vitepress/) et reste suivi.
@@ -49,14 +49,14 @@ dist/
 packages/core/docs/api/
 packages/core/docs/public/
 
-# Tests et coverage — T6.2 : les rapports de run vivent sous `artifacts/`, un seul
+# Tests et coverage : les rapports de run vivent sous `artifacts/`, un seul
 # endroit au lieu de quatre entrées de racine. Ancré (`/`) délibérément : l'artefact
 # naît à exactement UN endroit, et une règle non ancrée masquerait un futur
 # `packages/x/artifacts/` au lieu de le laisser rougir au check 5b de l'hygiène.
 /artifacts/
 #
 # ⚠️ `coverage/` RESTE, et sans slash initial : le motif couvre ainsi les 17
-# `packages/*/coverage`, que T6.2 ne déplace PAS — c'est `packages/core/coverage/` que
+# `packages/*/coverage`, que ce regroupement ne déplace PAS — c'est `packages/core/coverage/` que
 # `ci.yml:136-141` uploade. Seule la racine a bougé.
 coverage/
 # ⚠️ `test-results.json` est le FICHIER du reporter Vitest (ci.yml:112, lu par
@@ -108,7 +108,7 @@ packages/core/connector.local.js
 # run d'après. Les verrous vivent désormais sous `_docs_projet/travail/`, à plat.
 _docs_projet/travail/.lock-*
 _docs_projet/travail/*/.lock-*
-# T6.5 — `settings.local.json` était le SEUL fichier TRACÉ-ET-IGNORÉ du dépôt (commité
+# `settings.local.json` était le SEUL fichier TRACÉ-ET-IGNORÉ du dépôt (commité
 # en fa48acfd, 17,9 Ko, portant un chemin absolu et un nom de distro WSL). Et il n'était
 # ignoré QUE par le gitignore GLOBAL de la machine (`~/.config/git/ignore`) : le dépôt
 # n'en disait rien. Sur tout autre poste il n'était donc pas ignoré du tout et salissait
@@ -135,12 +135,12 @@ tmp_*
 scratch_*
 _archive_local/
 
-# Répertoires de travail des gates (T5.4). Deux producteurs, deux profondeurs :
+# Répertoires de travail des gates. Deux producteurs, deux profondeurs :
 #   • `scripts/verify-coverage-attribution.cjs:47` → `.tmp-coverage-probe/` (racine)
 #   • `scripts/typecheck-docs-examples.cjs:106`    → `packages/core/.tmp-docs-typecheck/`
 # Les deux nettoient par `process.on("exit")`, qui couvre le `process.exit()` de leurs
 # gardes mais PAS un SIGKILL ni un crash natif. Le résidu était alors non suivi ET non
-# ignoré — état que le check 5b de `verify-repo-hygiene` (T4.1) fait rougir. Une gate
+# ignoré — état que le check 5b de `verify-repo-hygiene` fait rougir. Une gate
 # mise au rouge par le cadavre d'une autre gate n'apprend rien à personne.
 #
 # ⚠️ Motif NON ancré, à l'inverse délibéré des `packages/core/docs/api/` ci-dessus, et

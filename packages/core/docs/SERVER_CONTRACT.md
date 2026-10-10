@@ -150,9 +150,29 @@ exercised here.
 
 ### 1.4 How a pull is authenticated
 
-The pull uses the page's `fetch`. Behind `@geoleaf-plugins/connector`, a request whose URL lies under
-the connector's `baseUrl` carries `Authorization: Bearer <token>` (§3); any other request carries
-nothing. GeoLeaf sets no timeout on a pull page; a caller of `pullLayer` can stop it with an
+The pull uses the page's `fetch`, and so does the rest of the offline preparation — tiles, styles,
+glyphs, profile files. **The preparation presents what the display presents**, no more and no less:
+
+- Behind `@geoleaf-plugins/connector`, a request whose URL lies under the connector's `baseUrl`
+  carries `Authorization: Bearer <token>` (§3) — vector tiles and glyphs included, as the map
+  itself requests them. Outside `baseUrl`, GeoLeaf adds no header.
+- GeoLeaf sets no `credentials` mode, so the browser's default applies: a request to the page's
+  **own origin** carries that origin's cookies, a cross-origin request carries none. A server that
+  authenticates by a same-origin session cookie is therefore reached by the preparation as it is
+  by the page.
+
+In a profile that declares `modules.offline.dataOrigins`, a layer is pulled only from a declared
+origin or from the page's own; any other source is refused, and the pull reports
+`refused: "originUndeclared"`. Neither `cacheable` nor `prefetch` is read there — the layer naming
+its source is the request — and an `authenticated` origin is pulled like any other.
+
+The rule is applied again to every page after the first. Those are requested at the URL your
+server renders — the `next` link, or the cursor `cursorPath` names — so render them on the origin
+that served the first page, or on another declared one. A cursor naming any other origin is not
+followed: the pull stops there, reports `cursorRefused: true`, and is partial — nothing is removed
+from the device on its account.
+
+GeoLeaf sets no timeout on a pull page; a caller of `pullLayer` can stop it with an
 `AbortSignal`.
 
 ---
@@ -280,6 +300,26 @@ seconds**, a finite number greater than 0 — signs in. The token is opaque to G
 decoded. `401`, `404`, a `5xx` and any other non-2xx each fail the sign-in with their own message;
 so does a body that is not that JSON. The exchange is given 15 seconds, body included: past them
 it fails as an unreachable server does.
+
+**A refusal may say why**, and it is optional. A non-2xx answer declared
+`Content-Type: application/problem+json` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)) and
+whose body is a JSON object is read as problem details:
+
+```
+HTTP/1.1 403 Forbidden
+Content-Type: application/problem+json
+
+{ "type": "https://example.com/problems/second-factor-required",
+  "title": "Second factor required",
+  "detail": "A second factor is required for this account." }
+```
+
+The login window shows `detail` — `title` when there is none — under its own message, as text,
+cut at 300 characters, in whatever language the server wrote it. `type`, `title`, `detail` and
+the whole body reach the host in `geoleaf:connector:login-failed`, with the status. The status
+still decides the window's own message, and a refusal without such a body fails exactly as
+described above. The body is read within the same 15 seconds, and a body over 16,384 characters
+is not read as a problem.
 
 **Renewal**, derived from the same endpoint — `/refresh` is appended to it as it is written, so
 `…/auth/login` becomes `…/auth/login/refresh`:

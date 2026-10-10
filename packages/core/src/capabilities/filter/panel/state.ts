@@ -101,13 +101,39 @@ function _readTag(group: HTMLElement, field: FilterFieldDescriptor): ActiveField
     return values.length ? { descriptor: field, values } : null;
 }
 
-function _readRange(group: HTMLElement, field: FilterFieldDescriptor): ActiveField | null {
-    const input = group.querySelector<HTMLInputElement>("input[type='range']");
+/** A slider's value, or `null` when it holds none that reads as a number. */
+function _sliderValue(input: HTMLInputElement | null): number | null {
     if (!input || input.value === "") return null;
-    const val = Number(input.value);
-    const min = input.min !== "" ? Number(input.min) : 0;
-    if (Number.isNaN(val) || val <= min) return null;
-    return { descriptor: field, range: { min: val } };
+    const value = Number(input.value);
+    return Number.isNaN(value) ? null : value;
+}
+
+/**
+ * Reads a `range` control: the lower bound from its one slider, and the upper bound from the
+ * second when the descriptor declared `bounds: "both"` (`data-gl-range-bound="max"`).
+ *
+ * A slider left at the END of its domain constrains nothing — the lower one at the minimum,
+ * the upper one at the maximum — so only a bound the user moved is in the result.
+ */
+function _readRange(group: HTMLElement, field: FilterFieldDescriptor): ActiveField | null {
+    const upper = group.querySelector<HTMLInputElement>(
+        "input[type='range'][data-gl-range-bound='max']"
+    );
+    const lower = group.querySelector<HTMLInputElement>(
+        "input[type='range']:not([data-gl-range-bound='max'])"
+    );
+    const range: { min?: number; max?: number } = {};
+
+    const low = _sliderValue(lower);
+    const floor = lower && lower.min !== "" ? Number(lower.min) : 0;
+    if (low !== null && low > floor) range.min = low;
+
+    const high = _sliderValue(upper);
+    const ceiling = upper && upper.max !== "" ? Number(upper.max) : 100;
+    if (high !== null && high < ceiling) range.max = high;
+
+    if (range.min === undefined && range.max === undefined) return null;
+    return { descriptor: field, range };
 }
 
 function _readBoolean(group: HTMLElement, field: FilterFieldDescriptor): ActiveField | null {

@@ -309,7 +309,7 @@
             "severity": null,
             "description": "Enveloppe `ICoreModule` de la capacité, déclarant la dépendance `geojson` et déléguant init/destroy au cycle de vie",
             "confidence": "haute",
-            "rationale": "43 LOC, exporte `FilterModule` — la famille `<id>.module.ts`/`module.ts` est conforme 6/6 et 13/13 ; INV-CAPABILITY-MODULE (T6 §3.2) impose depuis R.10 que ce wrapper vive ici et non sous `app/`."
+            "rationale": "43 LOC, exporte `FilterModule` — la famille `<id>.module.ts`/`module.ts` est conforme 6/6 et 13/13 ; INV-CAPABILITY-MODULE (T6 §3.2) impose que ce wrapper vive ici et non sous `app/`."
         },
         "packages/core/src/capabilities/filter/panel/proximity/proximity-circle.ts": {
             "kind": "file",

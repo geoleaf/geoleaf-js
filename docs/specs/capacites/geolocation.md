@@ -4,8 +4,8 @@ title: geolocation — le suivi GPS de la position de l'utilisateur
 capability_id: geolocation
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1a7608c60
-date: 1er septembre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # geolocation — le suivi GPS de la position de l'utilisateur

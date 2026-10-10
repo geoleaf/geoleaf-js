@@ -181,7 +181,7 @@ describe("deriveEndpoints", () => {
 });
 
 describe("applyToLayer", () => {
-    // R.38 — start and end share ONE layer, and therefore one MapLibre source. The
+    // Start and end share ONE layer, and therefore one MapLibre source. The
     // two kinds are told apart by `properties.role` and styled by a data-driven rule.
     it("adds a single endpoints layer carrying both roles for a bound line layer", () => {
         const { adapter, added } = makeAdapter();

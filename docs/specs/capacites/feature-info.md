@@ -4,8 +4,8 @@ title: feature-info — le rendu attributaire, et ses trois surfaces
 capability_id: feature-info
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 6d71b248b
-date: 29 septembre 2026
+verifie_contre: b8058dab8
+date: 7 octobre 2026
 ---
 
 # feature-info — le rendu attributaire, et ses trois surfaces
@@ -117,10 +117,10 @@ la capacité, qui ne porte qu'`enabled` et `popup`. L'en-tête dit `Sous-clé` e
 exacte — c'est ce mot qui décide quelle table est lue. La couverture de ces clés relève du schéma de
 couche et de `scripts/check-config-coverage.cjs`, pas d'ici.
 
-| Sous-clé     | Type                    | Rôle                                                           |
-| ------------ | ----------------------- | -------------------------------------------------------------- |
-| `titleField` | `string`                | Chemin du champ dont la valeur titre la bulle et le panneau    |
-| `fields`     | tableau de descripteurs | La liste **unique** — chaque champ nomme lui-même ses surfaces |
+| Sous-clé     | Type                    | Rôle                                                                                                                            |
+| ------------ | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `titleField` | `string`                | Nomme une entrée de `fields` : elle titre chaque surface où elle s'affiche — une surface qui ne la liste pas s'ouvre sans titre |
+| `fields`     | tableau de descripteurs | La liste **unique** — chaque champ nomme lui-même ses surfaces                                                                  |
 
 Un descripteur porte `field`, `label`, le couple `primitive` + `widget`, un bloc `options` propre au
 widget, et **deux** blocs : `display` (lecture) et `edit` (saisie). `display` porte `surfaces`,
@@ -425,7 +425,7 @@ concaténation byte-identique de la sienne — chaque règle partait deux fois d
 
 ---
 
-## Le partage lecture / saisie — décision A4″
+## Le partage lecture / saisie
 
 **Le core possède la LECTURE, `field-renderer` possède la SAISIE.** Ce n'est pas une cible : c'est
 le fonctionnement réel, ratifié le 01/08/2026.
@@ -434,7 +434,7 @@ le fonctionnement réel, ratifié le 01/08/2026.
 | --------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Lecture — infobulle, bulle, panneau     | **core `feature-info`** | ses fichiers de rendu portent « zero dependency on … the field-renderer package » — la phrase se compte à la commande, jamais ici : `grep -rl "field-renderer package" packages/core/src/capabilities/feature-info/render/`. ⚠️ Cette cellule disait « ses **quatre** fichiers de rendu » : `render/` en compte sept, et trois portent la phrase |
 | Saisie — modale d'édition               | **`field-renderer`**    | son seul point d'entrée n'appelle que `formRender`                                                                                                                                                                                                                                                                                               |
-| Plomberie UI — dialogue, piège de focus | **`host-runtime`**      | à arbitrer (le paquet est privé) — tâche 2.2b                                                                                                                                                                                                                                                                                                    |
+| Plomberie UI — dialogue, piège de focus | **`host-runtime`**      | à arbitrer (le paquet est privé)                                                                                                                                                                                                                                                                                                                 |
 
 ⚠️ **La capacité ne consomme PAS `field-renderer`, et ne doit pas commencer.** Router la lecture vers
 cette bibliothèque ferait payer au core le poids d'un paquet entier pour la moitié qu'il sait déjà

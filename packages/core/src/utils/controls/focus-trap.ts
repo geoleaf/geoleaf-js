@@ -24,8 +24,8 @@
  * below). Blocked on a browser verification pass. The full comparison lives in
  * the host-runtime file's header.
  *
- * ⚠️ This paragraph said `@geoleaf/field-renderer` until 06/08/2026: decision W3
- * moved that trap to `host-runtime`, which owns the UI
+ * ⚠️ This paragraph said `@geoleaf/field-renderer` until 06/08/2026: that trap
+ * was moved to `host-runtime`, which owns the UI
  * plumbing. The motive for keeping the two apart is unchanged — only the address
  * moved. Corrected here because a comment that names a file which no longer holds
  * what it describes is the C5 counter of the completeness clause, and no gate can

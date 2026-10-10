@@ -494,7 +494,9 @@ describe("_captureState (via startSync + vi.useFakeTimers)", () => {
 
         expect(replaceState).toHaveBeenCalled();
         const callArg = replaceState.mock.calls[0][2];
-        expect(callArg).toContain("gl_filter=");
+        // One parameter per field since 3.15.0, named by the descriptor's id.
+        expect(callArg).toContain("gl_f.searchText=");
+        expect(callArg).not.toContain("gl_filter=");
         replaceState.mockRestore();
     });
 

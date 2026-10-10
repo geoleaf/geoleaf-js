@@ -15,6 +15,7 @@
 import { describe, it, expect } from "vitest";
 import {
     layerGeometry,
+    geometryFamily,
     geometryKindToGeoJSONTypes,
 } from "../../src/kernel/config/layer-geometry.js";
 
@@ -113,6 +114,27 @@ describe("geometryKindToGeoJSONTypes — les deux vocabulaires d'une même famil
     it("rend un ensemble VIDE pour tout jeton que personne n'a défini", () => {
         for (const kind of ["hexagon", "", 42, null, undefined, {}, [null, 7]]) {
             expect(geometryKindToGeoJSONTypes(kind).size).toBe(0);
+        }
+    });
+});
+
+describe("geometryFamily — la famille qu'un genre déclaré nomme", () => {
+    it("rend la même famille pour chaque orthographe du schéma", () => {
+        for (const kind of ["point", "multipoint", "Point", "MultiPoint"]) {
+            expect(geometryFamily(kind)).toBe("point");
+        }
+        for (const kind of ["line", "polyline", "multiline", "LineString", "MultiLineString"]) {
+            expect(geometryFamily(kind)).toBe("line");
+        }
+        for (const kind of ["polygon", "multipolygon", "fill-extrusion", "MultiPolygon"]) {
+            expect(geometryFamily(kind)).toBe("polygon");
+        }
+    });
+
+    // `mixed` nomme plusieurs familles, donc aucune : au lecteur de dire ce qu'il en fait.
+    it("rend null pour un genre qui ne nomme pas UNE famille", () => {
+        for (const kind of ["mixed", "hexagon", "", 42, null, undefined, {}]) {
+            expect(geometryFamily(kind)).toBeNull();
         }
     });
 });

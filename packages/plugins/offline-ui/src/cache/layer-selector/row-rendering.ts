@@ -24,6 +24,53 @@ import type {
 import { createElement } from "../../utils/dom-helpers.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
 import { renderCacheCell } from "./cache-cell.js";
+import { StorageContract } from "../../shared/storage-contract.js";
+
+/**
+ * Why the origin rule will not prepare a basemap, in words for its row — `null` when it will,
+ * or when nothing can say.
+ *
+ * Judged on the ONE address the basemap declares: its `url`, or its `style` for a vector
+ * basemap. ⚠️ A vector basemap is judged twice by the preparation itself — its style, then
+ * what the style names — and only the first is knowable here; the end-of-download notice
+ * says the rest.
+ *
+ * `engineUnavailable` is not an ORIGIN refusal: nothing at all is prepared without an engine,
+ * and the window says that elsewhere.
+ *
+ * @param basemap - The basemap of the row.
+ * @returns the motive and its label, or `null`.
+ */
+function _originRefusal(basemap: BasemapLike): { reason: string; label: string } | null {
+    const declared = [basemap.url, basemap["style"]].find(
+        (value): value is string => typeof value === "string" && value !== ""
+    );
+    if (!declared) return null;
+    const verdict = StorageContract.prefetchVerdict(declared);
+    if (!verdict || verdict.allowed || verdict.reason === "engineUnavailable") return null;
+    const reason = verdict.reason ?? "undeclared";
+    // A motive this version has no words for is said with the commonest one's, never hidden.
+    const key = _ORIGIN_REFUSAL_LABELS[reason] ?? _ORIGIN_REFUSAL_LABELS["undeclared"];
+    return { reason, label: _withValue(t(key as string), verdict.origin) };
+}
+
+/**
+ * A label with its one value in place.
+ *
+ * ⚠️ A label that carries no `{0}` — a language that misses the key gets the key back — still
+ * shows the value, appended: an origin left out of the sentence is the one thing the row
+ * exists to say.
+ */
+function _withValue(label: string, value: string): string {
+    return label.includes("{0}") ? label.replace("{0}", value) : `${label} : ${value}`;
+}
+
+/** The label of each refusal motive the core's origin rule gives. */
+const _ORIGIN_REFUSAL_LABELS: Record<string, string> = {
+    undeclared: "storage.layers.originRefused.undeclared",
+    notPrefetchable: "storage.layers.originRefused.notPrefetchable",
+    unparsable: "storage.layers.originRefused.unparsable",
+};
 
 Object.assign(LS, {
     _createTableHeader(this: LayerSelectorAPI, table: HTMLTableElement) {
@@ -96,6 +143,8 @@ Object.assign(LS, {
         checkbox.name = `geoleaf-cache-layer-${layerId}`;
         checkbox.dataset.layerId = layerId;
         checkbox.dataset.type = "layer";
+        // The name sits in the next cell, not in a <label>: the box carries it itself.
+        checkbox.setAttribute("aria-label", layerId);
 
         if (!profileCacheEnabled) {
             checkbox.disabled = true;
@@ -136,6 +185,7 @@ Object.assign(LS, {
         this.getLayerLabel(layer)
             .then((label) => {
                 nameSpan.textContent = label || layerId;
+                checkbox.setAttribute("aria-label", label || layerId);
             })
             .catch(() => {
                 nameSpan.textContent = layerId;
@@ -143,7 +193,6 @@ Object.assign(LS, {
 
         const td3 = createElement("td", "gl-cache-layers__td-geometry", row);
         td3.style.textAlign = "center";
-        td3.style.color = "#94a3b8";
         // 🛑 THIS TABLE WAS KEYED ON THE WRONG VOCABULARY, HENCE DEAD.
         //
         // Its 7 keys were **GeoJSON**'s (`Point`, `LineString`, `MultiPolygon`…),
@@ -195,7 +244,6 @@ Object.assign(LS, {
 
         const td5 = createElement("td", "gl-cache-layers__td-size", row);
         td5.style.textAlign = "right";
-        td5.style.color = "#94a3b8";
         td5.textContent = "~";
         this.estimateLayerSize(layer)
             .then((size) => {
@@ -231,9 +279,20 @@ Object.assign(LS, {
         const row = createElement("tr", "gl-cache-layers__row", tbody);
         const basemapId = basemap.id ?? "";
 
+        // 🛑 A BASEMAP THE ORIGIN RULE WILL REFUSE IS SAID SO HERE, not after the download. It
+        // used to be offered, ticked, counted in the size estimate, then left out with a
+        // console warning — and the user left believing it prepared. The switched-off tile
+        // cache comes first: with it nothing is prepared at all, and that is what the row says.
+        const refusal = tileCacheEnabled ? _originRefusal(basemap) : null;
+        const blocked = !tileCacheEnabled || refusal !== null;
+
         if (!tileCacheEnabled) {
             row.style.opacity = "0.5";
             row.title = t("storage.layers.tileCacheOff");
+        } else if (refusal) {
+            row.style.opacity = "0.5";
+            row.title = refusal.label;
+            row.dataset.originRefused = refusal.reason;
         }
 
         const td1 = createElement("td", "gl-cache-layers__td-checkbox", row);
@@ -243,8 +302,10 @@ Object.assign(LS, {
         checkbox.name = `geoleaf-cache-basemap-${basemapId}`;
         checkbox.dataset.basemapId = basemapId;
         checkbox.dataset.type = "basemap";
+        checkbox.setAttribute("aria-label", basemap.label || basemapId);
 
-        if (!tileCacheEnabled) {
+        if (blocked) {
+            // Unticked whatever a selection saved earlier says: it may predate the rule.
             checkbox.disabled = true;
             checkbox.checked = false;
         } else {
@@ -279,7 +340,6 @@ Object.assign(LS, {
 
         const td3 = createElement("td", "gl-cache-layers__td-geometry", row);
         td3.style.textAlign = "center";
-        td3.style.color = "#94a3b8";
         td3.textContent = t("storage.layers.raster");
 
         const td4 = createElement("td", "gl-cache-layers__td-style", row);
@@ -287,7 +347,6 @@ Object.assign(LS, {
 
         const td5 = createElement("td", "gl-cache-layers__td-size", row);
         td5.style.textAlign = "right";
-        td5.style.color = "#94a3b8";
         td5.textContent = "~";
         td5.title = "";
 
@@ -324,7 +383,9 @@ Object.assign(LS, {
         td6.style.textAlign = "center";
 
         const hasOfflineConfig = basemap.offline || basemap.offlineBounds;
-        if (hasOfflineConfig && tileCacheEnabled) {
+        if (hasOfflineConfig && refusal) {
+            renderCacheCell(td6, "missing", t("storage.layers.originRefusedCell"));
+        } else if (hasOfflineConfig && tileCacheEnabled) {
             const isCached = await this.isBasemapCached(basemap);
             renderCacheCell(
                 td6,
@@ -363,6 +424,7 @@ Object.assign(LS, {
             if (Log) Log.debug(`[LayerSelector] Available styles for ${layer.id}:`, styles);
 
             const select = createElement("select", "gl-cache-layers__style-select", parentEl);
+            select.setAttribute("aria-label", `${t("storage.layers.col.style")} — ${layer.id}`);
 
             const savedStyleId =
                 (layer.id && savedSelection?.styles?.[layer.id]) ||

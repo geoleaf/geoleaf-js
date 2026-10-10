@@ -49,10 +49,13 @@ const FAMILIES = {
             { file: "geoleaf-config.schema.json", excludeTop: ["modules"] },
             {
                 file: "profile.schema.json",
-                // performance → B2 (features); modules → B7.
+                // modules → B7.
                 // clusteringConfig / poiConfig removed from the schema: no key left to
-                // exclude, the exclusion would be a silent vestige.
-                excludeTop: ["performance", "modules"],
+                // exclude, the exclusion would be a silent vestige. `performance` was
+                // excluded too ("→ B2, features") while the block had left both schemas:
+                // the day it came back to this one, with the one key the code reads, the
+                // vestige hid it — a schema key with no inventory row went green.
+                excludeTop: ["modules"],
             },
         ],
         codeOnly: ["data.useProfilePoiMapping", "data.useMapping"],
@@ -210,20 +213,16 @@ const FAMILIES = {
             "label.enabled",
             "label.visibleByDefault",
             "label.field",
-            "label.font.family",
             "label.font.sizePt",
-            "label.font.weight",
-            "label.font.bold",
-            "label.font.italic",
             "label.color",
             "label.opacity",
             "label.buffer.enabled",
-            "label.buffer.noFill",
             "label.buffer.color",
-            "label.buffer.opacity",
             "label.buffer.sizePx",
             "label.offset.placement",
             "label.offset.distancePx",
+            // label.font.{family,weight,bold,italic} and label.buffer.{noFill,opacity} left the
+            // schema with their rows: no renderer ever read them.
             // label.background.* stays removed from the schema (archi B.5 — dead). label.offset.*
             // came BACK: the keys are declared again and are now rendered (text-anchor +
             // text-radial-offset). ⚠️ These two entries are what makes the gate ask for their
@@ -319,6 +318,7 @@ const FAMILIES = {
             "modules.pwa.background_color",
             "modules.pwa.installPrompt.enabled",
             "modules.pwa.offlineDetector.enabled",
+            "modules.pwa.offlineDetector.badgePosition",
             // ⚠️ ADDED at closure time. The work laid the key in the `configSchema`,
             // its inventory row AND its reader (`data-origins.ts`, re-read by the
             // Service Worker) — but not this leaf. The gate thus flagged the
@@ -326,6 +326,12 @@ const FAMILIES = {
             // inventory→schema direction could not see it, and the schema→inventory
             // one neither. A code-sourced family only declares itself here.
             "modules.offline.dataOrigins",
+            // The capability's own gate. It was in the `configSchema` and in neither this
+            // list nor the inventory: the same blindness as `dataOrigins` above, found the
+            // day the inventory was confronted to the capabilities' schemas.
+            "modules.offline.enabled",
+            "modules.offline.banner.enabled",
+            "modules.offline.drain.pollIntervalMs",
             "modules.offline.cache.enableProfileCache",
             "modules.offline.cache.enableTileCache",
             // maxCacheBytes: read at cache-manager.ts (_enforceCacheQuota),
@@ -454,6 +460,7 @@ const FAMILIES = {
             // two vestiges of the former plugin, renamed since).
             // Per-layer bindings live under capabilities.feature-info in {id}_config.json (opaque, B5).
             "modules.feature-info.enabled",
+            "modules.feature-info.popup.closeButton",
             // labels (capabilities/labels config.ts getLabelsConfig).
             // Capability gate only; per-layer label styling lives in style files (B6, label.*).
             "modules.labels.enabled",

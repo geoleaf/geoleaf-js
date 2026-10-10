@@ -1,7 +1,8 @@
-# GeoLeaf — Offline Detector
+# GeoLeaf — Détecteur de connectivité
 
-> **Version** : 2.0.0 — **Date** : 15 février 2026
-> **Plugin** : Storage (`geoleaf-offline-ui.plugin.js`)
+> **Ce module appartient au core** (`@geoleaf/core`), pas à ce greffon : il est décrit ici parce
+> que la fenêtre hors-ligne vit à côté de lui. `@geoleaf-plugins/offline-ui` ne l'initialise pas
+> et ne dépend pas de ses événements.
 
 ---
 
@@ -11,8 +12,8 @@
 2. [API publique](#2-api-publique)
 3. [Configuration](#3-configuration)
 4. [Événements](#4-événements)
-5. [Badge UI](#5-badge-ui)
-6. [Intégration avec SyncManager](#6-intégration-avec-syncmanager)
+5. [Badge](#5-badge)
+6. [Ce qui ne dépend PAS du détecteur](#6-ce-qui-ne-dépend-pas-du-détecteur)
 7. [Exemples](#7-exemples)
 8. [Voir aussi](#8-voir-aussi)
 
@@ -20,158 +21,148 @@
 
 ## 1. Vue d'ensemble
 
-Le module OfflineDetector surveille l'état de la connectivité réseau et émet des événements lorsque l'application passe en mode **online** ou **offline**. Il propose :
+Le détecteur surveille l'état de la connectivité et émet un événement quand l'application passe
+**en ligne** ou **hors ligne**. Il propose :
 
-- Détection via l'API `navigator.onLine` + événements `online`/`offline`
-- Vérification active via **ping** (requête HTTP légère vers une URL configurable)
-- Affichage d'un **badge UI** sur la carte indiquant l'état de la connexion
-- Émission d'événements personnalisés pour déclencher des actions (sync, notification…)
+- la détection par `navigator.onLine` et les événements `online` / `offline` du navigateur ;
+- une vérification active par **ping** — une requête HTTP légère vers une URL configurable ;
+- un **badge** sur la carte, qui dit l'état de la connexion ;
+- deux événements personnalisés, pour déclencher une notification ou adapter une interface.
 
-**Namespace** : `GeoLeaf.Storage.OfflineDetector`
+**Espace de noms** : `GeoLeaf.Storage.OfflineDetector`
 **Fichier** : `packages/core/src/kernel/storage/offline-detector.ts`
 
 ---
 
 ## 2. API publique
 
-### `OfflineDetector.init(options)`
-
-Initialise le détecteur avec la configuration fournie.
-
-```javascript
-GeoLeaf.OfflineDetector.init({
-    showBadge: true,
-    badgePosition: "topleft",
-    checkInterval: 30000, // vérification toutes les 30s
-    pingUrl: "/api/health", // URL de ping (optionnel)
-});
-```
-
 ### `OfflineDetector.isOnline()`
 
-Retourne l'état actuel de la connexion.
+Rend l'état courant de la connexion. C'est le membre qu'une application appelle.
 
 ```javascript
-if (GeoLeaf.OfflineDetector.isOnline()) {
+if (GeoLeaf.Storage?.OfflineDetector?.isOnline()) {
     console.log("Application en ligne");
 } else {
-    console.log("Application hors-ligne");
+    console.log("Application hors ligne");
 }
 ```
 
-### `OfflineDetector.destroy()`
+### `OfflineDetector.init(options)` et `OfflineDetector.destroy()`
 
-Arrête la surveillance et supprime le badge UI. Nettoie les event listeners et le timer de vérification.
+`init` démarre la surveillance avec les options de la table ci-dessous ; `destroy` l'arrête, retire
+le badge et rend ses écouteurs et son minuteur. **Le core appelle `init` lui-même** au démarrage,
+quand le profil active le détecteur : une application n'a pas à le faire.
 
 ---
 
 ## 3. Configuration
 
-| Option          | Type           | Défaut      | Description                                                                          |
-| --------------- | -------------- | ----------- | ------------------------------------------------------------------------------------ |
-| `showBadge`     | `boolean`      | `false`     | Affiche un badge de statut sur la carte                                              |
-| `badgePosition` | `string`       | `'topleft'` | Position du badge (`'topleft'`, `'topright'`, `'bottomleft'`, `'bottomright'`)       |
-| `checkInterval` | `number`       | `30000`     | Intervalle de vérification active en ms (0 = désactivé)                              |
-| `pingUrl`       | `string\|null` | `null`      | URL pour vérification active. Si `null`, seule l'API `navigator.onLine` est utilisée |
+| Option          | Type             | Défaut      | Description                                                             |
+| --------------- | ---------------- | ----------- | ----------------------------------------------------------------------- |
+| `showBadge`     | `boolean`        | `false`     | Affiche un badge d'état sur la carte                                    |
+| `badgePosition` | `string`         | `"topleft"` | Coin du badge                                                           |
+| `checkInterval` | `number`         | `30000`     | Intervalle de la vérification active, en millisecondes                  |
+| `pingUrl`       | `string \| null` | `null`      | URL de la vérification active. À `null`, seul `navigator.onLine` est lu |
 
-### Activation via profil
+⚠️ Sans `pingUrl`, aucun minuteur ne tourne : la vérification périodique ne ferait que relire
+`navigator.onLine`, que les événements du navigateur tiennent déjà à jour.
 
-L'OfflineDetector est activé via la config Storage dans le profil :
+### Activation par le profil
+
+Le détecteur s'active par la configuration PWA, pas par un appel :
 
 ```json
 {
-    "storage": {
-        "enableOfflineDetector": true
+    "modules": {
+        "pwa": {
+            "offlineDetector": { "enabled": true, "badgePosition": "topleft" }
+        }
     }
 }
 ```
 
-Le code dans `app/init.ts` passe `enableOfflineDetector` à `Storage.init()` qui appelle `OfflineDetector.init()` en interne.
+Activé de cette façon, le badge est affiché. Les clés `storage.*` qui portaient ce réglage
+n'existent plus — voir [CONFIGURATION.md](CONFIGURATION.md).
 
 ---
 
 ## 4. Événements
 
-Le module émet des événements personnalisés sur `document` :
+Le détecteur émet sur `document` :
 
-| Événement         | Déclenché quand                     | `event.detail`  |
-| ----------------- | ----------------------------------- | --------------- |
-| `geoleaf:offline` | L'application passe en mode offline | `{ timestamp }` |
-| `geoleaf:online`  | L'application revient en ligne      | `{ timestamp }` |
-
-### Écouter les changements
+| Événement         | Déclenché quand                | `event.detail`  |
+| ----------------- | ------------------------------ | --------------- |
+| `geoleaf:offline` | L'application passe hors ligne | `{ timestamp }` |
+| `geoleaf:online`  | L'application revient en ligne | `{ timestamp }` |
 
 ```javascript
 document.addEventListener("geoleaf:offline", () => {
-    console.log("Mode offline activé");
+    console.log("Hors ligne");
 });
 
 document.addEventListener("geoleaf:online", () => {
-    console.log("Retour en ligne — synchronisation possible");
+    console.log("Retour en ligne");
 });
 ```
 
-## 5. Badge UI
+## 5. Badge
 
-Quand `showBadge: true`, un contrôle MapLibre affiche un badge sur la carte :
-
-- **🟢 Online** : badge vert discret
-- **🔴 Offline** : badge rouge avec indication de mode offline
-
-Le badge est ajouté comme un contrôle MapLibre standard et respecte le thème UI (light/dark).
+Avec `showBadge: true`, un contrôle de carte affiche l'état : il apparaît au passage hors ligne et
+se retire au retour en ligne. Il suit le thème de l'interface.
 
 ---
 
-## 6. Intégration avec SyncManager
+## 6. Ce qui ne dépend PAS du détecteur
 
-L'OfflineDetector est utilisé par le `SyncManager` pour déclencher automatiquement la synchronisation quand la connexion revient :
+🛑 **L'envoi des saisies au retour du réseau ne passe pas par lui.** Le core arme lui-même le
+vidage de la file d'écriture, sur les événements `online` du navigateur : un profil qui coupe le
+détecteur — donc le badge — garde l'envoi automatique. Une version précédente de cette page
+décrivait un `SyncManager` déclenché par `geoleaf:online` ; ce n'est pas le chemin.
 
-```
-Offline → Éditions enregistrées dans l'outbox (IndexedDB) par `Storage.applyEdit`
-       → OfflineDetector émet 'geoleaf:online'
-       → SyncManager.sync() déclenché automatiquement
-       → Opérations envoyées au backend
-       → Queue vidée
-```
+De même, la fenêtre hors-ligne de ce greffon écoute `online` et `offline` du navigateur, pas
+`geoleaf:online` / `geoleaf:offline` : elle ne devient pas aveugle parce qu'un profil a coupé un
+badge.
+
+Le cycle d'écriture — ce qu'une couche déclare, comment une saisie est enregistrée, quand la file
+se vide — est décrit par le core : [cycle d'écriture hors-ligne](../../../core/docs/OFFLINE_WRITE_CYCLE.md).
 
 ---
 
 ## 7. Exemples
 
-### Notification à l'utilisateur
+### Prévenir l'utilisateur
 
 ```javascript
 document.addEventListener("geoleaf:offline", () => {
     GeoLeaf.UI.Notifications.warning(
-        "Vous êtes hors-ligne. Les modifications seront synchronisées au retour de la connexion."
+        "Vous êtes hors ligne. Vos saisies partiront au retour de la connexion."
     );
 });
 
 document.addEventListener("geoleaf:online", () => {
-    GeoLeaf.UI.Notifications.success("Connexion rétablie. Synchronisation en cours…");
+    GeoLeaf.UI.Notifications.success("Connexion rétablie.");
 });
 ```
 
-### Adapter l'UI selon l'état
+### Adapter une interface
 
 ```javascript
-// Utiliser les deux événements geoleaf:online / geoleaf:offline
-document.addEventListener("geoleaf:offline", () => {
-    const addPoiBtn = document.querySelector('[data-gl-role="add-poi"]');
-    if (addPoiBtn) addPoiBtn.classList.add("gl-disabled");
-});
+function setReachable(reachable) {
+    for (const el of document.querySelectorAll("[data-needs-network]")) {
+        el.toggleAttribute("disabled", !reachable);
+    }
+}
 
-document.addEventListener("geoleaf:online", () => {
-    const addPoiBtn = document.querySelector('[data-gl-role="add-poi"]');
-    if (addPoiBtn) addPoiBtn.classList.remove("gl-disabled");
-});
+document.addEventListener("geoleaf:offline", () => setReachable(false));
+document.addEventListener("geoleaf:online", () => setReachable(true));
 ```
 
 ---
 
 ## 8. Voir aussi
 
-- [README.md](../README.md) — vue d'ensemble du plugin Storage
-- [API_REFERENCE.md](API_REFERENCE.md) — référence complète `GeoLeaf.Storage`
-- [CONFIGURATION.md](CONFIGURATION.md) — configuration dans `profile.json`
-- [EXAMPLES.md](EXAMPLES.md) — exemples d'intégration
+- [README.md](../README.md) — le greffon de l'interface hors-ligne
+- [API_REFERENCE.md](API_REFERENCE.md) — ce que la fenêtre appelle, et les événements qu'elle suit
+- [CONFIGURATION.md](CONFIGURATION.md) — les clés de profil
+- [EXAMPLES.md](EXAMPLES.md) — recettes

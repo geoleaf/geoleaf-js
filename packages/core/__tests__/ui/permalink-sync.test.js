@@ -673,7 +673,10 @@ describe("_captureState (via startSync)", () => {
         vi.advanceTimersByTime(500);
 
         const url = history.replaceState.mock.calls[0][2];
-        expect(url).toContain("gl_filter=montmartre");
+        // One parameter per FIELD since 3.15.0, named by the descriptor's id — the by-kind
+        // `gl_filter` slot is still read from an older link, and no longer written.
+        expect(url).toContain("gl_f.searchText=montmartre");
+        expect(url).not.toContain("gl_filter=");
 
         vi.useRealTimers();
     });

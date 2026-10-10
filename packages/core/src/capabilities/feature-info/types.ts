@@ -28,7 +28,7 @@ import type {
 /**
  * Field list for a single surface: hidden, or an explicit list.
  *
- * ⚠️ `"all"` was a third member until 02/08/2026. It is retired by decision U2 — see
+ * ⚠️ `"all"` was a third member until 02/08/2026. It is retired — see
  * `convert.ts` for what it actually did, which was not what its name said.
  */
 type SurfaceConfig = false | readonly FeatureInfoFieldConfig[];

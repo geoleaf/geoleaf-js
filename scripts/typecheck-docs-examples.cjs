@@ -19,7 +19,9 @@
  *
  * 1. The ts/typescript blocks of the PRODUCT `.md` surfaces — root, package READMEs and
  *    `docs/`, derived in `lib/tsdoc-examples.cjs` (`productDocsFiles`). Until 2026-07-31
- *    it stopped at `packages/core/docs/`.
+ *    it stopped at `packages/core/docs/`. **Their js/javascript blocks too, since
+ *    2026-10-05**, judged on a narrower question — what the block asks of the package:
+ *    see `JUDGED_FENCES`, `JS_IDIOM_CODES` and `asksThePackage`.
  * 2. **The TSDoc `@example`s of all sources** (every `src/` of the package registry).
  *    The engine existed, it simply was not wired to them.
  *
@@ -29,6 +31,16 @@
  * them would have meant scanning while seeing nothing. The package has published its ambient
  * namespace since (`dist/types/global.d.ts`, referenced from the entry): the prelude imports
  * the package, and the run prints how many examples take that road.
+ *
+ * ⚠️ **They are compiled as code of a BOOTED PAGE** (08/10/2026): the global and the core's
+ * namespaces present, a plugin's namespace optional outside that plugin's own documentation.
+ * See `bootedPagePrelude` for the hypothesis this carries. It emptied a baseline of 123
+ * diagnostics that were one sentence — "`GeoLeaf` is possibly undefined".
+ *
+ * ⚠️ **What this does NOT see**, measured by mutation the same day: an unguarded read of a
+ * plugin namespace whose TYPES are not in the program. The ambient types such a namespace
+ * `unknown`, and a read of `unknown` is an idiom this gate ignores. A typed one is refused
+ * (`GeoLeaf.Table.x()` in a core page: TS18048).
  *
  * Every ts/typescript block that PARSES. Of the 136 in the docs, 27 do not — they are
  * deliberate fragments (`…`), pseudo-code and partial objects, and they are skipped.
@@ -300,12 +312,220 @@ const DEFECT_CODES = new Map([
  * That is exactly the conclusion written on 2026-07-31 without being applicable then:
  * "the real benefit grows with the typing of the tails, and not otherwise".
  *
+ * 📌 `GeoLeaf.Storage`'s tail went on 2026-10-04 (core 3.15.0): its members are named, a
+ * misspelled one is TS2339 again, and three frozen "possibly undefined" entries left the
+ * baseline with the examples that now guard their access. The other namespaces keep theirs.
+ *
  * **Reopening condition**: when the facade tails are gone (`GeoLeafThemeSelector`
  * remained as of 2026-08-09), re-measure. If the residual batch is small, add
  * `TS18046` **restricted to `GeoLeaf.*` subjects** — never bare: the 4 `catch`
  * variables above are idioms, and the "Which diagnostics count" § excludes them.
  */
 const DEFERRED_UNKNOWN_CODES = Object.freeze(["TS18046", "TS2571", "TS2722", "TS2349"]);
+
+/**
+ * The fences whose content is judged.
+ *
+ * `js` joined on 2026-10-05. A JavaScript example is the one an integrator pastes into a
+ * `<script>` tag, and it was read by nothing: a call to a member that does not exist, or with
+ * one argument too many, shipped as written. It is compiled as TypeScript — every diagnostic
+ * that is only the absence of annotations is already an ignored idiom, see "Which diagnostics
+ * count" — and only what means "this call cannot work" is kept.
+ */
+const JUDGED_FENCES = new Set(["ts", "typescript", "js", "javascript"]);
+
+/**
+ * The namespaces a PLUGIN mounts, read from the ambient itself: the members the core types
+ * through `GeoLeafPluginApi<"Name">`. Derived, never listed — a plugin added to the ambient is
+ * optional here the day it is declared there.
+ */
+const PLUGIN_NAMESPACES = (() => {
+    const ambient = fs.readFileSync(
+        path.join(ROOT, "packages", "core", "src", "global.d.ts"),
+        "utf8"
+    );
+    const names = [...ambient.matchAll(/^\s*(\w+)\?: GeoLeafPluginApi<"(\w+)">;/gm)]
+        .filter((m) => m[1] === m[2])
+        .map((m) => m[1]);
+    if (names.length < 5) {
+        throw new Error(
+            `typecheck-docs-examples: ${names.length} plugin namespace(s) read from the ambient — ` +
+                "the declaration changed shape, and every plugin access would be judged as core."
+        );
+    }
+    return names;
+})();
+
+/**
+ * What an example that speaks through the global is compiled against: A BOOTED PAGE.
+ *
+ * The published ambient declares `GeoLeaf` as `GeoLeafGlobal | undefined`, deliberately — the
+ * namespace does not exist before the bundle has run — and every core namespace as optional.
+ * An example is written for AFTER that: compiled against the raw ambient, each one failed on
+ * its first word (`'GeoLeaf' is possibly 'undefined'`), 123 frozen diagnostics that said
+ * nothing about the example. Rewriting them as `GeoLeaf?.Core?.x()` would have taught a
+ * defensive idiom for objects that are always there.
+ *
+ * So the example is given the global of a page whose bundle has run:
+ *   • `GeoLeaf` itself is present ;
+ *   • every namespace the CORE mounts is present, and so are its own members ;
+ *   • a namespace a PLUGIN mounts stays optional — that one really may be absent, and an
+ *     example that reads it unguarded is still refused.
+ *
+ * ⚠️ **The hypothesis this carries, stated once:** an example runs after the bundle. One
+ * written for BEFORE it — nothing in the corpus is — would no longer be told that the
+ * global may be missing. And a core namespace a PRESET leaves out is declared present here:
+ * the gate judges the call, not the preset.
+ *
+ * 🛑 The published ambient is NOT touched: this is the harness's reading of it.
+ */
+/**
+ * The namespace each plugin package mounts, by package directory — read from the augmentation
+ * the package itself writes (`interface GeoLeafPluginApis { Name: … }`).
+ *
+ * ⚠️ An example written in a plugin's OWN documentation speaks to someone who installed that
+ * plugin: its namespace is present there by hypothesis, exactly as the core's are. Without
+ * this, every plugin README was told that its own namespace may be missing.
+ */
+const OWN_NAMESPACE = (() => {
+    /** @type {Array<{ dir: string, name: string }>} */
+    const out = [];
+    for (const pkg of registry.plugins()) {
+        const src = path.join(ROOT, pkg.dir, "src");
+        for (const file of ["entry.ts", "public-api.ts"]) {
+            const abs = path.join(src, file);
+            if (!fs.existsSync(abs)) continue;
+            const m = /interface GeoLeafPluginApis\s*\{\s*(\w+):/.exec(
+                fs.readFileSync(abs, "utf8")
+            );
+            if (m && PLUGIN_NAMESPACES.includes(m[1])) {
+                out.push({ dir: `${pkg.dir}/`, name: m[1] });
+                break;
+            }
+        }
+    }
+    return out;
+})();
+
+/**
+ * Builds the booted-page prelude for an example of `file`.
+ *
+ * @param {string} file Absolute path of the page or source the example comes from.
+ * @returns {string} The lines put before the example.
+ */
+function bootedPagePrelude(file) {
+    const rel = path.relative(ROOT, file).split(path.sep).join("/");
+    const own = OWN_NAMESPACE.find((p) => rel.startsWith(p.dir))?.name;
+    const optional = PLUGIN_NAMESPACES.filter((n) => n !== own);
+    return (
+        'import "@geoleaf/core";\n' +
+        'type __GLAmbient = NonNullable<(typeof globalThis)["GeoLeaf"]>;\n' +
+        `type __GLPlugin = ${optional.map((n) => JSON.stringify(n)).join(" | ")};\n` +
+        // One level down too: `UI.Notifications`, `Storage.DB`, `Config.getActiveProfile` are
+        // members of CORE facades, optional in the ambient for the same reason the facades
+        // are. A callable namespace is left as it is — mapping it would lose its call.
+        "type __GLMounted<T> = T extends (...args: never[]) => unknown ? T : T extends object ? { [P in keyof T]-?: T[P] } : T;\n" +
+        "declare const GeoLeaf: { [K in keyof __GLAmbient as K extends __GLPlugin ? never : K]-?: __GLMounted<__GLAmbient[K]> } & Pick<__GLAmbient, __GLPlugin>;\n"
+    );
+}
+
+/**
+ * Codes that, in a `js` block, speak of the block's missing annotations and not of the call.
+ *
+ * **The "may be undefined" family.** A script-tag example runs after the bundle: the global
+ * is there, and whether a namespace is mounted is the profile's business. Measured the day
+ * `js` joined: 999 of the 1 073 new diagnostics were one sentence — `'GeoLeaf' is possibly
+ * 'undefined'` — on examples that work as written.
+ *
+ * **TS2345, the argument TYPE.** Without annotations the compiler infers the argument, and
+ * infers it wider than the author meant: a `type: "Feature"` literal becomes `string`,
+ * `document.querySelector()` stays nullable, a destructured event field is `unknown`. All
+ * eight TS2345 of that first run were of these three shapes, none a call that could not
+ * work. Arity, a member that does not exist and a ghost option need no inference, and stay.
+ *
+ * ⚠️ `ts` blocks and `@example`s keep every one of these codes: they are compiled by the
+ * integrator, with the integrator's strictness.
+ */
+const JS_IDIOM_CODES = new Set([
+    "TS18048",
+    "TS18047",
+    "TS2532",
+    "TS2531",
+    "TS2533",
+    "TS2538",
+    "TS2345",
+]);
+
+/** The expression kinds a member chain is made of, from the leaf back to its root. */
+const isChainLink = (/** @type {import("typescript").Node} */ n) =>
+    ts.isPropertyAccessExpression(n) ||
+    ts.isElementAccessExpression(n) ||
+    ts.isCallExpression(n) ||
+    ts.isNewExpression(n) ||
+    ts.isNonNullExpression(n) ||
+    ts.isParenthesizedExpression(n) ||
+    ts.isAwaitExpression(n);
+
+/**
+ * Whether the diagnostic at a position is about something the block ASKS OF THE PACKAGE.
+ *
+ * A `js` block compiled as TypeScript renders two kinds of TS2339: the member the package
+ * never had — the defect this gate exists for — and `e.detail`, `el.dataset`,
+ * `window.maplibregl`, which are only JavaScript written without annotations. No list of
+ * codes separates them; the ROOT of the expression does. A diagnostic counts when its member
+ * chain starts at the `GeoLeaf` global or at a name imported from the package, or when it
+ * sits in an argument of a call that does.
+ *
+ * ⚠️ An ALIAS loses the judgement: after `const table = GeoLeaf.Table`, `table.ghost()` is
+ * rooted at `table`. Accepted — the alternative is to follow values, which is the
+ * compiler's job and gives back the noise this rule removes.
+ *
+ * @param {import("typescript").SourceFile} sf - The compiled snippet, prelude included.
+ * @param {number} line - 1-based, as `tsc` prints it.
+ * @param {number} column - 1-based.
+ * @param {ReadonlySet<string>} imported - Names the snippet imports from the package.
+ * @returns {boolean}
+ */
+function asksThePackage(sf, line, column, imported) {
+    const pos = sf.getPositionOfLineAndCharacter(line - 1, column - 1);
+    /** @type {import("typescript").Node} */
+    let node = sf;
+    const descend = (/** @type {import("typescript").Node} */ n) => {
+        if (pos >= n.getStart(sf) && pos < n.getEnd()) {
+            node = n;
+            ts.forEachChild(n, descend);
+        }
+    };
+    ts.forEachChild(sf, descend);
+
+    // The whole member chain the position belongs to…
+    let chain = node;
+    while (chain.parent && isChainLink(chain.parent)) {
+        const parent = chain.parent;
+        // …but an ARGUMENT is not a link of the chain of the call it is passed to.
+        const args =
+            ts.isCallExpression(parent) || ts.isNewExpression(parent) ? parent.arguments : [];
+        if (args?.some((arg) => arg === chain)) break;
+        chain = parent;
+    }
+    // …or, for a diagnostic inside an argument, the call that receives it. A function
+    // boundary ends the search: a callback's body is not an argument of its caller.
+    if (!isChainLink(chain)) {
+        for (let up = chain.parent, below = chain; up; below = up, up = up.parent) {
+            if (ts.isFunctionLike(up) && "body" in up && up.body === below) return false;
+            if ((ts.isCallExpression(up) || ts.isNewExpression(up)) && up.expression !== below) {
+                chain = up;
+                break;
+            }
+        }
+    }
+    /** @type {import("typescript").Node} */
+    let root = chain;
+    while (isChainLink(root)) root = root.expression;
+    if (!ts.isIdentifier(root)) return false;
+    if (root.text === "GeoLeaf" || imported.has(root.text)) return true;
+    return /^(?:window|globalThis|self)\??\.GeoLeaf\b/.test(chain.getText(sf));
+}
 
 /**
  * The names `@geoleaf/core` really exports, read from the declarations it publishes.
@@ -465,8 +685,16 @@ if (EXPORTS.size === 0) {
     process.exit(1);
 }
 
-const stats = { total: 0, noParse: 0, withPrelude: 0, tsdoc: 0, tsdocAmbient: 0 };
-/** @type {{ file: string; startLine: number; name: string; preludeLines: number }[]} */
+const stats = {
+    total: 0,
+    noParse: 0,
+    withPrelude: 0,
+    tsdoc: 0,
+    tsdocAmbient: 0,
+    js: 0,
+    mdAmbient: 0,
+};
+/** @type {{ file: string; startLine: number; name: string; preludeLines: number; js?: boolean; imported?: string[] }[]} */
 const scoped = [];
 
 fs.rmSync(TMP_DIR, { recursive: true, force: true });
@@ -477,8 +705,10 @@ try {
     for (const mdFile of mdFiles) {
         const relFile = path.relative(ROOT, mdFile);
         for (const block of extractCodeBlocks(fs.readFileSync(mdFile, "utf8"))) {
-            if (block.lang !== "ts" && block.lang !== "typescript") continue;
+            if (!JUDGED_FENCES.has(block.lang)) continue;
             stats.total++;
+            const isJs = block.lang === "js" || block.lang === "javascript";
+            if (isJs) stats.js++;
 
             // `export {}` forces module scope: without it every block shares one global
             // scope and collides on trivially-repeated identifiers.
@@ -491,8 +721,17 @@ try {
 
             // Rebuild the import the prose stated in words. Only real exports, and only
             // names the block does not bind itself.
-            const missing = [...freeIdentifiers(sf)].filter((id) => EXPORTS.has(id)).sort();
-            let prelude = "";
+            const free = freeIdentifiers(sf);
+            const missing = [...free].filter((id) => EXPORTS.has(id)).sort();
+            // A page example that goes through the global — which is how a `js` block
+            // written for a `<script>` tag speaks — needs the package in the program for
+            // the ambient namespace to exist. ⚠️ It already did, by a neighbour: every
+            // snippet is compiled in ONE program, and the `@example`s that import the
+            // package declare the global for all of them — measured, a ghost member in a
+            // page's `ts` block was red before this line. The line makes a block stand on
+            // its own import instead of on another corpus's.
+            if (free.has("GeoLeaf")) stats.mdAmbient++;
+            let prelude = free.has("GeoLeaf") ? bootedPagePrelude(mdFile) : "";
             if (missing.length > 0) {
                 // qualite Q3.4 (26/07/2026) — the core's own tsconfig now enforces
                 // `verbatimModuleSyntax` (inherited from the shared base), so a synthesized
@@ -502,7 +741,7 @@ try {
                 const specifiers = missing.map((id) =>
                     TYPE_ONLY_EXPORTS.has(id) ? `type ${id}` : id
                 );
-                prelude = `import { ${specifiers.join(", ")} } from "@geoleaf/core";\n`;
+                prelude += `import { ${specifiers.join(", ")} } from "@geoleaf/core";\n`;
                 stats.withPrelude++;
             }
 
@@ -513,7 +752,9 @@ try {
                 file: relFile,
                 startLine: block.startLine,
                 name,
-                preludeLines: prelude ? 1 : 0,
+                preludeLines: prelude.split("\n").length - 1,
+                js: isJs,
+                imported: missing,
             });
         }
     }
@@ -552,7 +793,7 @@ try {
             // referenced from the entry), so they are genuinely compilable. The
             // prelude imports the package to pull the reference into the program.
             if (free.has("GeoLeaf")) stats.tsdocAmbient++;
-            let prelude = free.has("GeoLeaf") ? 'import "@geoleaf/core";\n' : "";
+            let prelude = free.has("GeoLeaf") ? bootedPagePrelude(srcFile) : "";
             if (missing.length > 0) {
                 const specifiers = missing.map((id) =>
                     TYPE_ONLY_EXPORTS.has(id) ? `type ${id}` : id
@@ -567,7 +808,7 @@ try {
                 file: relSrc,
                 startLine: ex.startLine,
                 name,
-                preludeLines: prelude ? 1 : 0,
+                preludeLines: prelude.split("\n").length - 1,
             });
         }
     }
@@ -629,6 +870,11 @@ try {
      * @type {Map<string, number>}
      */
     const ignoredByCode = new Map();
+    /**
+     * What a `js` block is NOT judged on, counted apart and printed at every run: these
+     * carry codes that ARE defects in a `ts` block, so the histogram above cannot name them.
+     */
+    const jsIdioms = { strictness: 0, inferred: 0, untyped: 0 };
     const ignore = (/** @type {string} */ code) => {
         ignoredIdioms++;
         ignoredByCode.set(code, (ignoredByCode.get(code) || 0) + 1);
@@ -638,10 +884,27 @@ try {
         if (!m) continue;
         const block = scoped.find((b) => b.name === m[1]);
         if (!block) continue;
-        const [, , , , code, message] = m;
+        const [, , atLine, atColumn, code, message] = m;
         if (!DEFECT_CODES.has(code)) {
             ignore(code);
             continue;
+        }
+        if (block.js) {
+            if (JS_IDIOM_CODES.has(code)) {
+                if (code === "TS2345") jsIdioms.inferred++;
+                else jsIdioms.strictness++;
+                continue;
+            }
+            const sf = ts.createSourceFile(
+                block.name,
+                fs.readFileSync(path.join(TMP_DIR, block.name), "utf8"),
+                ts.ScriptTarget.ES2022,
+                true
+            );
+            if (!asksThePackage(sf, Number(atLine), Number(atColumn), new Set(block.imported))) {
+                jsIdioms.untyped++;
+                continue;
+            }
         }
         // A relative import that does not resolve is a contributor-guide example showing
         // code inside the source tree, not a broken public path. Only the specifiers this
@@ -676,7 +939,7 @@ try {
             `${JSON.stringify(
                 {
                     _comment:
-                        "Erreurs de type CONNUES dans les exemples ts/typescript de la doc PRODUIT (lib/tsdoc-examples.cjs::productDocsFiles), figées par scripts/typecheck-docs-examples.cjs. Le gate ne bloque que sur une erreur ABSENTE d'ici. Clé = fichier::codeTS::message (sans numéro de ligne, qui bouge à chaque édition du texte autour du bloc). Régénérer via `--update-baseline` après avoir corrigé un lot. ⚠️ La quasi-totalité des entrées est TS18048 « 'GeoLeaf…' is possibly 'undefined' » : ce n'est PAS un défaut par exemple, c'est une propriété de l'ambiant publié, qui déclare `var GeoLeaf: GeoLeafGlobal | undefined` (global.d.ts:915). Tout exemple qui écrit `GeoLeaf.X` la déclenche. La corriger exemple par exemple enseignerait un idiome (`GeoLeaf!.X`) que le reste de la doc n'emploie pas ; elle se corrige à la source, dans la déclaration, ou pas du tout — suivi au backlog.",
+                        "Erreurs de type CONNUES dans les exemples ts/typescript et js/javascript de la doc PRODUIT (lib/tsdoc-examples.cjs::productDocsFiles), figées par scripts/typecheck-docs-examples.cjs. Le gate ne bloque que sur une erreur ABSENTE d'ici. Clé = fichier::codeTS::message (sans numéro de ligne, qui bouge à chaque édition du texte autour du bloc). Régénérer via `--update-baseline` après avoir corrigé un lot. ⚠️ La quasi-totalité des entrées est TS18048 « 'GeoLeaf…' is possibly 'undefined' » : ce n'est PAS un défaut par exemple, c'est une propriété de l'ambiant publié, qui déclare `var GeoLeaf: GeoLeafGlobal | undefined` (global.d.ts:915). Tout exemple qui écrit `GeoLeaf.X` la déclenche. La corriger exemple par exemple enseignerait un idiome (`GeoLeaf!.X`) que le reste de la doc n'emploie pas ; elle se corrige à la source, dans la déclaration, ou pas du tout — suivi au backlog.",
                     generatedCount: keys.length,
                     diagnostics: keys,
                 },
@@ -729,7 +992,12 @@ try {
         (stats.tsdocAmbient
             ? `\n    ℹ  ${stats.tsdocAmbient} @example passent par le namespace ambiant \`GeoLeaf.*\` — compilés ` +
               `depuis que le paquet le publie.`
-            : "");
+            : "") +
+        `\n    ℹ  ${stats.js} bloc(s) \`js\` parmi ceux des .md ; ${stats.mdAmbient} bloc(s) de page passent ` +
+        `par le namespace ambiant.` +
+        `\n    ↳ non jugé dans un bloc \`js\` : ${jsIdioms.strictness} « peut être indéfini », ` +
+        `${jsIdioms.inferred} type d'argument inféré, ${jsIdioms.untyped} diagnostic(s) hors de ce ` +
+        `que le bloc demande au paquet.`;
 
     if (fresh.length === 0 && stale.length === 0) {
         console.log(sep);

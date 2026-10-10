@@ -64,7 +64,7 @@
                 },
                 "enableProfilePoiMapping": {
                     "type": "boolean",
-                    "default": false,
+                    "default": true,
                     "description": "Enable POI data normalization via mapping.json."
                 }
             }

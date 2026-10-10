@@ -1,7 +1,7 @@
 {
     "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans le registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
     "_generated": "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
-    "count": 257,
+    "count": 254,
     "entries": [
         "packages/core/src/adapters/maplibre/maplibre-hatch-patterns.ts::ctx::!::canvas.getContext(\"2d\")",
         "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::applyPoiFilter::as-unknown::[ \"all\", [\"!\", [\"has\", \"point_count\"]], [\"has\", \"symbolId\"],",
@@ -17,7 +17,6 @@
         "packages/core/src/app/module-registry.ts::_topoSort::!::dependants.get(dep)",
         "packages/core/src/app/module-registry.ts::id::!::queue.shift()",
         "packages/core/src/app/module-registry.ts::mod::!::this._modules.get(id)",
-        "packages/core/src/bundle-esm-entry.ts::<module>::as-unknown::window",
         "packages/core/src/capabilities/branding/branding.ts::_createControl::!::this._map",
         "packages/core/src/capabilities/branding/module.ts::init::as-unknown::adapter",
         "packages/core/src/capabilities/coordinates/coordinates.ts::_attachToScaleWrapper::!::this._boundMouseMoveHandler",
@@ -46,8 +45,6 @@
         "packages/core/src/capabilities/offline/cache/downloader.ts::_worker::as-unknown::userCallback",
         "packages/core/src/capabilities/offline/cache/fetch-manager.ts::data::as-unknown::(await response.json())",
         "packages/core/src/capabilities/offline/db/images.ts::db::!::this._db",
-        "packages/core/src/capabilities/offline/db/indexeddb.ts::_initializeModules::as-unknown::module.init(this._db)",
-        "packages/core/src/capabilities/offline/db/indexeddb.ts::api::as-unknown::moduleConfig.init(this._db)",
         "packages/core/src/capabilities/offline/db/storage-helper.ts::parsed::as-unknown::JSON.parse(json)",
         "packages/core/src/capabilities/permalink/permalink-sync.ts::apply::!::filter.applyFilter",
         "packages/core/src/capabilities/permalink/permalink-url.ts::source::as-unknown::state",
