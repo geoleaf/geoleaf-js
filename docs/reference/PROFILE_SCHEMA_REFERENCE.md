@@ -29,8 +29,9 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Strict 
 | `basemaps.{id}.defaultBasemap` | boolean | — | — | — | Set to true to make this the active basemap on startup. |
 | `basemaps.{id}.encoding` | string | — | — | — | Tile encoding hint (e.g. for raster-dem sources). |
 | `basemaps.{id}.fallbackUrl` | string | — | — | — | Raster tile URL fallback when MapLibre GL is unavailable. |
-| `basemaps.{id}.hillshade` | object | — | — | — | Hillshade (raster-dem) source configuration. |
+| `basemaps.{id}.hillshade` | object | — | — | — | Relief shading drawn from a raster-dem source. Read in two ways. On a basemap of `type: "hillshade"` the shading IS the basemap. On a basemap of any other type it is read only when `overlay` is true, and is then drawn OVER that basemap, which stays what it is. |
 | `basemaps.{id}.hillshade.accentColor` | string | — | — | — | Accent colour of the hillshade layer (`hillshade-accent-color`). Any CSS colour. |
+| `basemaps.{id}.hillshade.beforeLayer` | string | — | — | — | Vector basemap only: id of the layer of the basemap's style the overlay is inserted before — typically its first water or road layer, so that the shading covers the land fills and stays under water, roads and labels. Absent, or naming a layer the style does not have: the overlay goes before the first `symbol` layer of the style, which keeps the labels readable but shades whatever is drawn under them, water and roads included. |
 | `basemaps.{id}.hillshade.demEncoding` | string | — | `"terrarium"` | "terrarium" \| "mapbox" | — |
 | `basemaps.{id}.hillshade.demMaxZoom` | number | — | — | — | — |
 | `basemaps.{id}.hillshade.demUrl` | string | — | — | — | — |
@@ -38,6 +39,8 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Strict 
 | `basemaps.{id}.hillshade.highlightColor` | string | — | — | — | — |
 | `basemaps.{id}.hillshade.illuminationAnchor` | string | — | — | "viewport" \| "map" | Whether the light source follows the viewport or is anchored to the map. MapLibre default: `viewport`. |
 | `basemaps.{id}.hillshade.illuminationDirection` | number | — | — | — | — |
+| `basemaps.{id}.hillshade.onlyWithTerrain` | boolean | — | `false` | — | Overlay only: the shading is shown only while a 3D terrain is on the map, and hidden the rest of the time. Hidden, it requests no elevation tile: with a `terrain` block whose `activation` is `pitch`, a flat map stays exactly what it is without either block. On a basemap without an enabled `terrain` the overlay never shows. Without this key the overlay is always drawn. Ignored without `overlay`. |
+| `basemaps.{id}.hillshade.overlay` | boolean | — | `false` | — | Draws the shading as an overlay of this basemap: just above the basemap's layer when it is an image (tiles, WMS, WMTS), inside the style when it is vector — see `beforeLayer`. Without it, a `hillshade` block on a basemap that is not of `type: "hillshade"` is ignored. Ignored on `type: "hillshade"`, whose shading is the basemap itself. The overlay reads a raster-dem source of its own, apart from the one of `terrain`: the same `demUrl` is then requested twice, for a shading one zoom level finer. |
 | `basemaps.{id}.hillshade.shadowColor` | string | — | — | — | — |
 | `basemaps.{id}.id` | string | oui | — | — | Basemap ID (mirrors the key in the parent object). |
 | `basemaps.{id}.imageSource` | object | — | — | — | Static image overlay source (georeferenced by coordinates). |
@@ -55,15 +58,18 @@ basemaps.json — basemap tile source definitions for a GeoLeaf profile. Strict 
 | `basemaps.{id}.offlineBounds.west` | number | oui | — | — | — |
 | `basemaps.{id}.style` | string | — | — | — | MapLibre GL style URL. Only for type: "maplibre". |
 | `basemaps.{id}.subdomains` | oneOf | — | — | — | Tile subdomains. |
-| `basemaps.{id}.terrain` | object | — | — | — | 3D terrain / raster-dem configuration. Only valid when basemap type is "maplibre" or tiles-based. |
-| `basemaps.{id}.terrain.bearing` | number | — | `0` | — | Initial camera bearing in degrees applied when 3D terrain is activated. |
-| `basemaps.{id}.terrain.default3D` | boolean | — | `false` | — | When true, 3D terrain activates automatically when this basemap is selected. |
+| `basemaps.{id}.terrain` | object | — | — | — | 3D terrain / raster-dem configuration, read whatever the basemap type. What puts the relief on is `activation`: the selection of the basemap, when `default3D` is true, or the tilt of the camera. |
+| `basemaps.{id}.terrain.activateFromPitch` | number | — | `12` | — | With `activation: "pitch"` only, and refused without it: tilt, in degrees, from which the terrain is put on. Keep it at or under the map's `maxPitch`, or the terrain can never show. |
+| `basemaps.{id}.terrain.activation` | string | — | `"basemap"` | "basemap" \| "pitch" | What puts the terrain on. `basemap`: selecting the basemap does, when `default3D` is true; the camera is then posted to `pitch` and `bearing`, and eased back flat when the basemap is left. `pitch`: the terrain follows the tilt of the camera — absent while the map is flat, when no elevation tile is requested; put on once the camera comes to rest tilted to `activateFromPitch` or more; removed once it comes to rest under `deactivateBelowPitch`. The decision is taken when a movement ends, never during it, and the camera is never moved: `pitch`, `bearing` and `default3D: true` are refused with `pitch`. |
+| `basemaps.{id}.terrain.bearing` | number | — | `0` | — | Camera bearing in degrees, posted when the terrain is activated by the selection of the basemap. Refused with `activation: "pitch"`, which never moves the camera. |
+| `basemaps.{id}.terrain.deactivateBelowPitch` | number | — | — | — | With `activation: "pitch"` only, and refused without it: tilt, in degrees, under which the terrain is removed. Must be lower than `activateFromPitch` — a value that is not is reported at start-up and replaced by the default. Default: half of `activateFromPitch`. |
+| `basemaps.{id}.terrain.default3D` | boolean | — | `false` | — | When true, 3D terrain activates automatically when this basemap is selected. Not read — and refused when true — with `activation: "pitch"`. |
 | `basemaps.{id}.terrain.demEncoding` | string | — | `"terrarium"` | "terrarium" \| "mapbox" | Tile encoding format for elevation data. |
 | `basemaps.{id}.terrain.demMaxZoom` | number | — | — | — | Maximum zoom of the DEM tile source. Falls back to 15 when absent. |
 | `basemaps.{id}.terrain.demUrl` | string | — | — | — | URL template for the raster-dem tile source (may contain {z}/{x}/{y} placeholders). Required when enabled is true. |
 | `basemaps.{id}.terrain.enabled` | boolean | oui | — | — | Enables 3D terrain rendering for this basemap. |
 | `basemaps.{id}.terrain.exaggeration` | number | — | `1.5` | — | Vertical exaggeration factor. Recommended range: 1.0–3.0. |
-| `basemaps.{id}.terrain.pitch` | number | — | `45` | — | Initial camera pitch in degrees applied when 3D terrain is activated. |
+| `basemaps.{id}.terrain.pitch` | number | — | `45` | — | Camera pitch in degrees, posted when the terrain is activated by the selection of the basemap. Refused with `activation: "pitch"`, which never moves the camera. |
 | `basemaps.{id}.tiles` | array | — | — | — | Explicit tile URL array for MapLibre raster sources. Overrides url + subdomains expansion. |
 | `basemaps.{id}.tileSize` | number | — | `256` | — | — |
 | `basemaps.{id}.type` | string | — | — | "tile" \| "raster" \| "maplibre" \| "image" \| "hillshade" \| "wmts" \| "wms" | Source type — the 7 values the runtime maps (`_resolveBasemapType` and its dispatch). `raster` is a runtime alias of `tile` (default raster path). When omitted, defaults to the raster path. |
@@ -93,7 +99,7 @@ config/core/features.json — core feature configuration (map options). A POI is
 | ------ | ---- | ------ | ------ | ------- | ----------- |
 | `$schema` | string | — | — | — | — |
 | `mapOptions` | object | — | — | — | Map engine options a profile may set. A closed list, not a pass-through: only the keys declared here reach the engine, read at boot. |
-| `mapOptions.preserveDrawingBuffer` | boolean | — | — | — | — |
+| `mapOptions.preserveDrawingBuffer` | boolean | — | `false` | — | Asks the engine to keep its drawing buffer, which lets the map canvas be read back (an export, a capture). It has a rendering cost. Kept without this key when the print plugin is registered before the map is created. |
 
 ## `geoleaf-config.schema.json`
 
@@ -296,7 +302,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `labels.enabled` | boolean | oui | — | — | Enable/disable these labels. |
 | `labels.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
 | `labels.font` | object | — | — | — | — |
-| `labels.font.sizePt` | number | — | `12` | — | Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style. |
+| `labels.font.sizePt` | number | — | `9` | — | Label text size in points, mapped to MapLibre `text-size`. Absent: 12 px, which is 9 pt. It is the only font key: the font stack comes from the loaded map style. |
 | `labels.offset` | object | — | — | — | Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all. |
 | `labels.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `labels.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
@@ -425,11 +431,11 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `map.boundsMargin` | number | — | — | — | — |
 | `map.center` | array | — | — | — | — |
 | `map.id` | string | — | — | — | Alias of `target`, read only when `target` is absent. |
-| `map.initialMaxZoom` | number | — | — | — | Alias for maxZoom (legacy). |
+| `map.initialMaxZoom` | number | — | — | — | Ceiling on the zoom of the initial framing: a map that starts on an extent - `map.bounds`, or the `view.bounds` of the start theme - never frames closer than this zoom. Only a declared key caps. It caps neither the user's zoom (`maxZoom` does) nor a later theme switch, and has no effect when the map starts on a centre and a zoom. |
 | `map.maxPitch` | number | — | — | — | Maximum map pitch in degrees (0-85). MapLibre default: 60. |
 | `map.maxZoom` | number | — | — | — | — |
 | `map.minZoom` | number | — | — | — | — |
-| `map.padding` | oneOf | — | — | — | Map padding — array [vertical, horizontal] or object {top, right, bottom, left}. |
+| `map.padding` | oneOf | — | — | — | Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}. |
 | `map.padding.bottom` | number | — | — | — | — |
 | `map.padding.left` | number | — | — | — | — |
 | `map.padding.right` | number | — | — | — | — |
@@ -440,6 +446,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `modules` | object | — | — | — | Configuration blocks keyed by module id — in-core capabilities such as `offline`, and plugins (Plugin Contract v1, INV-CONFIG). Every block stays additionalProperties:true: the schema does not describe its keys. A block is named below only if something reads it. For a plugin block, neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.editor` | object | — | — | — | Read by @geoleaf-plugins/editor, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.geocoding` | object | — | — | — | Read by @geoleaf-plugins/geocoding, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
+| `modules.isochrone` | object | — | — | — | Read by @geoleaf-plugins/isochrone, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. ⚠️ A profile is a served file: no key of a routing engine is ever written here, neither in `endpoint` nor elsewhere — it is given at runtime. |
 | `modules.measure` | object | — | — | — | Read by @geoleaf-plugins/measure, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.navigation` | object | — | — | — | Read by @geoleaf-plugins/navigation, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. |
 | `modules.offline` | object | — | — | — | In-core offline capability — modules.offline.{enabled,cache}. Kept additionalProperties:true (opaque to the schema). |
@@ -472,7 +479,7 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `label.enabled` | boolean | oui | — | — | Enable/disable these labels. |
 | `label.field` | string | — | — | — | GeoJSON properties field name to display as label text. |
 | `label.font` | object | — | — | — | — |
-| `label.font.sizePt` | number | — | `12` | — | Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style. |
+| `label.font.sizePt` | number | — | `9` | — | Label text size in points, mapped to MapLibre `text-size`. Absent: 12 px, which is 9 pt. It is the only font key: the font stack comes from the loaded map style. |
 | `label.offset` | object | — | — | — | Label placement relative to the feature — LIVE (mapped to MapLibre text-anchor + text-radial-offset by _buildLabelOffsetLayout). Absent, or placement 'center', renders exactly as before: no anchor property is emitted at all. |
 | `label.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `label.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
@@ -599,6 +606,10 @@ themes.json — layer visibility presets (themes) for a GeoLeaf profile. Strict 
 | `themes[].layers[].style` | string | — | — | — | Style ID to apply in this theme. |
 | `themes[].layers[].visible` | boolean | — | — | — | Layer visibility in this theme. |
 | `themes[].type` | string | — | `"secondary"` | "primary" \| "secondary" | Theme type. Affects UI placement. |
+| `themes[].view` | object | — | — | — | Where this theme frames the map: `bounds`, or `center` with `zoom`. Activating the theme moves the camera there, before its layers load. When it is the theme the profile starts on, the map starts on it, unless the page address carries a view. Absent: activating the theme leaves the camera where it is, and a profile whose start theme declares none starts on its `map` extent. The navigation limit (`map.positionFixed`) and the padding (`map.padding`) stay the profile's. A legacy root-level `themes.json`, read after the map exists, frames on activation only. |
+| `themes[].view.bounds` | array | — | — | — | Extent to fit, [[south, west], [north, east]] - the writing of `map.bounds`. Wins over `center` when both are given and it is usable; an unreadable extent beside a valid `center` and `zoom` yields to them. |
+| `themes[].view.center` | array | — | — | — | Point to stand on, [lat, lng] - the writing of `map.center`. Read with `zoom`. |
+| `themes[].view.zoom` | number | — | — | — | Zoom level at `center`. |
 
 ## `ui.schema.json`
 

@@ -96,7 +96,8 @@ notes of its version. None is a precedent.
 - Six keys of a label configuration, in 3.15.0 — `font.family`, `font.weight`, `font.bold`,
   `font.italic`, `buffer.opacity` and `buffer.noFill`, removed from the profile schemas. No
   renderer ever read them: a style that declared one drew exactly what it draws without it. What
-  breaks is `validate:profiles`, which now refuses such a style; nothing changes at run time. A
+  breaks is a validation against the published schemas, and a literal typed against the types
+  generated from them: both now refuse such a style. Nothing changes at run time. A
   JSON key has no `@deprecated` tag to carry, and the only honest announcement — that the key
   does nothing — was already what the reference said of each of them.
 

@@ -27,21 +27,22 @@ import {
     _setActiveType,
     _nextStyleGeneration,
     _setWmtsAbort,
+    _setLandedStyleKey,
 } from "./basemaps-state.js";
 import { applyLibertyFilters } from "./providers.js";
-import {
-    activateTerrain,
-    deactivateTerrain,
-    isTerrainActive,
-    resolveTerrainConfig,
-} from "./terrain.js";
+import { suspendTerrainForStyleSwap, syncTerrainToBasemap } from "./terrain.js";
 import { applyImageBasemap } from "./image-source.js";
-import { applyHillshadeBasemap } from "./hillshade.js";
+import {
+    applyHillshadeBasemap,
+    removeHillshadeOverlay,
+    syncHillshadeOverlay,
+} from "./hillshade.js";
 import { buildWmsUrl, resolveWmtsTilesUrl } from "./wmts-resolver.js";
 import {
     _buildRasterSourceSpec,
     declaredAttribution,
     insertBelow,
+    trackIncomingStyle,
     BASEMAP_SOURCE_ID,
     BASEMAP_LAYER_ID,
 } from "./basemaps-apply.js";
@@ -125,6 +126,10 @@ export function _applyWmtsBasemap(
     previousKey: string | null,
     options: SetBaseLayerOptions
 ): void {
+    // The previous basemap's slot is empty until the resolution lands: a hillshade overlay left
+    // there would be drawn over nothing for that long.
+    removeHillshadeOverlay(nativeMap);
+
     // Abort any pending GetCapabilities fetch
     _wmtsAbort?.abort();
     // Keep a local handle: the signal must belong to the controller THIS invocation
@@ -161,10 +166,14 @@ export function _applyWmtsBasemap(
                 return;
             }
 
+            syncHillshadeOverlay(nativeMap, definition, key);
             _handleTerrainOnSyncSwitch(key, definition);
             if (!options.silent) _dispatchBasemapChange(key, previousKey, definition);
         })
         .catch((e) => {
+            // The request is over: left in place, its controller would read as a resolution
+            // still in flight, and `refreshBasemap` would wait for it forever.
+            if (_wmtsAbort === abort) _setWmtsAbort(null);
             Log.error("[GeoLeaf.Baselayers] WMTS async error:", e);
         });
 }
@@ -186,8 +195,10 @@ export function _applyWmtsBasemap(
  * 1. Puts back the runtime images (hatch patterns, sprite icons) a style REBUILD wiped —
  *    the engine keeps them when it can diff the two styles.
  * 2. Applies the target basemap (raster source/layer inserted at the bottom, or
- *    vector filters).
- * 3. Activates terrain if the target has `terrain.default3D: true`.
+ *    vector filters), then its hillshade overlay if it declares one — the style change dropped
+ *    the previous basemap's.
+ * 3. Brings the terrain in line with the target — put on at once when it declares
+ *    `terrain.default3D`, bound to the tilt when its `terrain.activation` is `"pitch"`.
  * 4. Dispatches `geoleaf:basemap:change`.
  */
 export function _applyViaStyleChange(
@@ -204,10 +215,9 @@ export function _applyViaStyleChange(
     _setActiveKey(key);
     _setActiveType(targetType);
 
-    // Deactivate terrain before style replacement (source will be destroyed)
-    if (isTerrainActive()) {
-        deactivateTerrain(nativeMap);
-    }
+    // The terrain comes off before the style is replaced: left on, it keeps the engine from
+    // diffing the two styles, and its source is destroyed with the outgoing one anyway.
+    suspendTerrainForStyleSwap(nativeMap);
 
     const styleTarget = targetType === "vector" ? definition.style : EMPTY_STYLE;
 
@@ -222,8 +232,12 @@ export function _applyViaStyleChange(
     // only reach MapLibre's attribution control through the incoming style.
     const adapter = _core()?.getAdapter?.();
     const attribution = targetType === "vector" ? declaredAttribution(definition) : "";
-    const transform =
-        adapter?.buildStyleChangeTransform?.(attribution ? { attribution } : undefined) ?? null;
+    // Wrapped so that the incoming style is read as it passes, before the carried layers are
+    // appended to it: a hillshade overlay is placed by the basemap's OWN layers.
+    const incoming = trackIncomingStyle(
+        adapter?.buildStyleChangeTransform?.(attribution ? { attribution } : undefined) ?? null
+    );
+    const transform = incoming.transform;
 
     // Register the listener BEFORE calling setStyle(). For inline style
     // objects (e.g. EMPTY_STYLE) MapLibre may fire `style.load` synchronously
@@ -231,6 +245,11 @@ export function _applyViaStyleChange(
     nativeMap.once("style.load", () => {
         // Guard against superseded style changes (rapid basemap switching)
         if (_styleGeneration !== generation) return;
+
+        // From here the map HOLDS this basemap's style — what a later switch to a basemap
+        // sharing it relies on. A raster target replaced the style with an empty one.
+        const landmarks = incoming.landmarks();
+        _setLandedStyleKey(targetType === "vector" ? key : null, landmarks);
 
         // 1. Put back the runtime images (hatch patterns, sprite icons). transformStyle
         //    carried the sources/layers; images are not part of the style spec, and a
@@ -255,12 +274,10 @@ export function _applyViaStyleChange(
                 Log.error("[GeoLeaf.Baselayers] Cannot apply raster after style change:", e);
             }
         }
+        syncHillshadeOverlay(nativeMap, definition, key, landmarks);
 
-        // 3. Terrain activation (directly — no nested style.load)
-        const terrainConfig = resolveTerrainConfig(definition, key);
-        if (terrainConfig?.default3D) {
-            activateTerrain(nativeMap, terrainConfig, key);
-        }
+        // 3. Terrain (directly — no nested style.load)
+        syncTerrainToBasemap(nativeMap, definition, key);
 
         // 4. Notify
         Log.info("[GeoLeaf.Baselayers] Active basemap:", key);
@@ -309,22 +326,17 @@ export function _dispatchBasemapChange(
 }
 
 /**
- * Handles terrain activation/deactivation for the sync raster→raster path.
- * Deactivates any active terrain, then auto-activates if `default3D: true`.
+ * Brings the terrain in line with the basemap a switch that replaced no style just applied: the
+ * sync raster path, a WMTS resolution, two vector basemaps sharing one style. Whatever the
+ * previous basemap held is released, and the new one's terrain is put on or bound to the tilt —
+ * which of the two is `terrain.ts`'s to decide.
  *
  * The async vector path (`_applyViaStyleChange`) handles terrain directly
  * inside its `style.load` callback.
  * @internal
  */
 export function _handleTerrainOnSyncSwitch(key: string, definition: BasemapDefinition): void {
-    if (isTerrainActive()) {
-        deactivateTerrain(_map);
-    }
-
-    const terrainConfig = resolveTerrainConfig(definition, key);
-    if (!terrainConfig?.default3D) return;
-
-    activateTerrain(_map, terrainConfig, key);
+    syncTerrainToBasemap(_map, definition, key);
 }
 
 /**

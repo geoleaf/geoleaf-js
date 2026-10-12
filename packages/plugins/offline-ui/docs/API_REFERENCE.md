@@ -63,7 +63,7 @@ of the cache tab touches.
 
 ## Events the window follows
 
-All are dispatched on `document` by the core.
+All are dispatched on `document`, by the core.
 
 | Event                               | The window then                                          |
 | ----------------------------------- | -------------------------------------------------------- |
@@ -76,6 +76,10 @@ All are dispatched on `document` by the core.
 | `geoleaf:offline:outbox-drained`    | Re-reads the write queue                                 |
 | `geoleaf:offline:quarantine-exited` | Re-reads the captures set aside                          |
 | `geoleaf:storage:quota-exceeded`    | Raises a notice — whether the window is open or not      |
+
+The "Can I leave?" block also follows the session, when `@geoleaf-plugins/connector` is
+loaded: it re-reads its state on `geoleaf:connector:authenticated`, `:token-refreshed`,
+`:signed-out` and `:auth-error`, which the connector dispatches — by name, without importing it.
 
 It also listens to the browser's own `online` and `offline` events, not to `geoleaf:online` /
 `geoleaf:offline`: those come from the core's connectivity detector, which a profile may switch

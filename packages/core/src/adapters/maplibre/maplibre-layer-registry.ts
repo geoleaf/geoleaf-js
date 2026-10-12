@@ -19,10 +19,12 @@
  *            `gl-{layerId}-casing`
  *
  * **Ordering:**
- * Layers are rendered in insertion order (bottom to top). A sentinel
- * layer `gl-sentinel-poi` marks the boundary between GeoJSON layers
- * and POI layers. GeoJSON layers are inserted before this sentinel,
- * ordered by ascending `zIndex`.
+ * Layers are rendered in the order of the style (bottom to top). A sentinel
+ * layer `gl-sentinel-poi` marks the boundary between ranked layers
+ * and POI layers. GeoJSON and vector-tile layers are inserted before
+ * this sentinel, ordered by ascending `zIndex`. A rank is given at insertion
+ * and may change afterwards (`setZIndex`): the registry then holds the rank
+ * the layer was moved to, which is no longer the one its profile declared.
  */
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -66,7 +68,11 @@ export interface LayerRegistryEntry {
     sourceId: string;
     /** Ordered list of MapLibre layer IDs created for this GeoLeaf layer. */
     subLayerIds: string[];
-    /** z-index from the GeoLeaf profile (0–99). */
+    /**
+     * The rank the layer is registered under — what {@link MaplibreLayerRegistry.getInsertBeforeId}
+     * orders by. It starts as the rank given at registration and follows every re-rank; it is
+     * not bounded, and need not be an integer.
+     */
     zIndex: number;
     /** Current visibility state. */
     visible: boolean;
@@ -157,7 +163,7 @@ export class MaplibreLayerRegistry {
      *
      * @param layerId - GeoLeaf layer identifier.
      * @param subLayerTypes - Which sub-layer types were created.
-     * @param zIndex - Layer z-index for ordering (0–99).
+     * @param zIndex - The rank the layer is registered under.
      * @param options - Additional options (vector tile, source-layer, custom IDs).
      */
     register(
@@ -208,20 +214,47 @@ export class MaplibreLayerRegistry {
     // ── Ordering ─────────────────────────────────────────────────────────────
 
     /**
-     * Computes the `beforeId` for inserting a new layer at the given z-index.
+     * Records a new rank for a registered layer, and moves its entry to the END of the registry.
      *
-     * Finds the first existing sub-layer with a **higher** z-index and returns
-     * its ID. If none exists, returns the sentinel layer ID so the new layer
-     * is inserted just below the POI boundary.
+     * The move is what keeps {@link getInsertBeforeId} right. A re-ranked layer is drawn above
+     * the layers already holding its new rank, and that method takes the FIRST entry of a rank
+     * for the bottom of its group. An entry re-ranked where it stood could be that first entry
+     * while drawn on top of the group: the next layer inserted under that rank would anchor on
+     * it, and end above layers it belongs under.
      *
-     * @param zIndex - The z-index of the layer being inserted.
-     * @returns The MapLibre layer ID to pass as `beforeId` to `map.addLayer()`.
+     * @param layerId - GeoLeaf layer identifier.
+     * @param zIndex - The rank the layer is now drawn at.
+     * @returns `true` if the layer is registered; `false` otherwise, and nothing changed.
      */
-    getInsertBeforeId(zIndex: number): string {
+    setZIndex(layerId: string, zIndex: number): boolean {
+        const entry = this._entries.get(layerId);
+        if (!entry) return false;
+        this._entries.delete(layerId);
+        entry.zIndex = zIndex;
+        this._entries.set(layerId, entry);
+        return true;
+    }
+
+    /**
+     * Computes the `beforeId` for placing a layer at the given z-index.
+     *
+     * Finds the entry with the lowest **strictly higher** z-index and returns its first
+     * sub-layer ID. If none exists, returns the sentinel layer ID so the layer goes just below
+     * the POI boundary. Among entries of the same rank the first registered answers: it is the
+     * bottom of its group, every later layer of that rank having been placed above it.
+     *
+     * @param zIndex - The z-index of the layer being placed.
+     * @param excludeLayerId - A layer left out of the search: the one being re-ranked, which
+     *   must not anchor on itself.
+     * @returns The MapLibre layer ID to pass as `beforeId` to `map.addLayer()` or
+     *   `map.moveLayer()`.
+     */
+    getInsertBeforeId(zIndex: number, excludeLayerId?: string): string {
         let bestId: string | null = null;
         let bestZ = Infinity;
 
-        for (const entry of this._entries.values()) {
+        for (const [layerId, entry] of this._entries) {
+            if (layerId === excludeLayerId) continue;
             if (entry.zIndex > zIndex && entry.zIndex < bestZ && entry.subLayerIds.length > 0) {
                 bestZ = entry.zIndex;
                 bestId = entry.subLayerIds[0] ?? bestId;

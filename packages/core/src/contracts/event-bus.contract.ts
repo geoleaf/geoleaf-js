@@ -686,8 +686,8 @@ export interface GeoLeafPopupActionDetail {
 // The plugin reaches them through `GeoLeafEventMap[K]` — its `fireEvent` is generic over
 // the map, so every emission site is checked against it — and an integrator does the same.
 //
-// 🛑 **These nine names are a special case in this file, and you need to know it to read
-// them.** Until 13/08/2026 they were INVISIBLE to every event gate of the repo:
+// 🛑 **Nine of these ten names are a special case in this file, and you need to know it to
+// read them.** Until 13/08/2026 they were INVISIBLE to every event gate of the repo:
 // `fireEvent` composed the name at runtime (`map.fire("geoleaf:" + eventName)`), so no
 // complete literal existed in source, so `EVENT-MAP` could demand nothing and
 // `CONSUMER-CONTRACT` had to declare them out of measurement reach. Two of them
@@ -696,7 +696,7 @@ export interface GeoLeafPopupActionDetail {
 // is therefore not the point of the change: it is its CONSEQUENCE. The point was to make
 // the gate seeing.
 //
-// ⚠️ **All nine go out on BOTH buses** — `document.dispatchEvent` AND `map.fire`
+// ⚠️ **All ten go out on BOTH buses** — `document.dispatchEvent` AND `map.fire`
 // (`plugins/table/src/table-state.ts`). A subscriber must pick one; subscribing to both
 // delivers every event twice. This is written on each key because it is the trap the
 // integrator will hit, not the one the maintainer hits.
@@ -766,6 +766,43 @@ interface GeoLeafTableExportLayerDetail {
     format: GeoLeafTableExportFormat;
     /** Number of exported features — the whole layer, not the selection. */
     count: number;
+}
+
+/**
+ * Detail payload for `geoleaf:table:rowActivated`.
+ *
+ * Emitted when the user ACTIVATES a row: a double-click on it, or Enter while the row itself
+ * has the focus. Never from the row's checkbox cell, never from the sort header. The name
+ * states an intention, not a gesture — what activation opens is the subscriber's decision;
+ * the table opens nothing.
+ *
+ * ⚠️ **A double-click leaves the selection as it was, but not silently.** Its first click
+ * toggles the selection like any click (no click is delayed to wait for a second one), and
+ * the activation then restores the selection and the range anchor of before that click. A
+ * subscriber of `geoleaf:table:selectionChanged` therefore sees TWO emissions around a
+ * double-click — the toggle, then the restore — and the second carries the initial
+ * selection. Enter emits no `selectionChanged` at all.
+ *
+ * The payload holds no live DOM node: it is structured-cloneable as long as the layer's
+ * properties are.
+ */
+interface GeoLeafTableRowActivatedDetail {
+    /** The layer the table displays. */
+    layerId: string | null;
+    /**
+     * The row's identifier — the one `geoleaf:table:selectionChanged` lists in `selectedIds`.
+     *
+     * ⚠️ Always a string, and SYNTHETIC (`__gl_row_<n>`) when the feature carries no
+     * identifier of its own: it then names a row of this table, not a record. Read the
+     * record's own key off `properties` in that case.
+     */
+    featureId: string;
+    /**
+     * The feature's COMPLETE properties as the table holds them — not only the displayed
+     * columns. A shallow copy: nested objects are shared with the layer's data. `{}` when
+     * the feature has none.
+     */
+    properties: Record<string, unknown>;
 }
 
 // ── Connector seam (plugin-emitted) ──────────────────────────────────────────
@@ -1091,10 +1128,11 @@ export interface GeoLeafEventMap {
     "geoleaf:editor:vertex-deleted": GeoLeafEditorVertexChangedDetail;
     "geoleaf:editor:feature-sync-queued": GeoLeafEditorSyncQueuedDetail;
     "geoleaf:editor:feature-sync-flushed": GeoLeafEditorSyncFlushedDetail;
-    // Table seam — the nine names that runtime composition kept invisible to every
-    // gate. See the shape block above for what typing them cost and what it uncovered.
+    // Table seam — the first nine are the names that runtime composition kept invisible to
+    // every gate; `rowActivated` was born typed. See the shape block above for what typing
+    // them cost and what it uncovered.
     //
-    // ⚠️ All nine are emitted on `document` AND on the MapLibre bus — do not subscribe twice.
+    // ⚠️ All ten are emitted on `document` AND on the MapLibre bus — do not subscribe twice.
     "geoleaf:table:opened": Record<string, never>;
     "geoleaf:table:closed": Record<string, never>;
     "geoleaf:table:layerChanged": GeoLeafTableLayerChangedDetail;
@@ -1104,6 +1142,7 @@ export interface GeoLeafEventMap {
     "geoleaf:table:highlightSelection": GeoLeafTableHighlightDetail;
     "geoleaf:table:exportSelection": GeoLeafTableExportSelectionDetail;
     "geoleaf:table:exportLayer": GeoLeafTableExportLayerDetail;
+    "geoleaf:table:rowActivated": GeoLeafTableRowActivatedDetail;
     // Connector seam — names that lived outside the `geoleaf:` prefix, thus outside
     // EM-01's measured field. See the shape block above: they are emitted as RAW
     // `CustomEvent`s, and two of them cannot do otherwise.

@@ -42,7 +42,7 @@ Politique recommandée (durcie — `style-src` **sans** `unsafe-inline` : GeoLea
 ```
 Content-Security-Policy:
   default-src 'self';
-  script-src 'self' blob:;
+  script-src 'self';
   style-src 'self';
   img-src 'self' data: blob: https:;
   connect-src 'self' https:;
@@ -59,7 +59,7 @@ Content-Security-Policy:
 Points d'attention :
 
 - **`style-src` sans `'unsafe-inline'`** : depuis la roadmap sécurité **B.5**, GeoLeaf n'a **plus besoin** de `'unsafe-inline'`. Tous les styles dynamiques sont posés via le **CSSOM** (`element.style.setProperty`, helper `GeoLeaf.Helpers.applyCssText`) — non soumis à `style-src` — ou via des **classes CSS** ; les styles inline résiduels (string-emitters du content-builder, attribut `style` du sprite SVG, `<style>` de la démo) ont été refactorés. Un test e2e gardien (`18-security`) valide **0 violation `style-src`** sous CSP stricte. Conservez `style-src` **sans** `'unsafe-inline'`.
-- **`script-src`** : `'self' blob:`, sans aucune origine tierce — MapLibre est servi depuis votre propre origine (`vendor/maplibre-gl/`). Aucun hash n'est requis : le document ne porte aucun script inline. ⚠️ `blob:` est conservé parce que MapLibre crée son worker par Blob ; en CSP3 cela relève de `worker-src` (déjà présent) avec `child-src` en repli CSP2, donc `blob:` y est probablement superflu — mais le retirer se vérifie en navigateur avant d'être publié comme recommandation.
+- **`script-src`** : `'self'` seul, sans aucune origine tierce — MapLibre est servi depuis votre propre origine (`vendor/maplibre-gl/`). Aucun hash n'est requis : le document ne porte aucun script inline. `blob:` n'y figure pas : sous MapLibre GL JS v6, le worker du moteur est un module `.mjs` same-origin chargé par son URL, jamais par un `blob:` — cela relève de `worker-src` (présent), avec `child-src` en repli CSP2. Le retrait a été vérifié en navigateur sur les deux variantes livrables, et la valeur est gatée par `APP-09`.
 - **`'wasm-unsafe-eval'` non requis** : le plugin `realtime-layer` charge son décodeur GTFS-RT — et sa dépendance `protobufjs`/`long`, dont l'initialisation sonde WebAssembly — par **import dynamique à la première utilisation**. La sonde ne s'exécute donc jamais au boot : sans couche GTFS-RT active, **0 violation**. Conservez `script-src` **sans** `'wasm-unsafe-eval'`. Même avec une couche GTFS-RT, la sonde est rattrapée et le décodage bascule sur un chemin JS pur (fonctionnel sans WebAssembly) ; ne l'ajoutez que si vous voulez supprimer la violation `wasm-eval` purement cosmétique à la première utilisation d'une telle couche — c'est un assouplissement **étroit** (n'autorise que la compilation WebAssembly, **pas** `eval()`/`new Function()`).
 - **`frame-ancestors`** : n'a d'effet qu'en **en-tête HTTP** (ignoré en `<meta>`). Voir §3.
 
@@ -173,7 +173,7 @@ Si vous stockez ou éditez des profils via un back-office, traitez-les comme des
 
 ## 8. Checklist de déploiement
 
-- [ ] CSP servie en **en-tête HTTP**, `style-src` sans `unsafe-inline`, `script-src 'self' blob:` **sans hash** — le document ne porte aucun script inline, ses `<script>` sont tous externes.
+- [ ] CSP servie en **en-tête HTTP**, `style-src` sans `unsafe-inline`, `script-src 'self'` **sans hash** — le document ne porte aucun script inline, ses `<script>` sont tous externes.
 - [ ] `X-Frame-Options: DENY` + `frame-ancestors 'self'` + `X-Content-Type-Options: nosniff` en en-tête HTTP — **vérifiés sur la réponse** (`curl -sI`), pas dans la conf : c'est la conf qui ment quand un bloc redéclare `add_header`.
 - [ ] SRI (`integrity` + `crossorigin`) posé **si et seulement si** vous servez MapLibre depuis un CDN tiers ; hash régénéré à chaque montée de version. Sans objet sur le déployé standard, qui l'auto-héberge.
 - [ ] Uploads re-validés côté serveur (taille, type réel, parsing strict, anti zip-bomb).

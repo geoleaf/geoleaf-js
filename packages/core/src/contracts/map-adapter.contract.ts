@@ -134,9 +134,14 @@ export interface IMapAdapter {
      * Adjusts the viewport to fit the given bounding box.
      *
      * @param bounds - Geographic area to fit.
-     * @param options - Optional padding in screen pixels around the bounds.
+     * @param options - `padding`: room kept around the bounds, in screen pixels. `animate`:
+     *   `false` to jump. `maxZoom`: a ceiling on the zoom the framing may reach — a small
+     *   area is then shown from further away instead of filling the viewport.
      */
-    fitBounds(bounds: GeoLeafBounds, options?: { padding?: GeoLeafPoint; animate?: boolean }): void;
+    fitBounds(
+        bounds: GeoLeafBounds,
+        options?: { padding?: GeoLeafPoint; animate?: boolean; maxZoom?: number }
+    ): void;
 
     /**
      * Returns the current viewport as a geographic bounding box.
@@ -312,6 +317,51 @@ export interface IMapAdapter {
      * @param maxZoom - Highest zoom at which the layer renders, or `null` to clear.
      */
     setLayerZoomRange(id: string, minZoom: number | null, maxZoom: number | null): void;
+
+    /**
+     * Re-ranks an existing GeoJSON layer in place, and reports whether it did.
+     *
+     * The layer lands where an insertion at that rank would put it NOW: under the lowest layer
+     * of strictly higher rank — at the top of the ranked layers when there is none —, hence
+     * above the layers already holding that rank. Its sub-layers move together and keep their
+     * order: a fill stays under its outline.
+     *
+     * Nothing is rebuilt. The source and its data, the filters, the zoom range, the visibility
+     * and the listeners are kept: a hidden layer is re-ranked and stays hidden. The order
+     * obtained crosses a basemap switch.
+     *
+     * 🛑 **`false` means nothing moved, and the caller rebuilds** — `removeLayer`, then
+     * `addGeoJSONLayer` at the rank it wants. It is the answer when:
+     * - `id` names no layer of this adapter;
+     * - `zIndex` is not a finite number;
+     * - the layer is a vector-tile layer, or a cluster group (`createClusterGroup`);
+     * - none of its sub-layers is in the style;
+     * - the layer it should go under is not in the style — the engine would then take the
+     *   layer out of the drawing order instead of moving it.
+     *
+     * Asking for the rank the layer already holds answers `true` and moves nothing: the layer
+     * is NOT lifted above the layers sharing that rank.
+     *
+     * ⚠️ **What does not follow.** The `zIndex` a layer was DECLARED with is not rewritten: the
+     * layer manager still orders its rows by it, and the hover tooltip still arbitrates two
+     * overlapping layers by it. A layer's labels do not move with it. No event is emitted.
+     *
+     * Optional and boolean, for the two reasons {@link IMapAdapter.applyDataDiff} gives. Call it
+     * as `adapter.setLayerZIndex?.(id, zIndex) === true`, so that an adapter without it — an
+     * older core — reads as a refusal.
+     *
+     * @param id - Layer identifier.
+     * @param zIndex - The rank to give the layer; higher is drawn on top. Need not be an integer.
+     * @returns `true` when the layer holds that rank on return; `false` when nothing moved and
+     *   the caller must rebuild.
+     * @example
+     * // Draw the layer above one ranked 60 — and rebuild it if the adapter refuses.
+     * if (adapter.setLayerZIndex?.("zones", 61) !== true) {
+     *     adapter.removeLayer("zones");
+     *     adapter.addGeoJSONLayer("zones", data, { zIndex: 61 });
+     * }
+     */
+    setLayerZIndex?(id: string, zIndex: number): boolean;
 
     // ── Markers ───────────────────────────────────────────────────────────────
 

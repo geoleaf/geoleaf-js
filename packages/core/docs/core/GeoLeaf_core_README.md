@@ -380,7 +380,7 @@ Since v2.0.0, GeoLeaf initialisation is fully orchestrated by the **boot system*
    └─ Runs ModuleRegistry.init() (topological order) — see 4.
 
 4. ModuleRegistry.init(cfg) — CoreMapModule → SharedModule → UIModule (among others)
-   └─ CoreMapModule: reads the profile bounds (map.bounds required), calls
+   └─ CoreMapModule: reads the profile extent (map.bounds, or map.center + map.zoom), calls
       GeoLeaf.init() → GeoLeaf.Core.init() → MaplibreAdapter
    └─ SharedModule: i18n, plugin check, app-wide lifecycles (pwa, offline)
    └─ UIModule: starts preloading the secondary modules (ESM code splitting),
@@ -574,20 +574,20 @@ These warnings are advisory — the application still starts, in degraded mode.
 }
 ```
 
-> **Important**: `map.bounds` is **required** since v2.0.0. When it is missing, the application refuses to start and logs an explicit error. There is no default world map.
+> **Important**: the profile must position the map — `map.bounds`, or `map.center` with `map.zoom`. With neither, the application refuses to start and logs an explicit error. There is no default world map.
 
 ### 6.2 Mapping between JSON fields and Core options
 
-| JSON field                       | Equivalent Core option                    | Required    |
-| -------------------------------- | ----------------------------------------- | ----------- |
-| `map.target` / `map.id`          | `options.mapId`                           | yes         |
-| `map.bounds`                     | centre computation + fitBounds            | **yes**     |
-| `map.initialMaxZoom`             | `options.zoom`                            | recommended |
-| `map.minZoom`                    | `options.mapOptions.minZoom`              | no          |
-| `map.maxZoom`                    | `options.mapOptions.maxZoom`              | no          |
-| `map.boundsMargin` (default 0.3) | `maxBounds` padding                       | no          |
-| `map.positionFixed`              | `options.mapOptions.maxBounds` (computed) | no          |
-| `ui.theme`                       | `options.theme`                           | no          |
+| JSON field                       | Equivalent Core option                    | Required             |
+| -------------------------------- | ----------------------------------------- | -------------------- |
+| `map.target` / `map.id`          | `options.mapId` (default `geoleaf-map`)   | no                   |
+| `map.bounds`                     | centre computation + fitBounds            | or `center` + `zoom` |
+| `map.initialMaxZoom`             | ceiling of the initial framing            | no                   |
+| `map.minZoom`                    | `options.mapOptions.minZoom`              | no                   |
+| `map.maxZoom`                    | `options.mapOptions.maxZoom`              | no                   |
+| `map.boundsMargin` (default 0.3) | `maxBounds` padding                       | no                   |
+| `map.positionFixed`              | `options.mapOptions.maxBounds` (computed) | no                   |
+| `ui.theme`                       | `options.theme`                           | no                   |
 
 ### 6.3 Loading the active profile
 

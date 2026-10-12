@@ -4,8 +4,8 @@ title: offline — le moteur hors ligne, et la façade que pilote son interface
 capability_id: offline
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 45c7c0eb2
-date: 7 octobre 2026
+verifie_contre: 234ee5da7
+date: 11 octobre 2026
 ---
 
 # offline — le moteur hors ligne, et la façade que pilote son interface

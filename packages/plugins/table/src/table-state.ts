@@ -106,7 +106,7 @@ export function resetTableState(): void {
 }
 
 /**
- * The nine event names this plugin emits — **derived from `GeoLeafEventMap`, not listed here**.
+ * The ten event names this plugin emits — **derived from `GeoLeafEventMap`, not listed here**.
  *
  * ⚠️ **Deriving is the point, and re-listing would undo it.** A hand-written union would be a
  * second copy of the map, and this repo has measured what two copies of one reader do: they

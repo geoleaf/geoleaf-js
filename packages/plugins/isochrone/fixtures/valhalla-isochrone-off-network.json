@@ -1,0 +1,173 @@
+{
+  "request": {
+    "locations": [
+      {
+        "lat": -22.2,
+        "lon": 54.5
+      }
+    ],
+    "costing": "auto",
+    "contours": [
+      {
+        "time": 5
+      },
+      {
+        "time": 10
+      },
+      {
+        "time": 15
+      }
+    ],
+    "polygons": true
+  },
+  "status": 200,
+  "body": {
+    "features": [
+      {
+        "properties": {
+          "fill-opacity": 0.33,
+          "fillColor": "#bf4040",
+          "opacity": 0.33,
+          "fill": "#bf4040",
+          "fillOpacity": 0.33,
+          "color": "#bf4040",
+          "contour": 15,
+          "metric": "time"
+        },
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                54.5,
+                -22.199062
+              ],
+              [
+                54.499125,
+                -22.199124
+              ],
+              [
+                54.499125,
+                -22.200874
+              ],
+              [
+                54.500875,
+                -22.200874
+              ],
+              [
+                54.500875,
+                -22.199124
+              ],
+              [
+                54.5,
+                -22.199062
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "type": "Feature"
+      },
+      {
+        "properties": {
+          "fill-opacity": 0.33,
+          "fillColor": "#bfaa40",
+          "opacity": 0.33,
+          "fill": "#bfaa40",
+          "fillOpacity": 0.33,
+          "color": "#bfaa40",
+          "contour": 10,
+          "metric": "time"
+        },
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                54.5,
+                -22.19909
+              ],
+              [
+                54.499181,
+                -22.199181
+              ],
+              [
+                54.499181,
+                -22.200818
+              ],
+              [
+                54.500818,
+                -22.200818
+              ],
+              [
+                54.500818,
+                -22.199181
+              ],
+              [
+                54.5,
+                -22.19909
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "type": "Feature"
+      },
+      {
+        "properties": {
+          "fill-opacity": 0.33,
+          "fillColor": "#6abf40",
+          "opacity": 0.33,
+          "fill": "#6abf40",
+          "fillOpacity": 0.33,
+          "color": "#6abf40",
+          "contour": 5,
+          "metric": "time"
+        },
+        "geometry": {
+          "coordinates": [
+            [
+              [
+                54.5,
+                -22.199166
+              ],
+              [
+                54.499333,
+                -22.199333
+              ],
+              [
+                54.499166,
+                -22.199999
+              ],
+              [
+                54.499333,
+                -22.200666
+              ],
+              [
+                54.5,
+                -22.200833
+              ],
+              [
+                54.500666,
+                -22.200666
+              ],
+              [
+                54.500833,
+                -22.199999
+              ],
+              [
+                54.500666,
+                -22.199333
+              ],
+              [
+                54.5,
+                -22.199166
+              ]
+            ]
+          ],
+          "type": "Polygon"
+        },
+        "type": "Feature"
+      }
+    ],
+    "type": "FeatureCollection"
+  }
+}

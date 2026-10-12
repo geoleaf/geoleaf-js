@@ -236,6 +236,16 @@ GeoLeaf.Sync.registerSessionReader(() => {
 
 ---
 
+### Une couche qui ne prend pas de jeton — `write.auth: "none"`
+
+Le jeton part avec toute requête sous `baseUrl`, écritures de la file hors ligne comprises. Une
+couche dont le point d'écriture est public le dit dans sa configuration —
+`"write": { "auth": "none", … }` — et le cœur marque chaque requête de cette écriture : le
+connecteur n'y attache alors aucun jeton, n'en résout aucun, et laisse un `401` à l'appelant. La
+marque est le membre `geoleafWriteAuth` de l'`init` de la requête ; `fetch` l'ignore et elle
+n'atteint aucun serveur. Demande `@geoleaf/core` 3.15.0 : un cœur antérieur ne pose pas la marque,
+et le jeton est attaché comme avant.
+
 ## Événements DOM
 
 | Événement                                     | Détail                                  | Déclenché quand                                                      |

@@ -134,6 +134,11 @@ const FAMILIES = {
             "basemaps[].hillshade.illuminationDirection",
             "basemaps[].hillshade.highlightColor",
             "basemaps[].hillshade.shadowColor",
+            "basemaps[].hillshade.accentColor",
+            "basemaps[].hillshade.illuminationAnchor",
+            "basemaps[].hillshade.overlay",
+            "basemaps[].hillshade.onlyWithTerrain",
+            "basemaps[].hillshade.beforeLayer",
             "basemaps[].terrain.enabled",
             "basemaps[].terrain.demUrl",
             "basemaps[].terrain.demEncoding",
@@ -141,6 +146,13 @@ const FAMILIES = {
             "basemaps[].terrain.default3D",
             "basemaps[].terrain.pitch",
             "basemaps[].terrain.bearing",
+            "basemaps[].terrain.activation",
+            "basemaps[].terrain.activateFromPitch",
+            "basemaps[].terrain.deactivateBelowPitch",
+            "basemaps[].terrain.demMaxZoom",
+            "basemaps[].wms.crs",
+            "basemaps[].wms.styles",
+            "basemaps[].wms.tileSize",
             // themes[] (schema)
             "themes[].id",
             "themes[].label",
@@ -151,6 +163,9 @@ const FAMILIES = {
             "themes[].layers[].id",
             "themes[].layers[].visible",
             "themes[].layers[].style",
+            "themes[].view.bounds",
+            "themes[].view.center",
+            "themes[].view.zoom",
         ],
         // Keys read by LIVE code but ABSENT from the hardened schemas (additionalProperties:false
         // ⇒ inconfigurable). Consigned ANO-042→047. Each still needs an inventory row.
@@ -160,10 +175,6 @@ const FAMILIES = {
             "basemaps[].demUrl",
             "basemaps[].demEncoding",
             "basemaps[].demMaxZoom",
-            "basemaps[].terrain.demMaxZoom",
-            "basemaps[].wms.crs",
-            "basemaps[].wms.styles",
-            "basemaps[].wms.tileSize",
             "config.primaryThemes.compactThreshold",
         ],
     },
@@ -414,6 +425,20 @@ const FAMILIES = {
             "modules.routing.maxWaypoints",
             "modules.routing.layerId",
             "modules.routing.labelField",
+            // isochrone (plugin-isochrone config.ts getPluginConfig + DEFAULTS ;
+            // showButton = slot profileKey in entry.ts, read by the core registry).
+            "modules.isochrone.enabled",
+            "modules.isochrone.showButton",
+            "modules.isochrone.provider",
+            "modules.isochrone.endpoint",
+            "modules.isochrone.timeoutMs",
+            "modules.isochrone.mode",
+            "modules.isochrone.modes",
+            "modules.isochrone.durations",
+            "modules.isochrone.maxLayers",
+            "modules.isochrone.zIndex",
+            "modules.isochrone.palette",
+            "modules.isochrone.fillOpacity",
 
             // ⚠️ `modules.navigation` had NO entry here before 2026-08-21, while the
             // plugin already read `enabled` and `showButton`: the gate was green

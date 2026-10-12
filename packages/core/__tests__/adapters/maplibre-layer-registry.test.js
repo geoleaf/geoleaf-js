@@ -265,6 +265,55 @@ describe("MaplibreLayerRegistry", () => {
             // zIndex 10 → should pick "mid" (15), not "high" (25)
             expect(registry.getInsertBeforeId(10)).toBe("gl-mid-line");
         });
+
+        it("leaves the excluded layer out of the search", () => {
+            registry.register("moving", ["fill", "line"], 50);
+            registry.register("above", ["fill"], 60);
+
+            // Unexcluded, a layer going from 50 to 40 would anchor on its own fill.
+            expect(registry.getInsertBeforeId(40)).toBe("gl-moving-fill");
+            expect(registry.getInsertBeforeId(40, "moving")).toBe("gl-above-fill");
+            expect(registry.getInsertBeforeId(60, "above")).toBe(SENTINEL_POI);
+        });
+    });
+
+    // ── setZIndex ───────────────────────────────────────────────────────────
+
+    describe("setZIndex", () => {
+        it("rewrites the rank of a registered layer, and keeps the rest of its entry", () => {
+            registry.register("a", ["fill", "line"], 10, { geometryTypes: new Set(["Polygon"]) });
+            registry.setVisible("a", false);
+            const entry = registry.get("a");
+
+            expect(registry.setZIndex("a", 42.5)).toBe(true);
+
+            expect(registry.get("a")).toBe(entry);
+            expect(entry.zIndex).toBe(42.5);
+            expect(entry.visible).toBe(false);
+            expect(entry.subLayerIds).toEqual(["gl-a-fill", "gl-a-line"]);
+        });
+
+        it("returns false for an unknown layer, and changes nothing", () => {
+            registry.register("a", ["fill"], 10);
+
+            expect(registry.setZIndex("ghost", 20)).toBe(false);
+
+            expect(registry.getAllLayerIds()).toEqual(["a"]);
+            expect(registry.get("a").zIndex).toBe(10);
+        });
+
+        // Seen red with the rank rewritten where the entry stood: `a`, registered first, then
+        // answered for rank 30 while drawn above `b`.
+        it("moves the entry to the end, so the first entry of a rank stays the bottom of its group", () => {
+            registry.register("a", ["fill"], 10);
+            registry.register("b", ["fill"], 30);
+
+            registry.setZIndex("a", 30);
+
+            expect(registry.getAllLayerIds()).toEqual(["b", "a"]);
+            // A layer inserted at rank 20 goes under the BOTTOM of rank 30, which is `b`.
+            expect(registry.getInsertBeforeId(20)).toBe("gl-b-fill");
+        });
     });
 
     // ── clear ───────────────────────────────────────────────────────────────

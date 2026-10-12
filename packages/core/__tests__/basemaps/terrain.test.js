@@ -39,13 +39,29 @@ import {
 
 const TERRAIN_SOURCE_ID = "terrain-dem";
 
-/** Creates a minimal mock of a native maplibregl.Map. */
+/**
+ * Creates a minimal mock of a native maplibregl.Map. Its terrain and its `terrain-dem` source
+ * are HELD, as the engine holds them: the manager reads both back, and a mock that answered
+ * nothing would say a terrain just put on is absent.
+ */
 function makeMockMap({ sourceExists = false } = {}) {
+    let terrain = null;
+    // A source left by a basemap of the same elevation: the one `validConfig` asks for.
+    let source = sourceExists
+        ? { type: "raster-dem", tiles: [validConfig.demUrl], encoding: "terrarium", maxzoom: 15 }
+        : null;
     return {
-        addSource: vi.fn(),
-        removeSource: vi.fn(),
-        getSource: vi.fn((id) => (id === TERRAIN_SOURCE_ID && sourceExists ? {} : null)),
-        setTerrain: vi.fn(),
+        addSource: vi.fn((id, spec) => {
+            if (id === TERRAIN_SOURCE_ID) source = spec;
+        }),
+        removeSource: vi.fn((id) => {
+            if (id === TERRAIN_SOURCE_ID) source = null;
+        }),
+        getSource: vi.fn((id) => (id === TERRAIN_SOURCE_ID ? source : null)),
+        setTerrain: vi.fn((options) => {
+            terrain = options;
+        }),
+        getTerrain: vi.fn(() => terrain),
         easeTo: vi.fn(),
         jumpTo: vi.fn(),
         on: vi.fn(),

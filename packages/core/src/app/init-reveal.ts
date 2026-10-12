@@ -132,8 +132,9 @@ export function setupReveal({
     GeoLeaf,
     map,
     AppLog,
-    profileBounds,
+    startBounds,
     profilePadding,
+    startMaxZoom,
     permalinkCfg,
 }: RevealDeps): () => void {
     // ========================================================
@@ -156,7 +157,8 @@ export function setupReveal({
         hideBootVeil();
 
         // After removing the loader, tell the engine to recalculate its container
-        // size and re-fit the profile bounds (unless permalink state overrides).
+        // size and re-fit the extent the map started on — the start theme's view when it
+        // declares bounds, the profile bounds otherwise (unless permalink state overrides).
         //
         // 🛑 BEFORE THE ANNOUNCEMENTS, AND SYNCHRONOUSLY. The re-fit used to wait 120 ms in a
         // timer — a delay no line ever justified — and so landed AFTER `geoleaf:app:ready`: a
@@ -180,9 +182,9 @@ export function setupReveal({
                 typeof permalink !== "undefined" &&
                 !!getState &&
                 getState.call(permalink) !== null;
-            if (profileBounds && !_hasPermalink && typeof map.fitBounds === "function") {
+            if (startBounds && !_hasPermalink && typeof map.fitBounds === "function") {
                 try {
-                    map.fitBounds(profileBounds, buildFitBoundsOptions(profilePadding));
+                    map.fitBounds(startBounds, buildFitBoundsOptions(profilePadding, startMaxZoom));
                 } catch (e) {
                     AppLog.warn("[GeoLeaf] fitBounds correction at reveal:", e);
                 }

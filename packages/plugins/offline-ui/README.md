@@ -129,7 +129,7 @@ Returns the complete storage statistics:
 }
 ```
 
-### `GeoLeaf.Storage.CacheManager.cacheProfile(profileId, options?)` → `Promise<CacheResult>`
+### `GeoLeaf.Storage.CacheManager.cacheProfile(profileId, options?)` → `Promise<CacheProfileResult>`
 
 Starts downloading a complete profile for offline access. It runs a **quota pre-check** first, so a
 download known to be too large is not attempted. Progress is available through the
@@ -190,11 +190,13 @@ facade of the **core**, not of this plugin.
 ```
 src/
 ├── entry.ts       ← Entry point — registers the UI, the i18n and the toolbar
-├── cache/         ← Download plus the picker for layers to cache
-├── sync/          ← Cache control area (DOM, events, state) and synchronisation
+├── cache/         ← The offline window: cache control area (DOM, events, state), download,
+│                    layer picker, and the blocks for captures set aside, sync status and log
+├── sync/          ← Synchronisation manager, and the estimates of a zone or a corridor
 ├── ui/            ← Cache button, mounted into a core toolbar slot
-├── core/          ← Seams to the core offline engine (availability, sync)
+├── core/          ← Seams to the core offline engine (availability, sync), update banner
 ├── shared/        ← Plugin-side view of the `StorageContract`
+├── utils/         ← DOM helpers
 ├── lang/          ← i18n dictionaries, 6 locales
 └── css/           ← Modal, control and sync panel stylesheets
 ```

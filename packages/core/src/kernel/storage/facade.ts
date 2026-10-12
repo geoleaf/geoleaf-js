@@ -34,6 +34,8 @@ import { Log } from "../../utils/log/index.js";
 import { StorageContract } from "../shared/storage-contract.js";
 import { mayEditLayer } from "../shared/edition-permissions.js";
 import type {
+    CacheProfileOptions,
+    CacheProfileResult,
     LayerSyncReport,
     PreflightReport,
     SyncStatus,
@@ -270,6 +272,8 @@ interface StorageLayerPullReport {
     readonly skipped: number;
     readonly capped: boolean;
     readonly aborted: boolean;
+    /** True when the source's next page named an origin the profile does not declare. */
+    readonly cursorRefused: boolean;
     /** `"delta"`, `"full"`, or `null` when the pull was refused before any request. */
     readonly mode: "full" | "delta" | null;
     readonly refused: string | null;
@@ -306,7 +310,11 @@ interface CacheManagerLike {
         profileId: string
     ) => Promise<{ totalSize: number; totalSizeFormatted?: string }>;
     getStorageQuota: () => Promise<{ available?: number }>;
-    cacheProfile: (profileId: string) => Promise<unknown>;
+    /**
+     * Downloads a profile's resources and pulls its declared layers. Does not reject on a
+     * failed download: the result's `error` and `failedUrls` say what went wrong.
+     */
+    cacheProfile: (profileId: string, options?: CacheProfileOptions) => Promise<CacheProfileResult>;
     isProfileCached: (profileId: string) => Promise<boolean>;
 }
 
@@ -572,6 +580,7 @@ const Storage = {
                 skipped: 0,
                 capped: false,
                 aborted: false,
+                cursorRefused: false,
                 mode: null,
                 refused: "engineUnavailable",
             };

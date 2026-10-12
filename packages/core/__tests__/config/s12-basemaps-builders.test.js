@@ -226,10 +226,15 @@ describe("config B4 — basemaps[].terrain (terrain.ts)", () => {
     });
 
     it("activateTerrain applies setTerrain + raster-dem source + camera defaults", () => {
+        // The terrain is held, as the engine holds it: the manager reads it back.
+        let terrain = null;
         const map = {
             getSource: vi.fn(() => undefined),
             addSource: vi.fn(),
-            setTerrain: vi.fn(),
+            setTerrain: vi.fn((options) => {
+                terrain = options;
+            }),
+            getTerrain: vi.fn(() => terrain),
             easeTo: vi.fn(),
             jumpTo: vi.fn(),
             on: vi.fn(),

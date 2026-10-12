@@ -1,5 +1,5 @@
 {
-    "_comment": "Config-contract test-only reference fixture (S12 / B4). Exhaustive on themes.schema.json: root defaultTheme (canonical), config.primaryThemes + config.secondaryThemes, and theme entries of both types with layers[].{visible,style} (incl. a visible:false case). The legacy config.defautTheme typo is intentionally omitted here (canonical fixture) and exercised inline in s12-themes-anomalies-lock.test.js. Source of truth for s12-themes-*.test.js.",
+    "_comment": "Config-contract test-only reference fixture (S12 / B4). Exhaustive on themes.schema.json: root defaultTheme (canonical), config.primaryThemes + config.secondaryThemes, and theme entries of both types with layers[].{visible,style} (incl. a visible:false case) and view in both forms (bounds on a primary theme, center + zoom on a secondary one) — on themes that are NOT the default, so the fixture still boots on the profile extent. The legacy config.defautTheme typo is intentionally omitted here (canonical fixture) and exercised inline in s12-themes-anomalies-lock.test.js. Source of truth for s12-themes-*.test.js.",
     "defaultTheme": "base",
     "config": {
         "primaryThemes": {
@@ -35,7 +35,14 @@
             "layers": [
                 { "id": "layer-a", "visible": true, "style": "alt" },
                 { "id": "layer-b", "visible": false, "style": "defaut" }
-            ]
+            ],
+            "view": {
+                "_comment": "bounds form — [[south, west], [north, east]], inside the profile's map.bounds",
+                "bounds": [
+                    [43.2, 1.2],
+                    [43.6, 1.6]
+                ]
+            }
         },
         {
             "id": "season-winter",
@@ -46,7 +53,12 @@
             "layers": [
                 { "id": "layer-snow", "visible": true, "style": "defaut" },
                 { "id": "layer-a", "visible": true, "style": "defaut" }
-            ]
+            ],
+            "view": {
+                "_comment": "center + zoom form — [lat, lng]",
+                "center": [43.7, 1.7],
+                "zoom": 11
+            }
         },
         {
             "id": "season-summer",

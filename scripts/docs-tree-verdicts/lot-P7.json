@@ -534,6 +534,20 @@
             "description": "Vue du modèle : identité de ligne fixée au chargement, ensemble que la recherche laisse visible, ancre de sélection — le rendu en est une projection",
             "confidence": "haute",
             "rationale": "328 LOC, 5 importeurs (panel.ts, renderer.ts, selection-actions.ts, table-api.ts, table-renderer-virtual-scroll.ts). Nom SANS préfixe `table-`, norme STRUCT S4 de ce lot en dossier déjà nommé (cf. types.ts, config.ts, lifecycle.ts). Son existence se justifie par la contrainte PC-08 autant que par l'architecture : la logique de vue ne pouvait pas grossir panel.ts, à 591 lignes sur un plafond de 700. Et elle tient une frontière — les données restent à table-state.ts, ce module décrit une VUE d'elles, `rebuild()` étant le seul point de synchronisation."
+        },
+        "packages/plugins/table/src/row-activation.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Activation d'une ligne : double-clic ou Entrée émettent `geoleaf:table:rowActivated`, par deux écouteurs délégués sur le tbody, et le double-clic rend la sélection telle qu'il l'a trouvée",
+            "confidence": "haute",
+            "rationale": "1 importeur (renderer.ts) ; frontière énonçable en une phrase avec selection-actions.ts (là-bas ce qu'un clic fait à la sélection, ici ce qu'une activation émet et ce qu'elle restaure) — séparé du rendu parce que la délégation sur le tbody n'a rien à savoir de la fabrication des lignes"
         }
     }
 }

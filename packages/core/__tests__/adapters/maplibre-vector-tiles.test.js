@@ -12,6 +12,10 @@ import {
     buildVectorTileLayer,
     updateVectorTileLayerStyle,
 } from "../../src/adapters/maplibre/maplibre-vector-tiles.js";
+import {
+    MaplibreLayerRegistry,
+    SENTINEL_POI,
+} from "../../src/adapters/maplibre/maplibre-layer-registry.js";
 import { Log } from "../../src/utils/log/index.js";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
@@ -39,7 +43,7 @@ describe("adapters/maplibre-vector-tiles — buildVectorTileLayer (socle B.1)", 
 
     beforeEach(() => {
         map = makeMap();
-        registry = { register: vi.fn() };
+        registry = { register: vi.fn(), getInsertBeforeId: vi.fn(() => SENTINEL_POI) };
         ensureSentinel = vi.fn();
     });
 
@@ -171,7 +175,7 @@ describe("adapters/maplibre-vector-tiles — buildVectorTileLayer (socle B.1)", 
         const map2 = makeMap();
         const ids2 = buildVectorTileLayer(
             map2,
-            { register: vi.fn() },
+            { register: vi.fn(), getInsertBeforeId: vi.fn(() => SENTINEL_POI) },
             vi.fn(),
             "rp",
             spec({
@@ -300,7 +304,7 @@ describe("adapters/maplibre-vector-tiles — stale sub-layer cleanup (B.44)", ()
     }
 
     beforeEach(() => {
-        registry = { register: vi.fn() };
+        registry = { register: vi.fn(), getInsertBeforeId: vi.fn(() => SENTINEL_POI) };
         ensureSentinel = vi.fn();
     });
 
@@ -402,15 +406,21 @@ describe("adapters/maplibre-vector-tiles — every geometry the layer schema adm
     const ADMITTED = [...new Set([...ENUMS.geometry, ...ENUMS.geometryType])];
 
     const build = (geometryType) =>
-        buildVectorTileLayer(makeMap(), { register: vi.fn() }, vi.fn(), "rp", {
-            tileUrl: "https://x/{z}/{x}/{y}.pbf",
-            sourceLayer: "s",
-            geometryType,
-            zIndex: 0,
-            source: {},
-            // The extrusion validator throws without these two; the other kinds ignore them.
-            style: { defaultStyle: { fillExtrusionHeight: 12, fillExtrusionColor: "#abc" } },
-        });
+        buildVectorTileLayer(
+            makeMap(),
+            { register: vi.fn(), getInsertBeforeId: vi.fn(() => SENTINEL_POI) },
+            vi.fn(),
+            "rp",
+            {
+                tileUrl: "https://x/{z}/{x}/{y}.pbf",
+                sourceLayer: "s",
+                geometryType,
+                zIndex: 0,
+                source: {},
+                // The extrusion validator throws without these two; the other kinds ignore them.
+                style: { defaultStyle: { fillExtrusionHeight: 12, fillExtrusionColor: "#abc" } },
+            }
+        );
 
     afterEach(() => {
         vi.restoreAllMocks();
@@ -461,5 +471,75 @@ describe("adapters/maplibre-vector-tiles — every geometry the layer schema adm
         const warn = vi.spyOn(Log, "warn").mockImplementation(() => {});
         for (const geometryType of ADMITTED) build(geometryType);
         expect(warn).not.toHaveBeenCalled();
+    });
+});
+
+describe("adapters/maplibre-vector-tiles — a vector-tile layer takes its rank among the others", () => {
+    /** A map that keeps the ORDER of its layers, the only thing a rank is about. */
+    function makeOrderedMap() {
+        const order = [SENTINEL_POI];
+        return {
+            order,
+            addSource: vi.fn(),
+            getSource: vi.fn(() => undefined),
+            getLayer: vi.fn((id) => (order.includes(id) ? { id } : undefined)),
+            addLayer: vi.fn((spec, beforeId) => {
+                const at = beforeId === undefined ? -1 : order.indexOf(beforeId);
+                if (at === -1) order.push(spec.id);
+                else order.splice(at, 0, spec.id);
+            }),
+            removeLayer: vi.fn(),
+            removeSource: vi.fn(),
+        };
+    }
+
+    /** What the GeoJSON builder does with a rank: anchor from the registry, then register. */
+    function addGeoJSON(map, registry, id, zIndex) {
+        const before = registry.getInsertBeforeId(zIndex);
+        map.addLayer({ id: `gl-${id}-fill` }, map.getLayer(before) ? before : undefined);
+        registry.register(id, ["fill"], zIndex);
+    }
+
+    const tiles = (zIndex) => ({
+        tileUrl: "https://x/{z}/{x}/{y}.pbf",
+        sourceLayer: "x",
+        geometryType: "polygon",
+        zIndex,
+        source: {},
+        style: {},
+    });
+
+    it("lands between the GeoJSON layers its rank separates, and leaves later ones in order", () => {
+        const map = makeOrderedMap();
+        const registry = new MaplibreLayerRegistry();
+
+        addGeoJSON(map, registry, "a10", 10);
+        addGeoJSON(map, registry, "b50", 50);
+        buildVectorTileLayer(map, registry, vi.fn(), "vt30", tiles(30));
+        addGeoJSON(map, registry, "c20", 20);
+        addGeoJSON(map, registry, "d40", 40);
+
+        // Measured in a browser before the fix: a10, d40, b50, c20, vt30 — the tile layer sat
+        // under the sentinel whatever its rank, and the rank-20 layer, anchored on it, ended
+        // above the rank-50 one.
+        expect(map.order).toEqual([
+            "gl-a10-fill",
+            "gl-c20-fill",
+            "gl-vt30-fill",
+            "gl-vt30-line",
+            "gl-d40-fill",
+            "gl-b50-fill",
+            SENTINEL_POI,
+        ]);
+    });
+
+    it("sits under the sentinel when nothing ranks above it", () => {
+        const map = makeOrderedMap();
+        const registry = new MaplibreLayerRegistry();
+
+        addGeoJSON(map, registry, "a10", 10);
+        buildVectorTileLayer(map, registry, vi.fn(), "vt30", tiles(30));
+
+        expect(map.order).toEqual(["gl-a10-fill", "gl-vt30-fill", "gl-vt30-line", SENTINEL_POI]);
     });
 });

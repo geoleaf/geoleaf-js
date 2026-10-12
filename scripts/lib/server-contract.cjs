@@ -334,7 +334,7 @@ Recettes prêtes à coller, dans ce même dossier :
 | Serveur | Fichier | Actif tout seul ? |
 | --- | --- | --- |
 | nginx | \`nginx.conf.example\` | non — à recopier dans votre vhost |
-| Apache | \`.htaccess\` | **oui**, si \`AllowOverride\` le permet (voir §8) |
+| Apache | \`.htaccess\` | **oui**, si \`AllowOverride\` le permet (voir §9) |
 
 ---
 
@@ -356,6 +356,11 @@ indéfiniment**. En console :
 global.mjs:1  Failed to load module script: Expected a JavaScript-or-Wasm module script
               but the server responded with a MIME type of "application/octet-stream".
 \`\`\`
+
+**Et le type de \`.geojson\`.** Les données des couches sont des fichiers \`.geojson\`, que la table
+par défaut de nginx ne connaît pas non plus : ils partent en \`application/octet-stream\`. Les deux
+recettes fournies les déclarent en \`application/json\` ; une recette écrite à la main doit le faire
+aussi.
 
 ⚠️ Les erreurs suivantes — \`maplibregl is not defined\`, \`MapLibre adapter not found\`,
 \`Failed to load layer\` répété, \`map is not ready\` — sont toutes des **conséquences**. Ne pas les
@@ -461,7 +466,7 @@ service worker signale un pré-cache en échec à chaque chargement.
 ## 7. En-têtes de sécurité
 
 Aucun n'empêche le boot ; tous sont recommandés, et **seul le serveur peut les poser** — une
-balise \`<meta>\` ne fonctionne pour aucun des trois.
+balise \`<meta>\` ne fonctionne pour aucun d'eux.
 
 | En-tête | Valeur |
 | --- | --- |
@@ -493,7 +498,7 @@ puis \`; preload\`, quasi irréversible) se décide séparément et après coup.
 
 | Ressource | En-tête | Motif |
 | --- | --- | --- |
-| \`dist/**\` | \`${CACHE_YEAR}\` | chaque fichier est nommé par son contenu, ou demandé avec son jeton (\`?v=\`) — et c'est le SEUL dossier dans ce cas |
+| \`dist/**\` — scripts, feuilles, polices, images (\`.mjs\`, \`.js\`, \`.css\`, \`.woff\`, \`.woff2\`, \`.png\`, \`.svg\`) | \`${CACHE_YEAR}\` | chaque fichier est nommé par son contenu, ou demandé avec son jeton (\`?v=\`) — et c'est le SEUL dossier dans ce cas |
 | \`vendor/**\` | \`${CACHE_REVALIDATE}\` | le moteur de carte : noms STABLES, importés l'un par l'autre — revalidé à chaque visite (un \`304\` s'il n'a pas changé), sans quoi une montée de version n'arrive pas |
 | \`icons/**\` | \`${CACHE_DAY}\` | icônes de l'application : noms stables, changent rarement |
 | \`index.html\`, \`init.js\`, \`manifest.json\` | \`no-cache\` | référencent les artefacts empreintés |
@@ -559,7 +564,7 @@ const NGINX_CONF_EXAMPLE = `# ── GeoLeaf — recette nginx ─────�
 #
 # ⚠️ nginx N'HÉRITE PAS \`add_header\` : un bloc qui déclare le sien perd tous ceux du
 # parent. Si vous ajoutez un \`location\` avec un \`add_header\`, il faut y REPOSER les
-# trois en-têtes de sécurité ci-dessous.
+# en-têtes de sécurité ci-dessous.
 
 # 🛑 SANS CETTE LIGNE, RIEN NE BOOTE.
 #
@@ -568,7 +573,9 @@ const NGINX_CONF_EXAMPLE = `# ── GeoLeaf — recette nginx ─────�
 # \`application/octet-stream\`, le navigateur REFUSE de l'exécuter — « Strict MIME type
 # checking is enforced for module scripts ». Symptôme : spinner infini.
 #
-# À placer au niveau \`http\` (s'applique à tous les vhosts) ou dans le \`server\`.
+# À placer au niveau \`http\` (s'applique à tous les vhosts). Dans un \`server\`, le bloc
+# REMPLACE la table de types héritée au lieu de la compléter : y ajouter alors
+# \`include mime.types;\` en première ligne, sans quoi \`.js\`, \`.css\` et \`.html\` perdent le leur.
 #
 # Vérification :
 #   curl -sI https://VOTRE-HOTE/vendor/maplibre-gl/global.mjs | grep -i content-type
@@ -600,7 +607,7 @@ server {
     index index.html;
 
     # En-têtes de sécurité. Aucun n'empêche le boot ; tous sont recommandés, et seul le
-    # serveur peut les poser — une balise <meta> ne fonctionne pour aucun des trois.
+    # serveur peut les poser — une balise <meta> ne fonctionne pour aucun d'eux.
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-Frame-Options "DENY" always;
     add_header Content-Security-Policy "frame-ancestors 'self'" always;

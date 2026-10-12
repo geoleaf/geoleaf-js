@@ -76,13 +76,21 @@ const SCRIPTS_ALLOWLIST = new Set([
     "check-app-payload.cjs",
     // ROUTE-FIXTURES — captures `@geoleaf-plugins/routing`'s corpus at
     // Valhalla and OSRM.
-    // 🛑 DELIBERATELY outside `ci:local` AND `ci.yml`, and it is the ONLY
-    // repo code that touches the network. A test calling a public instance
+    // 🛑 DELIBERATELY outside `ci:local` AND `ci.yml`. With the isochrone
+    // capture below, it is the only repo code that touches the network. A
+    // test calling a public instance
     // is subject to a fair-use quota and makes the run non-reproducible:
     // its red would say "the internet moved", which nobody can act on. Run
     // by hand, once; the corpus is versioned, and `.prettierignore`
     // protects it so a re-capture yields a readable diff.
     "capture-route-fixtures.cjs",
+    // ISOCHRONE-FIXTURES — captures `@geoleaf-plugins/isochrone`'s corpus at the
+    // public Valhalla instance: a nominal answer, a point at sea, a refused
+    // duration.
+    // 🛑 Outside `ci:local` AND `ci.yml` for the same reason as the script
+    // above: a test calling a public instance makes the run non-reproducible.
+    // Run by hand; the corpus is versioned, and `.prettierignore` protects it.
+    "capture-isochrone-fixtures.cjs",
     // REGISTRY-CROSSREFS — detector of dead `B-nnn`/`D-nn` references,
     // shared with `packages/core/__tests__/guards/registry-crossrefs.guard.test.ts`.
     // In `ci:local` through `test:guards`, hence OUTSIDE THE CACHE: its

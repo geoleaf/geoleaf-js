@@ -10,8 +10,9 @@
  * that the fixtures match the model — which is not the question. So the corpus is captured from
  * real providers, once, and versioned.
  *
- * 🛑 **No test ever calls a provider, and this script is the only code in the repository that
- * touches the network.** That is not caution, it is the only shape that stays green unattended:
+ * 🛑 **No test ever calls a provider, and the capture scripts are the only code in the
+ * repository that touches the network** — this one, and `capture-isochrone-fixtures.cjs` for
+ * the isochrone plugin. That is not caution, it is the only shape that stays green unattended:
  * a test hitting a public instance is subject to a fair-use quota, and it makes the run
  * non-reproducible — a red would mean "the internet moved", which nobody can act on.
  *

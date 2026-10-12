@@ -69,7 +69,7 @@ async function zoomAndExpectLabels(page, zoom, present) {
  *
  * ⚠️ MEASURED at this family's pre-flight: `nativeMap.loaded()` can be `true`
  * while the basemap registry is still **EMPTY** (0 keys, no active basemap) —
- * the profile's 8 basemaps only arrive about 1.5 s later. Requesting
+ * the profile's basemaps only arrive about 1.5 s later. Requesting
  * `setBaseLayer("positron")` in that interval yields
  * `[Baselayers] Unknown layer: positron`, and the boot then applies its own:
  * from outside it looks exactly like a cancelled switch, when the switch never

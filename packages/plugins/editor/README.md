@@ -130,7 +130,9 @@ function cancelDrawing(): boolean;
 ```
 
 It is what closing the menu does. `setActiveTool(null)` does not replace it — it clears the
-menu's highlight and leaves the drawing engine armed — and neither does `discardDraft()`, which
+menu's highlight and leaves the drawing engine armed. Mind the order: "armed" is read off the
+tool the menu highlights, so after a `setActiveTool(null)` this call finds none, returns
+`false`, and disarms nothing — and neither does `discardDraft()`, which
 abandons a shape already finished and waiting for its form: `cancelDrawing()` leaves that one
 alone.
 
@@ -180,37 +182,30 @@ armed placement (`GeoLeaf.Editor.PlacementMode.deactivate()` does that).
 
 ---
 
-## Configuration (`editorConfig`)
+## Configuration (`modules.editor`)
 
-Add an `editorConfig` key to your GeoLeaf profile JSON. All fields are optional and fall back to the defaults below.
+The plugin reads the `modules.editor` block of the profile: either a file of its own,
+`config/plugins/editor.json`, declared under `Files.modules.editor`, or a `modules.editor` block
+written in `profile.json`. All fields are optional and fall back to the defaults below.
+
+> A root `editorConfig` key — the former place — is no longer read, and it is ignored without
+> a message.
 
 ```json
 {
-    "editorConfig": {
-        "enabled": true,
-        "menuPosition": "top-right",
-        "enabledTools": [
-            "point",
-            "line",
-            "polyline",
-            "polygon",
-            "select",
-            "undo",
-            "redo",
-            "delete"
-        ],
-        "api": {
-            "baseUrl": "https://api.example.com",
-            "authHeader": "Bearer <token>",
-            "timeoutMs": 8000
-        },
-        "persistence": {
-            "mode": "auto",
-            "dialect": "rest",
-            "conflictResolution": "prompt"
-        },
-        "modal": { "desktopBreakpointPx": 768, "maxWidthPx": 640 }
-    }
+    "enabled": true,
+    "menuPosition": "top-right",
+    "enabledTools": ["point", "line", "polyline", "polygon", "select", "undo", "redo", "delete"],
+    "api": {
+        "baseUrl": "https://api.example.com",
+        "timeoutMs": 8000
+    },
+    "persistence": {
+        "mode": "auto",
+        "dialect": "rest",
+        "conflictResolution": "prompt"
+    },
+    "modal": { "desktopBreakpointPx": 768, "maxWidthPx": 640 }
 }
 ```
 
@@ -242,7 +237,7 @@ Add an `editorConfig` key to your GeoLeaf profile JSON. All fields are optional 
 | `confirmDelete`                  | boolean                | `true`                                                                         | Confirmation dialog before deleting.                                                                                                                                                                                                                                                                  |
 | `confirmCancelOnDirty`           | boolean                | `true`                                                                         | Confirm when closing a modified form unsaved.                                                                                                                                                                                                                                                         |
 | `defaultLayer`                   | string \| null         | `null`                                                                         | Pre-selected target layer (`null` = first compatible).                                                                                                                                                                                                                                                |
-| `eventNamespace`                 | string                 | `"editor"`                                                                     | Prefix for public DOM events.                                                                                                                                                                                                                                                                         |
+| `eventNamespace`                 | string                 | `"editor"`                                                                     | Without effect: declared and validated, read by no code — the event names are fixed.                                                                                                                                                                                                                  |
 
 ---
 

@@ -72,7 +72,7 @@ write profiles. The public API is what the versioning policy protects.
   or on demand — with `@geoleaf/core` 3.14.2 and the plugin versions its changelog names.
   `realtime-layer` stops with the application on both loading paths from its 1.0.8, a guidance
   session of `navigation` ends with it from its 1.0.3, the offline window of `offline-ui` closes
-  with it from its 1.6.4, and the itinerary pane of `routing` leaves with it from
+  with it from its 1.7.0, and the itinerary pane of `routing` leaves with it from
   `@geoleaf/core` 3.15.0. `cog`, `file-import` and `flatgeobuf` leave nothing behind. What
   stays is the host's own: the session of `connector`, and the connection `websocket` opened —
   both are set once for the page, not for one application.

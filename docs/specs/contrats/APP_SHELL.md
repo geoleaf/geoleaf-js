@@ -35,7 +35,7 @@ dépôt **et** par un vhost nginx hors dépôt, donc invisible à toute gate.
 | Fichier              | Contenu                                                                                                                | Gate             |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------- |
 | `SERVEUR.md`         | Le contrat serveur : une exigence par section, avec **le symptôme exact** si elle manque et la commande qui le vérifie | `SC-01`          |
-| `nginx.conf.example` | Bloc `server` prêt à coller                                                                                            | `SC-01`, `SC-02` |
+| `nginx.conf.example` | Recette nginx : un bloc `types` et `gzip_static` pour le niveau `http`, puis deux blocs `server`                       | `SC-01`, `SC-02` |
 | `.htaccess`          | Équivalent Apache, **actif tout seul** si `AllowOverride` le permet                                                    | `SC-01`, `SC-02` |
 
 Émis à l'étape **9b** de `scripts/build-deploy.cjs` depuis `scripts/lib/server-contract.cjs` (un seul
@@ -45,8 +45,10 @@ corpus), gardés par `scripts/verify-deploy-server-contract.cjs`, câblé des **
 seul dossier dont chaque fichier est nommé par son contenu ou demandé avec son jeton. Le moteur
 (`vendor/`) est revalidé à chaque visite, les icônes (`icons/`) tenues une journée, les données de
 profil une heure, sprites compris : ces trois familles gardent leur nom d'une version à l'autre, et
-rien ne peut les invalider. La table (`SERVEUR.md` §8) est écrite depuis `declaredCacheControl()`,
-et la gate tient les deux recettes à cette fonction, fichier servi par fichier servi.
+rien ne peut les invalider. La table (`SERVEUR.md` §8) partage ses valeurs avec `declaredCacheControl()`,
+et la gate tient les deux recettes à cette fonction, fichier servi par fichier servi. Dans `dist/`, l'année
+ne vaut que pour les scripts, feuilles, polices et images ; un fichier d'une autre extension part sans
+`Cache-Control`.
 
 🛑 **Le motif, parce qu'il se reproduira ailleurs.** Le 09/08/2026, un `deploy-full` copié tel quel
 sur un serveur nginx de production a rendu un spinner infini : la table `mime.types` de nginx ne

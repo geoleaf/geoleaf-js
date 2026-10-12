@@ -32,7 +32,9 @@
  *
  * **The five hard constraints (plan §2) are preserved verbatim**: boot edges; the
  * `_app.*` state contract (same keys, written at the same point — end of init, before
- * `UIModule.init()` reads it); permalink hook 1 running before `GeoLeaf.init()`; the
+ * `UIModule.init()` reads it — but for `_startBounds`, which was `_profileBounds` until the
+ * start theme could declare the view the map starts on); permalink hook 1 running before
+ * `GeoLeaf.init()`; the
  * `geoleaf:init:mapCreate:start|end` perf marks bracketing map creation and nothing
  * else; and adapter DI through the internal `_adapter` option (no module-level seam).
  */
@@ -42,6 +44,13 @@ import type { IGeoLeafConfig } from "../../contracts/config.contract.ts";
 import type { MapConfig } from "../../kernel/config/geoleaf-config/config-types.js";
 import { events } from "../../utils/general/event-listener-manager.js";
 import { padBounds } from "../../kernel/map/map-container.js";
+import {
+    readStartThemeView,
+    resolveThemeView,
+    resolveViewPadding,
+    themeViewsOutside,
+    type ThemeViewDeclaration,
+} from "../../kernel/config/view-extent.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { MaplibreAdapter } from "../../adapters/maplibre/maplibre-adapter.js";
 import { failBoot } from "../boot-failure.js";
@@ -64,11 +73,30 @@ type PerfMark = (name: string) => void;
 
 /** Map extent resolved from the active profile — bounds, or center+zoom. */
 interface ProfileExtent {
-    /** Non-null only in the `map.bounds` branch; drives fitBounds and maxBounds. */
+    /**
+     * Non-null only in the `map.bounds` branch. It bounds the navigation (`maxBounds`), and it
+     * is where the map starts unless the start theme declares a view — see {@link StartView}.
+     */
     profileBounds: GeoLeafBounds | null;
     profilePadding: RevealPadding | null;
     mapCenter: [number, number];
     profileMaxZoom: number;
+}
+
+/** Where the fresh map starts: the profile extent, or the view of the theme it starts on. */
+interface StartView {
+    /** Fitted at creation and again at reveal; `null` when the map starts on a centre. */
+    bounds: GeoLeafBounds | null;
+    /** Room kept around `bounds` — the profile's, whichever declared the bounds. */
+    padding: RevealPadding | null;
+    center: [number, number];
+    /** Zoom the map is created at; a fit on `bounds` replaces it at once. */
+    zoom: number;
+    /**
+     * Ceiling on the zoom a fit on `bounds` may reach: the profile's `map.initialMaxZoom` when
+     * it DECLARES one, `null` otherwise — whichever block declared the bounds.
+     */
+    maxZoom: number | null;
 }
 
 /** Default padding, in pixels, when the profile declares none. */
@@ -160,6 +188,73 @@ function resolveProfileExtent(cfgMap: MapConfig, AppLog: AppLog): ProfileExtent 
 }
 
 /**
+ * Read the `themes` block off the active profile — where a modular profile carries its themes.
+ *
+ * @returns The block, or `undefined` when the profile carries none. A legacy `themes.json` is
+ * fetched once the map exists, so its themes cannot decide where the map starts.
+ */
+function readProfileThemes(GeoLeaf: ReturnType<typeof ensureGeoLeaf>): unknown {
+    const getActiveProfile = asFn(member(GeoLeaf.Config, "getActiveProfile"));
+    return member(getActiveProfile?.call(GeoLeaf.Config), "themes");
+}
+
+/**
+ * Resolve the view the map starts on: the start theme's when it declares one, the profile
+ * extent otherwise.
+ *
+ * A theme view replaces the framing alone. The padding stays the profile's, and so does the
+ * navigation limit, which {@link buildMapOptions} reads off the profile extent.
+ */
+/**
+ * The ceiling `map.initialMaxZoom` puts on the start framing, or `null`.
+ *
+ * 🛑 **Only a DECLARED key caps.** Absent, the key still yields a zoom the map is created at
+ * (`resolveProfileExtent` falls back on `maxZoom`, then 12) — and that fallback must not
+ * become a ceiling: every profile with a small extent and no such key would start further
+ * out than it does today, having asked for nothing.
+ */
+function declaredInitialMaxZoom(cfgMap: MapConfig): number | null {
+    const declared = cfgMap.initialMaxZoom;
+    return typeof declared === "number" && Number.isFinite(declared) ? declared : null;
+}
+
+function resolveStartView(
+    extent: ProfileExtent,
+    themeView: ThemeViewDeclaration | null,
+    cfgMap: MapConfig
+): StartView {
+    const maxZoom = declaredInitialMaxZoom(cfgMap);
+    if (!themeView) {
+        return {
+            bounds: extent.profileBounds,
+            padding: extent.profilePadding,
+            center: extent.mapCenter,
+            zoom: extent.profileMaxZoom,
+            maxZoom,
+        };
+    }
+    const target = resolveThemeView(themeView);
+    if ("bounds" in target) {
+        const { north, south, east, west } = target.bounds;
+        return {
+            bounds: target.bounds,
+            // A profile positioned by center+zoom resolved no padding of its own.
+            padding: extent.profilePadding ?? resolveViewPadding(cfgMap.padding),
+            center: [(south + north) / 2, (west + east) / 2],
+            zoom: extent.profileMaxZoom,
+            maxZoom,
+        };
+    }
+    return {
+        bounds: null,
+        padding: null,
+        center: [target.center.lat, target.center.lng],
+        zoom: target.zoom,
+        maxZoom: null,
+    };
+}
+
+/**
  * Build the map construction options from the profile: its `map` block, and the root
  * `mapOptions` block (the profile's core features file, merged at the profile root).
  *
@@ -225,33 +320,51 @@ function createMap(
     return map;
 }
 
-/** Position the fresh map on the profile extent, and report how it was positioned. */
-function positionMap(
-    map: IMapAdapter,
-    extent: ProfileExtent,
-    cfgMap: MapConfig,
-    boundsMargin: number,
+/**
+ * Position the fresh map on its start view, and report how it was positioned.
+ *
+ * `source` is the block that declared the view, as the log names it: `profile map`, or
+ * `start theme view`.
+ */
+function positionMap(map: IMapAdapter, start: StartView, source: string, AppLog: AppLog): void {
+    if (!start.bounds) {
+        AppLog.log("Map positioned via " + source + ".center + zoom.");
+        return;
+    }
+    try {
+        if (typeof map.fitBounds === "function") {
+            map.fitBounds(start.bounds, buildFitBoundsOptions(start.padding, start.maxZoom));
+        }
+        AppLog.log("Map positioned via " + source + ".bounds.");
+    } catch (e) {
+        AppLog.warn("Error during fitBounds from " + source + ".bounds:", e);
+    }
+}
+
+/**
+ * Report the navigation limit, and the theme views it would cut short.
+ *
+ * Under `positionFixed` the engine keeps the camera inside the profile extent widened by the
+ * margin. A theme view reaching outside it is pulled back in, so it is named here rather than
+ * left to be noticed on screen.
+ */
+function reportNavigationLimit(
+    limit: { profileBounds: GeoLeafBounds | null; positionFixed: boolean; boundsMargin: number },
+    themes: unknown,
     AppLog: AppLog
 ): void {
-    const { profileBounds, profilePadding } = extent;
-    if (profileBounds) {
-        try {
-            if (typeof map.fitBounds === "function") {
-                map.fitBounds(profileBounds, buildFitBoundsOptions(profilePadding));
-            }
-            AppLog.log("Map positioned via profile map.bounds.");
-        } catch (e) {
-            AppLog.warn("Error during fitBounds from profile map.bounds:", e);
-        }
-    } else {
-        AppLog.log("Map positioned via profile center+zoom.");
-    }
-
-    if (cfgMap.positionFixed === true && profileBounds) {
-        AppLog.log(
-            "[GeoLeaf] positionFixed enabled — movement restricted to profile extent (margin: " +
-                boundsMargin * 100 +
-                "%)."
+    if (!limit.positionFixed || !limit.profileBounds) return;
+    AppLog.log(
+        "[GeoLeaf] positionFixed enabled — movement restricted to profile extent (margin: " +
+            limit.boundsMargin * 100 +
+            "%)."
+    );
+    const outside = themeViewsOutside(themes, padBounds(limit.profileBounds, limit.boundsMargin));
+    if (outside.length > 0) {
+        AppLog.warn(
+            "[GeoLeaf] Theme view outside the profile extent — positionFixed pulls the camera " +
+                "back inside it. Themes: " +
+                outside.join(", ")
         );
     }
 }
@@ -261,18 +374,19 @@ function positionMap(
  *
  * ⚠️ Timing is part of the contract, not an implementation detail: these four keys are
  * read by `UIModule.init()` (`_currentMap`) and by `setupReveal` through `RevealDeps`
- * (`_profileBounds`, `_profilePadding`, `_permalinkCfg`). They must be written at the
+ * (`_startBounds`, `_profilePadding`, `_startMaxZoom`, `_permalinkCfg`). They must be written at the
  * END of this module's init, before the `ui` module runs.
  */
 function storeCrossModuleState(
     app: AppNamespace,
     map: IMapAdapter,
-    extent: ProfileExtent,
+    start: StartView,
     permalinkCfg: PermalinkRuntimeConfig
 ): void {
     app._currentMap = map;
-    app._profileBounds = extent.profileBounds;
-    app._profilePadding = extent.profilePadding;
+    app._startBounds = start.bounds;
+    app._profilePadding = start.padding;
+    app._startMaxZoom = start.maxZoom;
     app._permalinkCfg = permalinkCfg;
 }
 
@@ -353,6 +467,11 @@ export const CoreMapLifecycle = {
             boundsMargin,
             member(cfg, "mapOptions")
         );
+        // The start theme may declare where the map starts. The profile extent keeps bounding
+        // the navigation either way: `mapOptions` above was built from it, not from the view.
+        const themes = readProfileThemes(GeoLeaf);
+        const themeView = readStartThemeView(themes);
+        const start = resolveStartView(extent, themeView, cfgMap);
         // `GeoLeaf.mount(el)` names the container itself (`_app._mountTarget`, set for its boot
         // alone): it wins over the profile's `map.target`, which stays the rule for `boot()`.
         const mountTarget = readMountTarget(app);
@@ -362,8 +481,8 @@ export const CoreMapLifecycle = {
             {
                 map: {
                     target: mountTarget?.mapId ?? (cfgMap.target || cfgMap.id || "geoleaf-map"),
-                    center: extent.mapCenter,
-                    zoom: extent.profileMaxZoom,
+                    center: start.center,
+                    zoom: start.zoom,
                     mapOptions,
                 },
                 // The declared theme, or none: the UI orchestrator resolves an absent one
@@ -396,8 +515,17 @@ export const CoreMapLifecycle = {
         // Every module it named is now either deleted or in the eager closure, so Rollup
         // emitted the chunk EMPTY: the round-trip fetched nothing and made the log lie.
 
-        positionMap(map, extent, cfgMap, boundsMargin, AppLog);
-        storeCrossModuleState(app, map, extent, permalinkCfg);
+        positionMap(map, start, themeView ? "start theme view" : "profile map", AppLog);
+        reportNavigationLimit(
+            {
+                profileBounds: extent.profileBounds,
+                positionFixed: cfgMap.positionFixed === true,
+                boundsMargin,
+            },
+            themes,
+            AppLog
+        );
+        storeCrossModuleState(app, map, start, permalinkCfg);
     },
 
     /**
@@ -415,8 +543,9 @@ export const CoreMapLifecycle = {
         if (typeof mark === "number") events.offSince(mark);
         else events.offAll();
         app._currentMap = null;
-        app._profileBounds = null;
+        app._startBounds = null;
         app._profilePadding = null;
+        app._startMaxZoom = null;
         app._permalinkCfg = null;
     },
 };

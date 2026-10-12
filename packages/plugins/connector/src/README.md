@@ -94,15 +94,17 @@ Quatre étapes sont faciles à manquer en lisant le code de haut en bas :
 
 ## Routage des requêtes
 
-| Format détecté                                            | Canal d'injection                                    |
-| --------------------------------------------------------- | ---------------------------------------------------- |
-| `geojson`, `flatgeobuf`, `kml`, `csv`, `oapif`, `pmtiles` | monkey-patch de `window.fetch`                       |
-| `mvt`                                                     | `map.setTransformRequest()` via `maplibre-bridge.ts` |
+| Ce qui émet la requête                                  | Canal d'injection                                    |
+| ------------------------------------------------------- | ---------------------------------------------------- |
+| Le `fetch` de la page — tout format, sous `baseUrl`     | monkey-patch de `window.fetch`                       |
+| L'ouvrier de MapLibre — les tuiles que la carte affiche | `map.setTransformRequest()` via `maplibre-bridge.ts` |
 
-La séparation est **nécessaire**, pas esthétique : MapLibre charge ses tuiles vectorielles dans son
-propre ouvrier, qui n'utilise pas le `window.fetch` patché. Le partage se lit dans
-`fetch-interceptor.ts`, sur une seule condition — l'intercepteur se retire pour `mvt`, et le pont le
-reprend.
+Le partage ne tient plus au FORMAT, mais à qui émet. Aucun format n'est écarté de l'intercepteur :
+toute requête sous `baseUrl` qui passe par le `fetch` de la page reçoit le jeton — seule la route
+d'authentification en est exclue (`_shouldIntercept`, `fetch-interceptor.ts`). Le pont reste
+**nécessaire** pour la carte : MapLibre charge ses tuiles vectorielles dans son propre ouvrier, qui
+n'utilise pas le `window.fetch` patché. Les mêmes tuiles, téléchargées par la préparation hors ligne
+sur le fil principal, passent par l'intercepteur et portent donc la même identité.
 
 ⚠️ **Les archives PMTiles restent sur `window.fetch`, et c'est ce qui les authentifie.** La
 bibliothèque `pmtiles` lit l'archive par le `fetch` global, sur le fil principal ; le pont ne voit que

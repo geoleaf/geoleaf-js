@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "layer-order",
+    "scope": ["packages/core/src/adapters/maplibre/maplibre-layer-order.ts"],
+    "verdicts": {
+        "packages/core/src/adapters/maplibre/maplibre-layer-order.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Re-range en place une couche enregistrée : ses sous-calques passent sous l'ancre que leur nouveau rang commande, sans rien reconstruire — et refuse plutôt que d'appeler le moteur sans ancre vérifiée",
+            "confidence": "haute",
+            "rationale": "1 export (`applyLayerZIndex`), 1 importeur (`maplibre-adapter.ts`, méthode `setLayerZIndex`). Hors de l'adaptateur pour le même motif que `maplibre-style-applier.ts`, dont il reprend la forme — une fonction qui reçoit la carte et le registre : l'adaptateur reste sous son plafond de lignes, et la règle se teste sur une carte qui tient un ordre, sans monter l'adaptateur. Ne se fond pas dans `maplibre-layer-registry.ts`, qui est une structure de données pure et ne connaît pas la carte : c'est ici que vit le seul appel à `moveLayer` du dépôt, avec la garde d'ancre qui le précède."
+        }
+    }
+}

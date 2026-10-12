@@ -31,7 +31,10 @@ const BM = REFERENCE_BASEMAPS.basemaps;
 
 /** Minimal native maplibregl.Map double — captures source/layer/terrain calls. */
 function makeNativeMap(overrides = {}) {
+    // The terrain is held, as the engine holds it: the manager reads it back.
+    let terrain = null;
     return {
+        getTerrain: vi.fn(() => terrain),
         addSource: vi.fn(),
         addLayer: vi.fn(),
         getStyle: vi.fn(() => ({ layers: [] })),
@@ -44,7 +47,9 @@ function makeNativeMap(overrides = {}) {
         on: vi.fn(),
         off: vi.fn(),
         setStyle: vi.fn(),
-        setTerrain: vi.fn(),
+        setTerrain: vi.fn((options) => {
+            terrain = options;
+        }),
         easeTo: vi.fn(),
         jumpTo: vi.fn(),
         ...overrides,

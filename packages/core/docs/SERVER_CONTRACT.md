@@ -358,10 +358,13 @@ identity providers — is in §7 of the [security guide](./SECURITY.md).
 
 ## 4. Transport
 
-- **HTTPS.** The connector refuses a `baseUrl` that is not `https:`, unless the page itself runs
-  on a development host — `localhost`, `*.localhost`, the loopback addresses, or a name under
-  `.test`, reserved for testing (RFC 6761). The endpoints themselves are not checked, and must be
-  served over HTTPS in production.
+- **HTTPS.** The connector refuses a `baseUrl` or an `auth.endpoint` that is not `https:`,
+  unless the URL itself targets a development host — `localhost`, `*.localhost`, the loopback
+  addresses, or a name under `.test`, reserved for testing (RFC 6761). The destination is
+  judged, not the page: a page served on `localhost` may not send a credential over `http://`
+  to a remote host. `auth.signupUrl` and `auth.forgotPasswordUrl` follow the same rule. The
+  data endpoints of the layers are not checked by the connector, and must be served over HTTPS
+  in production.
 - **CORS.** A server on another origin than the application must allow it, and — for the writes
   and the authenticated requests — the `Authorization`, `Content-Type` and `Prefer` headers and the
   `PATCH` and `DELETE` methods, in its answer to the browser's preflight.

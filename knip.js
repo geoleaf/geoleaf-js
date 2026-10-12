@@ -177,6 +177,7 @@ const BY_NAME = {
         ignoreDependencies: ["@geoleaf/core"],
     },
     "@geoleaf-plugins/position-share": PLUGIN_WITH_API,
+    "@geoleaf-plugins/isochrone": PLUGIN_WITH_API_IMPORTS_CORE,
 
     // The deployable application (T2). Its files are loaded by `index.html` through
     // `<script type="module">`, so nothing in the JS graph ever imports them — without

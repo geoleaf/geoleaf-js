@@ -23,28 +23,29 @@ title: "GeoLeaf-JS — API Reference"
 7. [Layers — feature data](#layers--feature-data)
 8. [Taxonomy — the point symbol](#taxonomy--the-point-symbol)
 9. [UI — interface controls](#ui--interface-controls)
-10. [Filter — the filter panel (singular)](#filter--the-filter-panel-singular)
-11. [Filters — removed in v3.1 (plural)](#filters--removed-in-v31-plural)
-12. [Table — data table](#table--data-table)
-13. [Legend — legend panel](#legend--legend-panel)
-14. [LayerManager — GeoJSON layers](#layermanager--geojson-layers)
-15. [Baselayers — base tiles](#baselayers--base-tiles)
-16. [Helpers](#helpers)
-17. [Validators](#validators)
-18. [API sub-modules](#api-sub-modules)
-19. [Log](#log)
-20. [Errors — typed error classes](#errors--typed-error-classes)
-21. [CONSTANTS](#constants)
-22. [Utils](#utils)
-23. [Config](#config)
-24. [Geocoding — address search](#geocoding--address-search)
-25. [Notifications — toast notifications](#notifications--toast-notifications)
-26. [Popup — popup action buttons](#popup--popup-action-buttons)
-27. [PWA — install prompt](#pwa--install-prompt)
-28. [Labels — layer labels](#labels--layer-labels)
-29. [Composing a lighter bundle](#composing-a-lighter-bundle)
-30. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
-31. [TypeScript types](#typescript-types)
+10. [ThemeSelector — the theme bar](#themeselector--the-theme-bar)
+11. [Filter — the filter panel (singular)](#filter--the-filter-panel-singular)
+12. [Filters — removed in v3.1 (plural)](#filters--removed-in-v31-plural)
+13. [Table — data table](#table--data-table)
+14. [Legend — legend panel](#legend--legend-panel)
+15. [LayerManager — GeoJSON layers](#layermanager--geojson-layers)
+16. [Baselayers — base tiles](#baselayers--base-tiles)
+17. [Helpers](#helpers)
+18. [Validators](#validators)
+19. [API sub-modules](#api-sub-modules)
+20. [Log](#log)
+21. [Errors — typed error classes](#errors--typed-error-classes)
+22. [CONSTANTS](#constants)
+23. [Utils](#utils)
+24. [Config](#config)
+25. [Geocoding — address search](#geocoding--address-search)
+26. [Notifications — toast notifications](#notifications--toast-notifications)
+27. [Popup — popup action buttons](#popup--popup-action-buttons)
+28. [PWA — install prompt](#pwa--install-prompt)
+29. [Labels — layer labels](#labels--layer-labels)
+30. [Composing a lighter bundle](#composing-a-lighter-bundle)
+31. [Global namespace (window.GeoLeaf.\*)](#global-namespace-windowgeoleaf)
+32. [TypeScript types](#typescript-types)
 
 ---
 
@@ -78,6 +79,7 @@ import { Errors } from "@geoleaf/core"; // Typed error classes
 import { CONSTANTS } from "@geoleaf/core"; // Constants
 import { Utils } from "@geoleaf/core"; // Utility modules
 import { applyCssText } from "@geoleaf/core"; // CSP-safe CSSOM style helper
+import { ensureGeoLeaf } from "@geoleaf/core"; // The typed global namespace, created if absent
 import { Config } from "@geoleaf/core"; // Config access
 
 // Capability system
@@ -294,7 +296,7 @@ built state, then unmounted and mounted again:
 | Plugin        | What `unmount()` does                                                           | Since                  |
 | ------------- | ------------------------------------------------------------------------------- | ---------------------- |
 | `navigation`  | ends the guidance session — banner, position watch and screen wake lock         | `navigation` 1.0.3     |
-| `offline-ui`  | closes the offline window and returns its listeners; the button opens a new one | `offline-ui` 1.6.4     |
+| `offline-ui`  | closes the offline window and returns its listeners; the button opens a new one | `offline-ui` 1.7.0     |
 | `routing`     | removes the itinerary pane; the next opening builds one pane, on the new map    | `@geoleaf/core` 3.15.0 |
 | `cog`         | nothing is left; a handle of the previous map removes without error             | —                      |
 | `file-import` | nothing is left                                                                 | —                      |
@@ -368,7 +370,7 @@ Core.init({
     center: [lat, lng], // Initial center [lat, lng]
     zoom: 12, // Initial zoom level
     theme: "light", // Theme name (default: "light") — applied to the first map only
-    mapOptions: {}, // Additional MapLibre GL JS MapOptions (optional)
+    mapOptions: {}, // A closed list, not a pass-through: minZoom, maxZoom, maxPitch, maxBounds, preserveDrawingBuffer
 });
 ```
 
@@ -736,6 +738,24 @@ UI manages controls, panels, content builder, and notification system.
 
 ---
 
+## ThemeSelector — the theme bar
+
+```ts
+// GeoLeaf.ThemeSelector (global namespace)
+await GeoLeaf.ThemeSelector.setTheme("nature");
+await GeoLeaf.ThemeSelector.setTheme("nature", { keepView: true });
+```
+
+| Method            | Signature                                                              | Description                                                                                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `setTheme`        | `(themeId: string, options?: { keepView?: boolean }) => Promise<void>` | Applies a theme; rejects when the selector is not initialised or the theme is unknown. A theme that declares a `view` frames the map on it; `keepView` leaves the camera where it is |
+| `getCurrentTheme` | `() => string \| null`                                                 | The active theme id, or `null` before a theme is applied                                                                                                                             |
+
+A theme's `view` is declared in the profile (`themes[].view` — see the
+[profile reference](PROFILE_JSON_REFERENCE.md)).
+
+---
+
 ## Filter — the filter panel (singular)
 
 ```js
@@ -922,7 +942,9 @@ import { Baselayers } from "@geoleaf/core";
 // or: GeoLeaf.Baselayers (CDN/global)
 ```
 
-Baselayers manages raster tile layers and vector tile layers (via MapLibre GL).
+Baselayers manages raster tile layers and vector tile layers (via MapLibre GL). Its members —
+`setBaseLayer`, `refreshBasemap` and the others — are described in
+[the Baselayers guide](baselayers/GeoLeaf_Baselayers_README.md).
 
 ---
 
@@ -963,9 +985,10 @@ import {
 ```ts
 GeoLeaf.plugins.isLoaded("storage"); // → boolean
 GeoLeaf.plugins.getLoadedPlugins(); // → string[]
-GeoLeaf.plugins.canActivate("addpoi"); // → boolean
+GeoLeaf.plugins.canActivate("editor"); // → boolean
 GeoLeaf.plugins.register("name", metadata); // called by plugins
 GeoLeaf.plugins.registerLazy("name", fn); // called by bundle-entry
+GeoLeaf.plugins.registerLazyForAction("print", "print", ui); // before boot: a button for a plugin not loaded yet
 ```
 
 ### showBootInfo / BootInfo
@@ -1121,20 +1144,21 @@ import { Permalink } from "@geoleaf/core";
 ```
 
 Synchronises map state (center, zoom, active layers, filters) to the URL hash or query string.
-Enable in config: `{ "ui": { "permalink": { "enabled": true, "mode": "hash" } } }`.
+On by default; the profile configures it under `modules.permalink` — for instance
+`{ "modules": { "permalink": { "mode": "hash" } } }`, or `"enabled": false` to switch it off.
 
 | Method             | Signature                                    | Description                                           |
 | ------------------ | -------------------------------------------- | ----------------------------------------------------- |
-| `init`             | `(config: PermalinkConfig) => void`          | Initialise with the `ui.permalink` config block       |
+| `init`             | `(config: PermalinkConfig) => void`          | Initialise with the `modules.permalink` config block  |
 | `readAndStore`     | `() => void`                                 | Parse current URL and cache the state                 |
-| `applyStoredState` | `(map: any) => void`                         | Restore the cached state to a map instance            |
-| `startSync`        | `(map: any) => void`                         | Begin continuous URL synchronisation on map move/zoom |
+| `applyStoredState` | `(map: IMapAdapter) => void`                 | Restore the cached state to the map adapter           |
+| `startSync`        | `(map: IMapAdapter) => void`                 | Begin continuous URL synchronisation on map move/zoom |
 | `getState`         | `() => PermalinkState \| null`               | Return the last cached state (read-only)              |
 | `buildUrl`         | `(state?: PermalinkState \| null) => string` | Serialise a state to a URL fragment/query string      |
 
 ```ts
 // Typical lifecycle (handled automatically by the boot sequence):
-Permalink.init(config.ui.permalink);
+Permalink.init(config.modules.permalink);
 Permalink.readAndStore(); // before map creation
 Permalink.applyStoredState(map); // after map + modules are ready
 Permalink.startSync(map); // begin sync
@@ -1233,7 +1257,8 @@ import { PWA } from "@geoleaf/core";
 ```
 
 Manages the Progressive Web App install banner (iOS) and install prompt (Chrome/Android) —
-activated automatically by the boot sequence when `pwa.installPrompt.enabled: true` in config —
+activated automatically by the boot sequence when `modules.pwa.installPrompt.enabled: true` in
+the profile —
 and the application's updates: whether a new version waits, and the gesture that applies it.
 
 | Method            | Signature                     | Description                                                                          |
@@ -1298,8 +1323,8 @@ myReloadButton.addEventListener("click", () => GeoLeaf.PWA.applyUpdate());
 See [PWA — When a new version is deployed](./pwa.md#when-a-new-version-is-deployed).
 
 ```ts
-// Opt-in via geoleaf.config.json:
-// { "pwa": { "installPrompt": { "enabled": true } } }
+// Opt-in, in the profile:
+// { "modules": { "pwa": { "installPrompt": { "enabled": true } } } }
 
 // Manual check (advanced):
 GeoLeaf.PWA.init({ installPrompt: { enabled: true } });
@@ -1477,8 +1502,9 @@ registered stays `unknown`: reachable, not callable.
 
 The ambient `GeoLeaf` namespace types each façade member by member. Since 3.15.0
 `GeoLeaf.Storage` carries no index signature: every member is named, and a name the façade does
-not carry is a compile error instead of an `unknown`. `GeoLeaf.Storage.DB` and the other
-namespaces still end with one, so a misspelled member of theirs is not reported yet.
+not carry is a compile error instead of an `unknown`. `GeoLeaf.Storage.DB` and some other
+namespaces (`Core`, `plugins`, `Utils`, `Config`, `GeoJSON`…) still end with one, so a misspelled
+member of theirs is not reported yet.
 
 `GeoLeaf.Storage.DB` names twelve of the engine's relays: `listPendingEdits`, the layer cache
 (`getLayer`, `cacheLayer`, `removeLayer`, `getLayersByProfile`), `getStorageStats`, and the image

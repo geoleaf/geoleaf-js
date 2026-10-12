@@ -43,8 +43,9 @@ function deps(over = {}) {
         },
         map,
         AppLog,
-        profileBounds: over.profileBounds,
+        startBounds: over.startBounds,
         profilePadding: over.profilePadding,
+        startMaxZoom: over.startMaxZoom ?? null,
         permalinkCfg: over.permalinkCfg ?? {},
         _nativeMap: nativeMap,
         ...("map" in over ? { map: over.map } : {}),
@@ -221,9 +222,9 @@ describe("setupReveal — la carte", () => {
         expect(d._nativeMap.resize).toHaveBeenCalledTimes(1);
     });
 
-    test("les bornes du profil sont réappliquées À la révélation, sans délai", () => {
+    test("l'emprise de départ est réappliquée À la révélation, sans délai", () => {
         const d = deps({
-            profileBounds: [
+            startBounds: [
                 [0, 0],
                 [1, 1],
             ],
@@ -237,6 +238,31 @@ describe("setupReveal — la carte", () => {
         expect(d.map.fitBounds).toHaveBeenCalledTimes(1);
     });
 
+    // The reveal frames a second time: without the ceiling the first fit was given, it would
+    // undo it — the map capped at creation, then zoomed all the way in as the veil lifts.
+    test("le recadrage de la révélation porte le plafond du premier cadrage", () => {
+        const startBounds = [
+            [0, 0],
+            [1, 1],
+        ];
+        const capped = deps({ startBounds, startMaxZoom: 9 });
+        setupReveal(capped);
+        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+        expect(capped.map.fitBounds.mock.calls[0][1]).toMatchObject({ maxZoom: 9 });
+    });
+
+    test("sans plafond déclaré, le recadrage de la révélation n'en porte aucun", () => {
+        const d = deps({
+            startBounds: [
+                [0, 0],
+                [1, 1],
+            ],
+        });
+        setupReveal(d);
+        document.dispatchEvent(new CustomEvent("geoleaf:theme:applied"));
+        expect(d.map.fitBounds.mock.calls[0][1]).not.toHaveProperty("maxZoom");
+    });
+
     // 🛑 THE FRAMING CAME 120 ms AFTER THE ANNOUNCEMENT. A host setting its view at
     // `geoleaf:app:ready` — the event that says "ready" — had it undone: the requested view
     // showed, then jumped back to the profile's. The order is the contract: resize, frame,
@@ -244,7 +270,7 @@ describe("setupReveal — la carte", () => {
     test("🛑 le recadrage PRÉCÈDE les annonces : resize, fitBounds, map:ready, app:ready", () => {
         const order = [];
         const d = deps({
-            profileBounds: [
+            startBounds: [
                 [0, 0],
                 [1, 1],
             ],
@@ -262,7 +288,7 @@ describe("setupReveal — la carte", () => {
 
     test("un état de permalink INTERDIT le recadrage — l'URL fait autorité", () => {
         const d = deps({
-            profileBounds: [
+            startBounds: [
                 [0, 0],
                 [1, 1],
             ],
@@ -276,7 +302,7 @@ describe("setupReveal — la carte", () => {
 
     test("un permalink SANS état stocké laisse le recadrage se faire", () => {
         const d = deps({
-            profileBounds: [
+            startBounds: [
                 [0, 0],
                 [1, 1],
             ],
@@ -290,7 +316,7 @@ describe("setupReveal — la carte", () => {
 
     test("un fitBounds qui jette est journalisé, pas propagé", () => {
         const d = deps({
-            profileBounds: [
+            startBounds: [
                 [0, 0],
                 [1, 1],
             ],

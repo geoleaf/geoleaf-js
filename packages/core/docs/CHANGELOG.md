@@ -15,8 +15,174 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ### Added
 
+- **The table says when a row is activated: `geoleaf:table:rowActivated`** (`@geoleaf/core`
+  3.15.0, `@geoleaf-plugins/table` 1.2.0). A tenth table event, emitted when the user
+  double-clicks a row or presses Enter while the row has the focus — the table had no event
+  for that gesture, so a host that wanted to open a record from a row had nothing to listen
+  to. The name states an intention, not a gesture, and the table opens nothing itself. The
+  payload is `{ layerId, featureId, properties }`: `featureId` is the identifier
+  `selectionChanged` lists in `selectedIds` (a string, synthetic — `__gl_row_<n>` — when the
+  feature has none of its own), and `properties` are the feature's complete properties, as a
+  shallow copy holding no DOM node. Like the nine others it goes out on `document` and on
+  the map, and is typed in `GeoLeafEventMap`. The checkbox cell and the sort header never
+  activate. Non-breaking, with three things an integrator can observe: every data row is now
+  a Tab stop (`tabindex="0"`), with a focus ring; **a double-click no longer changes the
+  selection** — it used to toggle it twice, which destroyed a multiple selection — and a
+  `selectionChanged` subscriber sees two emissions around it, the toggle then the restore;
+  and the plugin's peer range on `@geoleaf/core` moves from `^3.0.0` to `^3.15.0`, the first
+  core whose event map declares the name.
+- **A basemap's relief can follow the tilt of the map: `terrain.activation: "pitch"`**
+  (`@geoleaf/core` 3.15.0). A terrain was put on in one way only: by the selection of its
+  basemap, when the block declares `default3D` — and the camera was then posted to the block's
+  `pitch` and `bearing`, and eased back flat when the basemap was left. A map meant to open
+  FLAT and still offer its relief could only be written `default3D: true` with `pitch: 0`,
+  which keeps the terrain on at all times: every visitor downloads the elevation tiles, whether
+  they ever tilt the map or not. Measured in a browser on such a basemap, a flat map at a
+  country-wide zoom: ten elevation tiles requested as the basemap opens.
+
+    With `"activation": "pitch"` the terrain follows the camera. **Flat**, there is no terrain
+    and no elevation tile is requested — the source is only declared the first time the terrain
+    is put on. **Tilted**, the terrain is put on once the camera comes to rest at
+    `activateFromPitch` degrees or more (12 by default), and removed once it comes to rest under
+    `deactivateBelowPitch` (half of it by default); between the two it stays as it was, so that
+    a camera that stops around one threshold does not flip it at every movement.
+
+    **The decision is taken when a movement ends, never during it.** While a terrain is on, the
+    engine keeps a copy of the camera for as long as a movement lasts: a terrain removed then put
+    back inside one gesture resumes from that stale copy, and one put on in the middle of an
+    animation is given an elevation prepared by an earlier one. The relief therefore comes a
+    moment after the gesture is released. Whatever tilts the camera counts — a guidance that
+    follows a route included.
+
+    **The camera is never moved in this mode**: not when the terrain comes, and not when the
+    basemap is left — it is the visitor who tilted the map, and a basemap switch has no business
+    flattening their view. `pitch`, `bearing` and `default3D: true` describe the activation by
+    selection and have no role here: the schema REFUSES them next to `"activation": "pitch"`,
+    as it refuses the two thresholds without it, and the kernel names them in the log when the
+    basemap is registered. A lower threshold that is not under the upper one — which a schema
+    cannot express — is reported at start-up and replaced by its default.
+
+    The terrain survives what the engine does to it: a style rebuilt by the engine resets the
+    terrain without a word, and it is put back as soon as the style is in place; a basemap
+    reached through a style change gets its relief back under a camera that stayed tilted,
+    without the engine having to rebuild the style; two basemaps in this mode hand the relief
+    over with no write when they read the same elevation source at the same `exaggeration`. A
+    profile that declares none
+    of the new keys behaves as before, the posted camera included. The published schema and the
+    profile types generated from it carry the three keys.
+
+- **A hillshade overlay can follow the relief: `hillshade.onlyWithTerrain`** (`@geoleaf/core`
+  3.15.0). A hillshade overlay is always drawn, and reads an elevation source of its own: on a
+  basemap whose relief follows the tilt, a flat map would still request elevation tiles, for
+  the shading. With `"onlyWithTerrain": true` the overlay is shown only while a terrain is on
+  the map, and hidden the rest of the time — hidden, it requests none. A flat map then stays
+  exactly what it is without either block; tilted, it gets its relief and its shading together.
+  The overlay learns of the terrain from the engine's own `terrain` event, so it follows a
+  terrain put on by the selection of its basemap just as well. Without the key nothing changes:
+  shading a flat map is a use of its own. A basemap that declares the key without an enabled
+  `terrain` never shows its overlay, and is told so at start-up.
+
+- **A basemap can carry its relief shading as an overlay: `hillshade.overlay`** (`@geoleaf/core`
+  3.15.0). A `hillshade` block was read on a basemap of `type: "hillshade"` only, where the
+  shading is the basemap. On any other basemap it was ignored — although the schema accepts it
+  on every entry — and a vector basemap with `terrain` showed its slopes as flat colours, the
+  ridge line alone readable. With `"overlay": true` the block is drawn over the basemap, which
+  stays what it is: vector, tiles, WMS or WMTS.
+
+    ```json
+    {
+        "basemaps": {
+            "plan-relief": {
+                "id": "plan-relief",
+                "label": "Plan with relief",
+                "type": "maplibre",
+                "style": "https://tiles.openfreemap.org/styles/liberty",
+                "terrain": {
+                    "enabled": true,
+                    "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                    "default3D": true,
+                    "pitch": 60
+                },
+                "hillshade": {
+                    "overlay": true,
+                    "beforeLayer": "waterway_tunnel",
+                    "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                    "exaggeration": 0.45
+                }
+            }
+        }
+    }
+    ```
+
+    On an image basemap the shading sits right above the basemap's layer, under the data layers.
+    On a vector basemap it is inserted before the style layer the new `hillshade.beforeLayer`
+    names — the first water or road layer, so that it covers the land fills and stays under
+    water, roads and labels. Without that key, or when the style has no such layer (a warning is
+    logged), it goes before the style's first `symbol` layer: the labels stay readable, water
+    and roads are shaded too. The block's existing settings — colours, `exaggeration`, direction
+    and anchor of the light — apply as they are.
+
+    The overlay follows the basemap: put back after every style change, removed when the active
+    basemap declares none, left alone when the next basemap asks for the same one. It reads an
+    elevation source of its own, never the terrain's: MapLibre forces a doubled tile size on the
+    source it drapes the terrain over, so a shading read from it is one zoom level coarser.
+    Measured in a browser over a massif, with both on one basemap: 86 elevation tiles requested
+    with two sources, 43 with a shared one. Elevation tiles are not part of the offline
+    preparation.
+
+    Nothing changes for an existing profile: `type: "hillshade"` behaves as before, and a block
+    without `overlay` is still ignored on the other types. The `tourism` demo profile gains a
+    vector basemap, "Plan relief 3D", that shows the three together; its "Satellite" basemap
+    takes the relief when the map is tilted (`terrain.activation: "pitch"`).
+
+- **A layer can change rank in place: `IMapAdapter.setLayerZIndex`** (`@geoleaf/core` 3.15.0).
+  A layer's rank was given once, when it was added. Nothing in the adapter moved a layer already
+  on the map, so putting one above another meant removing it and adding it again — its source
+  rebuilt, its data re-tiled. `adapter.setLayerZIndex?.(id, zIndex)` moves a GeoJSON layer to
+  where an insertion at that rank would put it now: under the lowest layer of strictly higher
+  rank, above those already holding the rank. Its sub-layers move together and in order, and
+  the source, its data, the filters, the zoom range, the visibility and the listeners are kept;
+  the order obtained crosses a basemap switch. **It answers a boolean, and `false` means nothing
+  moved**: an unknown layer, a rank that is not a finite number, a vector-tile layer, a cluster
+  group, a layer none of whose sub-layers is in the style, or a layer to go under that is not in
+  the style — MapLibre takes a layer out of the drawing order before it notices that one is
+  missing, so the adapter looks first and never asks. The caller then removes the layer and adds
+  it again at the rank it wants. Asking for the rank a layer already holds answers `true` and
+  moves nothing: the layer is not lifted above the layers sharing that rank. **What does not
+  follow**: the `zIndex` a layer declares is not rewritten — the layer manager still orders its
+  rows by it, and the hover tooltip still arbitrates two overlapping layers by it —, a layer's
+  labels do not move with it, and no event is emitted. The member is optional: written
+  `adapter.setLayerZIndex?.(id, zIndex) === true`, a call on an older core reads as a refusal.
+  `@geoleaf/host-runtime` names it on the adapter a plugin reaches (`HostMapAdapter`).
+
+- **`GeoLeaf.Isochrone` is declared, and `modules.isochrone` is named in the profile schema**
+  (`@geoleaf/core` 3.15.0). The namespace `@geoleaf-plugins/isochrone` mounts is an optional
+  member of `GeoLeafGlobal`, typed by the plugin through `GeoLeafPluginApis` like every other
+  plugin namespace; and the profile schema names the plugin's block, open, so a profile that
+  declares it validates. The core reads neither: both exist for the plugin, which lives in its own
+  package and is not published yet.
+
+- **A theme can frame the map: `themes[].view`** (`@geoleaf/core` 3.15.0). A theme said what
+  the map shows, never where: the extent was the profile's — `map.bounds`, fitted when the map
+  is created and again at the reveal — and switching theme never moved the camera. A theme may
+  now declare `view`, written like the profile's `map` block: an extent to fit (`bounds`,
+  `[[south, west], [north, east]]`), or a point with its zoom (`center` as `[lat, lng]`, and
+  `zoom`). The themes schema admits the key, on primary and secondary themes alike. **At
+  start-up**, the map opens on the view of the theme the profile starts on, when that theme
+  declares one; otherwise on the profile extent, as before. A shared address that carries a
+  view still wins. **On a switch**, activating a theme that declares a view moves the camera
+  there, without animation and before its layers load, so that a layer loaded by extent asks
+  for the area the theme frames; a theme that declares none leaves the camera where it is.
+  **What does not move**: under `map.positionFixed` the navigation limit stays the profile
+  extent, and the padding stays `map.padding`; a theme view reaching outside that limit is
+  named in the console at start-up. `GeoLeaf.ThemeSelector.setTheme(id, { keepView: true })`
+  activates a theme without touching the camera — which is what the permalink now does for the
+  theme of a shared address, whose own view must hold. A profile that declares no view behaves
+  exactly as before. ⚠️ Themes read from a legacy root-level `themes.json`, fetched once the
+  map exists, frame on activation only.
+
 - **`--gl-font-family`: the application's font stack, as a token** (`@geoleaf/core` 3.15.0,
-  `offline-ui` 1.6.4). The stack was set on the application's root, `.gl-page`. A node put on
+  `offline-ui` 1.7.0). The stack was set on the application's root, `.gl-page`. A node put on
   `document.body` sits outside that root and inherited the host page's default instead — a
   serif, in a document that declares none: measured, the share dialog and every toast were
   drawn in Times New Roman. The stack is now declared on `:root` (`system-ui, -apple-system,
@@ -60,7 +226,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
 - **`GeoLeaf.<Plugin>` is typed for whoever installs the plugin** (`@geoleaf/core` 3.15.0 and the
   fourteen plugins that mount a namespace: `cog` 1.0.6, `connector` 1.4.0, `editor` 1.6.0,
   `file-import` 1.0.7, `flatgeobuf` 1.0.5, `geocoding` 1.1.4, `measure` 1.0.10, `navigation` 1.0.3,
-  `position-share` 1.0.3, `print` 1.3.5, `realtime-layer` 1.0.8, `routing` 1.0.3, `table` 1.1.4,
+  `position-share` 1.0.3, `print` 1.3.5, `realtime-layer` 1.0.8, `routing` 1.0.3, `table` 1.2.0,
   `websocket` 1.0.3). The core declared `GeoLeaf.Table`, `GeoLeaf.Editor` and the twelve others
   as `unknown`: reachable, never callable from TypeScript without a cast. Each plugin's
   published declarations now add its API to the `GeoLeafPluginApis` registry those namespaces
@@ -92,7 +258,11 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   or `engineUnavailable` when no offline engine is wired. A tile URL template is judged on the
   concrete tile the preparation would request. And what a download left out is now kept:
   `preparation.refusedOrigins`, in the result of `cacheProfile()` and in the cache manifest,
-  names each refused source with its origin (`TilePreparationTrace`).
+  names each refused source with its origin (`TilePreparationTrace`). That result is typed:
+  `GeoLeaf.Storage.CacheManager.cacheProfile(profileId, options?)` resolves with a
+  `CacheProfileResult`, exported with `CacheProfileOptions` by the sync contract
+  (`@geoleaf/core/contracts/sync.contract.js`) — the ambient type gave `unknown` and took no
+  options.
 
 - **`GeoLeaf.plugins.registerLazyForAction()` is typed, and its descriptor takes what the
   toolbars read** (`@geoleaf/core` 3.15.0). The member fell into the untyped tail of
@@ -153,7 +323,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   session ended. Optional for the server: a refusal without that body reads as before. The
   server contract (§3.2) says so.
 
-- **The offline window acts on the captures set aside** (`@geoleaf-plugins/offline-ui` 1.6.4).
+- **The offline window acts on the captures set aside** (`@geoleaf-plugins/offline-ui` 1.7.0).
   Its sync block said how many captures the drain had set aside and offered nothing to do
   about them — the two exits were reachable from the editor's window only, so an application
   without the editor showed a red count and no gesture. Under that block, each motive now has
@@ -162,7 +332,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   captures go. What a retry left aside because its cause is still there is said, not hidden
   behind the success. Public facade only; the block repaints from what the core announces.
 
-- **« Export the log », from the offline window** (`@geoleaf-plugins/offline-ui` 1.6.4). The
+- **« Export the log », from the offline window** (`@geoleaf-plugins/offline-ui` 1.7.0). The
   journal the core keeps — bounded, redacted — was offered to the user by the boot failure
   screen alone; once the application had started it took a console to read it. The offline
   window now ends with a button that downloads `GeoLeaf.Log.exportDiagnostic()` as a JSON
@@ -176,7 +346,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   `GeoLeafEventMap`; `geoleaf:sw:updated` keeps its meaning, a worker activated.
 
 - **« A new version is ready », a banner in the offline plugin**
-  (`@geoleaf-plugins/offline-ui` 1.6.4). It appears when an update waits — at the top of the
+  (`@geoleaf-plugins/offline-ui` 1.7.0). It appears when an update waits — at the top of the
   page, without taking the focus — with **Reload**, which applies it, and **Later**, which
   leaves it waiting until the next visit or the next update. No profile key. An application
   that does not embed the plugin offers the gesture itself, with the two members above.
@@ -252,7 +422,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   true and unwritten: the preparation sets no `credentials` mode, so a request to the page's own
   origin carries that origin's cookies, and no other request does.
 - **The defaults of `geocoding` and of the export keys of `table` are written once, in each
-  plugin's table** (`@geoleaf-plugins/geocoding` 1.1.4, `@geoleaf-plugins/table` 1.1.4).
+  plugin's table** (`@geoleaf-plugins/geocoding` 1.1.4, `@geoleaf-plugins/table` 1.2.0).
   `provider`, `debounceMs`, `minChars`, `resultLimit`, `position` and `flyToZoom` on one side,
   `exportFormats`, `csvSeparator` and `csvIncludeGeometry` on the other, were applied where the
   value was read — `resultLimit` and `flyToZoom` at two places each. Nothing changes for a
@@ -279,6 +449,18 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   copied from an earlier recipe, replace its per-extension cache block with the folder blocks
   of the new one. Visitors who already received a pinned file keep it until it expires —
   nothing sent now can shorten a header already stored.
+- **What a deployable folder pins for a year is requested by its content** (`deploy-core`,
+  `deploy-full`, and their `nginx.conf.example`). Two defects of the folder's cache, fixed
+  together. The nginx recipe did not deliver the `no-cache` its own table promises to
+  `init.js` and `sw-core.js`: its block by extension — a year, `immutable` — was written above
+  the block that names them, and nginx stops at the first regular expression that matches.
+  The entry points now come first, and the recipe says that block must stay there. **If you
+  copied the earlier recipe, move the block of the entry points to the top**: a browser that
+  cached `init.js` for a year does not see a new version. The Apache recipe was right — the
+  last block wins there. And three files were pinned for a year under a name that did not
+  change with their content: the GeoJSON worker, the stylesheet, and the plugins `init.js`
+  loads on demand. Each is now requested with a token computed from its bytes, and the
+  worker joins the service worker's pre-cache.
 - **A new version no longer takes over a page that is in use** (`@geoleaf/core` 3.15.0). The
   service worker skipped the wait at every install: a deployment replaced the worker under
   whoever had the application open, and its activation purged the caches of the version that
@@ -336,8 +518,8 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   requeueing `authRequired` is saying the session is back. A `pushOutbox()` left after a
   requeue is harmless: the two passes are serialised.
 
-- **A declared origin is judged on its declaration by the offline preparation — the page's own
-  included** (`@geoleaf/core` 3.15.0). The preparation of basemaps and tiled layers admitted the
+- **A declared origin is judged on its declaration by the preparation of basemaps and tiled
+  layers — the page's own included** (`@geoleaf/core` 3.15.0). The preparation of basemaps and tiled layers admitted the
   page's own origin before reading `modules.offline.dataOrigins`: an own origin declared
   `authenticated`, or `cacheable` without `prefetch`, was downloaded all the same. The
   declarations are now read first. Left undeclared, the page's own origin is still prepared, so
@@ -423,8 +605,10 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   map style the engine has loaded, and a text halo has a colour and a width, nothing else. A
   profile could set `bold: true` and wait for a bolder text that never came. Both schemas now
   declare only what is drawn — `font.sizePt`, `color`, `opacity`, `buffer.enabled`,
-  `buffer.color`, `buffer.sizePx`, `offset.*`. **What breaks**: `validate:profiles` refuses a
-  style or a layer that still declares one of the six. **What does not**: at run time such a
+  `buffer.color`, `buffer.sizePx`, `offset.*`. **What breaks**: the published schemas
+  (`@geoleaf/core/schemas/*.schema.json`) and the types generated from them refuse a style or
+  a layer that still declares one of the six — so does a validator plugged on them, and so
+  does a typed literal that carries one. **What does not**: at run time such a
   key is still ignored, and the rendering of a style that carried it is unchanged. To migrate,
   delete the six keys.
 
@@ -436,6 +620,102 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
 
 ### Fixed
 
+- **`map.initialMaxZoom` caps the initial framing** (`@geoleaf/core` 3.15.0). The key was
+  documented as the ceiling that keeps a small extent from opening at street level, and it
+  capped nothing: it only gave the zoom the map is created at, which the framing on
+  `map.bounds` replaced at once. A profile framing a single district started as close as
+  the extent allowed, whatever the key said. A map that starts on an extent — `map.bounds`,
+  or the `view.bounds` of the theme the profile starts on — now never frames closer than
+  this zoom, at creation and again when the application is revealed. **What you may see**:
+  a profile that declares the key on an extent smaller than that zoom shows now starts
+  further out, at the zoom it asked for. A profile that does not declare it is unchanged —
+  only a declared key caps — and so is one whose extent is larger than the ceiling. The
+  ceiling does not apply to the user's zoom (`map.maxZoom`), nor to a later theme switch: a
+  theme that must open at a given zoom declares `view.center` and `view.zoom`. The adapter
+  contract gains the option that carries it: `IMapAdapter.fitBounds(bounds, { maxZoom })`.
+- **Scrolling a large table no longer keeps every row it scrolled past**
+  (`@geoleaf-plugins/table` 1.2.0). Past the virtual threshold the table re-creates its
+  window of rows on every scroll event, and each row came with a click listener and a
+  checkbox listener whose teardowns were only run at the next render — so every row ever
+  scrolled past stayed in memory, detached, until the layer, the sort or the search changed.
+  Measured in Chromium on a 30 000-row layer, after 2 000 scroll events: 98 122 rows alive
+  for 52 in the document, and a heap grown from 31 to 58 MB. Row selection now goes through
+  two listeners on the table body, like row activation: nothing is attached while scrolling,
+  and a row that leaves the window is released. No behaviour changes.
+- **A second relief basemap no longer reads the elevation of the first** (`@geoleaf/core`
+  3.15.0). A terrain put on by the selection of its basemap (`terrain.default3D`) declared its
+  `terrain-dem` source only when the id was free. The source of the basemap just left is still
+  there at that moment — its removal waits for the next frame, and is then given up because the
+  incoming basemap claimed it: a second basemap with another `terrain.demUrl` draped its relief
+  over the elevation of the first, with nothing in the log. The source in place is now compared
+  with the one the basemap asks for — kept when it is the very same, replaced otherwise. When a
+  layer still reads a source of another elevation, the engine refuses to let it go: the terrain
+  is not put on, the camera is not posted, and a warning says so. A removal the engine refuses
+  when a basemap is left is logged as such; it used to be logged as done.
+
+- **A relief put on by the selection of its basemap comes back on a style the engine rebuilt**
+  (`@geoleaf/core` 3.15.0). The engine drops the terrain of a map whose style is replaced by one
+  that does not declare it — measured in a browser: the terrain and its source gone, the basemap
+  still the active one. Nothing put it back before the next basemap switch, and
+  `isTerrainActive()` went on answering `true`. The terrain now listens to `style.load` and
+  puts its source and itself back, the camera left where it is; a style replayed as it was, or
+  a restored WebGL context, keeps its terrain and is not written again. `isTerrainActive()` and
+  `getActiveTerrainBasemapKey()` read the map instead of a flag.
+
+- **`refreshBasemap` no longer posts the camera of a relief basemap again** (`@geoleaf/core`
+  3.15.0). Re-applying the active basemap went through its whole activation, `jumpTo` included.
+  Measured in a browser, a camera the visitor had turned to 20° and 90° came back to the
+  profile's 60° and 0° when the basemap was refreshed — which the editor does as it starts, when
+  the basemap's source is missing. A basemap applied again on the same map has its source and
+  its terrain checked, written only if they went missing; the camera is posted by the SELECTION
+  of a basemap, and by nothing else.
+
+- **Unmounting an application no longer leaves its relief behind** (`@geoleaf/core` 3.15.0).
+  The basemap registry forgets its map when an application is unmounted; the terrain manager
+  kept a state of its own — a relief is on, and for which basemap — that nothing reset. Unmounted
+  while a basemap with `terrain.default3D` was active, the application left that state standing,
+  and the next map inherited a relief it never had: the first basemap applied to it "left" that
+  relief, and its camera was eased to `pitch: 0, bearing: 0` — a view the application had just
+  opened, flattened and un-rotated, with nothing logged. The state now goes with the map, and
+  nothing is written on the map that is being torn down. Reachable only through
+  `GeoLeaf.mount()` and its teardown.
+
+- **Switching between two vector basemaps that share a style completes** (`@geoleaf/core`
+  3.15.0). Two basemaps declaring the same `style` and the same credit — "Plan" and "Plan +
+  relief", the second carrying a `terrain` block — are the natural way to offer a map with and
+  without relief. The switch asked the engine for the style again; the diff between a style and
+  itself holds no operation, and MapLibre then fires no `style.load`, which is what finishes a
+  style change here. Measured in a browser: the selector showed the second basemap, the map
+  kept no relief, and `geoleaf:basemap:change` was not emitted. Some styles hid it: the filters
+  patched on OpenFreeMap's "liberty" keep its diff from ever being empty. Such a switch now
+  keeps the style the map holds and applies only what differs between the two basemaps — it is
+  immediate, and the style is not downloaded again. No `style.load` occurs on it: the event to
+  listen to for a basemap change is `geoleaf:basemap:change`.
+- **`refreshBasemap` no longer applies a WMTS basemap without its tiles** (`@geoleaf/core`
+  3.15.0). A WMTS basemap has no tile URL of its own: activating it resolves one from the
+  service's GetCapabilities. `GeoLeaf.Baselayers.refreshBasemap()` — which a plugin calls when
+  it finds the basemap source gone — re-applied the registered definition as it stood, with no
+  tile. Called while the resolution was in flight, it took the slot the resolution was about to
+  fill, whose own source was then refused on the identifier: the basemap stayed empty. Called
+  after it, it put back a source that requests nothing. It now leaves a resolution in flight
+  alone, and resolves the service again when the source is gone — so a WMTS basemap comes back
+  asynchronously, where the other raster types come back before the call returns. A rejected
+  resolution no longer reads as one still in flight.
+- **A profile basemap of type `image`, `wms` or `hillshade` keeps its configuration**
+  (`@geoleaf/core` 3.15.0). The application rebuilds each basemap of a profile key by key
+  before registering it, and it handed over the `terrain` and `wmts` blocks only: `imageSource`,
+  `wms` and `hillshade` never reached the registry. A basemap of one of these three types
+  declared in `basemaps.json` was therefore registered without the block its type requires,
+  while the same definition passed to `GeoLeaf.Baselayers.registerBaseLayer` kept it. The five
+  blocks now travel as they are; a block the basemap does not declare still sets no key.
+- **A vector-tile layer takes its rank among the other layers** (`@geoleaf/core` 3.15.0). It
+  was inserted right under the point layers whatever its `zIndex`, while still being recorded
+  under that rank. Measured in a browser, with layers of rank 10 and 50, then a tile layer of
+  rank 30, then layers of rank 20 and 40: the style read 10, 40, 50, 20, tiles — the tile layer
+  above everything, and the rank-20 layer, anchored on it, above the rank-50 one. It now reads
+  10, 20, tiles, 40, 50. ⚠️ **This changes what a map with tile layers shows**: a tile layer no
+  longer sits on top of every GeoJSON layer, and one that declares no `zIndex` has rank 0 —
+  under all the others. Give it the rank it should have.
 - **Four more surfaces are drawn in the application's font** (`@geoleaf/core` 3.15.0, `print`,
   `connector`). Each was opened in a browser and read. The buttons of the two install banners
   were drawn in Arial, next to a banner in the application's font: a button does not inherit
@@ -457,13 +737,13 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   a serif, in a document that declares none. It reads `--gl-font-family`, and its form
   controls inherit it.
 - **Font stacks written by hand read `--gl-font-family`** (`@geoleaf/core` 3.15.0, `print`,
-  `connector`, `host-runtime`). The layer manager, the base-layer selector, the coordinates
+  `connector`, and the modal shell the plugins share). The layer manager, the base-layer selector, the coordinates
   display, the popup, the lightbox and the branding block each wrote a stack of their own —
   two of them with `Roboto` and `Helvetica Neue` — and so did the print window, the login
   window and the shared modal shell: a host overriding the token changed the rest of the
   interface and not these. The offline badge reads it too.
 - **On a phone, what the network state shows stays in view** (`@geoleaf/core` 3.15.0,
-  `offline-ui` 1.6.4). Three surfaces, measured at 375 and 390 px. The offline badge the network
+  `offline-ui` 1.7.0). Three surfaces, measured at 375 and 390 px. The offline badge the network
   detector puts on the map sat on the row the theme selector takes below 768 px, half hidden
   for as long as the network was down: it now sits below that row. The sync strip scrolls
   sideways without a visible scrollbar and carried its action and its close button off-screen
@@ -478,7 +758,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   3.15.0). "Voir plus" was written in the code and served to the six languages. It is now the
   catalogue key `feature-info.popup.more`.
 - **The age of the last synchronisation names the day in the user's language** (`@geoleaf/core`
-  3.15.0, `offline-ui` 1.6.4). Past twenty-four hours, the sync strip and the status block of
+  3.15.0, `offline-ui` 1.7.0). Past twenty-four hours, the sync strip and the status block of
   the offline window wrote the count followed by `j`, in the code: an English interface read
   "synced 4 j". The unit now comes from the catalogue, key `ui.sync.unit_day` — `j` in French,
   `d` in English, Spanish and Portuguese, `g` in Italian, `Tg.` in German. `min` and `h` stay
@@ -526,7 +806,8 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   activation did nothing either. Both are fixed. The list stays closed: no other key of that
   block reaches the engine. **What you may see**: a profile that declares `true` now gets a
   context that keeps its buffer, which a canvas capture needs and which costs some rendering
-  performance.
+  performance — and so does, without declaring anything, an application whose print plugin is
+  registered before the map is created.
 - **The automatic refresh of an OGC layer prepares its data like the first load**
   (`@geoleaf/core` 3.15.0). On a map move, a layer declaring `autoRefresh` handed the source
   what the network returned: no `data.mapping`, no conversion, no symbol ids. A layer drawing
@@ -538,7 +819,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   receive later: only `geometryType` was read when the layer was created. Both read the
   kernel's family table now. `mixed` keeps the point symbol in the legend.
 - **Under writes closer together than their debounce, the table and an active filter follow**
-  (`@geoleaf/core` 3.15.0, `table` 1.1.4). Both waited for a quiet moment after
+  (`@geoleaf/core` 3.15.0, `table` 1.2.0). Both waited for a quiet moment after
   `geoleaf:layer:updated` — 150 ms and 300 ms — and each write pushed it back: a source
   writing faster left them on the state from before the burst for as long as it lasted. The
   wait is now bounded, 500 ms for the table and 1 s for the filter. Typing in the filter panel
@@ -550,7 +831,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   now waits for its form to be saved. And a move validated on an entity selected before its
   photo landed was built from the attributes as they were at the selection; they are now read
   from the layer when the move is validated.
-- **The offline window speaks the application's language** (`offline-ui` 1.6.4). The cache
+- **The offline window speaks the application's language** (`offline-ui` 1.7.0). The cache
   panel and the export panel wrote some forty labels as literals, most of them in English,
   four in French. They go through the plugin's catalogue, in the six languages.
 - **On a phone, the theme pills no longer cover the sync strip** (`@geoleaf/core` 3.15.0). The
@@ -570,7 +851,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   queue that was not empty, and the capture then waited for a network change, a return to the
   tab or a new write. The tick now stays lit under that halt, as the contract said.
 - **A text written on the theme accent is readable in every theme and palette** (`@geoleaf/core`
-  3.15.0, `offline-ui` 1.6.4, `print` 1.3.5, `geocoding` 1.1.4, `measure` 1.0.10, `table` 1.1.4,
+  3.15.0, `offline-ui` 1.7.0, `print` 1.3.5, `geocoding` 1.1.4, `measure` 1.0.10, `table` 1.2.0,
   `editor` 1.6.0). Fourteen controls painted their background with `--gl-color-accent` and
   wrote on it a near-white — `--gl-color-text-inverse`, `--gl-color-bg-surface` or a literal
   `#fff`. The light theme's accent is pale: the primary button of the offline window measured
@@ -636,7 +917,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   the bytes, so it is never handed a photo it cannot read.
 
 - **The offline window says which basemap will not be prepared**
-  (`@geoleaf-plugins/offline-ui` 1.6.4, with `@geoleaf/core` 3.15.0). A basemap marked
+  (`@geoleaf-plugins/offline-ui` 1.7.0, with `@geoleaf/core` 3.15.0). A basemap marked
   `offline: true` on an origin not declared for the preparation
   (`modules.offline.dataOrigins`) was listed, ticked and counted in the size estimate, then
   left out by the download with a console warning. Its row is now greyed, unticked and inert,
@@ -646,7 +927,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   (`GeoLeaf.Storage.prefetchVerdict`); on an older core the row is what it was.
 
 - **A confirmation dialog has finger-sized buttons wherever it opens**
-  (`@geoleaf-plugins/offline-ui` 1.6.4, `@geoleaf-plugins/editor` 1.6.0). Under a coarse
+  (`@geoleaf-plugins/offline-ui` 1.7.0, `@geoleaf-plugins/editor` 1.6.0). Under a coarse
   pointer the 44 px minimum of Cancel, Confirm and Delete came from the form library's touch
   rules: a dialog opened by a plugin that does not carry the form — the offline panel's
   confirmations — kept 36 px buttons. The rule now travels with the dialog itself.
@@ -723,7 +1004,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   `GeoLeaf.Navigation.stop()` does, and the next mount does not resume it. Requires
   `@geoleaf/core` ≥ 3.14.2 when the plugin is loaded on demand.
 
-- **The offline window closes with the application** (`@geoleaf-plugins/offline-ui` 1.6.4).
+- **The offline window closes with the application** (`@geoleaf-plugins/offline-ui` 1.7.0).
   Open at `unmount()`, the window stayed over the page with its listeners, and covered the
   next application. It is now closed and its listeners are returned; the toolbar button of the
   next application opens a new one.
@@ -745,6 +1026,33 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
 
 ### Documentation
 
+- **A reading of the public pages against the code, before this version** (`@geoleaf/core`
+  3.15.0 and the plugins' READMEs). No behaviour changes; several pages said something the
+  code does not do. **`map.padding` is `[horizontal, vertical]`** — the schema, the profile
+  reference and the configuration guide wrote it the other way round, so a profile written
+  from them had its two margins swapped. `map.initialMaxZoom` capped nothing, whatever
+  three pages said — it does now, see _Fixed_; `map.minZoom` applies with or without
+  `positionFixed`; `map.target` is optional; a profile positions the map with `bounds` **or**
+  `center` and `zoom`. The permalink is configured under `modules.permalink`, not
+  `ui.permalink`, and the PWA under `modules.pwa`, not a root `pwa` key. The connector's HTTPS
+  rule is described as it has been since 1.4.0 in the three core pages that still gave the
+  earlier one. The page of CSS variables listed ten tokens that do not exist: it names the
+  accent family, the focus ring and the font token. `worker-src blob:` is explained the same
+  way everywhere. The editor README configured the plugin under `editorConfig`, which is
+  ignored: it is `modules.editor`. `Table.exportSelection()` writes the file itself — the
+  table guide said the application had to. The schema gave 12 pt as the default label size;
+  it is 12 px, which is 9 pt. `mapOptions.preserveDrawingBuffer`,
+  `GeoLeaf.Baselayers.refreshBasemap()`, `GeoLeaf.ThemeSelector.setTheme(id, { keepView })`,
+  `ensureGeoLeaf` and `geoleaf:sw:update-waiting` gain the reference entry they lacked. One
+  type follows: `pullLayer()` reports `cursorRefused: false` when no offline engine is wired,
+  where the member was missing.
+- **`terrain.default3D` says what the code does** (`@geoleaf/core` 3.15.0). Its TSDoc said the
+  user could disable the relief manually: no control does that. The 3D terrain is activated
+  when a basemap whose `default3D` is true is selected, and deactivated when another one is;
+  without `default3D`, an `enabled` terrain is never drawn. The type and the schema also said
+  `terrain` was valid on vector and tile basemaps only — it is read whatever the basemap type.
+  The profile reference listed a `"custom"` value for `hillshade.demEncoding` that the schema
+  has never accepted, and the configuration guide named none of the `hillshade.*` keys.
 - **A typed read of `GeoLeaf.Table` from a page that is not the table plugin's is guarded**
   (`@geoleaf/core` 3.15.0). The plugin configuration guide called `GeoLeaf.Table.exportLayer()`
   unguarded; the namespace is mounted by the plugin and absent from a page that does not load
@@ -770,7 +1078,7 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   `display.surfaces` does not list the field opens without a title — measured.
 - **The plugins' READMEs and two core guides state the defaults the code applies**
   (`@geoleaf/core` 3.15.0, `@geoleaf-plugins/editor` 1.6.0, `geocoding` 1.1.4, `measure` 1.0.10,
-  `print` 1.3.5, `table` 1.1.4). The `Default` column of a plugin README was read by nothing;
+  `print` 1.3.5, `table` 1.2.0). The `Default` column of a plugin README was read by nothing;
   it is now checked against the plugin's own table of defaults, for the eight plugins that have
   one, and so are the tables of the core guides that name the block they describe. What the
   check found:
@@ -796,13 +1104,13 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   cell had shifted every cell after it and made its default unreadable.
 - **Comments, messages and reference pages no longer cite internal task numbers**
   (`@geoleaf/core` 3.15.0, `@geoleaf-plugins/editor` 1.6.0, `@geoleaf/field-renderer` 1.4.3,
-  `@geoleaf-plugins/table` 1.1.4). Source comments, TSDoc, test titles, schema descriptions
+  `@geoleaf-plugins/table` 1.2.0). Source comments, TSDoc, test titles, schema descriptions
   and several pages under `docs/` referred to the numbered tasks of a planning document that
   is not part of this repository — a reference no reader could follow. Each one is replaced
   by the reason it stood for, or removed where it only recorded when the line was written.
-  No behaviour changes: `@geoleaf-plugins/table` 1.1.4 differs from 1.1.3 by one test comment.
+  No behaviour changes: for `@geoleaf-plugins/table` this entry alone is one test comment.
 - **The first example of the offline-ui README guards what is optional**
-  (`@geoleaf-plugins/offline-ui` 1.6.4). It called `GeoLeaf.Storage.isOffline()` and
+  (`@geoleaf-plugins/offline-ui` 1.7.0). It called `GeoLeaf.Storage.isOffline()` and
   `getStats()` unguarded, although the façade is inert until the offline engine loads and its
   members are optional. The index signature removed above is what let it compile.
 - **The quickstart tutorial boots as written** (`@geoleaf/core` 3.15.0). Copied file for file,
@@ -824,13 +1132,11 @@ BlinkMacSystemFont, "Segoe UI", sans-serif`) and read by `.gl-page`, the share d
   the four were found; the same check corrected the default written for
   `modules.permalink.fields`, announced as ten fields for a list of seven.
 - **Three `performance` keys that nothing reads leave the guides** (`@geoleaf/core` 3.15.0).
-  `maxConcurrentLayers`, `layerLoadDelay` and `fitBoundsOnThemeChange` were still shown in five
-  examples of the Profiles Guide and in a table of the Configuration Guide, and two
-  troubleshooting tips recommended them against slow loading — advice that changed nothing,
-  in a block `validate:profiles` refused. The examples are gone, the tips name the key that is
-  read, and `PROFILE_JSON_REFERENCE.md`, which said the whole block was removed, describes its
-  one key. `clusteringConfig` and `poiConfig`, two root blocks of an earlier layout, leave the
-  `profile.json` structure of the Configuration Guide.
+  `maxConcurrentLayers`, `layerLoadDelay` and `fitBoundsOnThemeChange` were still shown in
+  examples and recommended by two troubleshooting tips against slow loading — advice that
+  changed nothing, in a block the profile schema refused. The two guides that carried them
+  have since left this version altogether (see _Removed_); `PROFILE_JSON_REFERENCE.md`, which
+  said the whole `performance` block was removed, describes its one key.
 - **The configuration guide no longer calls `map.target` a CSS selector** (`@geoleaf/core`
   3.15.0). It gave `"#geoleaf-map"` as the default and described both `map.target` and
   `map.id` as selectors; the boot resolves them with `document.getElementById`, so the value

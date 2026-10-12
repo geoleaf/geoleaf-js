@@ -15,7 +15,7 @@ profiles/
     ├── config/
     │   ├── core/                     ← configuration du cœur
     │   │   ├── taxonomy.json         ← catégories, sous-catégories, icônes POI
-    │   │   ├── themes.json           ← presets de visibilité des couches
+    │   │   ├── themes.json           ← presets de visibilité des couches, et vue cadrée par thème (`view`)
     │   │   ├── layers.json           ← registre des couches
     │   │   ├── basemaps.json         ← fonds de carte
     │   │   ├── ui.json               ← UI + searchConfig + layerManagerConfig + scaleConfig

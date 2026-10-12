@@ -288,7 +288,7 @@ The module uses the GeoLeaf CSS variables:
 .gl-scale-control {
     background: var(--gl-color-bg-surface);
     color: var(--gl-color-text-main);
-    box-shadow: var(--gl-shadow-small);
+    box-shadow: var(--gl-shadow-soft);
 }
 
 .gl-scale-zoom {

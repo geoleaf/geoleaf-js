@@ -208,6 +208,21 @@ describe("MaplibreAdapter", () => {
             );
         });
 
+        it("fitBounds hands the engine a zoom ceiling when it is given one, and none otherwise", () => {
+            const adapter = createAdapter();
+            adapter.init({ container: "map" });
+            const bounds = { north: 46, south: 44, east: -72, west: -74 };
+
+            adapter.fitBounds(bounds, { animate: false, maxZoom: 9 });
+            expect(mockMapInstance.fitBounds.mock.calls.at(-1)[1]).toMatchObject({ maxZoom: 9 });
+
+            adapter.fitBounds(bounds, { animate: false });
+            expect(mockMapInstance.fitBounds.mock.calls.at(-1)[1]).not.toHaveProperty("maxZoom");
+
+            adapter.fitBounds(bounds, { animate: false, maxZoom: Number.NaN });
+            expect(mockMapInstance.fitBounds.mock.calls.at(-1)[1]).not.toHaveProperty("maxZoom");
+        });
+
         it("init with bounds calls fitBounds on map", () => {
             const adapter = createAdapter();
             adapter.init({

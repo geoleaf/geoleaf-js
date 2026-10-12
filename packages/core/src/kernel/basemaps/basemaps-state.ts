@@ -18,7 +18,7 @@
 
 import { Log } from "../../utils/log/index.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
-import type { BasemapsCoreSurface, NativeMap } from "./basemaps-types.js";
+import type { BasemapsCoreSurface, NativeMap, StyleLandmarks } from "./basemaps-types.js";
 
 /** Resolves the `GeoLeaf.Core` surface used to acquire the live map / adapter. */
 export function _core(): BasemapsCoreSurface | undefined {
@@ -71,6 +71,25 @@ export let _activationRequest = 0;
 
 /** AbortController for any in-flight WMTS GetCapabilities request. */
 export let _wmtsAbort: AbortController | null = null;
+
+/**
+ * Key of the vector basemap whose style last LANDED on the map — the style the map holds —, or
+ * `null` when it holds none (no basemap yet, or a raster one, applied over an empty style).
+ *
+ * `_activeKey` cannot answer that: it is set as soon as a switch is requested, while the style
+ * asked for may still be downloading. The two differ for exactly that long, and
+ * `_sharesLandedStyle` (`registry.ts`) relies on their being equal to recognise a switch between
+ * two basemaps that share a style — the one case where asking the engine for the style again
+ * gets no answer at all.
+ */
+export let _landedStyleKey: string | null = null;
+
+/**
+ * The landmarks of the style {@link _landedStyleKey} names, read as it arrived — `null` with it,
+ * and when the style came through no transform. Kept because a switch between two basemaps that
+ * share a style brings no style to read them from again.
+ */
+export let _landedStyleLandmarks: StyleLandmarks | null = null;
 
 // ─── Setters ─────────────────────────────────────────────────────────────────
 
@@ -150,4 +169,16 @@ export function _nextActivationRequest(): number {
 /** Stores the in-flight WMTS AbortController (null when no request is pending). */
 export function _setWmtsAbort(controller: AbortController | null): void {
     _wmtsAbort = controller;
+}
+
+/**
+ * Records the vector basemap whose style just landed, with the landmarks read off that style
+ * (both `null` when a raster basemap took over).
+ */
+export function _setLandedStyleKey(
+    key: string | null,
+    landmarks: StyleLandmarks | null = null
+): void {
+    _landedStyleKey = key;
+    _landedStyleLandmarks = key === null ? null : landmarks;
 }

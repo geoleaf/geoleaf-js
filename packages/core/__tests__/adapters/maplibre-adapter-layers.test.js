@@ -97,6 +97,9 @@ beforeEach(() => {
         removeLayer: vi.fn((id) => {
             delete _layers[id];
         }),
+        // A bare spy: it keeps no order. What a move DOES to the stack is proven on an ordered
+        // map in `maplibre-layer-order.test.ts`; here it only says whether the engine was asked.
+        moveLayer: vi.fn(),
         getLayer: vi.fn((id) => _layers[id] || null),
         setLayoutProperty: vi.fn(),
         setPaintProperty: vi.fn(),
@@ -789,6 +792,51 @@ describe("MaplibreAdapter — applyDataDiff (R6)", () => {
     });
 });
 
+describe("MaplibreAdapter — setLayerZIndex", () => {
+    const polygons = {
+        type: "FeatureCollection",
+        features: [
+            { type: "Feature", geometry: { type: "Polygon", coordinates: [] }, properties: {} },
+        ],
+    };
+    let adapter;
+    beforeEach(() => {
+        adapter = createInitedAdapter();
+        adapter.addGeoJSONLayer("a", polygons, { zIndex: 10 });
+        adapter.addGeoJSONLayer("b", polygons, { zIndex: 20 });
+    });
+
+    it("moves every sub-layer under one anchor, and records the rank", () => {
+        expect(adapter.setLayerZIndex("a", 30)).toBe(true);
+
+        expect(mockMapInstance.moveLayer.mock.calls).toEqual([
+            ["gl-a-fill", "gl-sentinel-poi"],
+            ["gl-a-line", "gl-sentinel-poi"],
+        ]);
+        expect(adapter.getLayerRegistry().get("a").zIndex).toBe(30);
+    });
+
+    it("refuses an unknown layer without asking the engine", () => {
+        expect(adapter.setLayerZIndex("ghost", 30)).toBe(false);
+        expect(mockMapInstance.moveLayer).not.toHaveBeenCalled();
+    });
+
+    // Seen red with the refusal removed: the group, registered under rank 100, was moved under
+    // the layer ranked 10 and recorded at rank 5.
+    it("refuses a cluster group — its rank says nothing of where it is drawn", async () => {
+        await adapter.createClusterGroup("pois");
+
+        expect(adapter.setLayerZIndex("pois", 5)).toBe(false);
+
+        expect(mockMapInstance.moveLayer).not.toHaveBeenCalled();
+        expect(adapter.getLayerRegistry().get("pois").zIndex).toBe(100);
+    });
+
+    it("throws before init(), like every other layer method", () => {
+        expect(() => new MaplibreAdapter().setLayerZIndex("a", 30)).toThrow();
+    });
+});
+
 describe("MaplibreAdapter — Contract", () => {
     it("exposes every IMapAdapter method", () => {
         const adapter = new MaplibreAdapter();
@@ -816,6 +864,7 @@ describe("MaplibreAdapter — Contract", () => {
             "applyDataDiff",
             "setLayerStyle",
             "setLayerFilter",
+            "setLayerZIndex",
             "createMarker",
             "removeMarker",
             "updateMarkerPosition",

@@ -26,6 +26,11 @@ vi.mock("../../src/kernel/basemaps/image-source.js", () => ({
 const mockApplyHillshadeBasemap = vi.hoisted(() => vi.fn());
 vi.mock("../../src/kernel/basemaps/hillshade.js", () => ({
     applyHillshadeBasemap: mockApplyHillshadeBasemap,
+    // The overlay half of the module: none of these basemaps declares one. Its own lifecycle
+    // is proved on the real module, in `hillshade-overlay-lifecycle.test.ts`.
+    resolveHillshadeOverlay: vi.fn(() => null),
+    syncHillshadeOverlay: vi.fn(),
+    removeHillshadeOverlay: vi.fn(),
 }));
 
 const mockBuildWmsUrl = vi.hoisted(() =>
@@ -50,10 +55,10 @@ vi.mock("../../src/kernel/basemaps/providers.js", () => ({
 }));
 
 vi.mock("../../src/kernel/basemaps/terrain.js", () => ({
-    activateTerrain: vi.fn(),
-    deactivateTerrain: vi.fn(),
-    isTerrainActive: vi.fn(() => false),
-    resolveTerrainConfig: vi.fn(() => null),
+    resetTerrain: vi.fn(),
+    suspendTerrainForStyleSwap: vi.fn(),
+    syncTerrainToBasemap: vi.fn(),
+    validateTerrainConfig: vi.fn(),
 }));
 
 vi.mock("../../src/kernel/events/event-bus.js", () => ({

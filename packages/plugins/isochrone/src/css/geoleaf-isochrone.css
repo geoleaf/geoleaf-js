@@ -1,0 +1,4 @@
+/* @geoleaf-plugins/isochrone — styles (loaded via rollup-plugin-postcss, injected at runtime) */
+.gl-isochrone {
+    /* Every rule of the plugin lives under this root class. */
+}

@@ -413,8 +413,9 @@ describe("applyState", () => {
 
         // Fire geoleaf:themes:ready
         document.dispatchEvent(new CustomEvent("geoleaf:themes:ready"));
-        // setTheme should be called
-        expect(mockSetTheme).toHaveBeenCalledWith("dark");
+        // setTheme should be called — without framing: the view of the address was restored
+        // just above, and the view the theme declares must not undo it.
+        expect(mockSetTheme).toHaveBeenCalledWith("dark", { keepView: true });
         // layers/filter should NOT be applied yet (waiting for theme:applied)
         expect(mockSetVisibility).not.toHaveBeenCalled();
 

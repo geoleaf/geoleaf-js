@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 11521ab02
-date: 7 octobre 2026
+verifie_contre: 83f3efeb7
+date: 11 octobre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -124,6 +124,16 @@ ligne de console en plus. Les greffons gardent leur pair `^3.0.0`.
 
 `mount` se lit par la traîne de `GeoLeafHost`, délibérément : le nommer aurait rouvert l'épingle de
 `verify-seam-drift.cjs` sur `host.ts` pour un membre dont seule la PRÉSENCE est testée.
+
+📌 **`HostMapAdapter` nomme ce qu'un plugin APPELLE sur l'adaptateur, et rien de plus** : la carte
+native (`getNativeMap`), la déclaration des couches posées hors de lui (`declareOwnedStyleIds`,
+core 3.10.0) et le changement de rang d'une couche (`setLayerZIndex`, core 3.15.0). Les trois sont
+optionnels — un cœur plus ancien ne les porte pas. `setLayerZIndex` est nommé, à la différence de
+`mount`, parce qu'un plugin en lit la RÉPONSE : sous la traîne `[key: string]: unknown` le membre
+typait `unknown`, donc ni l'appel ni son booléen n'étaient typés. L'appel s'écrit
+`adapter.setLayerZIndex?.(id, zIndex) === true` : `false` et l'absence du membre se lisent pareil,
+« rien n'a bougé, reconstruis la couche ». Ce paquet n'ajoute aucune fonction pour lui — le plugin
+tient déjà l'adaptateur par `Core.getMap()`.
 
 ### `declareOwnedStyleIds` — l'adaptateur se TROUVE, il ne se suppose pas (24/09/2026)
 

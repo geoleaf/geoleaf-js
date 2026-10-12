@@ -407,39 +407,37 @@ Every UI component uses **BEM CSS classes** to make customisation straightforwar
 
 ### CSS variables
 
+The interface reads its colours, shadows and font from custom properties named `--gl-…`. They
+are declared on `:root` and overridden under the theme class the application carries —
+`.gl-theme-light` or `.gl-theme-dark`. The reference is the stylesheet itself,
+`packages/core/src/css/geoleaf-theme.css`; the ones a host most often overrides:
+
+| Token                                                        | Role                                                                                         |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `--gl-color-accent`                                          | The accent, as a **fill**: active buttons, highlights                                        |
+| `--gl-color-accent-hover`                                    | The accent fill under the pointer                                                            |
+| `--gl-color-accent-contrast`                                 | Text and icons drawn **on** an accent fill                                                   |
+| `--gl-color-accent-text`                                     | The accent as a **text** colour, on a surface — the accent itself does not reach 4.5:1 there |
+| `--gl-color-accent-soft`                                     | The accent's translucent veil (selected rows, soft highlights)                               |
+| `--gl-color-focus-ring`                                      | The keyboard focus ring                                                                      |
+| `--gl-font-family`                                           | The application's font stack, read by what is mounted on `document.body` too                 |
+| `--gl-color-bg-surface`, `--gl-color-text-main`              | Surface and main text of panels and controls                                                 |
+| `--gl-shadow-soft`, `--gl-shadow-medium`                     | Shadows of controls and panels                                                               |
+| `--gl-accordion-header-bg`, `--gl-accordion-header-bg-hover` | Accordion headers                                                                            |
+
 ```css
-:root {
-    /* Notifications */
-    --gl-toast-success: #10b981;
-    --gl-toast-error: #ef4444;
-    --gl-toast-warning: #f59e0b;
-    --gl-toast-info: #3b82f6;
-
-    /* Accordions */
-    --gl-accordion-header-bg: #f5f5f5;
-    --gl-accordion-header-bg-hover: #e0e0e0;
-    --gl-accordion-border: #ddd;
-
-    /* Symbols */
-    --gl-symbol-size: 16px;
-    --gl-symbol-border: #666;
-
-    /* Filters */
-    --gl-filter-bg: white;
-    --gl-filter-border: #ddd;
-    --gl-filter-tag-bg: #3b82f6;
-    --gl-filter-tag-color: white;
-}
-
-/* Dark theme */
-[data-theme="dark"] {
-    --gl-accordion-header-bg: #2c3e50;
-    --gl-accordion-header-bg-hover: #34495e;
-    --gl-accordion-border: #555;
-    --gl-filter-bg: #2c3e50;
-    --gl-filter-border: #555;
+/* A host palette: the four accent tokens move together. */
+.gl-theme-light {
+    --gl-color-accent: #0f766e;
+    --gl-color-accent-hover: #115e59;
+    --gl-color-accent-contrast: #ffffff;
+    --gl-color-accent-text: #0f766e;
 }
 ```
+
+A host that overrides `--gl-color-accent` sets `--gl-color-accent-text`,
+`--gl-color-accent-contrast` and `--gl-color-accent-hover` with it: left alone, they keep the
+default orange family, and a text written on the new accent may no longer be readable.
 
 ---
 

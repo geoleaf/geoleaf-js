@@ -852,6 +852,62 @@ export interface TilePreparationTrace {
     refusedOrigins?: Array<{ source: string; origin: string }>;
 }
 
+/** Options of `GeoLeaf.Storage.CacheManager.cacheProfile()`. */
+export interface CacheProfileOptions {
+    /** Called at each step of the download, with a progress tick. */
+    onProgress?: (progress: unknown) => void;
+    /** The saved selection of what to prepare — layers, basemaps, zone. Absent: everything. */
+    selection?: unknown;
+}
+
+/** One layer's entity pull, as `cacheProfile()` reports it beside the resource tally. */
+export interface CacheProfilePulledLayer {
+    readonly layerId: string;
+    /** Entities written to the local store. */
+    readonly written: number;
+    /** True when the pull stopped at its cap: the layer holds more than was fetched. */
+    readonly capped: boolean;
+    readonly aborted: boolean;
+    /** Why nothing was written, or `null`. */
+    readonly refused: string | null;
+}
+
+/**
+ * What `GeoLeaf.Storage.CacheManager.cacheProfile()` resolves with.
+ *
+ * ⚠️ It does not reject on a failed download: `error` carries the motive, and
+ * `failedUrls` what could not be fetched. Every member is optional — a refusal before any
+ * request (`error`) carries nothing else.
+ *
+ * The offline engine and the `GeoLeaf.Storage` façade both read THIS declaration: there is
+ * no second copy of it to keep in step.
+ */
+export interface CacheProfileResult {
+    cached?: string[];
+    urls?: string[];
+    failedUrls?: string[];
+    failedDownloads?: string[];
+    totalSize?: number;
+    duration?: number;
+    error?: string;
+    profileId?: string;
+    /**
+     * One entry per layer whose entities were pulled.
+     *
+     * ⚠️ **Absent, not empty, when nothing declared a source.** A caller can then tell
+     * "this profile pulls no entities" from "the pull was attempted and wrote nothing",
+     * which is the same distinction the sync report exists for one level down.
+     */
+    pulledLayers?: CacheProfilePulledLayer[];
+    /** What the preparation asked for, and what it left out — kept in the manifest. */
+    preparation?: TilePreparationTrace;
+    /**
+     * True when « Stop » was pressed during this download. What was stored before the stop
+     * stays; a pull under way ended at its page and removed nothing.
+     */
+    cancelled?: boolean;
+}
+
 /**
  * Quota regime the origin is running under.
  *

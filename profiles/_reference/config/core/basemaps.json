@@ -39,7 +39,16 @@
             "type": "maplibre",
             "style": "https://styles.example.com/reference-vector/style.json",
             "attribution": "&copy; Reference vector",
-            "offline": false
+            "offline": false,
+            "hillshade": {
+                "overlay": true,
+                "beforeLayer": "water",
+                "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 0.45,
+                "accentColor": "#6b5d4f",
+                "illuminationAnchor": "viewport"
+            }
         },
         "overlay": {
             "id": "overlay",
@@ -65,7 +74,7 @@
                 "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
                 "demEncoding": "terrarium",
                 "demMaxZoom": 13,
-                "exaggeration": 1.2,
+                "exaggeration": 1,
                 "illuminationDirection": 315,
                 "highlightColor": "#ffffff",
                 "shadowColor": "#473b24"
@@ -114,6 +123,32 @@
                 "default3D": true,
                 "pitch": 60,
                 "bearing": 0
+            }
+        },
+        "terrain-on-tilt": {
+            "id": "terrain-on-tilt",
+            "label": "Relief on tilt (tile + terrain + overlay)",
+            "type": "tile",
+            "url": "https://{s}.tiles.example.com/topo/{z}/{x}/{y}.png",
+            "attribution": "&copy; Reference topo",
+            "minZoom": 5,
+            "maxZoom": 17,
+            "offline": false,
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 1.5,
+                "activation": "pitch",
+                "activateFromPitch": 12,
+                "deactivateBelowPitch": 6
+            },
+            "hillshade": {
+                "overlay": true,
+                "onlyWithTerrain": true,
+                "demUrl": "https://dem.example.com/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 0.45
             }
         }
     }

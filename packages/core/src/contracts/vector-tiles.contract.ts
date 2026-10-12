@@ -44,7 +44,11 @@ export interface VectorTileLayerSpec {
      * family draws nothing, and a warning says so.
      */
     geometryType: string;
-    /** Paint z-order hint (default 0). */
+    /**
+     * Stacking rank among the other layers, GeoJSON included — higher is drawn on top. The
+     * layer is inserted under the lowest layer of strictly higher rank, above its equals.
+     * @default 0
+     */
     zIndex?: number;
     /** Vector source bounds. */
     source?: {

@@ -346,6 +346,8 @@ describe("Storage.pullLayer — l'attente du moteur est BORNÉE", () => {
         const report = await pending;
         expect(report.refused).toBe("engineUnavailable");
         expect(report.written).toBe(0);
+        // The published type promises a boolean on every report, the degraded one included.
+        expect(report.cursorRefused).toBe(false);
     });
 });
 

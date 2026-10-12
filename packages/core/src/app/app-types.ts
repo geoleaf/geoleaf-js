@@ -233,10 +233,19 @@ export interface RevealDeps {
     GeoLeaf: GeoLeafGlobal;
     map: IMapAdapter | null;
     AppLog: AppLogger;
-    /** Profile bounds used to re-fit the view at reveal (null in center+zoom mode). */
-    profileBounds: GeoLeafBounds | null;
-    /** Padding applied to the reveal-time `fitBounds`. */
+    /**
+     * Extent the map started on, re-fitted at reveal: the view of the theme the profile starts
+     * on when that theme declares bounds, the profile bounds otherwise. `null` when the map
+     * started on a centre and a zoom — nothing is re-fitted then.
+     */
+    startBounds: GeoLeafBounds | null;
+    /** Padding applied to the reveal-time `fitBounds` — the profile's. */
     profilePadding: RevealPadding | null;
+    /**
+     * Ceiling on the zoom of that re-fit — the profile's `map.initialMaxZoom` when it declares
+     * one, `null` otherwise. The same ceiling the first fit was given.
+     */
+    startMaxZoom: number | null;
     /** Resolved permalink config (`cfg.ui.permalink` or `{}`). */
     permalinkCfg: PermalinkRuntimeConfig;
 }
@@ -252,6 +261,7 @@ export type RevealPadding =
 export interface FitBoundsOptions {
     padding?: GeoLeafPoint;
     animate?: boolean;
+    maxZoom?: number;
 }
 
 /**
@@ -262,12 +272,16 @@ export interface FitBoundsOptions {
  * types narrowly as `GeoLeafPoint`. This isolates the single contract/impl bridge
  * cast (no `any`) — the runtime value is forwarded unchanged.
  */
-export function buildFitBoundsOptions(padding: RevealPadding | null): FitBoundsOptions {
+export function buildFitBoundsOptions(
+    padding: RevealPadding | null,
+    maxZoom: number | null = null
+): FitBoundsOptions {
     return {
         // `FitBoundsOptions` is declared outside the repo: we cannot widen it.
         // Conditional insertion rather than an explicit `undefined`.
         ...(padding != null && { padding: padding as unknown as GeoLeafPoint }),
         animate: false,
+        ...(maxZoom != null && { maxZoom }),
     };
 }
 

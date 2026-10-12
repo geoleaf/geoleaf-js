@@ -23,9 +23,14 @@ export interface MapConfig {
     maxZoom?: number;
     /** Minimum zoom level. */
     minZoom?: number;
-    /** Alias for maxZoom (legacy). Used by CoreMapModule. */
+    /**
+     * Ceiling on the zoom of the INITIAL framing: a map that starts on an extent — `bounds`, or
+     * the `view.bounds` of the start theme — never frames closer. Only a declared key caps;
+     * it caps neither the user's zoom nor a later theme switch. Also the zoom the map is
+     * created at, a moment before that framing (absent: `maxZoom`, then 12).
+     */
     initialMaxZoom?: number;
-    /** Padding in pixels applied to fitBounds ([top/bottom, left/right]). */
+    /** Padding in pixels applied to fitBounds: `[horizontal, vertical]` — left and right, then top and bottom. */
     padding?: [number, number];
     /** When true, restricts panning/zooming to bounds. */
     positionFixed?: boolean;
@@ -230,8 +235,8 @@ export interface PermalinkConfig {
 }
 
 /**
- * 3D terrain configuration for a basemap that supports raster-dem elevation rendering.
- * Only applicable to basemaps of type "maplibre" or basemaps with explicit tiles (raster-dem source).
+ * 3D terrain configuration of a basemap: a raster-dem elevation source the map is draped over.
+ * Read whatever the basemap type.
  */
 export interface TerrainConfig {
     /** Enables 3D terrain rendering for this basemap. Default: false. */
@@ -251,13 +256,46 @@ export interface TerrainConfig {
     /** Vertical exaggeration factor. Default: 1.5. Recommended range: 1.0–3.0. */
     exaggeration?: number;
     /**
-     * When true, 3D terrain activates automatically when this basemap is selected.
-     * The user can disable it manually. Default: false.
+     * What puts the terrain on.
+     *
+     * - `"basemap"` (default): selecting the basemap does, when `default3D` is true. The camera
+     *   is then posted to `pitch` and `bearing`, and eased back flat when the basemap is left.
+     * - `"pitch"`: the terrain follows the tilt of the camera. It is absent while the map is
+     *   flat — no elevation tile is requested —, put on once the camera comes to rest tilted to
+     *   `activateFromPitch` or more, and removed once it comes to rest under
+     *   `deactivateBelowPitch`. Between the two it stays as it was. The decision is taken when
+     *   a movement ENDS, never during it, and the camera is never moved: `default3D`, `pitch`
+     *   and `bearing` have no role in this mode, and the profile schema refuses them there.
+     */
+    activation?: "basemap" | "pitch";
+    /**
+     * `activation: "pitch"` only: tilt, in degrees, from which the terrain is put on.
+     * Above 0, at most 85 — and no higher than the map's `maxPitch`, or the terrain can never
+     * show. Default: 12.
+     */
+    activateFromPitch?: number;
+    /**
+     * `activation: "pitch"` only: tilt, in degrees, under which the terrain is removed. Must be
+     * lower than `activateFromPitch`: one threshold for both would put the terrain on and off
+     * between two movements that end around it. Default: half of `activateFromPitch`.
+     */
+    deactivateBelowPitch?: number;
+    /**
+     * When true, the 3D terrain is activated when this basemap is selected, and deactivated when
+     * another one is. Without it — and without `activation: "pitch"`, the only other thing that
+     * activates a terrain — an `enabled` terrain is never drawn: no control lets the user turn
+     * it on or off. Not read with `activation: "pitch"`. Default: false.
      */
     default3D?: boolean;
-    /** Initial camera pitch in degrees applied when 3D terrain is activated. Default: 45. */
+    /**
+     * Camera pitch in degrees, posted when the terrain is activated by the selection of the
+     * basemap. Not read with `activation: "pitch"`, which never moves the camera. Default: 45.
+     */
     pitch?: number;
-    /** Initial camera bearing in degrees applied when 3D terrain is activated. Default: 0. */
+    /**
+     * Camera bearing in degrees, posted when the terrain is activated by the selection of the
+     * basemap. Not read with `activation: "pitch"`, which never moves the camera. Default: 0.
+     */
     bearing?: number;
 }
 
@@ -279,10 +317,44 @@ export interface ImageSourceConfig {
 }
 
 /**
- * Hillshade (terrain shadow) configuration for basemaps with `type: "hillshade"`.
- * Uses a `raster-dem` source and a MapLibre `hillshade` render layer.
+ * Relief shading (hillshade) of a basemap: a `raster-dem` source drawn by a MapLibre `hillshade`
+ * render layer.
+ *
+ * Read in two ways. On a basemap of `type: "hillshade"` the shading IS the basemap. On a basemap
+ * of any other type it is read only when `overlay` is true, and is then drawn OVER that basemap,
+ * which stays what it is.
  */
 export interface HillshadeConfig {
+    /**
+     * Draws the shading as an overlay of this basemap: just above the basemap's layer when it is
+     * an image (tiles, WMS, WMTS), inside the style when it is vector — see `beforeLayer`.
+     * Without it, a `hillshade` block on a basemap that is not of `type: "hillshade"` is
+     * ignored. Ignored on `type: "hillshade"`, whose shading is the basemap itself.
+     *
+     * The overlay reads a `raster-dem` source of its own, apart from the one of `terrain`: with
+     * both on one basemap the same `demUrl` is requested twice, for a shading one zoom level
+     * finer. Default: false.
+     */
+    overlay?: boolean;
+    /**
+     * Overlay only: the shading is shown only while a 3D terrain is on the map, and hidden the
+     * rest of the time. Hidden, it requests no elevation tile. With a `terrain` block whose
+     * `activation` is `"pitch"`, a flat map then stays exactly what it is without either block.
+     * A basemap that declares it without a `terrain` block never shows its overlay. Without
+     * it the overlay is always drawn, flat map included. Ignored without `overlay`.
+     * Default: false.
+     */
+    onlyWithTerrain?: boolean;
+    /**
+     * Vector basemap only: id of the layer of the basemap's style the overlay is inserted
+     * before — typically its first water or road layer, so that the shading covers the land
+     * fills and stays under water, roads and labels.
+     *
+     * Absent, or naming a layer the style does not have (a warning is then logged): the overlay
+     * goes before the first `symbol` layer of the style, which keeps the labels readable but
+     * shades whatever is drawn under them, water and roads included.
+     */
+    beforeLayer?: string;
     /** DEM tile URL template. Required. E.g. `"https://tiles.example.com/{z}/{x}/{y}.png"`. */
     demUrl: string;
     /** Tile encoding format for the DEM source. Default: `"terrarium"`. */
@@ -400,7 +472,10 @@ export interface BasemapConfig {
     terrain?: TerrainConfig;
     /** Static image overlay configuration. Required when `type: "image"`. */
     imageSource?: ImageSourceConfig;
-    /** Hillshade terrain-shading configuration. Required when `type: "hillshade"`. */
+    /**
+     * Relief shading: the basemap itself when `type: "hillshade"` (the block is then required),
+     * an overlay of any other basemap when `hillshade.overlay` is true.
+     */
     hillshade?: HillshadeConfig;
     /** WMTS service configuration. Required when `type: "wmts"`. */
     wmts?: WmtsConfig;

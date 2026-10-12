@@ -319,7 +319,7 @@ Clears the whole selection.
 GeoLeaf.Table.clearSelection();
 ```
 
-**Events emitted:** `geoleaf:table:selectionChanged` with `{ selectedIds: [] }`
+**Events emitted:** `geoleaf:table:selectionChanged` with `{ layerId, selectedIds: [] }`
 
 #### Example
 
@@ -382,51 +382,37 @@ document.getElementById("highlight-btn").addEventListener("click", () => {
 
 ---
 
-### 2.13 `GeoLeaf.Table.exportSelection()`
+### 2.13 `GeoLeaf.Table.exportSelection(format?, options?)`
 
-Emits an event to export the selection.
+Exports the selected features to a file the browser downloads, then emits an event. With no
+selection it does nothing.
 
 ```js
-GeoLeaf.Table.exportSelection();
+GeoLeaf.Table.exportSelection(); // GeoJSON
+GeoLeaf.Table.exportSelection("csv", { csvSeparator: ";" });
 ```
 
-**Events emitted:** `geoleaf:table:exportSelection` with `{ layerId, selectedIds, rows }`
+`format` is `"geojson"` (default), `"csv"`, `"kml"`, `"gpx"` or `"excel"`. `options` takes
+`csvSeparator` (`","` or `";"`) and `csvIncludeGeometry`.
 
-> Note: the Table module only emits the event. Implementing the export itself (CSV, JSON, GeoJSON, and so on) is up to the application.
+**Events emitted:** `geoleaf:table:exportSelection` with `{ layerId, format, selectedIds, rows }`
+— `rows` are the exported features, as they go to the file.
+
+The table writes the file itself: the event is there for a host that wants to follow the export,
+not to implement it. `GeoLeaf.Table.exportLayer(format?, options?)` does the same for the whole
+layer and emits `geoleaf:table:exportLayer` with `{ layerId, format, count }`.
 
 #### Example
 
 ```js
 document.getElementById("export-btn").addEventListener("click", () => {
-    GeoLeaf.Table.exportSelection();
+    GeoLeaf.Table.exportSelection("csv");
 });
 
-// Listen to the event to implement the export
-map.on("geoleaf:table:exportSelection", (e) => {
-    const { rows } = e;
-    const csv = convertToCSV(rows);
-    downloadFile(csv, "export.csv", "text/csv");
+// Follow the export
+document.addEventListener("geoleaf:table:exportSelection", (e) => {
+    console.log(`${e.detail.rows.length} features exported as ${e.detail.format}`);
 });
-
-function convertToCSV(rows) {
-    const headers = Object.keys(rows[0].properties);
-    const csvLines = [headers.join(",")];
-    rows.forEach((row) => {
-        const values = headers.map((h) => row.properties[h] ?? "");
-        csvLines.push(values.join(","));
-    });
-    return csvLines.join("\n");
-}
-
-function downloadFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-}
 ```
 
 ---
@@ -512,18 +498,28 @@ threshold.
 
 ## 4. Events
 
-The Table module emits the following events on the MapLibre GL JS map:
+The Table module emits the following events on the MapLibre GL JS map, and on `document` —
+subscribe to one of the two, not both:
 
-| Event                              | Detail                             | Description                 |
-| ---------------------------------- | ---------------------------------- | --------------------------- |
-| `geoleaf:table:opened`             | —                                  | Table shown                 |
-| `geoleaf:table:closed`             | —                                  | Table hidden                |
-| `geoleaf:table:layerChanged`       | `{ layerId }`                      | Displayed layer changed     |
-| `geoleaf:table:sortChanged`        | `{ field, direction }`             | Sort changed                |
-| `geoleaf:table:selectionChanged`   | `{ layerId, selectedIds }`         | Selection changed           |
-| `geoleaf:table:zoomToSelection`    | `{ layerId, selectedIds }`         | Zoom to selection triggered |
-| `geoleaf:table:highlightSelection` | `{ layerId, selectedIds, active }` | Highlight enabled/disabled  |
-| `geoleaf:table:exportSelection`    | `{ layerId, selectedIds, rows }`   | Export requested            |
+| Event                              | Detail                                   | Description                                             |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------- |
+| `geoleaf:table:opened`             | —                                        | Table shown                                             |
+| `geoleaf:table:closed`             | —                                        | Table hidden                                            |
+| `geoleaf:table:layerChanged`       | `{ layerId }`                            | Displayed layer changed                                 |
+| `geoleaf:table:sortChanged`        | `{ field, direction }`                   | Sort changed                                            |
+| `geoleaf:table:selectionChanged`   | `{ layerId, selectedIds }`               | Selection changed                                       |
+| `geoleaf:table:zoomToSelection`    | `{ layerId, selectedIds }`               | Zoom to selection triggered                             |
+| `geoleaf:table:highlightSelection` | `{ layerId, selectedIds, active }`       | Highlight enabled/disabled                              |
+| `geoleaf:table:exportSelection`    | `{ layerId, format, selectedIds, rows }` | Selection exported                                      |
+| `geoleaf:table:exportLayer`        | `{ layerId, format, count }`             | Whole layer exported                                    |
+| `geoleaf:table:rowActivated`       | `{ layerId, featureId, properties }`     | Row double-clicked, or Enter pressed on the focused row |
+
+`geoleaf:table:rowActivated` states an intention and opens nothing: the subscriber decides
+what an activation means. `featureId` is the identifier `selectionChanged` lists in
+`selectedIds` (a string, synthetic — `__gl_row_<n>` — when the feature has no identifier of
+its own), and `properties` are the feature's complete properties. A double-click leaves the
+selection as it was: its first click toggles it, the activation restores it, so two
+`selectionChanged` surround the gesture. The checkbox cell and the sort header never activate.
 
 ### Listening example
 

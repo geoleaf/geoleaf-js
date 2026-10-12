@@ -263,6 +263,10 @@
     // ─── GEOLEAF-DEPLOY:GATED-BLOCK cog ─── END ────────────────────────────────
     gl.plugins.registerLazy("file-import", () => import("./dist/geoleaf-file-import.plugin.js"));
     gl.plugins.registerLazy("websocket", () => import("./dist/geoleaf-websocket.plugin.js"));
+    // ⚠️ `isochrone` has NO toolbar slot here, deliberately: its window does not exist yet, and
+    // a button declared now would be a control that opens nothing. Until it does, the plugin
+    // is reached the way the three above are — `plugins.load("isochrone")`, then its API.
+    gl.plugins.registerLazy("isochrone", () => import("./dist/geoleaf-isochrone.plugin.js"));
 
     // ── Declarative layer — loaded by the core's `ensurePluginLoaded` seam when a profile
     // names the plugin. Without that seam the layer would be skipped at 0 feature, and the

@@ -35,6 +35,22 @@ import {
 } from "../app-types.js";
 
 /**
+ * What the map module left for the reveal: the extent the map started on, the room kept
+ * around it and the ceiling on its zoom — each `null` when the start view declares none.
+ */
+function readStartFraming(app: AppNamespace): {
+    startBounds: GeoLeafBounds | null;
+    profilePadding: RevealPadding | null;
+    startMaxZoom: number | null;
+} {
+    return {
+        startBounds: (app._startBounds ?? null) as GeoLeafBounds | null,
+        profilePadding: (app._profilePadding ?? null) as RevealPadding | null,
+        startMaxZoom: (app._startMaxZoom ?? null) as number | null,
+    };
+}
+
+/**
  * Represents the GeoLeaf UI subsystem plus all feature module orchestration.
  * Runs after `config`, `core-map` (map available), `shared` (i18n ready) and `geojson`
  * (F0/S8: layers loaded by GeoJSONModule.init() before the theme applier at #20 runs —
@@ -67,8 +83,7 @@ export class UIModule implements ILifecycleModule {
             AppLog.error("[UIModule] Map not available — skipping UI init.");
             return;
         }
-        const profileBounds = (_app._profileBounds ?? null) as GeoLeafBounds | null;
-        const profilePadding = (_app._profilePadding ?? null) as RevealPadding | null;
+        const { startBounds, profilePadding, startMaxZoom } = readStartFraming(_app);
         const _permalinkCfg = (_app._permalinkCfg ?? {}) as PermalinkRuntimeConfig;
 
         const mapTarget = (cfg.map && (cfg.map.target || cfg.map.id)) || "geoleaf-map";
@@ -163,8 +178,9 @@ export class UIModule implements ILifecycleModule {
                 GeoLeaf,
                 map,
                 AppLog,
-                profileBounds,
+                startBounds,
                 profilePadding,
+                startMaxZoom,
                 permalinkCfg: _permalinkCfg,
             })
         );

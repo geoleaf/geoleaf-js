@@ -4,8 +4,8 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: c4ea8018b
-date: 7 octobre 2026
+verifie_contre: 83f3efeb7
+date: 11 octobre 2026
 ---
 
 # connector — l'authentification et l'injection de jeton

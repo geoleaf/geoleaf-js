@@ -124,10 +124,10 @@
                 },
                 "initialMaxZoom": {
                     "type": "number",
-                    "description": "Alias for maxZoom (legacy)."
+                    "description": "Ceiling on the zoom of the initial framing: a map that starts on an extent - `map.bounds`, or the `view.bounds` of the start theme - never frames closer than this zoom. Only a declared key caps. It caps neither the user's zoom (`maxZoom` does) nor a later theme switch, and has no effect when the map starts on a centre and a zoom."
                 },
                 "padding": {
-                    "description": "Map padding — array [vertical, horizontal] or object {top, right, bottom, left}.",
+                    "description": "Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}.",
                     "oneOf": [
                         {
                             "type": "array",
@@ -222,6 +222,11 @@
                     "type": "object",
                     "additionalProperties": true,
                     "description": "Read by @geoleaf-plugins/measure, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored."
+                },
+                "isochrone": {
+                    "type": "object",
+                    "additionalProperties": true,
+                    "description": "Read by @geoleaf-plugins/isochrone, whose README lists its keys. Neither the core nor the plugin reports a key it does not know: a misspelled key is silently ignored. ⚠️ A profile is a served file: no key of a routing engine is ever written here, neither in `endpoint` nor elsewhere — it is given at runtime."
                 },
                 "navigation": {
                     "type": "object",

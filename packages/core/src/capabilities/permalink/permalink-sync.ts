@@ -342,7 +342,9 @@ export function applyState(
                 document.addEventListener("geoleaf:theme:applied", _applyLayersAndFilter, {
                     once: true,
                 });
-                themeSelector.setTheme(state.theme).catch(() => {
+                // `keepView`: the view of the address was restored above, and it wins over the
+                // view the restored theme declares.
+                themeSelector.setTheme(state.theme, { keepView: true }).catch(() => {
                     // setTheme() failed — theme:applied may never fire; apply directly
                     document.removeEventListener("geoleaf:theme:applied", _applyLayersAndFilter);
                     _applyLayersAndFilter();

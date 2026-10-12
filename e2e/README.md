@@ -208,6 +208,12 @@ heure. Le relief reste déclaré : une spec peut encore l'activer.
   (`browser.newPage()`, `launchPersistentContext()`) démarre avec le relief, sauf appel de
   `turnReliefOff(context)` avant sa première navigation — c'est ce que fait `06` §6.2.10. La page
   de couverture de `07-boot-sequence` (`afterAll`) le garde exprès : elle mesure le boot réel.
+- ⚠️ Seul `default3D` est éteint. Un fond dont le relief suit l'inclinaison
+  (`terrain.activation: "pitch"`, le fond `satellite` du profil de démonstration) n'est pas
+  réécrit, et n'a pas à l'être : à plat il ne pose aucun relief et ne demande aucune tuile
+  d'altitude. Une spec qui INCLINE la carte sur un tel fond pose le relief — c'est le sujet de
+  `83-terrain-follows-pitch`, qui sert elle-même ses tuiles d'altitude
+  ([`helpers/dem-tile.js`](helpers/dem-tile.js)).
 - ⚠️ La réécriture se fait **dans la page**, pas par une route : une spec qui intercepte elle-même
   le bundle (`page.route` puis `route.fetch()`) contournerait une route posée avant la sienne.
   Mesuré : la réécriture d'une route de contexte n'atteignait plus la page. La réécriture dans la

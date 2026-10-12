@@ -433,6 +433,7 @@ const CLASS_C = [
     "packages/plugins/file-import/src/entry.ts::FileImportApi",
     "packages/plugins/flatgeobuf/src/entry.ts::FlatGeobufApi",
     "packages/plugins/geocoding/src/entry.ts::GeocodingApi",
+    "packages/plugins/isochrone/src/entry.ts::IsochroneApi",
     "packages/plugins/measure/src/entry.ts::MeasureApi",
     "packages/plugins/navigation/src/entry.ts::NavigationApi",
     "packages/plugins/position-share/src/entry.ts::PositionShareApi",
@@ -582,6 +583,26 @@ const ALLOWLIST = {
     // case could not observe a fresh registration. Production has no unregister path — the
     // protocol lives as long as the page — so no production caller will ever appear.
     "adapters/maplibre/maplibre-pmtiles.ts": ["_resetPmtilesProtocolForTests"],
+
+    // ── The terrain put on by the SELECTION of its basemap: its primitives, kept for the harness ──
+    //
+    // `activateTerrain`, `deactivateTerrain`, `isTerrainActive` and `resolveTerrainConfig` had
+    // the basemap strategies and the registry for callers. They no longer do: WHICH activation
+    // mode a basemap gets — by its selection, or by the tilt of the camera — is decided in one
+    // place, `syncTerrainToBasemap` of the same file, and the callers go through it and
+    // `suspendTerrainForStyleSwap`. The four are now reached from their own file only.
+    //
+    // They stay exported because `__tests__/basemaps/terrain.test.js` and the
+    // `__tests__/config/s12-basemaps-*` suites drive them directly — and those suites were left
+    // untouched on purpose when the second mode arrived: their staying green, unmodified, is the
+    // proof that the first mode did not change. De-exporting them would force those tests
+    // through the dispatcher, and that proof with them.
+    "kernel/basemaps/terrain.ts": [
+        "activateTerrain",
+        "deactivateTerrain",
+        "isTerrainActive",
+        "resolveTerrainConfig",
+    ],
 
     // ── A GUARD seam: a verdict no running page can reach ───────────────
     //

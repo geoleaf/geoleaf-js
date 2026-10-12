@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1673c0432
-date: 7 octobre 2026
+verifie_contre: 83f3efeb7
+date: 11 octobre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire

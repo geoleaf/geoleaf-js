@@ -13,7 +13,14 @@
  */
 
 import { normalizeTilesArray } from "./providers.js";
-import type { BasemapDefinition, BasemapRenderType, NativeMap } from "./basemaps-types.js";
+import type { StyleTransform } from "../../adapters/maplibre/maplibre-style-transform.js";
+import type {
+    BasemapDefinition,
+    BasemapRenderType,
+    NativeMap,
+    NativeStyleView,
+    StyleLandmarks,
+} from "./basemaps-types.js";
 
 // ─── Fixed IDs ───────────────────────────────────────────────────────────────
 
@@ -214,4 +221,51 @@ export function insertBelow(map: NativeMap, layerSpec: Record<string, unknown>):
     } else {
         map.addLayer(layerSpec);
     }
+}
+
+// ─── Style landmarks ─────────────────────────────────────────────────────────
+
+/**
+ * Reads the landmarks of a style: its first `symbol` layer and its last layer.
+ *
+ * @param style - A style spec, or the view `map.getStyle()` returns.
+ * @returns The landmarks; a key is absent when the style has no such layer.
+ */
+export function readStyleLandmarks(style: NativeStyleView | null | undefined): StyleLandmarks {
+    const layers = style?.layers ?? [];
+    const landmarks: StyleLandmarks = {};
+    const firstSymbolId = layers.find((layer) => layer.type === "symbol")?.id;
+    const lastLayerId = layers[layers.length - 1]?.id;
+    if (firstSymbolId) landmarks.firstSymbolId = firstSymbolId;
+    if (lastLayerId) landmarks.lastLayerId = lastLayerId;
+    return landmarks;
+}
+
+/**
+ * Wraps a style transform so that the INCOMING style is read as it passes — before the
+ * transform appends to it the layers carried over from the previous style.
+ *
+ * That moment is the only one where a basemap's own layers can be told apart: once the style is
+ * live, a carried `symbol` layer reads exactly like one of the basemap's.
+ *
+ * MapLibre runs a transform twice when it rebuilds a style instead of diffing it; the reading
+ * is the same both times.
+ *
+ * @param transform - The adapter's transform, or `null` when it gave none.
+ * @returns The transform to hand to `setStyle` — `null` when none was given, so that a plain
+ *   `setStyle` stays one —, and a reader of the landmarks: `null` until the transform has run.
+ */
+export function trackIncomingStyle(transform: StyleTransform | null): {
+    transform: StyleTransform | null;
+    landmarks: () => StyleLandmarks | null;
+} {
+    if (!transform) return { transform: null, landmarks: () => null };
+    let seen: StyleLandmarks | null = null;
+    return {
+        transform: (previous, incoming) => {
+            seen = readStyleLandmarks(incoming as NativeStyleView);
+            return transform(previous, incoming);
+        },
+        landmarks: () => seen,
+    };
 }

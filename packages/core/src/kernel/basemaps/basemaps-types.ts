@@ -85,11 +85,24 @@ export interface BasemapDefinition extends BasemapConfig {
 
 /**
  * A minimal MapLibre GL `Style`-like object as returned by `map.getStyle()`.
- * The registry only reads `layers` to find the first existing layer id (so the
- * basemap can be inserted below the data layers).
+ * The basemaps module only reads `layers`, in paint order: their ids, to insert the basemap
+ * below the data layers and the hillshade overlay next to the one it belongs with, and their
+ * `type`, to find the first `symbol` layer of a style.
  */
 export interface NativeStyleView {
-    layers?: Array<{ id?: string }>;
+    layers?: Array<{ id?: string; type?: string }>;
+}
+
+/**
+ * Where a vector basemap's OWN layers stand, read off its style before anything is carried over
+ * it. A hillshade overlay is placed by them: the live style cannot tell a layer of the basemap
+ * from one GeoLeaf — or a plugin — carried into it, and an id proves nothing of who owns it.
+ */
+export interface StyleLandmarks {
+    /** Id of the first `symbol` layer of the style, when it has one. */
+    firstSymbolId?: string;
+    /** Id of the last layer of the style, when it has any. */
+    lastLayerId?: string;
 }
 
 /**
@@ -99,6 +112,11 @@ export interface NativeStyleView {
  */
 export interface NativeSourceView {
     tiles?: string[];
+    /**
+     * The specification the source was added with. The terrain module compares it to the one a
+     * basemap asks for: `tiles` above is only set once the engine has loaded the source.
+     */
+    serialize?(): Record<string, unknown>;
     [key: string]: unknown;
 }
 
@@ -110,6 +128,8 @@ export interface NativeSourceView {
 export interface NativeMapErrorEvent {
     sourceId?: string;
     error?: { message?: string } | null;
+    /** The map the event was fired on — every engine event carries it. */
+    target?: NativeMap;
 }
 
 /**
@@ -129,11 +149,20 @@ export interface NativeMap {
     getStyle(): NativeStyleView | undefined;
     setStyle(style: unknown, options?: { diff?: boolean; transformStyle?: StyleTransform }): void;
     setTerrain(options: { source: string; exaggeration?: number } | null): void;
+    /** The terrain the map holds, or `null` — the engine resets it whenever it rebuilds a style. */
+    getTerrain(): { source: string; exaggeration?: number } | null;
     getFilter(layerId: string): unknown;
     setFilter(layerId: string, filter: unknown): void;
+    setLayoutProperty(layerId: string, name: string, value: unknown): void;
     easeTo(options: { pitch?: number; bearing?: number }): void;
     /** Posts the camera with NO animation — see `terrain.ts` on why the tilt cannot be animated. */
     jumpTo(options: { pitch?: number; bearing?: number }): void;
+    /** Camera tilt, in degrees. */
+    getPitch(): number;
+    /** Ceiling of the camera tilt, in degrees (`map.maxPitch` of the profile). */
+    getMaxPitch?(): number;
+    /** True while a gesture or a camera animation is in progress. */
+    isMoving(): boolean;
     loaded(): boolean;
     isStyleLoaded(): boolean;
     on(type: string, listener: (e: NativeMapErrorEvent) => void): unknown;

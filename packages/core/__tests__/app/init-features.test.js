@@ -141,6 +141,34 @@ describe("app/init-features (R5)", () => {
             expect(entry.minZoom).toBe(2);
             expect(entry.maxZoom).toBe(18);
         });
+        // A profile basemap reaches the registry through this function ONLY: a block it does
+        // not hand over never exists for the kernel, whatever the schema accepts.
+        it.each([
+            ["terrain", { enabled: true, demUrl: "https://dem.example.com/{z}/{x}/{y}.png" }],
+            ["wmts", { getCapabilitiesUrl: "https://wmts.example.com/caps.xml", layer: "plan" }],
+            ["hillshade", { demUrl: "https://dem.example.com/{z}/{x}/{y}.png", exaggeration: 0.4 }],
+            ["imageSource", { url: "https://img.example.com/a.png", coordinates: [] }],
+            ["wms", { url: "https://wms.example.com/ows", layers: "plan" }],
+        ])("transmet le bloc `%s` d'un fond de profil", (block, value) => {
+            const initFn = vi.fn();
+            const GeoLeaf = { BaseLayers: { init: initFn } };
+            const cfg = { basemaps: { fond: { id: "fond", label: "Fond", [block]: value } } };
+            initBasemaps({ GeoLeaf, cfg, map, AppLog });
+            const entry = initFn.mock.calls[0][0].baselayers.fond;
+            expect(entry[block]).toBe(value);
+        });
+        it("ne pose aucune clé pour un bloc que le fond ne déclare pas", () => {
+            // `registerBaseLayer` shallow-merges over a default of the same key: a key set to
+            // `undefined` would erase the block the default carried.
+            const initFn = vi.fn();
+            const GeoLeaf = { BaseLayers: { init: initFn } };
+            const cfg = { basemaps: { fond: { id: "fond", label: "Fond", url: "u" } } };
+            initBasemaps({ GeoLeaf, cfg, map, AppLog });
+            const entry = initFn.mock.calls[0][0].baselayers.fond;
+            for (const block of ["terrain", "wmts", "hillshade", "imageSource", "wms"]) {
+                expect(block in entry).toBe(false);
+            }
+        });
         it("warn si BaseLayers.init throw", () => {
             const GeoLeaf = {
                 BaseLayers: {

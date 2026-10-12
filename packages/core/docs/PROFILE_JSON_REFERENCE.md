@@ -370,13 +370,21 @@ This block illustrates the structure; it is not a reference. It shows neither ev
 
 ### `map` (object, recommended — not required)
 
-**Description:** Map initialisation settings: initial extent, zoom ceiling applied on load, and navigation restriction.
+**Description:** Map initialisation settings: the element that hosts the map, the initial extent, and navigation restriction.
 
 **Code usage:**
 
-- Read by `packages/core/src/app/boot-modules/core-map.module.ts` while the map is initialised
+- Read by `packages/core/src/app/boot-modules/core-map-lifecycle.ts` while the map is initialised
 
 - `bounds` feeds the initial `fitBounds()`, and serves as the `maxBounds` extent when `positionFixed` is enabled
+
+#### `map.target` (string, optional)
+
+Id of the HTML element that hosts the map, without `#`: it is resolved with `document.getElementById`, not as a CSS selector. Read by `GeoLeaf.boot()`; `GeoLeaf.mount()` hosts the map in the element it is given and does not read this key.
+
+- **Default:** `"geoleaf-map"`
+
+- **Alias:** `map.id`, read only when `target` is absent
 
 #### `map.bounds` (array, recommended — `bounds` **or** `center`)
 
@@ -388,23 +396,31 @@ Initial geographic extent, in the form `[[south, west], [north, east]]`, in WGS8
 
 ```
 
+::: info
+A theme may declare where it frames the map (`view`, in `themes.json` — see [`Files.themesFile`](#filesthemesfile-string-optional)). When the theme the profile starts on declares one, the map starts on that view instead of this extent. `bounds` keeps bounding the navigation when `positionFixed` is enabled.
+:::
+
 #### `map.initialMaxZoom` (integer, optional)
 
-Maximum zoom applied by `fitBounds()` at start-up. It does **not** cap the user's zoom — it only prevents the initial `fitBounds` from zooming too far into a small extent.
+Ceiling on the zoom of the **initial framing**. When the map starts on an extent — `map.bounds`, or the `view.bounds` of the theme the profile starts on — it never frames closer than this zoom: a small extent is shown from further away instead of filling the screen at street level.
 
-- **Default:** `12`
+- **Default:** none — only a declared key caps. A profile that does not declare it frames its extent as closely as the extent asks
 
-- **Possible values:** `1` to `20`
+- **It does not cap the user's zoom** — `map.maxZoom` does — **nor a later theme switch**: a theme that must open at a given zoom declares `view.center` and `view.zoom` rather than `view.bounds`
 
-- **Backwards compatibility:** the former name `maxZoom` is still read as a fallback
+- **Without effect** when the map starts on a centre and a zoom
+
+- It is also the zoom the map is created at, a moment before the framing replaces it; absent, `map.maxZoom` is read for that, then `12`
+
+- **Since 3.15.0.** Earlier versions read the key for the creation zoom only: it capped nothing
 
 ::: info
-This parameter replaces neither the `maxZoom` of the base maps (which governs tile availability) nor the MapLibre maximum zoom of the map itself.
+This parameter replaces neither the `maxZoom` of the base maps (which governs tile availability) nor `map.maxZoom`, the maximum zoom of the map itself.
 :::
 
 #### `map.padding` (array, optional)
 
-Padding in pixels, `[vertical, horizontal]`, applied to the initial `fitBounds()`. Keeps the extent off the container edges.
+Padding in pixels, `[horizontal, vertical]` — the first number is the left and right margin, the second the top and bottom one. Applied when the map is framed on `bounds` at start-up, and again each time a theme frames the map on the extent of its `view`. Keeps the extent off the container edges.
 
 - **Default:** `[50, 50]`
 
@@ -416,7 +432,7 @@ Restricts panning to the extent declared in `bounds`. The user cannot navigate f
 
 - **Performance benefit:** MapLibre does not request tiles outside the extent → fewer network requests
 
-- **Implementation:** uses `map.setMaxBounds()` with a margin configurable through `boundsMargin` (default 30%)
+- **Implementation:** the map is created with the engine's `maxBounds` option, with a margin configurable through `boundsMargin` (default 30%)
 
 - **Behaviour:** a rubber-band effect at the edges, not a hard wall
 
@@ -432,11 +448,9 @@ Additional margin around `bounds` when `positionFixed` is `true`. Controls how f
 
 #### `map.minZoom` (integer, optional)
 
-Minimum zoom when `positionFixed` is `true`. Prevents the user from zooming out far enough to see the rest of the world.
+Minimum zoom of the map. Prevents the user from zooming out far enough to see the rest of the world. Applied whether `positionFixed` is on or off.
 
-- **Default:** `3` (when `positionFixed` is `true`)
-
-- **Ignored** when `positionFixed` is `false`
+- **Default:** `3` when `positionFixed` is `true`; none otherwise
 
 ---
 
@@ -500,6 +514,29 @@ Minimum zoom when `positionFixed` is `true`. Prevents the user from zooming out 
 
 **Description:** Path to the themes file (layer visibility presets).
 
+**A theme may also frame the map.** A theme entry takes an optional `view`, written like the `map` block: an extent to fit (`bounds`, `[[south, west], [north, east]]`), or a point with its zoom (`center` as `[lat, lng]`, and `zoom`).
+
+```json
+{
+    "id": "north-sector",
+    "label": "North sector",
+    "type": "primary",
+    "layers": [{ "id": "cities", "visible": true }],
+    "view": {
+        "bounds": [
+            [43.2, 1.2],
+            [43.6, 1.6]
+        ]
+    }
+}
+```
+
+- **At start-up** the map opens on the view of the theme the profile starts on, when that theme declares one; otherwise on `map.bounds` (or `map.center` with `map.zoom`). A shared address that carries a view wins.
+- **On a switch**, activating a theme that declares a view moves the camera there, without animation and before its layers load. A theme without `view` leaves the camera where it is — to bring the map back to the whole profile, give that theme a `view` holding the profile's `bounds`.
+- Primary and secondary themes read the key alike. `bounds` wins when both forms are declared; a `center` without `zoom` is refused by the schema.
+- The navigation limit (`map.positionFixed`) and the padding (`map.padding`) stay the profile's. A theme view reaching outside the limit is pulled back inside it, and named in the console at start-up.
+- Themes read from a legacy root-level `themes.json`, fetched once the map exists, frame on activation only.
+
 **Code usage:**
 
 ```javascript
@@ -546,9 +583,16 @@ const layersUrl = `${baseUrl}/${profile.Files.layersFile}?t=${timestamp}`;
 
 #### `Files.featuresFile` (string, optional)
 
-**Description:** Path to the core features file (`clusteringConfig`,
-`performance`, `poiConfig`, `mapOptions` — geocoding moved to a plugin). Its contents are merged
-into the root of the consolidated profile, like `uiFile` and `basemapsFile`.
+**Description:** Path to the core features file. It holds `mapOptions` and nothing else — its
+schema is closed. Its contents are merged into the root of the consolidated profile, like
+`uiFile` and `basemapsFile`.
+
+`mapOptions` is a closed list, not a pass-through to the engine. One key today:
+
+- `mapOptions.preserveDrawingBuffer` (boolean, default `false`) — asks the engine to keep its
+  drawing buffer, which is what lets the map canvas be read back (an export, a capture). It has
+  a rendering cost, which is why it is off by default. When the print plugin is registered
+  before the map is created, the buffer is kept without declaring anything.
 
 **Possible values:** Relative path (layout v2: `"config/core/features.json"`)
 
@@ -1143,11 +1187,16 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 #### `basemaps.{id}.terrain` (object, optional)
 
-**Description:** 3D terrain configuration for this base map. When present with `enabled: true`, GeoLeaf loads a DEM (Digital Elevation Model) source and switches on MapLibre GL JS relief rendering. Works on both raster (`type: "tile"`) and vector (`type: "maplibre"`) base maps.
+**Description:** 3D terrain configuration for this base map. When present with `enabled: true`, GeoLeaf loads a DEM (Digital Elevation Model) source and switches on MapLibre GL JS relief rendering. Read whatever the type of the base map — tiles, vector style, WMS, WMTS or image.
 
 **Requires:** `terrain.enabled: true` and a valid `terrain.demUrl`
 
-**Example:**
+What puts the terrain ON is chosen by `activation`, and the two ways do not combine:
+
+- **the selection of the base map** (the default) — when `default3D` is true, the terrain is put on as the base map is selected, the camera is posted to `pitch` and `bearing`, and it is eased back flat when the base map is left;
+- **the tilt of the camera** (`activation: "pitch"`) — the terrain is absent while the map is flat, put on once the camera comes to rest tilted, and removed once it comes to rest flat again. The camera is never moved.
+
+**Example — a base map that opens in 3D:**
 
 ```json
 "terrain": {
@@ -1162,19 +1211,31 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
+**Example — a base map that opens flat, and gets its relief when tilted:**
+
+```json
+"terrain": {
+  "enabled": true,
+  "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+  "demEncoding": "terrarium",
+  "exaggeration": 1.5,
+  "activation": "pitch"
+}
+```
+
 **Added in:** v2.1.0
 
 **Status:** Active and functional
 
 ---
 
-#### `basemaps.{id}.terrain.enabled` (boolean, optional)
+#### `basemaps.{id}.terrain.enabled` (boolean, required in a `terrain` block)
 
-**Description:** Enables 3D terrain for this base map.
+**Description:** Enables 3D terrain for this base map. The schema refuses a `terrain` block that does not declare it; a base map with no `terrain` block has no terrain.
 
 **Possible values:** `true` | `false`
 
-**Default:** `false`
+**Default:** None (required)
 
 **Status:** Active and functional
 
@@ -1214,7 +1275,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 **Description:** Highest zoom level available in the DEM tiles. Above it, MapLibre reuses the highest available level.
 
-**Possible values:** Integer between `0` and `20`
+**Possible values:** Any number — the schema sets no bound. Give the highest zoom level the DEM service actually serves.
 
 **Default:** `15`
 
@@ -1226,7 +1287,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 **Description:** Vertical exaggeration factor of the relief. `1.0` renders true elevation; higher values accentuate the relief visually.
 
-**Possible values:** `1.0`–`3.0` (recommended: `1.5`)
+**Possible values:** `0.1`–`10` (recommended range: `1.0`–`3.0`)
 
 **Default:** `1.5`
 
@@ -1234,9 +1295,52 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 ---
 
+#### `basemaps.{id}.terrain.activation` (string, optional)
+
+**Description:** What puts the terrain on.
+
+- `"basemap"` — the selection of the base map does, when `default3D` is true. The camera is posted to `pitch` and `bearing`, and eased back flat when the base map is left.
+- `"pitch"` — the terrain follows the tilt of the camera. While the map is flat there is no terrain, and **no elevation tile is requested**: the elevation source is only declared the first time the terrain is put on. The terrain is put on once the camera comes to rest tilted to `activateFromPitch` or more, and removed once it comes to rest under `deactivateBelowPitch`; between the two it stays as it was.
+
+With `"pitch"`, the decision is taken when a movement **ends** — a gesture released, an animation finished —, never during it: the relief comes a moment after the tilt. Whatever tilts the camera counts, a guidance that follows a route included. The camera itself is never moved, neither when the terrain comes nor when the base map is left.
+
+The keys that describe the other way are **refused by the schema**, not ignored: `pitch`, `bearing` and `default3D: true` with `"pitch"`; the two thresholds without it. At runtime they are named in the log when the base map is registered, and not read.
+
+**Possible values:** `"basemap"` | `"pitch"`
+
+**Default:** `"basemap"`
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
+#### `basemaps.{id}.terrain.activateFromPitch` (number, optional)
+
+**Description:** With `activation: "pitch"` only. Tilt, in degrees, from which the terrain is put on when the camera comes to rest. Keep it at or under `map.maxPitch`: above it the terrain can never show, and a warning says so. A value that cannot be honoured is reported at start-up and replaced by the default.
+
+**Possible values:** Above `0`, at most `85`
+
+**Default:** `12`
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
+#### `basemaps.{id}.terrain.deactivateBelowPitch` (number, optional)
+
+**Description:** With `activation: "pitch"` only. Tilt, in degrees, under which the terrain is removed when the camera comes to rest. It must be lower than `activateFromPitch`: with one threshold for both, a camera that stops around it would put the terrain on and off at every movement. The schema cannot express that rule — a value that breaks it is reported at start-up and replaced by the default.
+
+**Possible values:** `0`–`85`, lower than `activateFromPitch`
+
+**Default:** Half of `activateFromPitch` — `6` with the default threshold
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
 #### `basemaps.{id}.terrain.default3D` (boolean, optional)
 
-**Description:** Turns 3D terrain on as soon as this base map is selected. No UI toggle is required: terrain is enabled when switching to this base map, and disabled when switching to a base map without terrain.
+**Description:** Turns 3D terrain on as soon as this base map is selected. No UI toggle is required: terrain is enabled when switching to this base map, and disabled when switching to a base map without terrain. Without it — and without `activation: "pitch"`, the only other thing that puts a terrain on — an enabled terrain is never drawn. Not read with `activation: "pitch"`, where `true` is refused by the schema.
 
 **Possible values:** `true` | `false`
 
@@ -1248,7 +1352,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 #### `basemaps.{id}.terrain.pitch` (number, optional)
 
-**Description:** Initial camera pitch (in degrees) applied when 3D terrain is enabled. Applied on switching to this base map when `default3D: true`.
+**Description:** Camera pitch (in degrees) posted when the terrain is put on by the selection of the base map, that is when `default3D: true`. Refused by the schema with `activation: "pitch"`, which never moves the camera.
 
 **Possible values:** `0`–`85` (must be ≤ `map.maxPitch`)
 
@@ -1260,9 +1364,9 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 #### `basemaps.{id}.terrain.bearing` (number, optional)
 
-**Description:** Initial view rotation (in degrees, clockwise from north) applied when 3D terrain is enabled.
+**Description:** View rotation (in degrees, clockwise from north) posted when the terrain is put on by the selection of the base map. Refused by the schema with `activation: "pitch"`, which never moves the camera.
 
-**Possible values:** `0`–`359`
+**Possible values:** `-180`–`180`
 
 **Default:** `0` (north up)
 
@@ -1333,9 +1437,12 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 #### `basemaps.{id}.hillshade` (object, optional)
 
-**Description:** Hillshade (relief shading) configuration. Required when `type: "hillshade"`.
+**Description:** Relief shading (hillshade), drawn from a raster-dem elevation source. The block is read in two ways:
 
-**Example:**
+- on a basemap of `type: "hillshade"` the shading **is** the basemap, and the block is required;
+- on a basemap of any other type it is read only when `overlay` is `true`, and is then drawn **over** that basemap, which stays what it is. Without `overlay`, the block is ignored there.
+
+**Example — the shading as the basemap:**
 
 ```json
 {
@@ -1351,13 +1458,90 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 }
 ```
 
-> **Note:** if a `terrain-dem` DEM source (3D terrain) is already present with the same `demUrl`, GeoLeaf reuses it instead of creating a second one.
+> **Note:** on `type: "hillshade"`, if a `terrain-dem` DEM source (3D terrain) is already present with the same `demUrl`, GeoLeaf reuses it instead of creating a second one. An overlay never does — see `overlay`.
 
-**Status:** Active and functional (since v2.1.0)
+**Example — the shading as an overlay of a vector basemap that also has 3D terrain:**
+
+```json
+{
+    "basemaps": {
+        "plan-relief": {
+            "id": "plan-relief",
+            "label": "Plan with relief",
+            "type": "maplibre",
+            "style": "https://tiles.openfreemap.org/styles/liberty",
+            "attribution": "© OpenFreeMap © OpenMapTiles © OpenStreetMap",
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "default3D": true,
+                "pitch": 60
+            },
+            "hillshade": {
+                "overlay": true,
+                "beforeLayer": "waterway_tunnel",
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "demEncoding": "terrarium",
+                "exaggeration": 0.45,
+                "shadowColor": "#4a3f35",
+                "highlightColor": "#ffffff",
+                "accentColor": "#6b5d4f"
+            }
+        }
+    }
+}
+```
+
+**Status:** Active and functional (since v2.1.0; as an overlay since v3.15.0)
 
 ---
 
-#### `basemaps.{id}.hillshade.demUrl` (string, required when type="hillshade")
+#### `basemaps.{id}.hillshade.overlay` (boolean, optional)
+
+**Description:** Draws the shading as an overlay of this basemap instead of leaving the block unread. An image basemap (tiles, WMS, WMTS, georeferenced image) gets it right above its own layer, under every data layer; a vector basemap gets it inside its style — see `beforeLayer`. Ignored on `type: "hillshade"`, whose shading is the basemap itself.
+
+The overlay follows the basemap: it is put back after every style change, and removed when the active basemap declares none. It reads a raster-dem source of its own, apart from the one of `terrain`: with both on one basemap the same `demUrl` is requested twice, for a shading one zoom level finer than a shared source would give.
+
+**Possible values:** `true` | `false`
+
+**Default:** `false`
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
+#### `basemaps.{id}.hillshade.onlyWithTerrain` (boolean, optional)
+
+**Description:** Overlay only. The shading is shown only while a 3D terrain is on the map, and hidden the rest of the time. Hidden, it requests no elevation tile.
+
+It is what makes a base map with a relief that follows the tilt (`terrain.activation: "pitch"`) leave a flat map exactly as it is: no terrain, no shading, no elevation tile — and both once the map is tilted. With a terrain put on by the selection of its base map, the overlay shows as long as that base map is active.
+
+On a base map without an enabled `terrain` the overlay never shows, and a warning says so at start-up. Without this key the overlay is always drawn, flat map included. Ignored without `overlay`.
+
+**Possible values:** `true` | `false`
+
+**Default:** `false`
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
+#### `basemaps.{id}.hillshade.beforeLayer` (string, optional)
+
+**Description:** Vector basemap only. Id of the layer of the basemap's style the overlay is inserted before. Name the first layer that must stay above the shading — typically the first water or road layer — so that the shading covers the land fills and stays under water, roads and labels. In OpenFreeMap's "liberty" style that layer is `waterway_tunnel`.
+
+Absent, or naming a layer the style does not have (a warning is then logged), the overlay goes before the first `symbol` layer of the style. That keeps the labels readable, but shades whatever the style draws under them, water and roads included. Not read on an image basemap.
+
+**Possible values:** The id of a layer of the basemap's style
+
+**Default:** None — the overlay goes before the first `symbol` layer of the style
+
+**Status:** Active and functional (since v3.15.0)
+
+---
+
+#### `basemaps.{id}.hillshade.demUrl` (string, required when type="hillshade" or when `overlay` is true)
 
 **Description:** URL template of the raster-dem Digital Elevation Model.
 
@@ -1373,7 +1557,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 **Description:** Encoding of the elevation inside the DEM image.
 
-**Possible values:** `"terrarium"` | `"mapbox"` | `"custom"`
+**Possible values:** `"terrarium"` | `"mapbox"`
 
 **Default:** `"terrarium"`
 
@@ -1385,7 +1569,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 **Description:** Maximum zoom level of the DEM source.
 
-**Possible values:** Integer between 1 and 20
+**Possible values:** Any number — the schema sets no bound
 
 **Default:** `15`
 
@@ -2031,6 +2215,8 @@ geoleaf.config.json                           ← Global application configurati
 - Map themes
 
 - Alternative style configurations (per theme)
+
+- The view each theme frames the map on (`view`)
 
 #### **layers.json**
 

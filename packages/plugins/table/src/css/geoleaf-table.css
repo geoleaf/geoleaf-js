@@ -349,6 +349,13 @@
     background: rgba(249, 115, 22, 0.15);
 }
 
+/* A row takes the focus so that Enter can activate it. The ring is drawn inside: the
+   wrapper clips whatever overflows the table. */
+.gl-table-panel__table tbody tr[data-feature-id]:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, var(--gl-color-accent));
+    outline-offset: -2px;
+}
+
 /* Checkboxes */
 .gl-table-panel__checkbox-all,
 .gl-table-panel__checkbox {

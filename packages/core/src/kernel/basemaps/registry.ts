@@ -19,6 +19,9 @@ import {
     _activeKey,
     _activeType,
     _wmtsAbort,
+    _landedStyleKey,
+    _landedStyleLandmarks,
+    _setLandedStyleKey,
     _setMap,
     _setActiveKey,
     _setActiveType,
@@ -34,10 +37,16 @@ import {
     _handleTerrainOnSyncSwitch,
     _applySyncBasemapByType,
 } from "./basemaps-strategies.js";
-import { activateTerrain, resolveTerrainConfig } from "./terrain.js";
+import { resetTerrain, syncTerrainToBasemap, validateTerrainConfig } from "./terrain.js";
+import {
+    removeHillshadeOverlay,
+    resolveHillshadeOverlay,
+    syncHillshadeOverlay,
+} from "./hillshade.js";
 import {
     _resolveBasemapType,
     _trySwitchByTiles,
+    declaredAttribution,
     BASEMAP_SOURCE_ID,
     BASEMAP_LAYER_ID,
 } from "./basemaps-apply.js";
@@ -243,7 +252,11 @@ export function registerBaseLayer(key: string, definition: BasemapDefinition) {
 
     // Validate terrain config at registration time (boot-time warnings/errors)
     if (merged.terrain?.enabled) {
-        resolveTerrainConfig(merged, actualKey);
+        validateTerrainConfig(merged, actualKey);
+    }
+    // Same for a hillshade overlay: one that cannot be drawn is said here, not at first use.
+    if (merged.hillshade?.overlay) {
+        resolveHillshadeOverlay(merged, actualKey);
     }
 }
 
@@ -297,6 +310,9 @@ function _finishSyncSwitch(
 ): void {
     _setActiveKey(key);
     Log.info("[GeoLeaf.Baselayers] Active basemap:", key);
+    // The landmarks only matter to a vector basemap, which reaches this function through the
+    // shared-style switch alone: they are those of the style the map already holds.
+    if (_map) syncHillshadeOverlay(_map, definition, key, _landedStyleLandmarks);
     _handleTerrainOnSyncSwitch(key, definition);
     if (!options.silent) _dispatchBasemapChange(key, previousKey, definition);
 }
@@ -333,9 +349,63 @@ function _applySyncRasterSwitch(
         _applySyncBasemapByType(nativeMap, definition);
     } catch (e) {
         Log.error("[GeoLeaf.Baselayers] Cannot apply basemap:", e);
+        // The slot is empty: the previous basemap's overlay has nothing left under it.
+        removeHillshadeOverlay(nativeMap);
         return;
     }
     _finishSyncSwitch(key, previousKey, definition, options);
+}
+
+/** A style as two definitions can be compared by: its URL, or its content when given inline. */
+function _styleIdentity(definition: BasemapDefinition): string | null {
+    const style: unknown = definition.style;
+    if (style === undefined || style === null) return null;
+    return typeof style === "string" ? style : JSON.stringify(style);
+}
+
+/**
+ * True when `next` draws the very style the map already holds for the active basemap: same
+ * `style`, same declared credit, and that style has LANDED — not merely been asked for.
+ *
+ * The credit is part of the test because it travels in the incoming style: two basemaps that
+ * differ by it do need a `setStyle`.
+ */
+function _sharesLandedStyle(
+    previousKey: string | null,
+    next: BasemapDefinition,
+    targetType: string
+): boolean {
+    if (targetType !== "vector" || !previousKey || _landedStyleKey !== previousKey) return false;
+    const previous = _baseLayers[previousKey]?.definition;
+    const identity = previous ? _styleIdentity(previous) : null;
+    if (!previous || identity === null) return false;
+    return (
+        identity === _styleIdentity(next) &&
+        declaredAttribution(previous) === declaredAttribution(next)
+    );
+}
+
+/**
+ * Switches between two vector basemaps that share one style, WITHOUT asking the engine for it.
+ *
+ * Asking would not work: the diff between the live style and the same style holds no operation,
+ * and MapLibre then returns before it fires `style.load` — the handler that finishes a style
+ * change never ran, so the selector showed the new basemap while its relief and
+ * `geoleaf:basemap:change` never came. There is nothing to load, hence nothing to wait for: what
+ * differs between the two basemaps is what `_finishSyncSwitch` applies.
+ * @internal
+ */
+function _applySameStyleSwitch(
+    definition: BasemapDefinition,
+    key: string,
+    previousKey: string | null,
+    options: SetBaseLayerOptions
+): void {
+    _nextStyleGeneration();
+    // Read before the switch: the landmarks belong to the style, which stays.
+    const landmarks = _landedStyleLandmarks;
+    _finishSyncSwitch(key, previousKey, definition, options);
+    _setLandedStyleKey(key, landmarks);
 }
 
 /**
@@ -343,7 +413,9 @@ function _applySyncRasterSwitch(
  *
  * The switch takes one of two paths depending on the target: raster→raster mutates the
  * current style in place (a WMTS basemap fetches its GetCapabilities first), while anything
- * involving a vector basemap goes through a full `setStyle()`. Either way the work is
+ * involving a vector basemap goes through a full `setStyle()` — except between two vector
+ * basemaps that share one style and one credit, where the style already on the map is kept and
+ * only what differs between them is applied. Either way the work is
  * **deferred until the style is loaded** — re-tested on `styledata`, `sourcedata` and `idle`,
  * never on the one-shot `load` —, so the active key is not guaranteed to have changed by the
  * time this returns.
@@ -401,8 +473,9 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
     // Measured on the public nightly E2E run 35580569108 (21/09/2026), `tourism`, 43 layers and
     // third-party tiles: no `idle` at boot at all. The run's first one was provoked ~20 s later
     // by the user's own first gesture — and the basemap, applied at last, tilted the camera to
-    // `pitch: 60` through `terrain.default3D` IN THE MIDDLE OF THAT GESTURE (see `terrain.ts`,
-    // `map.easeTo`). The drag was lost and the edit persisted an unmoved geometry.
+    // `pitch: 60` through `terrain.default3D` IN THE MIDDLE OF THAT GESTURE (see
+    // `_applyTerrainToMap` in `terrain.ts` — animated then, posted at once since). The drag was
+    // lost and the edit persisted an unmoved geometry.
     //
     // 🛑 AND NOT `styledata` ALONE — the correction this replaces, measured wrong on
     // `deploy-full`/`tourism` at boot, with no interaction:
@@ -449,7 +522,9 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
     const definition = _baseLayers[key].definition;
     const targetType = _resolveBasemapType(definition);
 
-    if (targetType === "vector" || _activeType === "vector") {
+    if (_sharesLandedStyle(previousKey, definition, targetType)) {
+        _applySameStyleSwitch(definition, key, previousKey, options);
+    } else if (targetType === "vector" || _activeType === "vector") {
         _applyViaStyleChange(_map, definition, targetType, key, previousKey, options);
     } else if (definition.type === "wmts") {
         _removeCurrentBasemap();
@@ -470,6 +545,15 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
  * - no basemap is considered active (`_activeKey` is null)
  * - the active basemap is vector (managed by `setStyle`, not this path)
  * - the basemap source is already present in the style
+ * - the active basemap is a WMTS one whose GetCapabilities is still resolving: the resolution
+ *   builds the source when it lands
+ *
+ * A WMTS basemap whose source is gone is resolved again rather than re-applied as it stands —
+ * so it comes back asynchronously, where every other raster type comes back before this returns.
+ *
+ * The active basemap's hillshade overlay and terrain are checked along with it, and put back
+ * when they went missing. The camera is left where the visitor put it: a refresh never posts
+ * the basemap's `pitch` and `bearing` again.
  *
  * Does NOT emit `geoleaf:basemap:change` — this is an internal re-apply, not a
  * user-visible basemap change.
@@ -481,14 +565,24 @@ export function refreshBasemap(): void {
     const entry = _baseLayers[_activeKey];
     if (!entry) return;
 
+    // A WMTS definition carries no tile URL: the one its GetCapabilities resolved to is not kept.
+    // Re-applying the definition as it stands built a raster source with NO tile at all — and,
+    // during a resolution, took the slot that resolution was about to fill: its own `addSource`
+    // then threw on the id, and the basemap stayed empty.
+    if (entry.definition.type === "wmts") {
+        if (_wmtsAbort === null) {
+            Log.info("[GeoLeaf.Baselayers] refreshBasemap: resolving WMTS again:", _activeKey);
+            _applyWmtsBasemap(_map, entry.definition, _activeKey, _activeKey, { silent: true });
+        }
+        return;
+    }
+
     Log.info("[GeoLeaf.Baselayers] refreshBasemap: source absent, re-applying:", _activeKey);
     try {
         _removeCurrentBasemap();
         _applySyncBasemapByType(_map, entry.definition);
-        const terrainConfig = resolveTerrainConfig(entry.definition, _activeKey);
-        if (terrainConfig?.default3D) {
-            activateTerrain(_map, terrainConfig, _activeKey);
-        }
+        syncHillshadeOverlay(_map, entry.definition, _activeKey);
+        syncTerrainToBasemap(_map, entry.definition, _activeKey);
     } catch (e) {
         Log.error("[GeoLeaf.Baselayers] refreshBasemap failed:", e);
     }
@@ -510,7 +604,8 @@ export function getBaseLayers() {
 
 /**
  * Forgets everything the registry learnt about the map an application tears down: the map, the
- * active basemap, the registered definitions, and any activation still deferred on that map.
+ * active basemap, the registered definitions, any activation still deferred on that map, and
+ * the relief the terrain manager held on it.
  *
  * Called when an application is unmounted (`UIModule.destroy()`). Without it the next map got
  * NO basemap: the active key survived, and {@link setBaseLayer} returns early on the key that is
@@ -526,6 +621,10 @@ export function resetBasemapRegistry(): void {
     _setWmtsAbort(null);
     _setActiveKey(null);
     _setActiveType(null);
+    _setLandedStyleKey(null);
+    // The relief goes with the map: left for active, it made the next map's first basemap
+    // "leave" a relief that map never had, and flatten its camera doing so.
+    resetTerrain();
     _setMap(null);
     for (const key of Object.keys(_baseLayers)) delete _baseLayers[key];
 }
@@ -534,6 +633,7 @@ export function resetBasemapRegistry(): void {
 export function _resetStateForTesting(): void {
     _setActiveKey(null);
     _setActiveType(null);
+    _setLandedStyleKey(null);
     _wmtsAbort?.abort();
     _setWmtsAbort(null);
 }

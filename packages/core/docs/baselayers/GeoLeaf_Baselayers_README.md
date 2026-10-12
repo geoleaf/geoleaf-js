@@ -51,6 +51,7 @@ The module exposes:
 - `GeoLeaf.Baselayers.getActiveId()` — alias of `getActiveKey()`
 - `GeoLeaf.Baselayers.getActiveLayer()` — returns the configuration object of the active basemap
 - `GeoLeaf.Baselayers.getBaseLayers()` — returns the whole registry
+- `GeoLeaf.Baselayers.refreshBasemap()` — puts the active raster basemap back when its source was lost from the style without a basemap switch; its hillshade overlay and its terrain are checked along with it. No effect on a vector basemap or when the source is still there; a WMTS basemap comes back asynchronously. The camera is not moved, and `geoleaf:basemap:change` is not emitted
 - `GeoLeaf.Baselayers.destroy()` — removes the UI and releases the resources
 
 ---
@@ -147,6 +148,80 @@ Basemaps are defined in `profiles/{id}/basemaps.json`:
 
 > **maplibre type**: when `type: "maplibre"`, the `style` property points to a MapLibre GL JSON style file. The `url` property (or `fallbackUrl`) is used as a raster fallback when the MapLibre style cannot be loaded.
 
+### 4.2 Relief: terrain and shading
+
+Two optional blocks give a basemap its relief, and they answer two different questions:
+
+| Block       | What it does                                                                                                                                  |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `terrain`   | Drapes the map over an elevation source. Put on when the basemap is selected (`default3D`), or when the map is tilted (`activation: "pitch"`) |
+| `hillshade` | Draws the shadows of that relief. The basemap itself on `type: "hillshade"`; an overlay of any other basemap when `hillshade.overlay` is true |
+
+A vector basemap with `terrain` alone shows slopes as flat colours. Add the shading as an overlay:
+
+```json
+{
+    "basemaps": {
+        "plan-relief": {
+            "id": "plan-relief",
+            "label": "Plan with relief",
+            "type": "maplibre",
+            "style": "https://tiles.openfreemap.org/styles/liberty",
+            "attribution": "© OpenFreeMap © OpenMapTiles © OpenStreetMap",
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "default3D": true,
+                "pitch": 60
+            },
+            "hillshade": {
+                "overlay": true,
+                "beforeLayer": "waterway_tunnel",
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "exaggeration": 0.45
+            }
+        }
+    }
+}
+```
+
+- **Position.** On an image basemap (tiles, WMS, WMTS) the overlay sits right above the basemap's layer, under the data layers. On a vector basemap it is inserted before the style layer `hillshade.beforeLayer` names; without it, or when the style has no such layer, before the style's first `symbol` layer — labels stay readable, water and roads are shaded.
+- **Lifecycle.** The overlay follows the basemap: put back after every style change, removed when the active basemap declares none, left untouched when the next basemap asks for the same one.
+- **Sources.** The overlay reads a raster-dem source of its own, never the terrain's: the same `demUrl` is requested twice, and the shading is one zoom level finer than a shared source would give.
+- **Offline.** Elevation tiles are not part of the offline preparation: a basemap prepared for offline use is drawn without its relief when the network is gone.
+
+A basemap can also open flat and get its relief only when the map is tilted:
+
+```json
+{
+    "basemaps": {
+        "satellite": {
+            "id": "satellite",
+            "label": "Satellite",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri",
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "activation": "pitch"
+            },
+            "hillshade": {
+                "overlay": true,
+                "onlyWithTerrain": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "exaggeration": 0.45
+            }
+        }
+    }
+}
+```
+
+- **Following the tilt.** With `terrain.activation: "pitch"` there is no terrain while the map is flat, and no elevation tile is requested. The terrain is put on once the camera comes to rest tilted to `activateFromPitch` (12° by default) or more, and removed once it comes to rest under `deactivateBelowPitch` (half of it by default). The decision is taken when a movement ends, never during it.
+- **Camera.** In that mode the camera is never moved — neither when the terrain comes, nor when another basemap is selected. `pitch`, `bearing` and `default3D: true` describe the activation by selection; the schema refuses them next to `activation: "pitch"`.
+- **Shading with the terrain.** `hillshade.onlyWithTerrain` shows the overlay only while a terrain is on the map. Hidden, it requests no tile: with both keys, a flat map is exactly what it would be without either block.
+
+The full list of `hillshade` and `terrain` keys is in the [profile JSON reference](../PROFILE_JSON_REFERENCE.md).
+
 > **Offline preparation**: `offline: true` makes the basemap downloadable over `offlineBounds` and the
 > cache zooms. Tiles from an origin other than the application's own are only downloaded when that
 > origin is declared `cacheable: true` and `prefetch: true` in `modules.offline.dataOrigins` — declare
@@ -195,9 +270,8 @@ GeoLeaf.Baselayers.setBaseLayer("street");
 ### 6.1 Behaviour
 
 - Checks that the key exists in the registry.
-- Unmounts the active basemap, when there is one.
-- Creates a new MapLibre instance from the definition.
-- Attaches the new layer to the map.
+- Replaces the active basemap, when there is one: a raster basemap swaps its source and layer, a vector one swaps the map's style.
+- Puts back, after the basemap, what follows it: its hillshade overlay and its terrain.
 - Updates `_activeKey`.
 
 ### 6.2 Error handling

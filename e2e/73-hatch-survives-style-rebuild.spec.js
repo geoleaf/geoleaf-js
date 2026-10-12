@@ -25,12 +25,12 @@
  * fixtures, same-origin: no third party decides the verdict.
  */
 
-import { deflateSync, crc32 } from "node:zlib";
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { armAppReadyWitness, waitAppReadyWitness } from "./helpers/boot.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 import { awaitSettledCamera } from "./helpers/camera.js";
+import { flatDemTile } from "./helpers/dem-tile.js";
 
 test.use({ baseURL: baseURL("full"), serviceWorkers: "block" });
 
@@ -90,34 +90,6 @@ const CASES = [
         }),
     },
 ];
-
-/** A PNG chunk: length, type, data, CRC over type and data. */
-function pngChunk(type, data) {
-    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length);
-    const crc = Buffer.alloc(4);
-    crc.writeUInt32BE(crc32(body));
-    return Buffer.concat([length, body, crc]);
-}
-
-/** A flat 256 px elevation tile: Terrarium encodes sea level as RGB (128, 0, 0). */
-function flatDemTile() {
-    const size = 256;
-    const header = Buffer.alloc(13);
-    header.writeUInt32BE(size, 0);
-    header.writeUInt32BE(size, 4);
-    header.set([8, 2, 0, 0, 0], 8); // 8-bit, truecolour, no interlace
-    const row = Buffer.alloc(1 + size * 3);
-    for (let x = 0; x < size; x++) row[1 + x * 3] = 128;
-    const pixels = Buffer.concat(Array.from({ length: size }, () => row));
-    return Buffer.concat([
-        Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-        pngChunk("IHDR", header),
-        pngChunk("IDAT", deflateSync(pixels)),
-        pngChunk("IEND", Buffer.alloc(0)),
-    ]);
-}
 
 const DEM_TILE = flatDemTile();
 

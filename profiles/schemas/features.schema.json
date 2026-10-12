@@ -14,7 +14,11 @@
             "additionalProperties": false,
             "patternProperties": { "^_comment": {} },
             "properties": {
-                "preserveDrawingBuffer": { "type": "boolean" }
+                "preserveDrawingBuffer": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Asks the engine to keep its drawing buffer, which lets the map canvas be read back (an export, a capture). It has a rendering cost. Kept without this key when the print plugin is registered before the map is created."
+                }
             }
         }
     }

@@ -36,6 +36,9 @@ import { asObject } from "../../utils/general/type-guards.js";
 /**
  * Applies the active profile's default theme once at boot, when themes exist.
  * The selector no longer applies it (F2) — this is the single boot apply.
+ *
+ * It applies the theme's layers and leaves the camera alone: where the map starts — the view
+ * that theme declares, or the profile extent — is decided when the map is created.
  */
 export class ThemeEngineModule implements ILifecycleModule {
     readonly id = "theme-engine" as const;
@@ -69,7 +72,11 @@ export class ThemeEngineModule implements ILifecycleModule {
             // and after every `geojson`-freed module). Also on a profile whose `themes` has no
             // `defaultTheme`: the loader resolved `themes[0]` above, and this apply reveals
             // before the boot's own release (`releaseThemelessReveal`), which is then a no-op.
-            await ThemeApplierCore.applyTheme(theme as ThemeConfig);
+            //
+            // `keepView`: the boot frames the start itself. `core-map` creates the map on this
+            // theme's view when the profile carries its themes, and the reveal re-fits it.
+            // Framing here would also undo the view a page address carries.
+            await ThemeApplierCore.applyTheme(theme as ThemeConfig, { keepView: true });
         } catch (e) {
             // init() MUST NOT reject — a rejection aborts the ModuleRegistry chain.
             AppLog?.warn?.("[ThemeEngine] Default theme apply failed (non-fatal):", e);
@@ -78,10 +85,11 @@ export class ThemeEngineModule implements ILifecycleModule {
 
     /**
      * Resets the theme applier for the next application: its pending timer, the theme it applied
-     * and its first-load flag. Without the flag, the map of an application mounted again was
-     * never fitted to its theme's layers — the fit runs on the first apply only. The layers
-     * themselves go with the GeoJSON state, torn down by the GeoJSON module and the lifecycle
-     * seam.
+     * and its first-load flag. The flag only arms the legacy fit on the layers' bounds at the
+     * first apply, and a constant keeps that fit off (`enableFitBounds`,
+     * `theme-applier/core.ts`): resetting it keeps a second mount identical to a first one. The
+     * layers themselves go with the GeoJSON state, torn down by the GeoJSON module and the
+     * lifecycle seam.
      */
     destroy(): void {
         ThemeApplierCore._cleanup();

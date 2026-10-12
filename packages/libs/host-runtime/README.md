@@ -17,6 +17,9 @@ here now, under `src/ui/`.
 
 ## API
 
+The main entries are described below. The list is not exhaustive: `src/index.ts` is the
+reference for what the package exports.
+
 ### Host access
 
 - `getGeoLeaf(): GeoLeafHost | undefined` — the namespace, or `undefined` before boot.

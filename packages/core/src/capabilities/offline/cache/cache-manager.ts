@@ -11,7 +11,11 @@
  * @version 3.0.0
  */
 
-import type { TilePreparationTrace } from "../../../contracts/sync.contract.js";
+import type {
+    CacheProfileOptions,
+    CacheProfileResult,
+    TilePreparationTrace,
+} from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { Downloader } from "./downloader.js";
 import { ResourceEnumerator } from "./resource-enumerator.js";
@@ -20,7 +24,7 @@ import { CacheStorage } from "./storage.js";
 import { formatFileSize } from "../../../utils/general/formatters.js";
 import { IndexedDB } from "../db/indexeddb.js";
 import { evictToQuota } from "../db/eviction.js";
-import { pullDeclaredLayers, type DeclaredPullReport } from "./pull-declared-layers.js";
+import { pullDeclaredLayers } from "./pull-declared-layers.js";
 import { prefetchOptionLists } from "../options/option-lists.js";
 
 /**
@@ -61,36 +65,8 @@ interface CacheManagerConfig {
     [key: string]: unknown;
 }
 
-interface CacheProfileOptions {
-    onProgress?: (progress: unknown) => void;
-    selection?: unknown;
-}
-
-interface CacheResult {
-    cached?: string[];
-    urls?: string[];
-    failedUrls?: string[];
-    failedDownloads?: string[];
-    totalSize?: number;
-    duration?: number;
-    error?: string;
-    profileId?: string;
-    /**
-     * One entry per layer whose entities were pulled — see `pull-declared-layers.ts`.
-     *
-     * ⚠️ **Absent, not empty, when nothing declared a source.** A caller can then tell
-     * "this profile pulls no entities" from "the pull was attempted and wrote nothing",
-     * which is the same distinction the sync report exists for one level down.
-     */
-    pulledLayers?: DeclaredPullReport[];
-    /** What the preparation asked for, and what it left out — kept in the manifest. */
-    preparation?: TilePreparationTrace;
-    /**
-     * True when « Stop » was pressed during this download. What was stored before the stop
-     * stays; a pull under way ended at its page and removed nothing.
-     */
-    cancelled?: boolean;
-}
+/** The façade's contract, read here too — one declaration for both sides. */
+type CacheResult = CacheProfileResult;
 
 interface EnumerateResource {
     type?: string;

@@ -50,7 +50,7 @@ export const Permalink = {
      * Initialise the Permalink module with the config extracted from the active profile.
      * Must be called before `readAndStore()`.
      *
-     * @param config - Permalink section of `ui.permalink` or an empty object.
+     * @param config - The profile's `modules.permalink` block, or an empty object.
      *
      * @example
      * ```js

@@ -47,6 +47,15 @@ interface ThemeSelectorInitOptions {
     secondaryContainer?: HTMLElement | null;
 }
 
+/** Options accepted by `ThemeSelector.setTheme`. */
+interface SetThemeOptions {
+    /**
+     * Applies the theme without moving the camera, even when it declares a view — for a caller
+     * that sets a view of its own alongside the theme.
+     */
+    keepView?: boolean;
+}
+
 /** Validated themes config returned by `ThemeLoader.loadThemesConfig`. */
 interface LoadedThemesConfig {
     config: ThemeSelectorConfig;
@@ -184,11 +193,15 @@ const ThemeSelector = {
     },
 
     /**
-     * Activates a theme by its ID
+     * Activates a theme by its ID. A theme that declares a `view` moves the camera to it before
+     * its layers load; a theme that declares none leaves the camera where it is.
      * @param {string} themeId - ID of the theme
+     * @param {Object} [options] - Activation options
+     * @param {boolean} [options.keepView] - Leaves the camera where it is, even when the theme
+     *   declares a view
      * @returns {Promise<void>}
      */
-    setTheme(themeId: string | null): Promise<void> {
+    setTheme(themeId: string | null, options: SetThemeOptions = {}): Promise<void> {
         if (!_state.initialized) {
             return Promise.reject(new Error("ThemeSelector not initialized"));
         }
@@ -203,7 +216,11 @@ const ThemeSelector = {
         // Apply the theme
         // `theme` (loader's NormalizedTheme) and the applier's ThemeConfig describe the
         // same entity; their `layers` element types differ (unknown[] vs ThemeLayerConfig[]).
-        return ThemeApplierCore.applyTheme(theme as ThemeConfig)
+        const applied =
+            options.keepView === true
+                ? ThemeApplierCore.applyTheme(theme as ThemeConfig, { keepView: true })
+                : ThemeApplierCore.applyTheme(theme as ThemeConfig);
+        return applied
             .then(() => {
                 _state.currentTheme = themeId;
 

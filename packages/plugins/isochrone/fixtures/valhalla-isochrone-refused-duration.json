@@ -1,0 +1,24 @@
+{
+  "request": {
+    "locations": [
+      {
+        "lat": -20.8823,
+        "lon": 55.4504
+      }
+    ],
+    "costing": "auto",
+    "contours": [
+      {
+        "time": 90
+      }
+    ],
+    "polygons": true
+  },
+  "status": 400,
+  "body": {
+    "error_code": 151,
+    "error": "Exceeded max time: 60",
+    "status_code": 400,
+    "status": "Bad Request"
+  }
+}

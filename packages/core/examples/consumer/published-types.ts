@@ -53,6 +53,7 @@ type _Editor = typeof import("@geoleaf-plugins/editor");
 type _FileImport = typeof import("@geoleaf-plugins/file-import");
 type _Flatgeobuf = typeof import("@geoleaf-plugins/flatgeobuf");
 type _Geocoding = typeof import("@geoleaf-plugins/geocoding");
+type _Isochrone = typeof import("@geoleaf-plugins/isochrone");
 type _Measure = typeof import("@geoleaf-plugins/measure");
 type _Print = typeof import("@geoleaf-plugins/print");
 type _RealtimeLayer = typeof import("@geoleaf-plugins/realtime-layer");
@@ -70,8 +71,8 @@ type _Routing = typeof import("@geoleaf-plugins/routing");
 //
 // The core declares `GeoLeaf.Table`, `GeoLeaf.Editor`… and cannot type them: it never imports a
 // plugin. Each plugin's published declarations add its API to `GeoLeafPluginApis`, the
-// registry those namespaces read — so resolving the fourteen specifiers above must be enough
-// to type the fourteen namespaces. Two assertions per namespace on the registry, because one is not enough:
+// registry those namespaces read — so resolving the plugin specifiers above must be enough
+// to type the namespaces they mount. Two assertions per namespace on the registry, because one is not enough:
 //
 //   - `Typed<K>` refuses `unknown` — the state of a namespace nobody augmented, which is what
 //     every one of them was before the plugins carried their own type — and `any`.
@@ -126,6 +127,13 @@ const _geocodingNamed: Same<
 > = true;
 // @ts-expect-error — `GeoLeaf.Geocoding` is its plugin's API, not a bag
 _mounted.Geocoding?.memberNoPluginHas;
+const _isochroneTyped: Typed<"Isochrone"> = true;
+const _isochroneNamed: Same<
+    import("@geoleaf-plugins/isochrone").IsochroneApi,
+    GeoLeafPluginApi<"Isochrone">
+> = true;
+// @ts-expect-error — `GeoLeaf.Isochrone` is its plugin's API, not a bag
+_mounted.Isochrone?.memberNoPluginHas;
 const _measureTyped: Typed<"Measure"> = true;
 const _measureNamed: Same<
     import("@geoleaf-plugins/measure").MeasureApi,

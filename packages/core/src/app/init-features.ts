@@ -45,6 +45,24 @@ function _resolveNativeMap(GeoLeaf: GeoLeafGlobal, map: IMapAdapter | null): unk
 }
 
 /**
+ * The typed blocks of a profile basemap that travel to the registry AS THEY ARE. The kernel
+ * reads each of them off the registered definition, so a block left behind here does not exist
+ * for it — whatever the schema accepts: `hillshade`, `imageSource` and `wms` used to be dropped,
+ * and a profile basemap of those three types arrived without its configuration.
+ */
+const PASS_THROUGH_BLOCKS = ["terrain", "wmts", "hillshade", "imageSource", "wms"] as const;
+
+/**
+ * Picks the blocks a basemap declares, and only those: `registerBaseLayer` shallow-merges over
+ * a default of the same key, so a key set to `undefined` would erase the default's own block.
+ */
+function _passThroughBlocks(def: BasemapConfig): Record<string, unknown> {
+    return Object.fromEntries(
+        PASS_THROUGH_BLOCKS.filter((block) => def[block]).map((block) => [block, def[block]])
+    );
+}
+
+/**
  * Initialize base tile layers from profile cfg.basemaps.
  * @param deps Shared boot dependencies passed by `initApp`.
  */
@@ -91,10 +109,8 @@ export function initBasemaps({ GeoLeaf, cfg, map, AppLog }: FeatureInitContext) 
             if (Array.isArray(def.tiles) && def.tiles.length > 0) entry.tiles = def.tiles;
             if (def.subdomains) entry.subdomains = def.subdomains;
             if (typeof def.tileSize === "number") entry.tileSize = def.tileSize;
-            // 3D terrain configuration
-            if (def.terrain) entry.terrain = def.terrain;
-            // WMTS configuration (IGN and other WMTS providers)
-            if (def.wmts) entry.wmts = def.wmts;
+            // 3D terrain, WMTS, hillshade, georeferenced image, WMS: the typed blocks
+            Object.assign(entry, _passThroughBlocks(def));
 
             basemapsFromConfig[key] = entry;
         });

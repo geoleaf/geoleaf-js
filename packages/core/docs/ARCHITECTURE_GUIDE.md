@@ -174,6 +174,10 @@ GeoLeaf V2 abstracts the mapping engine entirely behind the `IMapAdapter` interf
 
 ### IMapAdapter interface surface
 
+A member marked `?` is optional: an adapter may not carry it, and a caller writes
+`adapter.member?.(…)`. The contract file is the reference — it says, member by member, what is
+kept, what is refused and why.
+
 ```typescript
 interface IMapAdapter {
     // Initialisation
@@ -188,7 +192,10 @@ interface IMapAdapter {
     setZoom(zoom: number): void;
     panTo(center: GeoLeafLatLng): void;
     flyTo(center: GeoLeafLatLng, zoom?: number): void;
-    fitBounds(bounds: GeoLeafBounds, options?: { padding?: GeoLeafPoint; animate?: boolean }): void;
+    fitBounds(
+        bounds: GeoLeafBounds,
+        options?: { padding?: GeoLeafPoint; animate?: boolean; maxZoom?: number }
+    ): void;
     getBounds(): GeoLeafBounds;
 
     // Events (normalised set)
@@ -203,14 +210,20 @@ interface IMapAdapter {
     showLayer(id: string): void;
     hideLayer(id: string): void;
     updateLayerData(id: string, data: unknown): void;
+    applyDataDiff?(id: string, diff: LayerDataDiff): boolean;
+    setFeatureState?(id: string, featureId: string | number, state: Record<string, unknown>): void;
     setLayerStyle(id: string, style: GeoLeafStyleOptions): void;
-    setLayerFilter(id: string, filter: unknown): void;
+    setLayerFilter(id: string, filter: unknown, owner?: string): void;
+    setLayerZoomRange(id: string, minZoom: number | null, maxZoom: number | null): void;
+    setLayerZIndex?(id: string, zIndex: number): boolean;
 
     // Markers
     createMarker(id: string, position: GeoLeafLatLng, options?: GeoLeafMarkerOptions): void;
     removeMarker(id: string): void;
     updateMarkerPosition(id: string, position: GeoLeafLatLng): void;
-    createClusterGroup(id: string, options?: Record<string, unknown>): void;
+    setMarkerRotation?(id: string, degrees: number): void;
+    getMarkerHandle?(id: string): GeoLeafMarkerHandle | null;
+    createClusterGroup(id: string, options?: Record<string, unknown>): Promise<void>;
 
     // Popups (opaque handles)
     createPopup(content: string | HTMLElement, options?: GeoLeafPopupOptions): unknown;
@@ -225,6 +238,22 @@ interface IMapAdapter {
     latLngToPoint(latlng: GeoLeafLatLng): GeoLeafPoint;
     pointToLatLng(point: GeoLeafPoint): GeoLeafLatLng;
     getContainer(): HTMLElement;
+    getCanvas?(): HTMLCanvasElement;
+    resize?(): void;
+    getNativeMap?(): unknown;
+
+    // Basemap switch
+    buildStyleChangeTransform?(options?: { attribution?: string }): unknown;
+    declareOwnedStyleIds?(owner: string, ids: DeclaredStyleIds | null): void;
+    reregisterStyleImages?(): void;
+
+    // Vector tiles
+    addVectorTileLayer?(layerId: string, spec: VectorTileLayerSpec): string[];
+    updateVectorTileLayerStyle?(
+        layerId: string,
+        subLayerIds: string[],
+        style: VectorTileStyleInput
+    ): void;
 }
 ```
 

@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "theme-view",
+    "scope": [
+        "packages/core/src/kernel/config/view-extent.ts",
+        "packages/core/src/kernel/themes/theme-applier/view.ts"
+    ],
+    "verdicts": {
+        "packages/core/src/kernel/config/view-extent.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La vue qu'un thème déclare (`view` : `bounds`, ou `center` avec `zoom`) — une seule lecture pour le démarrage de la carte et pour la bascule de thème, avec la marge de cadrage du profil",
+            "confidence": "haute",
+            "rationale": "Deux lecteurs doivent répondre pareil : `app/boot-modules/core-map-lifecycle.ts`, qui démarre la carte sur la vue du thème de départ, et le moteur de thèmes (`theme-loader.ts`, `theme-applier/view.ts`), qui cadre à l'activation. Dans `kernel/config/`, à côté de `default-theme.ts` dont il reprend le résolveur du thème de départ : `app/` ne peut pas être importé par le kernel, donc ce que les deux lisent vit sous les deux ; `kernel/themes` importe déjà `kernel/config`, aucun cycle. Tenu par `__tests__/config/view-extent.test.ts`"
+        },
+        "packages/core/src/kernel/themes/theme-applier/view.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Place la caméra sur la vue qu'un thème déclare, sans animation et avant le chargement de ses couches",
+            "confidence": "haute",
+            "rationale": "1 importeur, `theme-applier/core.ts`, qui l'appelle en tête de l'application d'un thème sauf sous `keepView`. Export simple et non membre greffé sur `ThemeApplierCore` comme ses trois voisins : il ne lit aucun état de l'applicateur, et une greffe de plus aurait demandé une ancre dans `globals.ui.ts`. Passe par l'adaptateur (`fitBounds`, `setView`), jamais par la carte native. Tenu par `__tests__/themes/theme-applier-view.test.ts`"
+        }
+    }
+}

@@ -34,6 +34,7 @@
  * @version 1.0.0
  */
 
+import type { CacheProfilePulledLayer } from "../../../contracts/sync.contract.js";
 import { Log } from "../../../utils/log/index.js";
 import { profileLayers } from "../../../kernel/shared/index.js";
 import { coreConfigGet } from "../config-seam.js";
@@ -70,15 +71,6 @@ function zoneBbox(
     const bbox = [b.west, b.south, b.east, b.north];
     if (!bbox.every((v) => typeof v === "number" && Number.isFinite(v))) return undefined;
     return bbox as [number, number, number, number];
-}
-
-/** One layer's outcome, as the caller reports it alongside the resource tally. */
-export interface DeclaredPullReport {
-    readonly layerId: string;
-    readonly written: number;
-    readonly capped: boolean;
-    readonly aborted: boolean;
-    readonly refused: string | null;
 }
 
 /**
@@ -125,7 +117,7 @@ export async function pullDeclaredLayers(
     profileId: string,
     selection: SelectionLike | null | undefined,
     signal?: AbortSignal
-): Promise<DeclaredPullReport[]> {
+): Promise<CacheProfilePulledLayer[]> {
     // 🛑 THE PULL READS THE **ACTIVE** PROFILE, and this guard is what keeps that true.
     // `pullLayer` resolves its layer through `GeoLeaf.Config.getActiveProfile()`, while
     // `cacheProfile` takes a profile id as an argument. Today the only caller passes the
@@ -152,7 +144,7 @@ export async function pullDeclaredLayers(
 
     if (targets.length === 0) return [];
 
-    const reports: DeclaredPullReport[] = [];
+    const reports: CacheProfilePulledLayer[] = [];
     for (const layer of targets) {
         const layerId = String(layer.id);
         if (signal?.aborted) {

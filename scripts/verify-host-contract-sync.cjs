@@ -149,6 +149,10 @@ const ORACLE_EXEMPT = new Map([
     ["FlatGeobuf", "monté par @geoleaf-plugins/flatgeobuf"],
     ["Geocoding", "monté par @geoleaf-plugins/geocoding"],
     [
+        "Isochrone",
+        "monté par @geoleaf-plugins/isochrone — paresseux (`registerLazy`), donc absent d'un boot core seul à double titre, comme Navigation",
+    ],
+    [
         "Measure",
         "monté par @geoleaf-plugins/measure (⚠️ ne pas confondre avec `measure`, l'aide de mesure de performance, qui n'en diffère que par la casse)",
     ],

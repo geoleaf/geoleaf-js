@@ -67,7 +67,7 @@ l'origine de l'application n'est pourtant rapatriée **que si son origine est d�
 OpenStreetMap : « Offline use is not permitted on tile.openstreetmap.org ». Ne déclarez `prefetch`
 que pour une origine que vous exploitez, ou dont les conditions l'autorisent.
 
-**Un fond refusé le dit avant le téléchargement** (1.6.4, avec un core ≥ 3.15.0). Dans la fenêtre, la
+**Un fond refusé le dit avant le téléchargement** (1.7.0, avec un core ≥ 3.15.0). Dans la fenêtre, la
 ligne d'un fond dont l'origine n'est pas déclarée préparable est grisée, sa case décochée et inerte,
 et son infobulle nomme l'origine et le motif — non déclarée, déclarée sans préparation, ou adresse
 illisible. Il n'est donc pas compté dans l'estimation de taille. Et si un téléchargement laisse tout
@@ -80,5 +80,5 @@ pas —, la notification de fin le dit et nomme l'origine, au lieu d'annoncer un
 ## Voir aussi
 
 - [offline-detector.md](offline-detector.md) — API et événements du détecteur de connectivité
-- [API_REFERENCE.md](API_REFERENCE.md) — référence complète `GeoLeaf.Storage`
+- [API_REFERENCE.md](API_REFERENCE.md) — ce que la fenêtre appelle et écoute de `GeoLeaf.Storage` (la façade elle-même est celle du cœur)
 - [EXAMPLES.md](EXAMPLES.md) — exemples d'intégration

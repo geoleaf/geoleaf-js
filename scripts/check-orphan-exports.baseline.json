@@ -118,6 +118,7 @@
         "packages/plugins/geocoding/src/provider.ts::CustomProvider",
         "packages/plugins/geocoding/src/provider.ts::NominatimProvider",
         "packages/plugins/geocoding/src/provider.ts::PhotonProvider",
+        "packages/plugins/isochrone/src/entry.ts::IsochroneApi",
         "packages/plugins/measure/src/annotation-overlays.ts::removeOverlay",
         "packages/plugins/measure/src/entry.ts::MeasureApi",
         "packages/plugins/measure/src/floating-menu.ts::destroyMenu",

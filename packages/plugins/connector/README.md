@@ -270,13 +270,15 @@ It is not `geoleaf:connector:auth-error`, which says an established session ende
 - `baseUrl` and `auth.endpoint` must use HTTPS (an error is raised otherwise): the first
   receives the token, the second the password. `http://` is tolerated, with a console warning,
   only when the URL itself targets a development host — `localhost`, `*.localhost`, the
-  loopback addresses, or a name under `.test`, reserved for testing (RFC 6761). The page does
-  not matter: a page served on `localhost` may not send a credential over `http://` to a
+  loopback addresses, or a name under `.test`, reserved for testing (RFC 6761). A relative URL
+  targets the page's own host. Otherwise the page does not matter: a page served on `localhost` may not send a credential over `http://` to a
   remote host or to a LAN address. `auth.signupUrl` and `auth.forgotPasswordUrl` follow the
   same rule.
 - The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
-- Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge); PMTiles
-  archives through `window.fetch`, which the `pmtiles` library reads them with.
+- Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge) when
+  the map displays them, and through `window.fetch` when the offline preparation downloads
+  them — the same identity in both cases. PMTiles archives get it through `window.fetch`,
+  which the `pmtiles` library reads them with.
 
 ---
 

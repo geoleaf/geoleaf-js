@@ -18,6 +18,8 @@ import { getLog } from "../../../utils/general/di-accessors.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import type { LayerAttributes } from "../../../contracts/attributes.contract.js";
 import type { LayerWriteTarget } from "../../../contracts/sync.contract.js";
+import type { ThemeViewDeclaration } from "../../config/view-extent.js";
+import { frameThemeView } from "./view.js";
 
 // ── Shared structural types (theme-applier) ─────────────────────────────────
 // Loose JSON shapes for theme configuration, shared across the theme-applier
@@ -38,11 +40,24 @@ export interface ThemeConfig {
     label?: string;
     layers?: ThemeLayerConfig[];
     config?: Record<string, unknown>;
+    /** Where the theme frames the map, as the profile declares it; absent, it frames nothing. */
+    view?: ThemeViewDeclaration;
 }
 
 /** Options accepted by `applyTheme`. */
 interface ApplyThemeOptions {
+    /**
+     * Asks for the legacy fit on the union of the layers' bounds, one second after the theme is
+     * applied. The core's loader records no bounds on a layer, so it finds nothing to fit; no
+     * caller passes it.
+     */
     fitBounds?: boolean;
+    /**
+     * Applies the theme without moving the camera, even when it declares a view. Passed by the
+     * boot, which starts the map on that view itself, and by whoever restores a view of its own
+     * alongside the theme.
+     */
+    keepView?: boolean;
 }
 
 /** Bounds shape used by the fit-bounds path. */
@@ -292,12 +307,15 @@ const _ThemeApplier = {
     },
 
     /**
-     * Applies a theme
+     * Applies a theme: moves the camera to the view it declares, if any, then shows its layers.
      * @param this - The theme-applier module. The method is invoked bound to it, so the
      *   receiver is part of the signature — and TSD-02 counts it as a parameter.
      * @param {Object} theme - Configuration of the theme
      * @param {Object} [options] - Application options
-     * @param {boolean} [options.fitBounds] - Forces fitBounds
+     * @param {boolean} [options.fitBounds] - Asks for the legacy fit on the layers' bounds,
+     *   which finds nothing to fit: the core's loader records no bounds on a layer
+     * @param {boolean} [options.keepView] - Leaves the camera where it is, even when the theme
+     *   declares a view
      * @returns {Promise<void>}
      */
     applyTheme(
@@ -330,6 +348,8 @@ const _ThemeApplier = {
         theme: ThemeConfig,
         options: ApplyThemeOptions
     ): Promise<void> {
+        // Before the layers: one loaded by extent must ask for the area the theme frames.
+        if (options.keepView !== true) frameThemeView(theme.view);
         this._hideAllLayers();
 
         const layerConfigs = theme.layers || [];

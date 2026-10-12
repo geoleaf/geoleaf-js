@@ -47,6 +47,12 @@ export interface HostMapAdapter {
      * replacing the style carries them (core ≥ 3.10.0). `null` withdraws.
      */
     declareOwnedStyleIds?(owner: string, ids: HostDeclaredStyleIds | null): void;
+    /**
+     * Re-ranks a GeoJSON layer in place (core ≥ 3.15.0). `false` means nothing moved and the
+     * caller rebuilds the layer at the rank it wants; an older core has no such member, so
+     * call it as `adapter.setLayerZIndex?.(id, zIndex) === true`.
+     */
+    setLayerZIndex?(id: string, zIndex: number): boolean;
     [key: string]: unknown;
 }
 

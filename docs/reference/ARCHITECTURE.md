@@ -99,27 +99,25 @@ GeoLeaf-JS/                          ← monorepo racine
 │   │   │                                    (opérations en attente, sync, sauvegardes + Restaurer). Monté dans l'onglet EXPORT, de façon SYNCHRONE :
 │   │   │                                    dans le callback de getPendingPOIs() il ne rendait rien (whenReady() ne se règle pas moteur offline absent).
 │   │   │                                    ⚠️ le chemin CacheControl ne connaît plus la sync — il la construisait puis export-logic la supprimait
-│   │   ├── addpoi/               ← @geoleaf-plugins/addpoi (ESM pur, MIT, npmjs.org public depuis le 19/07/2026)
-│   │   │   │                              ← S4 : sync via pattern adapter (src/persistence/ + sync-handler-backup.ts) — cf. CDC §10
-│   │   ├── plugin-file-import/          ← @geoleaf-plugins/file-import (ESM pur)
-│   │   ├── plugin-flatgeobuf/           ← @geoleaf-plugins/flatgeobuf (ESM pur)
-│   │   ├── plugin-geocoding/            ← @geoleaf-plugins/geocoding (ESM pur, MIT, npmjs.org public) — recherche d'adresse extraite du core
-│   │   ├── plugin-table/                ← @geoleaf-plugins/table (ESM pur, MIT, npmjs.org public) — tableau de données extrait du core
-│   │   ├── plugin-print/                ← @geoleaf-plugins/print (ESM pur, MIT, npmjs.org public)
+│   │   ├── file-import/                 ← @geoleaf-plugins/file-import (ESM pur)
+│   │   ├── flatgeobuf/                  ← @geoleaf-plugins/flatgeobuf (ESM pur)
+│   │   ├── geocoding/                   ← @geoleaf-plugins/geocoding (ESM pur, MIT, npmjs.org public) — recherche d'adresse extraite du core
+│   │   ├── table/                       ← @geoleaf-plugins/table (ESM pur, MIT, npmjs.org public) — tableau de données extrait du core
+│   │   ├── print/                       ← @geoleaf-plugins/print (ESM pur, MIT, npmjs.org public)
 │   │   │   ├── src/modal-dom.ts           ← arbre DOM du modal d'aperçu + références typées, aucune logique (PLUGINS S6)
 │   │   │   ├── src/modal-compose.ts       ← géométrie pure du modal (PLUGINS S6) : buildComposeArgs (source unique aperçu+export), mapViewport (surensemble de la zone composée → le recadrage tient l'échelle)
 │   │   │   └── src/print-api.ts          ← [PLUGINS B.12] pipeline capture→composition→export sorti de public-api.ts.
 │   │   │                                ⚠️ 230 L qui étaient coverage-EXCLUDED avec la façade, donc à 0 % sans que ça se voie —
 │   │   │                                dans le paquet même où le S6 a trouvé l'échelle fausse à 17 %. Désormais 100 % lignes,
 │   │   │                                et l'invariant du S6 (zones rendues == zones composées) est épinglé par un test
-│   │   ├── plugin-measure/              ← @geoleaf-plugins/measure (ESM pur, MIT, npmjs.org public)
+│   │   ├── measure/                     ← @geoleaf-plugins/measure (ESM pur, MIT, npmjs.org public)
 │   │   │   ├── src/recap-box.ts           ← box récapitulative sous le menu (n° | Coord X;Y | longueur + total) — CÂBLÉE au PLUGINS S5, le module existait sans appelant depuis le S2
 │   │   │   ├── src/tools/tool-shared.ts   ← primitives d'outils (PLUGINS S5) : containerCoord, startCursorGuard (resolver de curseur — le polygone le change en snap), createDragTool (rect + circle)
 │   │   │   └── src/measure-api.ts        ← [PLUGINS B.12] cycle de vie du plugin (bootstrap paresseux, dispatch des 6 outils,
 │   │   │                                restauration au boot) sorti de public-api.ts. 177 L également invisibles jusque-là
-│   │   ├── plugin-cog/                  ← @geoleaf-plugins/cog (ESM pur, MIT, npmjs.org public depuis le 19/07/2026)
+│   │   ├── cog/                         ← @geoleaf-plugins/cog (ESM pur, MIT, npmjs.org public depuis le 19/07/2026)
 │   │   │                              ← [PLUGINS B.12] INV-FACADE : src/public-api.ts ne fait QUE déléguer ; l'implémentation est dans src/cog-api.ts (gate check-facade-purity.cjs, moitié plugin — voir ADR-12)
-│   │   ├── plugin-editor/               ← @geoleaf-plugins/editor (ESM pur, MIT, npmjs.org public depuis le 19/07/2026)
+│   │   ├── editor/                      ← @geoleaf-plugins/editor (ESM pur, MIT, npmjs.org public depuis le 19/07/2026)
 │   │   │   │                              ← dépend de @geoleaf/field-renderer (bundlé inline — pas d'external Rollup)
 │   │   │   │                              ← src/persistence/ : adapters rest/collection + http-helpers.ts (wrapper de domaine fin sur les primitives HTTP de @geoleaf/host-runtime — cf. CDC §2.1)
 │   │   │   ├── src/persistence/storage-seam.ts  ← [PLUGINS S4] seam unique vers globalThis.GeoLeaf.Storage (storageDb / profileId),
@@ -129,13 +127,13 @@ GeoLeaf-JS/                          ← monorepo racine
 │   │   │   │                                sortis de public-api.ts
 │   │   │   │                              ← PLUGINS S4 : le bloc .gl-form-* de src/css/geoleaf-editor.css est parti (11 doublons supprimés,
 │   │   │   │                                10 orphelins rapatriés dans field-renderer/src/css/form-modal-base.css)
-│   │   ├── plugin-flatgeobuf/           ← @geoleaf-plugins/flatgeobuf
+│   │   ├── flatgeobuf/                  ← @geoleaf-plugins/flatgeobuf
 │   │   │                              ← [PLUGINS B.12] INV-FACADE : src/public-api.ts ne fait QUE déléguer ; l'implémentation est dans src/fgb-api.ts (gate check-facade-purity.cjs, moitié plugin — voir ADR-12)
-│   │   ├── plugin-file-import/          ← @geoleaf-plugins/file-import
+│   │   ├── file-import/                 ← @geoleaf-plugins/file-import
 │   │   │                              ← [PLUGINS B.12] INV-FACADE : src/public-api.ts ne fait QUE déléguer ; l'implémentation est dans src/import-api.ts (gate check-facade-purity.cjs, moitié plugin — voir ADR-12)
-│   │   ├── plugin-connector/            ← @geoleaf-plugins/connector (ESM pur ; auth/fetch via @geoleaf/host-runtime jsonHeaders/bearer)
-│   │   ├── plugin-realtime-layer/       ← @geoleaf-plugins/realtime-layer (ESM pur)
-│   │   ├── plugin-websocket/            ← @geoleaf-plugins/websocket (archivé/legacy)
+│   │   ├── connector/                   ← @geoleaf-plugins/connector (ESM pur ; auth/fetch via @geoleaf/host-runtime jsonHeaders/bearer)
+│   │   ├── realtime-layer/              ← @geoleaf-plugins/realtime-layer (ESM pur)
+│   │   ├── websocket/                   ← @geoleaf-plugins/websocket
 │   │   │   └── src/ws-lifecycle.ts        ← [PLUGINS B.12] collaborateurs + singletons de module + séquence init/destroy,
 │   │   │                                sortis de public-api.ts. Les singletons sont REMPLACÉS à l'init (pas mutés) :
 │   │   │                                c'est ce qui rend un seul buildPublicApi() valide à travers les cycles

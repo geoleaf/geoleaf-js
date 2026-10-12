@@ -34,6 +34,13 @@
 > pas un résidu** : `app/boot-core.ts:188` dit explicitement qu'elles doivent rester — la marque et
 > le `measure("geoleaf:startup-total", …)` qui les relie en dépendent. Ne pas les « harmoniser ».
 
+> 📌 **Passe du 10/10/2026 — l'emprise recadrée à la révélation s'appelle `startBounds`.** C'est
+> l'emprise sur laquelle la carte a DÉMARRÉ : la vue du thème de départ quand il déclare
+> `view.bounds`, l'emprise du profil sinon (`app/boot-modules/core-map-lifecycle.ts`,
+> `resolveStartView`). Elle s'appelait `profileBounds` tant que seul le profil pouvait la
+> déclarer. Rien d'autre ne change dans la séquence : même recadrage, au même instant, sauté de la
+> même façon quand l'adresse porte une vue.
+
 **Version produit :** GeoLeaf Platform V2
 
 📌 **Ancrage des chemins.** Un chemin cité sans racine se lit depuis `packages/core/src/`. Un
@@ -180,7 +187,7 @@ sequenceDiagram
     Map-->>Boot: Événement: geoleaf:theme:applied
     Boot->>Boot: revealApp() — supprime #gl-loader
     Boot->>Map: nativeMap.resize() (recalcul conteneur)
-    Boot->>Map: map.fitBounds(profileBounds)
+    Boot->>Map: map.fitBounds(startBounds)
     Boot->>Boot: dispatchEvent(geoleaf:map:ready)
     Boot->>Boot: dispatchEvent(geoleaf:app:ready)
     Note over Boot: Application prête
@@ -205,7 +212,7 @@ sequenceDiagram
 | **7.5**   | Storage + SW                  | `geoleaf-storage.plugin.js`                                 | `Storage.init()` Promise                           | IndexedDB indisponible, SW 404         |
 | **8**     | UI                            | `packages/core/src/api/geoleaf.ui.ts`                       | `UI.init()` synchrone                              | Conteneurs DOM absents                 |
 | **9**     | Couches (POI, GeoJSON, Route) | `geoleaf.poi.ts`, `geoleaf.geojson.ts`                      | `init()` + Promises parallèles                     | GeoJSON malformé, coords invalides     |
-| **11**    | Reveal + events               | `app/init.ts`                                               | `geoleaf:theme:applied`                            | Bounds vides, timeout 5s de secours    |
+| **11**    | Reveal + events               | `app/init-reveal.ts`                                        | `geoleaf:theme:applied`                            | Bounds vides, timeout 5s de secours    |
 
 ---
 
@@ -221,29 +228,28 @@ GeoLeaf.boot();
 // → Config.loadActiveProfileResources()
 // → _registry.init()
 // → _app.startApp()  →  bootWithPreset(preset, ctx)
-// → GeoLeaf._loadAllSecondaryModules()
 ```
 
 ### Événements DOM
 
-| Événement                     | Émetteur        | Quand                                     | Utilisation           |
-| ----------------------------- | --------------- | ----------------------------------------- | --------------------- |
-| `geoleaf:plugin:loaded`       | PluginRegistry  | Plugin enregistré via `register()`        | Détection plugins     |
-| `geoleaf:config:loaded`       | Config          | Config + profil chargés                   | Init carte            |
-| `geoleaf:profile:loaded`      | Profile         | Profil actif chargé                       | Toast notification    |
-| `geoleaf:theme:applying`      | ThemeApplier    | Début chargement thème                    | Toast loading         |
-| `geoleaf:theme:applied`       | ThemeApplier    | Toutes les couches visibles chargées      | Reveal + fitBounds    |
-| `geoleaf:map:ready`           | app/init.ts     | Carte + couches prêtes                    | Analytics, hooks      |
-| `geoleaf:app:ready`           | app/init.ts     | Application entièrement initialisée       | Boot toast, metrics   |
-| `geoleaf:poi:click`           | POI             | Clic sur marqueur                         | Panneau latéral       |
-| `geoleaf:basemap:change`      | Baselayers      | Changement fond de plan                   | Analytics             |
-| `geoleaf:storage:initialized` | Storage         | Storage initialisé                        | Cache ready           |
-| `geoleaf:offline`             | OfflineDetector | Connexion perdue                          | Mode offline          |
-| `geoleaf:online`              | OfflineDetector | Connexion rétablie                        | Synchronisation       |
-| `geoleaf:sw:updated`          | sw-register     | Un worker neuf s'est activé               | Journal, métriques    |
-| `geoleaf:sw:update-waiting`   | sw-register     | Une version neuve est installée et attend | Bandeau « Recharger » |
-| `geoleaf:map:move`            | MaplibreAdapter | Fin de déplacement carte                  | Permalink sync        |
-| `geoleaf:map:zoom`            | MaplibreAdapter | Fin de zoom carte                         | Permalink sync        |
+| Événement                     | Émetteur           | Quand                                     | Utilisation                   |
+| ----------------------------- | ------------------ | ----------------------------------------- | ----------------------------- |
+| `geoleaf:plugin:loaded`       | PluginRegistry     | Plugin enregistré via `register()`        | Détection plugins             |
+| `geoleaf:config:loaded`       | Config             | Config + profil chargés                   | Init carte                    |
+| `geoleaf:profile:loaded`      | Profile            | Profil actif chargé                       | Toast notification            |
+| `geoleaf:theme:applying`      | ThemeApplier       | Début chargement thème                    | Toast loading                 |
+| `geoleaf:theme:applied`       | ThemeApplier       | Toutes les couches visibles chargées      | Reveal + fitBounds            |
+| `geoleaf:map:ready`           | app/init-reveal.ts | Carte + couches prêtes                    | Analytics, hooks              |
+| `geoleaf:app:ready`           | app/init-reveal.ts | Application entièrement initialisée       | Boot toast, metrics           |
+| `geoleaf:poi:click`           | —                  | 🛑 Déclaré, **jamais émis**               | S'y abonner ne déclenche rien |
+| `geoleaf:basemap:change`      | Baselayers         | Changement fond de plan                   | Analytics                     |
+| `geoleaf:storage:initialized` | Storage            | Storage initialisé                        | Cache ready                   |
+| `geoleaf:offline`             | OfflineDetector    | Connexion perdue                          | Mode offline                  |
+| `geoleaf:online`              | OfflineDetector    | Connexion rétablie                        | Synchronisation               |
+| `geoleaf:sw:updated`          | sw-register        | Un worker neuf s'est activé               | Journal, métriques            |
+| `geoleaf:sw:update-waiting`   | sw-register        | Une version neuve est installée et attend | Bandeau « Recharger »         |
+| `geoleaf:map:move`            | MaplibreAdapter    | Fin de déplacement carte                  | Permalink sync                |
+| `geoleaf:map:zoom`            | MaplibreAdapter    | Fin de zoom carte                         | Permalink sync                |
 
 ---
 
@@ -311,12 +317,10 @@ C'est le point 2 qui faisait chercher un problème d'ORDRE là où il n'y en ava
 `GeoLeaf.plugins.registerLazyForAction()`, qui déclare le créneau **avant** le boot et charge le
 bundle à la demande.
 
-🛑 **Une ligne du diagramme ci-dessous est périmée, signalée le 07/08/2026 sans être réparée
-ici** : `GeoLeaf._loadAllSecondaryModules()` **n'existe plus** — supprimé au S5 avec toute la
-machinerie `src/lazy/`, comme l'écrit `bundle-esm-entry.ts:20-25`. Le seul reste dans le code
-est un commentaire de `boot-modules/core-map-lifecycle.ts:321` qui décrit l'ancien montage. Le
-diagramme n'a pas été réécrit parce que sa mise à jour demande de re-mesurer la séquence
-entière, pas d'échanger un nom ; c'est un travail à part.
+⚠️ **Le diagramme ci-dessous ne cite plus `GeoLeaf._loadAllSecondaryModules()`**, supprimé au S5
+avec toute la machinerie `src/lazy/`, comme l'écrit `bundle-esm-entry.ts:20-25` : la ligne a été
+retirée le 11/10/2026. Le reste du diagramme n'a pas été re-mesuré à cette occasion — sa séquence
+entière reste à relire contre le code.
 
 ---
 
@@ -328,7 +332,6 @@ L'application est révélée (`#gl-loader` supprimé) uniquement lorsque toutes 
 GeoLeaf.boot()
     └── _app.startApp() → bootWithPreset()
             ├── GeoLeaf.init() → carte MapLibre créée
-            ├── GeoLeaf._loadAllSecondaryModules() [fire & await]
             ├── BaseLayers.init() → thème par défaut appliqué
             │       └── → dispatch geoleaf:theme:applying
             ├──... (POI, Route, GeoJSON, UI panels)
@@ -337,7 +340,7 @@ GeoLeaf.boot()
             └── revealApp()
                     ├── #gl-loader → gl-loader--fade → display:none
                     ├── nativeMap.resize() (recalcul container)
-                    ├── map.fitBounds(profileBounds)
+                    ├── map.fitBounds(startBounds)
                     ├── dispatch geoleaf:map:ready
                     └── dispatch geoleaf:app:ready
 ```

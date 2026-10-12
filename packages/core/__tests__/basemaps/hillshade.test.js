@@ -19,11 +19,15 @@ vi.mock("../../src/utils/general/utils-base.js", () => ({
 
 let buildHillshadeSourceSpec;
 let applyHillshadeBasemap;
+let resolveHillshadeOverlay;
+let syncHillshadeOverlay;
 
 beforeAll(async () => {
     const mod = await import("../../src/kernel/basemaps/hillshade.ts");
     buildHillshadeSourceSpec = mod.buildHillshadeSourceSpec;
     applyHillshadeBasemap = mod.applyHillshadeBasemap;
+    resolveHillshadeOverlay = mod.resolveHillshadeOverlay;
+    syncHillshadeOverlay = mod.syncHillshadeOverlay;
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -233,5 +237,59 @@ describe("applyHillshadeBasemap — error cases", () => {
         const map = makeMockMap();
         applyHillshadeBasemap(map, { hillshade: { demUrl: "ftp://bad.url/dem.png" } });
         expect(map.addSource).not.toHaveBeenCalled();
+    });
+});
+
+// ─── Overlay — what a basemap asks for ───────────────────────────────────────
+//
+// Only WHAT is asked is judged here. WHERE the overlay lands and what becomes of it when the
+// basemap changes need a map that keeps an order: `hillshade-overlay-lifecycle.test.ts`.
+
+describe("resolveHillshadeOverlay", () => {
+    const VECTOR = { type: "maplibre", style: "https://styles.example.com/s.json" };
+
+    it("returns null when the block does not ask for an overlay", () => {
+        expect(resolveHillshadeOverlay({ ...VECTOR, ...VALID_DEF }, "plan")).toBeNull();
+    });
+
+    it("returns null when the basemap carries no hillshade block", () => {
+        expect(resolveHillshadeOverlay(VECTOR, "plan")).toBeNull();
+    });
+
+    it("returns the block when a vector basemap asks for the overlay", () => {
+        const hillshade = { ...VALID_DEF.hillshade, overlay: true, beforeLayer: "water" };
+        expect(resolveHillshadeOverlay({ ...VECTOR, hillshade }, "plan")).toBe(hillshade);
+    });
+
+    it("returns the block when a tile basemap asks for the overlay", () => {
+        const hillshade = { demUrl: DEM_URL, overlay: true };
+        const definition = { url: "https://tiles.example.com/{z}/{x}/{y}.png", hillshade };
+        expect(resolveHillshadeOverlay(definition, "tuiles")).toBe(hillshade);
+    });
+
+    it("returns null on a hillshade basemap, whose shading is the basemap itself", () => {
+        const hillshade = { demUrl: DEM_URL, overlay: true };
+        expect(resolveHillshadeOverlay({ type: "hillshade", hillshade }, "relief")).toBeNull();
+    });
+
+    it("returns null when the overlay is asked for without a demUrl", () => {
+        expect(
+            resolveHillshadeOverlay({ ...VECTOR, hillshade: { overlay: true } }, "p")
+        ).toBeNull();
+    });
+
+    it("returns null when the demUrl fails security validation", () => {
+        const hillshade = { overlay: true, demUrl: "ftp://bad.url/dem.png" };
+        expect(resolveHillshadeOverlay({ ...VECTOR, hillshade }, "plan")).toBeNull();
+    });
+});
+
+describe("syncHillshadeOverlay — a basemap that asks for none", () => {
+    it("adds nothing on a vector basemap whose hillshade block has no overlay key", () => {
+        const map = { ...makeMockMap(), getLayer: vi.fn(() => null), removeLayer: vi.fn() };
+        const definition = { type: "maplibre", style: "https://s.example.com", ...VALID_DEF };
+        syncHillshadeOverlay(map, definition, "plan");
+        expect(map.addSource).not.toHaveBeenCalled();
+        expect(map.addLayer).not.toHaveBeenCalled();
     });
 });

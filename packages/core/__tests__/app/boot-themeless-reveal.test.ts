@@ -233,7 +233,8 @@ describe("a profile without a default theme mounts what waits on geoleaf:app:rea
         await boot({ id: "p", themes: { themes: THEMES } });
         expectMountedAfterEveryModule();
         expect(ThemeApplierCore.applyTheme).toHaveBeenCalledWith(
-            expect.objectContaining({ id: "t1" })
+            expect.objectContaining({ id: "t1" }),
+            { keepView: true }
         );
     });
 
@@ -241,7 +242,8 @@ describe("a profile without a default theme mounts what waits on geoleaf:app:rea
         await boot({ id: "p", themes: { defaultTheme: "t2", themes: THEMES } });
         expectMountedAfterEveryModule();
         expect(ThemeApplierCore.applyTheme).toHaveBeenCalledWith(
-            expect.objectContaining({ id: "t2" })
+            expect.objectContaining({ id: "t2" }),
+            { keepView: true }
         );
     });
 });

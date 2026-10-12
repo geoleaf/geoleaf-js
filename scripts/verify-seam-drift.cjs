@@ -281,7 +281,14 @@ const SEAMS = [
                 // same re-pin: `Utils.validateUrl` declared a `boolean` where the core returns
                 // the resolved URL or `null` — the compiler's comparison of the two contracts
                 // found it, no plugin read the wrong type.
-                hash: "da6bcef5ff5e1f0c65cb0270845cfa23cfd0e9d21b0e7eaec2d15b47e7a9fb1c",
+                // ⚠️ 2026-10-10 — re-pinned for a TYPE member: `HostMapAdapter` names
+                // `setLayerZIndex?(id, zIndex): boolean`, which the core's `IMapAdapter` gains
+                // in 3.15.0. Under the `[key: string]: unknown` tail the member typed
+                // `unknown`: a plugin could read it and not call it, nor trust its boolean.
+                // `git diff` renders that member and its comment only; the three paired
+                // functions did not move, and the host stays narrower than the core.
+                // Targeted re-pin, this one hash.
+                hash: "502f55fe81726178373450df26666137def88036a3ec321475527257920dad12",
             },
         ],
     },

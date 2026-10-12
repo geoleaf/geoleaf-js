@@ -32,6 +32,7 @@ import { FetchHelper } from "../../utils/general/fetch-helper.js";
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { asObject } from "../../utils/general/type-guards.js";
 import { resolveDefaultThemeId } from "../config/default-theme.js";
+import { readThemeView, type ThemeViewDeclaration } from "../config/view-extent.js";
 
 /** A normalised theme entry produced by `_normalizeTheme`. */
 export interface NormalizedTheme {
@@ -41,6 +42,12 @@ export interface NormalizedTheme {
     description: string;
     icon: string;
     layers: unknown[];
+    /**
+     * Where the theme frames the map, in the writing of the profile — absent when the theme
+     * declares no view, or one that cannot be used. Activating the theme moves the camera
+     * there; a theme without it leaves the camera where it is.
+     */
+    view?: ThemeViewDeclaration;
 }
 
 /** Per-section UI config block of a validated themes configuration. */
@@ -71,6 +78,7 @@ interface RawTheme {
     description?: string;
     icon?: string;
     layers?: unknown;
+    view?: unknown;
 }
 
 /** Raw themes configuration as read from a themes.json file (loose JSON). */
@@ -97,11 +105,29 @@ const _cache = new Map<string, ValidatedThemesConfig>();
  */
 const _loadingPromises = new Map<string, Promise<ValidatedThemesConfig>>();
 
+/**
+ * Reads the view a theme declares. A view that cannot be used is dropped and SAID: the theme
+ * still applies, it just frames nothing — silently, the integrator would look for a camera
+ * that never moves.
+ */
+function _readDeclaredView(theme: RawTheme): ThemeViewDeclaration | null {
+    if (theme.view === undefined) return null;
+    const view = readThemeView(theme.view);
+    if (!view) {
+        Log?.warn(
+            `[ThemeLoader] Theme "${theme.id}": view ignored — expected "bounds" as ` +
+                `[[south, west], [north, east]], or "center" as [lat, lng] with "zoom"`
+        );
+    }
+    return view;
+}
+
 function _normalizeTheme(theme: RawTheme): NormalizedTheme | null {
     if (!theme.id) {
         Log?.warn("[ThemeLoader] Theme without ID ignored");
         return null;
     }
+    const view = _readDeclaredView(theme);
     return {
         id: theme.id,
         label: theme.label || theme.id,
@@ -109,6 +135,7 @@ function _normalizeTheme(theme: RawTheme): NormalizedTheme | null {
         description: theme.description || "",
         icon: theme.icon || "",
         layers: Array.isArray(theme.layers) ? theme.layers : [],
+        ...(view && { view }),
     };
 }
 

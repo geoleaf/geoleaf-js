@@ -33,13 +33,13 @@ Content-Security-Policy:
 
 ::: warning
 
-This table is the minimum required by the **core**, not the policy of the deployed demonstration application. The two do not coincide, and do not have to: the demonstration application serves `font-src 'self' data:` (the `data:` covers its embedded icon fonts) and `script-src 'self' blob:`, declared in its own `index.html`. An integrator composing their own document starts from the table above; there is no need to inherit the demonstration application's requirements.
+This table is the minimum required by the **core**, not the policy of the deployed demonstration application. The two do not coincide, and do not have to: the demonstration application serves `font-src 'self' data:` (the `data:` covers its embedded icon fonts), declared in its own `index.html`. An integrator composing their own document starts from the table above; there is no need to inherit the demonstration application's requirements.
 
 :::
 
 > **Strict `style-src` (no `'unsafe-inline'`)**: since v2.2.1, GeoLeaf no longer requires `'unsafe-inline'`. Dynamic styles are applied through the CSSOM property by property (`element.style.setProperty`, public helpers `GeoLeaf.Helpers.applyCssText` / `applyDeferredStyles`) or through CSS classes — forms that are **not** subject to `style-src`, unlike `element.style.cssText`, `setAttribute('style', …)` and `style` attributes (now eliminated from rendering: markers, panels, sprite). For the full inventory and CSP matrix, see [security/SECURITY_CONTRACT.md](security/SECURITY_CONTRACT.md) §4.
 
-> **`worker-src blob:`** is required by the MapLibre Web Workers (tile decoding, GeoJSON parsing).
+> **`worker-src 'self' blob:`** — `'self'` is what the workers need: the MapLibre worker is a same-origin `.mjs` module loaded by its URL, and so is GeoLeaf's GeoJSON worker. `blob:` covers the engine's fallback, taken only when MapLibre itself is loaded from another origin than the page (a CDN): it then starts its worker from a blob URL.
 
 ---
 
@@ -171,13 +171,13 @@ server sent it, without a renewal and without `geoleaf:connector:auth-error`.
 
 **Security constraints enforced by the code:**
 
-| Constraint                   | Behaviour                                                                                                                                |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| HTTPS required in production | `ConfigError` thrown if `baseUrl` uses HTTP while the page is not on a development host — `localhost`, `*.localhost`, loopback, `*.test` |
-| Token in the header only     | `Authorization: Bearer {token}` — never in a query string                                                                                |
-| Password wiped after use     | String overwritten in memory post-login (OWASP A02)                                                                                      |
-| Non-JWT token                | `console.warn` if the token contains no `.` — **only in `getToken` callback mode** (not in `auth.endpoint` mode)                         |
-| Modal XSS                    | `textContent` only in the login modal — no `innerHTML` with user data                                                                    |
+| Constraint                   | Behaviour                                                                                                                                                                                             |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTPS required in production | `ConfigError` thrown if `baseUrl` or `auth.endpoint` uses HTTP toward a host that is not a development host — `localhost`, `*.localhost`, loopback, `*.test`. The destination is judged, not the page |
+| Token in the header only     | `Authorization: Bearer {token}` — never in a query string                                                                                                                                             |
+| Password wiped after use     | String overwritten in memory post-login (OWASP A02)                                                                                                                                                   |
+| Non-JWT token                | `console.warn` if the token contains no `.` — **only in `getToken` callback mode** (not in `auth.endpoint` mode)                                                                                      |
+| Modal XSS                    | `textContent` only in the login modal — no `innerHTML` with user data                                                                                                                                 |
 
 ---
 

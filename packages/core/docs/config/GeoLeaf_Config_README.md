@@ -285,4 +285,4 @@ The types are declared in `config-types.ts`:
 - Use `autoEvent: true` (the default) to integrate GeoLeaf into external frameworks.
 - Always validate JSON files before use (no JSON5 comments).
 - Use the typed accessors (`get`, `getSection`, `getActiveProfile`) rather than reading `_config` directly.
-- The `map.target` block is mandatory (HTML identifier of the container element).
+- `map.target` names the container element by its HTML identifier; absent, the boot looks for `geoleaf-map`.

@@ -1,0 +1,22 @@
+{
+    "schemaVersion": 2,
+    "lot": "isochrone-fixtures",
+    "scope": ["scripts/capture-isochrone-fixtures.cjs"],
+    "verdicts": {
+        "scripts/capture-isochrone-fixtures.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Capture le corpus de jeux d'essai du plugin isochrone sur une instance publique de Valhalla — lancé À LA MAIN, jamais en CI",
+            "confidence": "haute",
+            "rationale": "Le normaliseur du plugin s'écrit contre ce qu'un moteur répond vraiment, jamais contre sa documentation. Trois captures, et chacune tient autre chose : la réponse nominale, que le normaliseur lit ; un point en mer, que le moteur sert comme une réussite d'une maille — elle tient la décision de ne pas juger une géométrie, et sa re-capture est le seul geste qui montrerait un moteur se mettant à refuser ; une durée refusée, seul corps de refus du corpus. Les deux dernières sont capturées pour la réponse ATTENDUE : si l'instance répond autrement, rien n'est écrit. Absent de `ci-local.cjs` comme de `ci.yml`, pour le motif de `capture-route-fixtures.cjs` : un test appelant une instance publique rend le run non reproductible. N'imprime que l'origine et le chemin d'une URL."
+        }
+    },
+    "_comment": "Le corpus lui-même — `packages/plugins/isochrone/fixtures/` et ses `.json` — n'a aucun verdict, comme celui de `routing` et pour le même motif : le générateur d'arbre ne compte ni les `.json` de données ni un répertoire qui n'en contient que. Son motif se lit dans l'en-tête du script."
+}

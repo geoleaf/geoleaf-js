@@ -214,12 +214,26 @@
                 },
                 "hillshade": {
                     "type": "object",
-                    "description": "Hillshade (raster-dem) source configuration.",
+                    "description": "Relief shading drawn from a raster-dem source. Read in two ways. On a basemap of `type: \"hillshade\"` the shading IS the basemap. On a basemap of any other type it is read only when `overlay` is true, and is then drawn OVER that basemap, which stays what it is.",
                     "additionalProperties": false,
                     "patternProperties": {
                         "^_comment": {}
                     },
                     "properties": {
+                        "overlay": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Draws the shading as an overlay of this basemap: just above the basemap's layer when it is an image (tiles, WMS, WMTS), inside the style when it is vector — see `beforeLayer`. Without it, a `hillshade` block on a basemap that is not of `type: \"hillshade\"` is ignored. Ignored on `type: \"hillshade\"`, whose shading is the basemap itself. The overlay reads a raster-dem source of its own, apart from the one of `terrain`: the same `demUrl` is then requested twice, for a shading one zoom level finer."
+                        },
+                        "onlyWithTerrain": {
+                            "type": "boolean",
+                            "default": false,
+                            "description": "Overlay only: the shading is shown only while a 3D terrain is on the map, and hidden the rest of the time. Hidden, it requests no elevation tile: with a `terrain` block whose `activation` is `pitch`, a flat map stays exactly what it is without either block. On a basemap without an enabled `terrain` the overlay never shows. Without this key the overlay is always drawn. Ignored without `overlay`."
+                        },
+                        "beforeLayer": {
+                            "type": "string",
+                            "description": "Vector basemap only: id of the layer of the basemap's style the overlay is inserted before — typically its first water or road layer, so that the shading covers the land fills and stays under water, roads and labels. Absent, or naming a layer the style does not have: the overlay goes before the first `symbol` layer of the style, which keeps the labels readable but shades whatever is drawn under them, water and roads included."
+                        },
                         "demUrl": {
                             "type": "string"
                         },
@@ -256,11 +270,28 @@
                 },
                 "terrain": {
                     "type": "object",
-                    "description": "3D terrain / raster-dem configuration. Only valid when basemap type is \"maplibre\" or tiles-based.",
+                    "description": "3D terrain / raster-dem configuration, read whatever the basemap type. What puts the relief on is `activation`: the selection of the basemap, when `default3D` is true, or the tilt of the camera.",
                     "required": ["enabled"],
                     "additionalProperties": false,
                     "patternProperties": {
                         "^_comment": {}
+                    },
+                    "if": {
+                        "properties": { "activation": { "const": "pitch" } },
+                        "required": ["activation"]
+                    },
+                    "then": {
+                        "properties": {
+                            "default3D": { "const": false },
+                            "pitch": false,
+                            "bearing": false
+                        }
+                    },
+                    "else": {
+                        "properties": {
+                            "activateFromPitch": false,
+                            "deactivateBelowPitch": false
+                        }
                     },
                     "properties": {
                         "enabled": {
@@ -284,24 +315,43 @@
                             "default": 1.5,
                             "description": "Vertical exaggeration factor. Recommended range: 1.0–3.0."
                         },
+                        "activation": {
+                            "type": "string",
+                            "enum": ["basemap", "pitch"],
+                            "default": "basemap",
+                            "description": "What puts the terrain on. `basemap`: selecting the basemap does, when `default3D` is true; the camera is then posted to `pitch` and `bearing`, and eased back flat when the basemap is left. `pitch`: the terrain follows the tilt of the camera — absent while the map is flat, when no elevation tile is requested; put on once the camera comes to rest tilted to `activateFromPitch` or more; removed once it comes to rest under `deactivateBelowPitch`. The decision is taken when a movement ends, never during it, and the camera is never moved: `pitch`, `bearing` and `default3D: true` are refused with `pitch`."
+                        },
+                        "activateFromPitch": {
+                            "type": "number",
+                            "exclusiveMinimum": 0,
+                            "maximum": 85,
+                            "default": 12,
+                            "description": "With `activation: \"pitch\"` only, and refused without it: tilt, in degrees, from which the terrain is put on. Keep it at or under the map's `maxPitch`, or the terrain can never show."
+                        },
+                        "deactivateBelowPitch": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 85,
+                            "description": "With `activation: \"pitch\"` only, and refused without it: tilt, in degrees, under which the terrain is removed. Must be lower than `activateFromPitch` — a value that is not is reported at start-up and replaced by the default. Default: half of `activateFromPitch`."
+                        },
                         "default3D": {
                             "type": "boolean",
                             "default": false,
-                            "description": "When true, 3D terrain activates automatically when this basemap is selected."
+                            "description": "When true, 3D terrain activates automatically when this basemap is selected. Not read — and refused when true — with `activation: \"pitch\"`."
                         },
                         "pitch": {
                             "type": "number",
                             "minimum": 0,
                             "maximum": 85,
                             "default": 45,
-                            "description": "Initial camera pitch in degrees applied when 3D terrain is activated."
+                            "description": "Camera pitch in degrees, posted when the terrain is activated by the selection of the basemap. Refused with `activation: \"pitch\"`, which never moves the camera."
                         },
                         "bearing": {
                             "type": "number",
                             "minimum": -180,
                             "maximum": 180,
                             "default": 0,
-                            "description": "Initial camera bearing in degrees applied when 3D terrain is activated."
+                            "description": "Camera bearing in degrees, posted when the terrain is activated by the selection of the basemap. Refused with `activation: \"pitch\"`, which never moves the camera."
                         },
                         "demMaxZoom": {
                             "type": "number",

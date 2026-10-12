@@ -471,6 +471,25 @@ Defines the layer-visibility presets in `themes.json`:
 }
 ```
 
+A theme may also say **where** it frames the map, with `view` — an extent to fit (`bounds`), or a point with its zoom (`center` and `zoom`):
+
+```json
+{
+    "id": "north-sector",
+    "label": "North sector",
+    "type": "primary",
+    "layers": [{ "id": "cities", "visible": true }],
+    "view": {
+        "bounds": [
+            [43.2, 1.2],
+            [43.6, 1.6]
+        ]
+    }
+}
+```
+
+Choosing such a theme moves the map to that view; a theme without `view` leaves the map where you left it. When the theme the profile starts on declares one, the map opens on it.
+
 ### 5.5 Layer style configuration
 
 A layer can carry several styles in `layers/<layer-name>/styles/<style-id>.json`:
@@ -640,6 +659,72 @@ Enable 3D relief by adding a `terrain` object to the basemap definition (`basema
 > **`default3D: true`** — terrain is enabled automatically as soon as this basemap is selected. There is no UI toggle: switching to a basemap without terrain turns 3D relief off automatically.
 
 > **`map.maxPitch`** — the MapLibre default is 60°. GeoLeaf raises the ceiling to 80° by default. Configurable through `profile.json > map.maxPitch`.
+
+#### A relief that comes when the map is tilted
+
+A basemap with `default3D` opens tilted, and its relief is on for as long as it is active. To open **flat** and still offer the relief, tell the terrain to follow the tilt:
+
+```json
+{
+    "basemaps": {
+        "satellite": {
+            "id": "satellite",
+            "label": "Satellite",
+            "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+            "attribution": "Tiles &copy; Esri",
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "activation": "pitch"
+            }
+        }
+    }
+}
+```
+
+> **What a flat map costs** — nothing. No relief, and no elevation tile requested: a visitor who never tilts the map downloads none. Do not write `default3D: true` with `pitch: 0` for this — the relief would then be on at all times, and its tiles downloaded by everyone.
+
+> **When the relief comes** — once the camera comes to rest tilted to 12° or more, and it goes once the camera comes to rest under 6°. The decision is taken when a movement ends, so the relief appears a moment after the gesture is released. The two thresholds are `terrain.activateFromPitch` and `terrain.deactivateBelowPitch`.
+
+> **The camera is the visitor's** — it is never tilted, flattened or turned by this mode, neither when the relief comes nor when another basemap is selected. `pitch`, `bearing` and `default3D: true` have no role here, and the profile schema refuses them next to `activation: "pitch"`.
+
+#### Relief shading over a basemap
+
+The terrain gives the map its shape, not its shadows: on a vector basemap the slopes of a 3D relief are flat colours, and only the ridge line reads. Add a `hillshade` block with `overlay: true` to shade them. The basemap stays what it is — vector, tiles, WMS or WMTS — and the shading is drawn over it:
+
+```json
+{
+    "basemaps": {
+        "plan-relief": {
+            "id": "plan-relief",
+            "label": "Plan with relief",
+            "type": "maplibre",
+            "style": "https://tiles.openfreemap.org/styles/liberty",
+            "attribution": "© OpenFreeMap © OpenMapTiles © OpenStreetMap",
+            "terrain": {
+                "enabled": true,
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "default3D": true,
+                "pitch": 60
+            },
+            "hillshade": {
+                "overlay": true,
+                "beforeLayer": "waterway_tunnel",
+                "demUrl": "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png",
+                "exaggeration": 0.45
+            }
+        }
+    }
+}
+```
+
+> **Where the shading goes** — on an image basemap, right above the basemap and under your data. On a vector basemap, before the style layer `beforeLayer` names: pick the first layer that must stay above the shading, usually the first water or road layer (`waterway_tunnel` in the style above). Without `beforeLayer` the shading goes before the style's first label layer — the labels stay readable, but water and roads are shaded too.
+
+> **Without `overlay`** a `hillshade` block is read on a basemap of `type: "hillshade"` only, where the shading is the basemap itself.
+
+> **Two elevation sources** — the overlay never shares the terrain's source, even with the same `demUrl`: the tiles are requested twice, and the shading is one zoom level finer for it.
+
+> **Shading only with the relief** — add `"onlyWithTerrain": true` to the `hillshade` block and the overlay is shown only while a relief is on the map; hidden, it requests no elevation tile. With a terrain that follows the tilt, a flat map then stays exactly what it is without either block.
 
 #### 3D layers — extruded polygons (fill-extrusion)
 

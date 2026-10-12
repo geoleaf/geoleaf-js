@@ -270,6 +270,17 @@ function rowAt(position: number): TableRow | null {
     return state.rows[index] ?? null;
 }
 
+/**
+ * The row carrying an id, search or no search — or null when the model holds no such row.
+ *
+ * Read by row activation, which starts from the id the DOM carries and needs the feature.
+ */
+export function rowById(id: string): TableRow | null {
+    const index = state.indexById.get(id);
+    if (index == null) return null;
+    return state.rows[index] ?? null;
+}
+
 /** Every visible row, in display order. */
 export function visibleRows(): TableRow[] {
     const rows: TableRow[] = [];
@@ -301,6 +312,11 @@ export function visiblePositionOfId(id: string): number {
  */
 export function setAnchor(id: string | null): void {
     state.anchorId = id;
+}
+
+/** The id a range selection would start from, or null when there is none. */
+export function anchorId(): string | null {
+    return state.anchorId;
 }
 
 /**

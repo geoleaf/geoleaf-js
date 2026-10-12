@@ -653,7 +653,7 @@ describe("applyState() — theme branch", () => {
         const map = makeMap();
         applyState({ lat: 45.0, lng: 3.0, zoom: 10, theme: "dark" }, map);
         document.dispatchEvent(new CustomEvent("geoleaf:themes:ready"));
-        expect(mockThemeSelector.setTheme).toHaveBeenCalledWith("dark");
+        expect(mockThemeSelector.setTheme).toHaveBeenCalledWith("dark", { keepView: true });
     });
 
     it("applies theme: _applyLayersAndFilter called directly when theme already matches", () => {

@@ -53,8 +53,11 @@ declare global {
     interface GeoLeafThemeSelector {
         /** Active theme id, or `null` before a theme is applied. */
         getCurrentTheme?: () => string | null | undefined;
-        /** Applies a theme by id (resolves once the theme is loaded and applied). */
-        setTheme?: (themeId: string) => Promise<void>;
+        /**
+         * Applies a theme by id (resolves once the theme is loaded and applied). A theme that
+         * declares a `view` moves the camera to it; `keepView` leaves the camera where it is.
+         */
+        setTheme?: (themeId: string, options?: { keepView?: boolean }) => Promise<void>;
         [key: string]: unknown;
     }
 
@@ -1192,8 +1195,8 @@ declare global {
          */
         Storage?: {
             /**
-             * The IndexedDB engine. Only the member the write cycle teaches is named; the rest
-             * stays in ITS OWN tail — the namespace's tail is gone, this one is not.
+             * The IndexedDB engine. Its relays are named by `GeoLeafStorageDB`; what is not
+             * named there stays in ITS OWN tail — the namespace's tail is gone, this one is not.
              */
             DB?: GeoLeafStorageDB;
             /** Lower-case alias of `DB` — the same engine. */
@@ -1473,6 +1476,8 @@ declare global {
          * `navigation` imports only TYPES from `routing`.
          */
         Navigation?: GeoLeafPluginApi<"Navigation">;
+        /** `@geoleaf-plugins/isochrone` — zones reachable from a point, asked of a routing engine. */
+        Isochrone?: GeoLeafPluginApi<"Isochrone">;
         /** `@geoleaf-plugins/flatgeobuf` — FlatGeobuf reads by bbox. */
         FlatGeobuf?: GeoLeafPluginApi<"FlatGeobuf">;
         /** `@geoleaf-plugins/connector` — bridge to the Connector backend. */

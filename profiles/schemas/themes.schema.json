@@ -109,6 +109,45 @@
                             }
                         }
                     }
+                },
+                "view": {
+                    "type": "object",
+                    "description": "Where this theme frames the map: `bounds`, or `center` with `zoom`. Activating the theme moves the camera there, before its layers load. When it is the theme the profile starts on, the map starts on it, unless the page address carries a view. Absent: activating the theme leaves the camera where it is, and a profile whose start theme declares none starts on its `map` extent. The navigation limit (`map.positionFixed`) and the padding (`map.padding`) stay the profile's. A legacy root-level `themes.json`, read after the map exists, frames on activation only.",
+                    "additionalProperties": false,
+                    "patternProperties": { "^_comment": {} },
+                    "anyOf": [
+                        { "properties": { "bounds": true }, "required": ["bounds"] },
+                        {
+                            "properties": { "center": true, "zoom": true },
+                            "required": ["center", "zoom"]
+                        }
+                    ],
+                    "properties": {
+                        "bounds": {
+                            "type": "array",
+                            "description": "Extent to fit, [[south, west], [north, east]] - the writing of `map.bounds`. Wins over `center` when both are given and it is usable; an unreadable extent beside a valid `center` and `zoom` yields to them.",
+                            "items": {
+                                "type": "array",
+                                "items": { "type": "number" },
+                                "minItems": 2,
+                                "maxItems": 2
+                            },
+                            "minItems": 2,
+                            "maxItems": 2
+                        },
+                        "center": {
+                            "type": "array",
+                            "description": "Point to stand on, [lat, lng] - the writing of `map.center`. Read with `zoom`.",
+                            "items": { "type": "number" },
+                            "minItems": 2,
+                            "maxItems": 2
+                        },
+                        "zoom": {
+                            "type": "number",
+                            "minimum": 0,
+                            "description": "Zoom level at `center`."
+                        }
+                    }
                 }
             }
         }

@@ -16,12 +16,7 @@
  * `updateVectorTileLayerStyle`; capabilities pass raw GeoLeaf style and never see a
  * MapLibre paint object.
  */
-import {
-    toSourceId,
-    toSubLayerId,
-    SENTINEL_POI,
-    MaplibreLayerRegistry,
-} from "./maplibre-layer-registry.js";
+import { toSourceId, toSubLayerId, MaplibreLayerRegistry } from "./maplibre-layer-registry.js";
 import type { SubLayerType } from "./maplibre-layer-registry.js";
 import {
     normalizeToFlat,
@@ -313,7 +308,13 @@ export function buildVectorTileLayer(
     validateFillExtrusionStyle(layerId, geomType, mergedFlat, null, "vector");
 
     ensureSentinel();
-    const beforeId = map.getLayer(SENTINEL_POI) ? SENTINEL_POI : undefined;
+    // The anchor comes from the RANK, exactly as for a GeoJSON layer. It used to be the
+    // sentinel, whatever `zIndex` said — while the layer was still registered under that
+    // rank a few lines below. Two effects, both measured in a browser: the tile layer sat
+    // above every GeoJSON layer already there, and a GeoJSON layer of lower rank added
+    // afterwards, anchored on it, ended above layers of higher rank.
+    const anchor = registry.getInsertBeforeId(spec.zIndex ?? 0);
+    const beforeId = map.getLayer(anchor) ? anchor : undefined;
     const vtZoom = _buildVtZoom(spec.subLayerZoom);
 
     const createdSubIds: string[] = [];

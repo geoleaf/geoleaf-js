@@ -4,8 +4,8 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 45c7c0eb2
-date: 7 octobre 2026
+verifie_contre: 00df8afc3
+date: 11 octobre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
@@ -174,7 +174,7 @@ doit donc en garder l'apparence. C'est le seul créneau du lot à porter cette v
 | TB-11 | Résolveur d'identifiant **unique**                       | Nom de repère, attribut DOM, table de correspondance           | Les trois passent par le même résolveur — sinon la sélection et l'export désigneraient des entités différentes. ⚠️ L'identité est fixée **une fois, au chargement**, par `view-model.rebuild` ; le rendu la reçoit et n'en frappe aucune. Un tri réordonne les lignes, il ne les renumérote pas                                                                                                                                                                                                                                                                                                                            | `feature-id.ts`, `view-model.ts`                                                         |
 | TB-12 | Redimensionnement à la poignée                           | Glissement du bord haut, **souris ou doigt**                   | Hauteur bornée par un minimum et un maximum — voir §Configuration. Le geste passe par des **Pointer Events**, donc un seul chemin pour les deux entrées ; il était souris-seul jusqu'au 14/08/2026. ⚠️ La poignée porte `touch-action: none` — **sans cette règle CSS le portage serait purement cosmétique** : au doigt le navigateur revendique le glissement vertical comme un défilement et n'émet aucun `pointermove`. Un geste confisqué (`pointercancel`) relâche le curseur et la sélection posés sur le document entier                                                                                           | `panel-resize.ts`                                                                        |
 | TB-13 | Formatage localisé des valeurs                           | Nombres, dates                                                 | Suit la langue active                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | `format-value.ts`                                                                        |
-| TB-14 | Neuf événements de cycle                                 | Chaque geste                                                   | Émis sur le document **et**, si la carte sait le faire, répliqués sur la carte                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `table-state.ts` → `fireEvent`                                                           |
+| TB-14 | Dix événements de cycle                                  | Chaque geste                                                   | Émis sur le document **et**, si la carte sait le faire, répliqués sur la carte                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | `table-state.ts` → `fireEvent`                                                           |
 | TB-15 | Membrane pour les appelants                              | Autres plugins                                                 | Un seam typé plutôt qu'un accès direct au namespace                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | `table-seam.ts`                                                                          |
 | TB-16 | Recherche plein texte **sur le modèle**                  | Saisie dans le champ de la barre d'outils                      | Filtre débouncé (300 ms) sur les **valeurs du modèle**, formatées comme la cellule les affiche — donc ce que l'utilisateur lit est ce que la recherche compare. Il restreint l'ensemble visible, que le rendu projette : il survit au défilement, et un compteur « n / total » dit que la vue est un sous-ensemble. Quand la couche déclare `searchFields`, seules ces propriétés sont interrogées                                                                                                                                                                                                                         | `panel.ts` → `createSearchInput`, `view-model.ts`                                        |
 | TB-17 | Un export KML ou GPX nomme l'entité **comme le tableau** | Export de la sélection ou de la couche, formats `kml` et `gpx` | Le `<name>` de chaque entité est son identifiant du tableau. Une seule fonction numérote une couche (`mintFeatureIds`, au compte de synthétiques déjà distribués) pour le modèle et pour l'export de couche ; une sélection, qui est un sous-ensemble, voyage avec les identifiants que ses entités portent déjà. 🛑 **Jusqu'au 01/10/2026, l'export passait l'index du tableau exporté** : sur une couche mixte, ou sur toute sélection, la même entité portait deux noms. ⚠️ L'export de couche contourne le plafond de lignes : au-delà du plafond, la numérotation continue celle du tableau, elle ne la contredit pas | `feature-id.ts` (`mintFeatureIds`), `export.ts`, `table-state.ts` (`getSelectedEntries`) |
@@ -307,7 +307,7 @@ pas tamponner une régression de surface.
 
 ### Événements
 
-Neuf, tous préfixés `geoleaf:table:`, émis sur le document **et** répliqués sur la carte quand
+Dix, tous préfixés `geoleaf:table:`, émis sur le document **et** répliqués sur la carte quand
 celle-ci expose de quoi le faire.
 
 | Événement                         | Émis par                              |
@@ -319,9 +319,42 @@ celle-ci expose de quoi le faire.
 | `zoomToSelection`                 | L'action de cadrage                   |
 | `highlightSelection`              | La bascule de surbrillance            |
 | `exportSelection` · `exportLayer` | Les deux chemins d'export             |
+| `rowActivated`                    | Double-clic sur une ligne, ou Entrée  |
 
-✅ **Les neuf sont TYPÉS** dans `contracts/event-bus.contract.ts` du core (seam `table`), depuis le
-Contrat inverse — 13/08/2026. L'émission est vérifiée contre la map : `fireEvent`
+**`rowActivated` nomme une intention, pas un geste** (`src/row-activation.ts`) : la ligne a été
+activée, et ce que cela ouvre est l'affaire de l'abonné — le tableau n'ouvre rien. Charge :
+`{ layerId, featureId, properties }`, sans nœud DOM. `featureId` est l'identifiant de ligne, celui
+de `selectedIds` — donc une chaîne, **synthétique quand l'entité n'a pas d'identifiant** ;
+`properties` est la copie superficielle des propriétés **complètes** de l'entité, pas des seules
+colonnes affichées.
+
+- **Deux déclencheurs** : le double-clic, et Entrée quand la ligne **elle-même** a le focus. Chaque
+  ligne de données porte `tabindex="0"`. Ni la cellule de la case à cocher, ni l'en-tête de tri
+  n'activent.
+- 🛑 **Le double-clic rend la sélection telle qu'il l'a trouvée.** Un double-clic est deux clics, et
+  un clic de ligne bascule la sélection : laissé à lui-même, le geste **détruisait une sélection
+  multiple** (le premier clic la remplace par la ligne, le second la vide). Retarder chaque clic
+  pour savoir s'il en vient un second aurait ralenti tout le tableau ; le premier clic agit donc
+  aussitôt, le second est ignoré (`event.detail > 1`), et l'activation rétablit la sélection **et
+  l'ancre de plage** d'avant le premier clic. ⚠️ Conséquence visible : **deux `selectionChanged`**
+  encadrent un double-clic — la bascule, puis la restauration, qui porte la sélection initiale.
+  Entrée n'en émet aucun.
+- **Deux écouteurs délégués sur le `tbody`, aucun sur les lignes** : la fenêtre virtuelle recrée ses
+  lignes à chaque défilement, un écouteur délégué les suit sans le savoir. Ils partent par le
+  registre commun (`event-cleanups.ts`), avant un re-rendu et à la destruction.
+- 🛑 **La sélection passe par le même chemin, et ce n'est pas un choix de style** : le clic de ligne
+  et le `change` de la case sont deux écouteurs délégués de plus sur le `tbody` (`renderer.ts`). Tant
+  qu'ils étaient posés par ligne, chaque ligne recréée poussait deux fonctions de retrait dans le
+  registre, qui n'est vidé qu'au rendu suivant : toute ligne défilée restait vivante, détachée,
+  retenue par son propre retrait. Mesuré dans Chromium sur 30 000 lignes, après 2 000 événements de
+  défilement : 98 122 lignes vivantes pour 52 au document, aucun écouteur retiré, un tas passé de 31
+  à 58 Mo. **Une ligne ne porte plus aucun écouteur** ; le registre ne reçoit qu'un nombre fixe
+  d'entrées par rendu.
+- ⚠️ **Le focus ne survit pas au défilement virtuel** : la ligne focalisée est recréée. Le tableau
+  n'a pas de navigation aux flèches.
+
+✅ **Les dix sont TYPÉS** dans `contracts/event-bus.contract.ts` du core (seam `table`) — neuf depuis
+le Contrat inverse du 13/08/2026, `rowActivated` dès sa naissance. L'émission est vérifiée contre la map : `fireEvent`
 (`src/table-state.ts`) est générique sur `GeoLeafEventMap`, et son union de noms se **dérive** de
 la map au lieu d'en être une seconde copie.
 

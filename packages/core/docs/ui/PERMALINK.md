@@ -48,12 +48,15 @@ The **Permalink** module serialises the current map state (centre, zoom, layer v
 
 Synchronisation uses `history.replaceState()` — no entry is added to the browser history, and the "Back" button is unaffected.
 
-### Internal architecture (v2.0.0)
+### Internal architecture
 
 ```
-built-in/permalink/
-├── permalink-api.ts      // Stateful internal facade — bound to GeoLeaf.Permalink
-└── permalink-url.ts      // Stateless logic (readUrl, buildUrl, applyState, startSync)
+capabilities/permalink/
+├── public-api.ts               // Stateful facade — bound to GeoLeaf.Permalink
+├── permalink-url.ts            // Reading and writing the URL (readUrl, buildUrl)
+├── permalink-field-filters.ts  // The per-field filter grammar
+├── permalink-sync.ts           // Applying a state to the map, continuous synchronisation
+└── permalink-restore.ts        // Restoring layers, filters and theme after boot
 ```
 
 The module is also exposed as the `Permalink` named ESM export of `@geoleaf/core`.
@@ -190,7 +193,7 @@ https://mymap.example.com/#gl=eyJsYXQiOjQ4Ljg1NywibG5nIjoyLjM0Nywiem9vbSI6MTN9
 
 ### Transparent auto-compact
 
-In `"hash"` mode, when the fragment grows beyond 200 characters (many hidden layers, for instance), GeoLeaf automatically switches to the compact format, transparently for the user. The switch is silent.
+In `"hash"` and `"query"` modes, when the state grows beyond 200 characters (many hidden layers, for instance), GeoLeaf automatically switches to the compact format, transparently for the user. The switch is silent.
 
 ---
 
@@ -220,7 +223,7 @@ Reads the current URL and caches the parsed state. Called automatically before t
 
 Applies the cached state to the map and the UI. Called automatically once every module is initialised.
 
-**Parameter:** `map` — MapLibre GL instance (`maplibregl.Map`).
+**Parameter:** `map` — the map adapter, as `GeoLeaf.Core.getMap()` returns it (`IMapAdapter`), not the native MapLibre map.
 
 ### `GeoLeaf.Permalink.startSync(map)`
 

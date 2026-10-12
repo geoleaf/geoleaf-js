@@ -22,8 +22,8 @@ Some configuration keys in `profile.json` and `ui.json` only take effect once th
 | _(no key)_                       | `@geoleaf-plugins/file-import`                                     | Enables the `GeoLeaf.FileImport.*` API                          |
 | _(no key)_                       | `@geoleaf-plugins/flatgeobuf`                                      | Enables the `GeoLeaf.FlatGeobuf.*` API                          |
 | _(no key)_                       | `@geoleaf-plugins/cog`                                             | Enables the `GeoLeaf.COG.*` API                                 |
-| _(no key)_                       | `@geoleaf-plugins/websocket`                                       | Real-time POI stream over WebSocket (planned)                   |
-| _(no key)_                       | `@geoleaf-plugins/realtime-layer`                                  | Auto-refreshing layers (planned)                                |
+| _(no key)_                       | `@geoleaf-plugins/websocket`                                       | Real-time connection over WebSocket (`GeoLeaf.Ws`)              |
+| _(no key)_                       | `@geoleaf-plugins/realtime-layer`                                  | Auto-refreshing layers                                          |
 
 ---
 
@@ -126,13 +126,11 @@ Cache configuration can be refined for each basemap:
 
 ### Enable the add button
 
-In `config/plugins/editor.json` → the `modules.editor` block:
+In `config/plugins/editor.json` — the file holds the `modules.editor` block itself:
 
 ```json
 {
-    "editor": {
-        "showAddPoi": true
-    }
+    "showAddPoi": true
 }
 ```
 
@@ -156,6 +154,10 @@ only ten root keys (`$schema`, `id`, `label`, `displayLabel`, `icon`, `descripti
 | ------------------------------ | ---------------------------------------------------------------------------- |
 | `poiAddConfig.enabled`         | no key any more — the plugin is loaded **lazily** when the button is pressed |
 | `poiAddConfig.defaultPosition` | `modules.editor.poiAddDefaultPosition` (in `config/plugins/editor.json`)     |
+
+---
+
+## Plugin Connector — `@geoleaf-plugins/connector`
 
 ### Installation
 
@@ -184,12 +186,12 @@ await GeoLeaf.Connector.configure({
 
 ### Configuration parameters
 
-| Parameter       | Type     | Description                                                                                                                                                                                               |
-| --------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `baseUrl`       | string   | Requests under this URL carry `Authorization: Bearer <token>`. HTTPS; `http://` is tolerated only when the page runs on a development host — `localhost`, `*.localhost`, the loopback addresses, `*.test` |
-| `getToken`      | function | Mode 1 — returns the token, or a promise of it, at each request; `null` sends none                                                                                                                        |
-| `auth.endpoint` | string   | Mode 2 — the login route: `POST { login, password }` answered by `{ token, expiresIn }`; renewal at `{endpoint}/refresh`                                                                                  |
-| `auth.ui`       | boolean  | Mode 2 — the plugin renders the login window                                                                                                                                                              |
+| Parameter       | Type     | Description                                                                                                                                                                                                                                     |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseUrl`       | string   | Requests under this URL carry `Authorization: Bearer <token>`. HTTPS; `http://` is tolerated only when the URL itself targets a development host — `localhost`, `*.localhost`, the loopback addresses, `*.test` — whatever host serves the page |
+| `getToken`      | function | Mode 1 — returns the token, or a promise of it, at each request; `null` sends none                                                                                                                                                              |
+| `auth.endpoint` | string   | Mode 2 — the login route: `POST { login, password }` answered by `{ token, expiresIn }`; renewal at `{endpoint}/refresh`. Held to the same HTTPS rule as `baseUrl`: it receives the password                                                    |
+| `auth.ui`       | boolean  | Mode 2 — the plugin renders the login window                                                                                                                                                                                                    |
 
 > ⚠️ **`getToken` and `auth` are mutually exclusive, and there is no third mode.** An API key is
 > handed over by `getToken` and travels as `Authorization: Bearer <key>`; no option changes the
@@ -415,9 +417,10 @@ GeoLeaf.COG.removeLayer(map, "ortho");
 
 ## Plugin WebSocket — `@geoleaf-plugins/websocket`
 
-> **Status: planned for Q3 2026** — MIT plugin for real-time POI tracking.
-
-This plugin will provide real-time POI updates over WebSocket — live positions, geographic alerts, IoT streams. Configuration documentation will land with the release.
+WebSocket transport plugin: a real-time connection with automatic reconnection, offline
+buffering and built-in metrics, behind `GeoLeaf.Ws`. It reads no profile key — it is configured
+by `GeoLeaf.Ws.init()`. Its API and options are described in
+[its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/websocket).
 
 ---
 
@@ -669,10 +672,14 @@ GeoLeaf.Table?.exportLayer("excel");
 
 ### Emitted events
 
-| Event                   | Payload                                  | Trigger                   |
-| ----------------------- | ---------------------------------------- | ------------------------- |
-| `table:exportSelection` | `{ layerId, format, selectedIds, rows }` | `Table.exportSelection()` |
-| `table:exportLayer`     | `{ layerId, format, count }`             | `Table.exportLayer()`     |
+The table emits ten events, all named `geoleaf:table:…` — two of them on export:
+
+| Event                           | Payload                                  | Trigger                   |
+| ------------------------------- | ---------------------------------------- | ------------------------- |
+| `geoleaf:table:exportSelection` | `{ layerId, format, selectedIds, rows }` | `Table.exportSelection()` |
+| `geoleaf:table:exportLayer`     | `{ layerId, format, count }`             | `Table.exportLayer()`     |
+
+The eight others, and their payloads, are listed in [the Table guide](table/GeoLeaf_Table_README.md).
 
 ---
 

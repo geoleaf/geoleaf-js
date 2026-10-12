@@ -246,7 +246,7 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
             [-55, -73.5],
             [-21.78, -53.5],
         ],
-        "initialMaxZoom": 10, //        alias de maxZoom (legacy — voir registre d'anomalies)
+        "initialMaxZoom": 10, //        plafond du zoom du cadrage initial
         "padding": [50, 50],
         "positionFixed": true,
         "boundsMargin": 0.7,
@@ -303,7 +303,7 @@ Source de vérité du schéma : `profiles/schemas/profile.schema.json`.
   `Files.taxonomyFile` est **rejeté** par `npm run validate:profiles`.
 - **`Files.modules`** : dictionnaire `id → chemin` (clés dynamiques). La **présence** d'une entrée déclenche
   la discovery du plugin (PRF-MODULES).
-- **`map.*`** : `bounds`, `center`, `zoom`, `maxZoom`/`minZoom`, `initialMaxZoom` (alias legacy de `maxZoom`),
+- **`map.*`** : `bounds`, `center`, `zoom`, `maxZoom`/`minZoom`, `initialMaxZoom` (plafond du zoom du cadrage initial),
   `padding`, `positionFixed`, `boundsMargin`. L'inventaire **par valeur** (effet, défaut, consommateur) est
   produit en **S3/B1** ; les alias vivants y sont confirmés et consignés.
 

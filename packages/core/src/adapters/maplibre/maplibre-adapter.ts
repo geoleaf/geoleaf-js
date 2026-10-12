@@ -31,6 +31,7 @@ import type {
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
 import { MaplibreLayerRegistry, SENTINEL_POI } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
+import { applyLayerZIndex } from "./maplibre-layer-order.js";
 import { reregisterHatchPatterns, removeHatchPatterns } from "./maplibre-hatch-patterns.js";
 import { applyPoiFilter, type ClusterLayerIds } from "./maplibre-poi-builders.js";
 import {
@@ -320,7 +321,11 @@ export class MaplibreAdapter implements IMapAdapter {
 
     fitBounds(
         bounds: GeoLeafBounds,
-        options?: { padding?: GeoLeafPoint | Record<string, number>; animate?: boolean }
+        options?: {
+            padding?: GeoLeafPoint | Record<string, number>;
+            animate?: boolean;
+            maxZoom?: number;
+        }
     ): void {
         const mlOpts: FitBoundsOptions = {};
         if (options?.padding) {
@@ -344,6 +349,9 @@ export class MaplibreAdapter implements IMapAdapter {
             }
         }
         if (options?.animate === false) mlOpts.animate = false;
+        if (typeof options?.maxZoom === "number" && Number.isFinite(options.maxZoom)) {
+            mlOpts.maxZoom = options.maxZoom;
+        }
         const map = this._requireMap();
         // 🛑 A FRAMING IS NOT A CHANGE OF VIEWPOINT. `fitBounds` computes a camera from scratch
         // and, given no `pitch`/`bearing`, applies ZERO — silently redressing a tilted map and
@@ -632,6 +640,21 @@ export class MaplibreAdapter implements IMapAdapter {
     setLayerZoomRange(id: string, minZoom: number | null, maxZoom: number | null): void {
         const subLayerIds = this._layerRegistry.getSubLayerIds(id);
         applyLayerZoomRange(this._requireMap(), subLayerIds, minZoom, maxZoom);
+    }
+
+    /**
+     * Re-ranks a GeoJSON layer in place, and reports whether it did. The contract says where
+     * the layer lands, what is kept and when the answer is `false`; the move itself is
+     * `applyLayerZIndex`.
+     *
+     * A cluster group is refused HERE: it is registered under a rank, but its layers are added
+     * on top of the style as it stands when the group is created — that rank says nothing of
+     * where the group is drawn, so there is no place a new one could command.
+     */
+    setLayerZIndex(id: string, zIndex: number): boolean {
+        const map = this._requireMap();
+        if (this._clusterIds.has(id)) return false;
+        return applyLayerZIndex(map, this._layerRegistry, id, zIndex);
     }
 
     // ── Markers ──────────────────────────────────────────────────────────────

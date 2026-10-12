@@ -47,8 +47,8 @@
                                     "type": "number",
                                     "minimum": 1,
                                     "maximum": 72,
-                                    "default": 12,
-                                    "description": "Label text size in points, mapped to MapLibre `text-size`. It is the only font key: the font stack comes from the loaded map style."
+                                    "default": 9,
+                                    "description": "Label text size in points, mapped to MapLibre `text-size`. Absent: 12 px, which is 9 pt. It is the only font key: the font stack comes from the loaded map style."
                                 }
                             }
                         },

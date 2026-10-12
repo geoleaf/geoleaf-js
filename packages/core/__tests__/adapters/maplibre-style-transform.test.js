@@ -86,6 +86,45 @@ describe("buildGeoLeafStyleTransform", () => {
         ]);
     });
 
+    // Seen red with the carried layers sorted by the order ownership is read in: a re-ranked
+    // layer went back under the one it had been moved above.
+    test("keeps the order of the LIVE style, not the order ownership is read in", () => {
+        // `roads` was registered first, then re-ranked above `zones`: the registry — hence the
+        // ownership set — still lists it first, the live style draws it last.
+        const owned = {
+            layerIds: new Set([
+                "gl-roads-line",
+                "gl-zones-fill",
+                "gl-zones-line",
+                "gl-sentinel-poi",
+            ]),
+            sourceIds: new Set(["gl-src-roads", "gl-src-zones"]),
+        };
+        const previous = {
+            version: 8,
+            sources: {
+                "gl-src-roads": { type: "geojson", data: {} },
+                "gl-src-zones": { type: "geojson", data: {} },
+            },
+            layers: [
+                { id: "gl-zones-fill", type: "fill", source: "gl-src-zones" },
+                { id: "gl-zones-line", type: "line", source: "gl-src-zones" },
+                { id: "gl-roads-line", type: "line", source: "gl-src-roads" },
+                { id: "gl-sentinel-poi", type: "background" },
+            ],
+        };
+
+        const merged = buildGeoLeafStyleTransform(() => owned)(previous, nextStyle());
+
+        expect(merged.layers.map((l) => l.id)).toEqual([
+            "new-basemap-water",
+            "gl-zones-fill",
+            "gl-zones-line",
+            "gl-roads-line",
+            "gl-sentinel-poi",
+        ]);
+    });
+
     test("merges owned sources with the incoming basemap sources; drops the old basemap", () => {
         const transform = buildGeoLeafStyleTransform(() => OWNED);
         const merged = transform(previousStyle(), nextStyle());

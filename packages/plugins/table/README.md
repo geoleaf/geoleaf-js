@@ -122,19 +122,47 @@ You can also drive the table programmatically:
 
 ## Events
 
-Dispatched on `document` (bubbling), and replicated on the map when it exposes `fire`:
+Dispatched on `document`, and replicated on the map when it exposes `fire` — subscribe to
+one of the two, not both. The payloads are typed by `GeoLeafEventMap` in `@geoleaf/core`:
 
-| Event                              | Detail                       |
-| ---------------------------------- | ---------------------------- |
-| `geoleaf:table:opened`             | `{}`                         |
-| `geoleaf:table:closed`             | `{}`                         |
-| `geoleaf:table:layerChanged`       | `{ layerId }`                |
-| `geoleaf:table:sortChanged`        | `SortState`                  |
-| `geoleaf:table:selectionChanged`   | `{ ids, count, … }`          |
-| `geoleaf:table:zoomToSelection`    | `{ … }`                      |
-| `geoleaf:table:highlightSelection` | `{ active, … }`              |
-| `geoleaf:table:exportSelection`    | `{ format, count, … }`       |
-| `geoleaf:table:exportLayer`        | `{ layerId, format, count }` |
+| Event                              | Detail                                   |
+| ---------------------------------- | ---------------------------------------- |
+| `geoleaf:table:opened`             | `{}`                                     |
+| `geoleaf:table:closed`             | `{}`                                     |
+| `geoleaf:table:layerChanged`       | `{ layerId }`                            |
+| `geoleaf:table:sortChanged`        | `{ field, direction }`                   |
+| `geoleaf:table:selectionChanged`   | `{ layerId, selectedIds }`               |
+| `geoleaf:table:zoomToSelection`    | `{ layerId, selectedIds }`               |
+| `geoleaf:table:highlightSelection` | `{ layerId, selectedIds, active }`       |
+| `geoleaf:table:exportSelection`    | `{ layerId, format, selectedIds, rows }` |
+| `geoleaf:table:exportLayer`        | `{ layerId, format, count }`             |
+| `geoleaf:table:rowActivated`       | `{ layerId, featureId, properties }`     |
+
+### Row activation
+
+`geoleaf:table:rowActivated` says that the user **activated** a row: a double-click on it, or
+<kbd>Enter</kbd> while the row has the focus (every row is a Tab stop). The checkbox cell and
+the sort header never activate. The table opens nothing itself — what an activation means is
+the subscriber's decision.
+
+```js
+document.addEventListener("geoleaf:table:rowActivated", (e) => {
+    const { layerId, featureId, properties } = e.detail;
+    console.log("activated:", layerId, featureId, properties);
+});
+```
+
+- `featureId` is the row's identifier, the one `selectionChanged` lists in `selectedIds`. It
+  is always a string, and a synthetic one (`__gl_row_<n>`) when the feature carries no
+  identifier of its own — read the record's key off `properties` in that case.
+- `properties` are the feature's complete properties, not only the displayed columns, as a
+  shallow copy. The payload holds no DOM node.
+- **A double-click leaves the selection as it was.** Its first click toggles the selection
+  like any click — no click is delayed — and the activation restores the selection of before
+  that click: a `selectionChanged` subscriber sees two emissions around a double-click, the
+  second carrying the initial selection. <kbd>Enter</kbd> emits none.
+- A row re-created by the virtual scroll loses the focus: past the virtual threshold, the
+  focused row does not survive a scroll.
 
 ---
 
