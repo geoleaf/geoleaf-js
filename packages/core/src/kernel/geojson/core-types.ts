@@ -64,11 +64,12 @@ export interface GeoJSONNativeMap {
     /** Map centre. Its latitude anchors the scale→zoom conversion (`scaleToZoom`). */
     getCenter(): { lat: number; lng: number };
     getCanvas(): HTMLCanvasElement;
-    // Event subscription — 2-arg (map events) and 3-arg (layer events) forms.
+    // Event subscription — 2-arg (map events) and 3-arg (layer events) forms. The 3-arg form
+    // takes one sub-layer or a list: a list is ONE listener, called once per gesture.
     on(type: string, handler: MapEventHandler): void;
-    on(type: string, layerId: string, handler: MapEventHandler): void;
+    on(type: string, layerIds: string | string[], handler: MapEventHandler): void;
     off(type: string, handler: MapEventHandler): void;
-    off(type: string, layerId: string, handler: MapEventHandler): void;
+    off(type: string, layerIds: string | string[], handler: MapEventHandler): void;
     once(type: string, handler: MapEventHandler): void;
     once(type: string, layerId: string, handler: MapEventHandler): void;
     fire(type: string, data?: unknown): unknown;

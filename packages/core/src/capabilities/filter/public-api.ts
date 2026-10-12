@@ -68,7 +68,7 @@ export function buildPublicApi(): FilterPublicApi {
                 expandActiveFilter(deserializeActiveFilter(state, config))
             );
             writePanelMatchStatus(panel, stats);
-            dispatchGeoLeafEvent("geoleaf:filters:applied", {});
+            dispatchGeoLeafEvent("geoleaf:filters:applied", { reason: "filter" });
         },
 
         applyNow: (): void => applyFilterFromPanel(_panel(), getFilterConfig()),

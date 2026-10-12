@@ -78,8 +78,8 @@ describe("GeoLeaf.Filter — serialisation contract", () => {
     it("applyFilter() writes the panel, applies to sources and notifies", () => {
         configGet.mockReturnValue(CONFIG);
         const p = mountPanel();
-        let notified = false;
-        document.addEventListener("geoleaf:filters:applied", () => (notified = true), {
+        let notified = null;
+        document.addEventListener("geoleaf:filters:applied", (e) => (notified = e.detail), {
             once: true,
         });
         buildPublicApi().applyFilter({ fields: [{ id: "searchText", kind: "text", text: "xyz" }] });
@@ -87,7 +87,8 @@ describe("GeoLeaf.Filter — serialisation contract", () => {
             "xyz"
         );
         expect(applyToSources).toHaveBeenCalledTimes(1);
-        expect(notified).toBe(true);
+        // An application asked through the API is a pass on the FILTER, never on the data.
+        expect(notified).toEqual({ reason: "filter" });
     });
 
     it("applyFilter() says in the panel when the restored state keeps no feature", () => {

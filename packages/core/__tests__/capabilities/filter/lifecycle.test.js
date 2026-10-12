@@ -195,6 +195,65 @@ describe("FilterLifecycle — geoleaf:layer:updated", () => {
         vi.advanceTimersByTime(300);
         expect(h.applyFilterFromPanel).toHaveBeenCalledTimes(1);
     });
+
+    // 🛑 THE PASS SAYS WHO ASKED FOR IT. A host relayed every `geoleaf:filters:applied` to its
+    // server search, which rewrote the layer — hence this event, hence a pass, hence the
+    // relay again, without end. The reason is what lets a listener stop there.
+    describe("la cause de la passe", () => {
+        /** The reason each pass was applied with, in order. */
+        const reasons = () => h.applyFilterFromPanel.mock.calls.map((c) => c[2]);
+
+        it("une passe née d'une écriture de couche est dite `data`", () => {
+            mountWithActiveFilter();
+            updated();
+            vi.advanceTimersByTime(300);
+            expect(reasons()).toEqual(["data"]);
+        });
+
+        it("sous une rafale d'écritures, chaque passe reste `data`", () => {
+            mountWithActiveFilter();
+            for (let i = 0; i < 30; i++) {
+                updated();
+                vi.advanceTimersByTime(100);
+            }
+            expect(new Set(reasons())).toEqual(new Set(["data"]));
+        });
+
+        it("une saisie est dite `filter`", () => {
+            const input = mountWithActiveFilter();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            vi.advanceTimersByTime(300);
+            expect(reasons()).toEqual(["filter"]);
+        });
+
+        it("une saisie pendant l'attente d'une écriture requalifie la passe en `filter`", () => {
+            const input = mountWithActiveFilter();
+            updated();
+            vi.advanceTimersByTime(100);
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            vi.advanceTimersByTime(300);
+            expect(reasons()).toEqual(["filter"]);
+        });
+
+        it("la requalification ne survit pas à sa passe : l'écriture suivante est `data`", () => {
+            const input = mountWithActiveFilter();
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            vi.advanceTimersByTime(300);
+            updated();
+            vi.advanceTimersByTime(300);
+            expect(reasons()).toEqual(["filter", "data"]);
+        });
+
+        it("Appliquer et Réinitialiser sont dits `filter`, même une écriture en attente", () => {
+            mountWithActiveFilter();
+            updated();
+            document.querySelector('[data-gl-action="filter-apply"]').click();
+            expect(reasons()).toEqual(["filter"]);
+            // And the click disarmed the write's pass: nothing left to fire.
+            vi.advanceTimersByTime(2000);
+            expect(reasons()).toEqual(["filter"]);
+        });
+    });
 });
 
 describe("FilterLifecycle — reset", () => {

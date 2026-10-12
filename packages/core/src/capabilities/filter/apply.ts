@@ -30,6 +30,7 @@ import type { ActiveField, FeatureLike } from "./engine/types.js";
 import type { OptionsByField } from "./panel/render.js";
 import type { FilterMatchStats } from "./panel/write.js";
 import type { FilterConfig, FilterFieldDescriptor } from "./types.js";
+import type { GeoLeafFiltersAppliedDetail } from "../../contracts/event-bus.contract.js";
 
 /** GeoJSON kernel seam — id-based GPU `setLayerFilter` + `setData` fallback (RM-P1(b)). */
 interface GeoJSONFilterLike {
@@ -82,14 +83,24 @@ export function resolveOptionsWithData(config: FilterConfig): OptionsByField {
 /**
  * Reads the panel DOM, expands taxonomy selections, applies the filter to every
  * source, says in the panel when no feature was kept (`writePanelMatchStatus`) and
- * notifies listeners (`geoleaf:filters:applied`, empty payload). Single entry point for
- * Apply / control changes / reset; the permalink restore goes through
- * `GeoLeaf.Filter.applyFilter`, which does the same from a serialised state.
+ * notifies listeners (`geoleaf:filters:applied`, with the reason of the pass). Single entry
+ * point for Apply / control changes / reset, and for the pass an active filter replays when a
+ * layer is written; the permalink restore goes through `GeoLeaf.Filter.applyFilter`, which
+ * does the same from a serialised state.
+ *
+ * @param panelEl - The mounted filter panel, or `null` when none is.
+ * @param config - The filter configuration the panel was rendered from.
+ * @param reason - What asked for the pass: `"filter"` (the default) when the filter itself was
+ *   applied, `"data"` when the same filter is replayed because a layer's store changed.
  */
-export function applyFilterFromPanel(panelEl: HTMLElement | null, config: FilterConfig): void {
+export function applyFilterFromPanel(
+    panelEl: HTMLElement | null,
+    config: FilterConfig,
+    reason: GeoLeafFiltersAppliedDetail["reason"] = "filter"
+): void {
     const active = expandActiveFilter(readActiveFilter(panelEl, config));
     writePanelMatchStatus(panelEl, applyActiveFilterToSources(active));
-    dispatchGeoLeafEvent("geoleaf:filters:applied", {});
+    dispatchGeoLeafEvent("geoleaf:filters:applied", { reason });
 }
 
 /**

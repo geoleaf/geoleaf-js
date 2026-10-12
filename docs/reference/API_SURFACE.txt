@@ -1643,7 +1643,7 @@ CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRende
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.isSidePanelOpen.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.openSidePanel.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources | doc:d9f2dd85bff0
-CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel | doc:158fcaa80737
+CallSignature | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel | doc:5716656c7c6f
 CallSignature | GeoLeaf Core API.capabilities/filter/apply.resolveOptionsWithData.resolveOptionsWithData | doc:9a2c17003c57
 CallSignature | GeoLeaf Core API.capabilities/filter/config.getFilterConfig.getFilterConfig | doc:a85519513922
 CallSignature | GeoLeaf Core API.capabilities/filter/declared-fields.filterDeclaredFields.filterDeclaredFields | doc:feaea88ba436
@@ -3086,7 +3086,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDi
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.findMissingFields.findMissingFields | doc:818249803f34
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.kernelDeclaredFields.kernelDeclaredFields | doc:8caaa05a30d5
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.sampleFeatures.sampleFeatures | doc:f7594062f233
-CallSignature | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents | doc:c75bb3cb3d9a
+CallSignature | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents | doc:e75d477fa398
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeatureCollection.validateFeatureCollection | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateGeometry.validateGeometry | doc:-
@@ -6070,6 +6070,7 @@ Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFeatureGeometry
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFeatureHoverDetail | doc:3e11dfefa763
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail | doc:eeea18345265
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterResetDetail | doc:be3b6698c098
+Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFiltersAppliedDetail | doc:20d499f6a43c
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafGeolocationStateChangeDetail | doc:f4c5c6a78d07
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail | doc:c3ae31f5ff64
 Interface | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerToggleDetail | doc:fbed6be716f2
@@ -10721,8 +10722,9 @@ Parameter | GeoLeaf Core API.capabilities/feature-info/types.FeatureInfoPublicAp
 Parameter | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.openSidePanel.__type.__type.detail | doc:-
 Parameter | GeoLeaf Core API.capabilities/feature-info/types.ISidePanelRenderer.openSidePanel.__type.__type.layout | doc:-
 Parameter | GeoLeaf Core API.capabilities/filter/apply.applyActiveFilterToSources.applyActiveFilterToSources.active | doc:-
-Parameter | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel.config | doc:-
-Parameter | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel.panelEl | doc:-
+Parameter | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel.config | doc:7f4449954cb2
+Parameter | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel.panelEl | doc:62fab671e920
+Parameter | GeoLeaf Core API.capabilities/filter/apply.applyFilterFromPanel.applyFilterFromPanel.reason | doc:a2add3679e2d
 Parameter | GeoLeaf Core API.capabilities/filter/apply.resolveOptionsWithData.resolveOptionsWithData.config | doc:44e329ed8d61
 Parameter | GeoLeaf Core API.capabilities/filter/declared-fields.filterDeclaredFields.filterDeclaredFields.config | doc:526903f9bbb4
 Parameter | GeoLeaf Core API.capabilities/filter/declared-fields.filterDeclaredFields.filterDeclaredFields.layerId | doc:a8778cf9e50a
@@ -12418,12 +12420,12 @@ Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getLayer
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getSource.getSource.id | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.handler | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.handler | doc:-
-Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.layerId | doc:-
+Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.layerIds | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.type | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off.off.type | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.handler | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.handler | doc:-
-Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.layerId | doc:-
+Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.layerIds | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.type | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on.type | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once.handler | doc:-
@@ -12490,7 +12492,7 @@ Parameter | GeoLeaf Core API.kernel/geojson/declared-fields.sampleFeatures.sampl
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.def | doc:b3199b9f0d74
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.layerId | doc:158e59c2dd52
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.nativeMap | doc:82430a66e57b
-Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.subLayerIds | doc:c4ec42cd3b1f
+Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.subLayerIds | doc:ea158c939327
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature.feature | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature.index | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeatureCollection.validateFeatureCollection.collection | doc:-
@@ -16505,7 +16507,7 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:feature:hover | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filter:apply | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filter:reset | doc:-
-Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filters:applied | doc:-
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:filters:applied | doc:da1ece6ad5f1
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:geojson:visibility-changed | doc:9b39796a1050
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:geolocation:statechange | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:layer:added | doc:-
@@ -16586,6 +16588,7 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetai
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail.geometryType | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterApplyDetail.layerIds | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFilterResetDetail.layerIds | doc:-
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafFiltersAppliedDetail.reason | doc:d09718c1355d
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafGeolocationStateChangeDetail.active | doc:005cf4aaacab
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail.geometryTypes | doc:4907d4e11235
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafLayerAddedDetail.layerId | doc:241b1ef542e4

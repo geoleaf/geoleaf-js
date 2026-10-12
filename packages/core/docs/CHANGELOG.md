@@ -11,6 +11,53 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`geoleaf:filters:applied` says why the pass ran: `detail.reason`** (`@geoleaf/core`
+  3.16.0). Since 3.15.0 an active filter judges a layer again each time its store is written
+  (`geoleaf:layer:updated`), and `geoleaf:filters:applied` is emitted at the end of that pass
+  as at the end of any other — although the filter itself has not changed. The event carried
+  an empty detail, so a listener could not tell the two apart. It now carries
+  `{ reason: "filter" | "data" }`: `"filter"` when the filter was applied — Apply, Reset, a
+  control of the panel, `GeoLeaf.Filter.applyFilter`, `applyNow`, `reset` — and `"data"` when
+  the same filter is replayed because a layer was written. A control touched while a write's
+  pass is waiting makes it a `"filter"` pass. `"filter"` does not prove the state differs
+  from the previous pass: Apply pressed twice emits twice. Non-breaking — the event fires
+  exactly when it did, and a listener that ignores the detail is unchanged; the type of the
+  detail in `GeoLeafEventMap` moves from `Record<string, never>` to
+  `GeoLeafFiltersAppliedDetail`. **Do not rewrite a layer in answer to `"data"`**: a write
+  fires `geoleaf:layer:updated`, which replays the pass, which emits this event again. A host
+  that relayed every `geoleaf:filters:applied` to a server search, and wrote the result back
+  with `GeoLeaf.GeoJSON.updateLayerData`, looped without end from 3.15.0 on — 22 requests
+  every ten seconds, measured. Reload on `"filter"`.
+
+### Fixed
+
+- **A layer created empty hears a click on whatever it is filled with afterwards**
+  (`@geoleaf/core` 3.16.0). A GeoJSON layer created with no feature is built with the
+  sub-layers of the three geometry families, since nothing says yet what it will hold — and
+  its click and its hover were bound to ONE of them, chosen by precedence: the fill. Filled
+  later with points (`GeoLeaf.GeoJSON.updateLayerData`, `GeoLeaf.Layers.setData`), the layer
+  drew them, turned the cursor into a pointer over whatever lay under them, and never heard
+  them: a click on such a point emitted no `geoleaf:feature:click` for its layer, so the
+  popup that opened was the one of another layer's polygon underneath. The same layer created
+  with a first batch of points worked, which is what made it look intermittent. A layer's
+  gestures are now bound to every sub-layer that draws features — fill, extrusion, line,
+  circle, icon — through one listener for the whole layer. **What you may see**: a gesture on
+  a feature still emits exactly one event per layer, however many sub-layers render it; on a
+  layer holding several geometries, the feature reported is the one drawn ON TOP — a point
+  lying on a polygon of the same layer answers as the point, where it used to answer as the
+  polygon; an icon point is clickable over the whole box of its icon, not only over its
+  circle; a polygon is hovered and clicked on the outer half of its outline too; and
+  `geoleaf:feature:hover` no longer says `leave` then `move` when the pointer crosses from a
+  polygon's surface to its outline. Not changed: between two LAYERS under the pointer, each
+  emits its own event, in the order the layers were created — and a layer created with points
+  only still has no sub-layer for a line or a polygon it would receive later.
+
+---
+
 ## [3.15.0] - 2026-10-12
 
 ### Added

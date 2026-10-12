@@ -31,6 +31,7 @@ import { readActiveFilter } from "./panel/state.js";
 import { Core } from "../../api/geoleaf.core.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
+import type { GeoLeafFiltersAppliedDetail } from "../../contracts/event-bus.contract.js";
 import type { FilterConfig } from "./types.js";
 import { whenAppReady } from "../../kernel/shared/index.js";
 
@@ -50,13 +51,20 @@ let _panel: HTMLElement | null = null;
 let _cleanups: Array<() => void> = [];
 let _debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let _storeDeadline: ReturnType<typeof setTimeout> | null = null;
+/**
+ * True while the pending auto-apply was asked for by a control of the panel. A pass armed by a
+ * layer's write alone replays the SAME filter on new data, and says so (`reason: "data"`); a
+ * control touched while it waits makes it a pass on the filter again.
+ */
+let _controlPending = false;
 
-/** Disarms the pending auto-apply, whichever timer holds it. */
+/** Disarms the pending auto-apply, whichever timer holds it, and forgets who asked for it. */
 function _clearTimers(): void {
     if (_debounceTimer) clearTimeout(_debounceTimer);
     if (_storeDeadline) clearTimeout(_storeDeadline);
     _debounceTimer = null;
     _storeDeadline = null;
+    _controlPending = false;
 }
 
 /** Mounts + wires the panel once the app (data) is ready, if the profile is migrated. */
@@ -86,21 +94,27 @@ function _mountPanel(config: FilterConfig): void {
 function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
     // Every pass disarms both timers: an Apply click, the quiet moment or the deadline, whichever
     // comes first, leaves nothing armed behind it.
-    const apply = (): void => {
+    const apply = (reason: GeoLeafFiltersAppliedDetail["reason"]): void => {
         _clearTimers();
-        applyFilterFromPanel(_panel, config);
+        applyFilterFromPanel(_panel, config, reason);
     };
+    // What a timer applies: the filter if a control asked for the pass, the data otherwise.
+    const applyPending = (): void => apply(_controlPending ? "filter" : "data");
     const debouncedApply = (): void => {
         if (_debounceTimer) clearTimeout(_debounceTimer);
-        _debounceTimer = setTimeout(apply, DEBOUNCE_MS);
+        _debounceTimer = setTimeout(applyPending, DEBOUNCE_MS);
+    };
+    const onControlChange = (): void => {
+        _controlPending = true;
+        debouncedApply();
     };
     const onClick = (e: Event): void => {
         const target = e.target as HTMLElement | null;
         const action = target?.closest?.("[data-gl-action]")?.getAttribute("data-gl-action");
-        if (action === "filter-apply") apply();
+        if (action === "filter-apply") apply("filter");
         else if (action === "filter-reset") {
             resetPanelControls(panel);
-            apply();
+            apply("filter");
         } else if (action === "filter-close") panel.classList.remove("gl-is-open");
     };
 
@@ -108,21 +122,26 @@ function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
     // judges it again. It did not: on the GPU path a new feature was absent from the filter's
     // id list, so hidden even when it passed; on the re-feed path it was shown even when it
     // failed, and the "no feature matches" line kept the last pass's verdict. No filter
-    // active, nothing to judge. A filter pass writes the map, never the store, so it cannot
-    // fire this event again.
+    // active, nothing to judge.
+    //
+    // ⚠️ A filter pass writes the map, never the store, so THIS MODULE cannot fire the event
+    // again. A host can: one that answered every `geoleaf:filters:applied` by reloading its
+    // data and rewriting the layer closed the loop from outside — write, pass, event, write —
+    // and it never ended. Hence the pass says it was asked by the data (`reason: "data"`),
+    // which is what lets a listener tell it from a filter that changed.
     const onLayerUpdated = (): void => {
         if (readActiveFilter(_panel, config).length === 0) return;
         debouncedApply();
-        _storeDeadline ??= setTimeout(apply, STORE_MAX_WAIT_MS);
+        _storeDeadline ??= setTimeout(applyPending, STORE_MAX_WAIT_MS);
     };
 
     panel.addEventListener("click", onClick);
-    panel.addEventListener("input", debouncedApply);
-    panel.addEventListener("change", debouncedApply);
+    panel.addEventListener("input", onControlChange);
+    panel.addEventListener("change", onControlChange);
     document.addEventListener("geoleaf:layer:updated", onLayerUpdated);
     _cleanups.push(() => panel.removeEventListener("click", onClick));
-    _cleanups.push(() => panel.removeEventListener("input", debouncedApply));
-    _cleanups.push(() => panel.removeEventListener("change", debouncedApply));
+    _cleanups.push(() => panel.removeEventListener("input", onControlChange));
+    _cleanups.push(() => panel.removeEventListener("change", onControlChange));
     _cleanups.push(() => document.removeEventListener("geoleaf:layer:updated", onLayerUpdated));
 }
 

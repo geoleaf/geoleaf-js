@@ -247,24 +247,31 @@ prochaine paire ouverture/fermeture nommerait une entité périmée.
 
 ### ✅ Un geste = UN événement — garanti par le kernel depuis le 13/08/2026
 
-Le kernel garantit désormais qu'**un clic sur une entité émet exactement un
-`geoleaf:feature:click`**, quelle que soit la géométrie et quel que soit le nombre de
-sous-couches qui la rendent. Cette capacité peut donc traiter chaque événement comme un geste.
+Le kernel garantit qu'**un clic sur une entité émet exactement un `geoleaf:feature:click`**,
+quelle que soit la géométrie et quel que soit le nombre de sous-couches qui la rendent. Cette
+capacité peut donc traiter chaque événement comme un geste.
 
 ⚠️ **Ce n'était pas vrai avant, et c'est cette capacité qui en portait le symptôme.** Le kernel
-liait le clic à **toutes** les sous-couches d'une couche, là où il ne liait le survol qu'à une
-seule. Comme les sous-couches s'empilent par géométrie et cumulativement, un seul clic émettait
-**2** événements sur un point à icône, **2** sur une ligne à casing, **3** sur un polygone à
-casing et **4** sur une tuile vectorielle. `surfaces/popup.ts` ferme puis rouvre la bulle à
-chaque événement : l'utilisateur la voyait **clignoter**, et le second rendu écrasait le premier
-pour la même entité.
+liait le clic à **toutes** les sous-couches d'une couche, une par une. Comme les sous-couches
+s'empilent par géométrie et cumulativement, un seul clic émettait **2** événements sur un point à
+icône, **2** sur une ligne à casing, **3** sur un polygone à casing et **4** sur une tuile
+vectorielle. `surfaces/popup.ts` ferme puis rouvre la bulle à chaque événement : l'utilisateur la
+voyait **clignoter**, et le second rendu écrasait le premier pour la même entité.
 
-⚠️ **Ce que la garantie coûte, et qu'il faut connaître avant de s'en étonner** : le clic et le
-survol partagent maintenant la même précédence (`fill` → `circle` → `line` → toutes), donc la
-sous-couche `-symbol` d'un point à icône n'est plus liée. **Aucune entité ne devient
-inatteignable** — tout point porte inconditionnellement sa sous-couche `-circle` —, et rien
-n'est perdu sur les axes. Seul l'anneau diagonal de la boîte de collision de l'icône sort de la
-zone cliquable, dont l'essentiel est le `icon-padding` transparent.
+🛑 **Comment la garantie est tenue, depuis la 3.16.0.** Elle l'a d'abord été par une précédence
+(`fill` → `circle` → `line` → toutes) : une seule famille liée, donc un seul événement. Cela
+coûtait le geste lui-même à une couche **née vide** — bâtie avec les trois familles, elle
+n'écoutait que son fond, et les points dont elle était remplie ensuite restaient muets : le clic
+ouvrait la bulle du polygone d'une AUTRE couche, sous le point. Le kernel lie maintenant **toutes
+les sous-couches qui dessinent des entités** (fond, extrusion, ligne, cercle, icône) à **un seul
+écouteur par geste**, et c'est le moteur qui rend un appel par geste, l'entité du dessus en
+premier. Trois effets que cette capacité voit : un point posé sur un polygone de la même couche
+ouvre la bulle du **point** ; l'icône d'un point est cliquable sur toute sa boîte ; et le survol
+ne dit plus `leave` puis `move` en passant du fond d'un polygone à son contour.
+
+⚠️ **Ce que la garantie ne dit pas** : elle vaut **par couche**. Deux couches sous le pointeur
+émettent chacune leur clic, dans l'ordre de leur création, et la bulle affichée est celle du
+dernier — `geoleaf:feature:click` ne porte pas de `zIndex`, à la différence du survol.
 
 ### ✅ `geoleaf:popup:action` — promis longtemps, émis depuis le 29/07/2026
 

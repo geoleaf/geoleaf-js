@@ -85,6 +85,28 @@ export interface GeoLeafLayerToggleDetail {
 }
 
 /**
+ * Detail payload for `geoleaf:filters:applied`.
+ *
+ * A filter pass has just run over the loaded layers: the map and the panel's "no feature
+ * matches" line are up to date. `reason` says what asked for the pass.
+ *
+ * - `"filter"` — the filter itself was applied: Apply, Reset, a control of the panel changed,
+ *   or a call to `GeoLeaf.Filter.applyFilter` / `applyNow` / `reset`. ⚠️ Not a proof that the
+ *   state DIFFERS from the previous pass: Apply pressed twice emits twice.
+ * - `"data"` — the SAME filter replayed because a layer's store changed
+ *   (`geoleaf:layer:updated`) while a filter is active. The filter's state has not moved; what
+ *   it keeps may have. Emitted since 3.15.0, told apart since 3.16.0.
+ *
+ * 🛑 **Do not rewrite a layer in answer to `"data"`.** A write fires `geoleaf:layer:updated`,
+ * which replays the pass, which emits this event again: a listener that reloads its data and
+ * writes it back on every `geoleaf:filters:applied` loops without end. Reload on `"filter"`.
+ */
+export interface GeoLeafFiltersAppliedDetail {
+    /** What asked for the pass: the filter being applied, or a layer's store being written. */
+    reason: "filter" | "data";
+}
+
+/**
  * Detail payload for `geoleaf:layer:updated`.
  *
  * Dispatched once per mutation of a layer's store. Through `GeoLeaf.Layers`: `setData`,
@@ -1046,8 +1068,12 @@ export interface GeoLeafEventMap {
      * empty `closed`.
      */
     "geoleaf:panel:closed": GeoLeafPanelToggleDetail;
-    // Filters (applied state change, no structured payload)
-    "geoleaf:filters:applied": Record<string, never>;
+    /**
+     * A filter pass has just run — because the filter was applied, or because a layer was
+     * written under an active filter: see {@link GeoLeafFiltersAppliedDetail} for the two
+     * reasons, and for the loop a listener must not close.
+     */
+    "geoleaf:filters:applied": GeoLeafFiltersAppliedDetail;
     // Service worker
     /**
      * A new service worker ACTIVATED: it now serves the pages of its scope.

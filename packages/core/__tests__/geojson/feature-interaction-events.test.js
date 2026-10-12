@@ -133,28 +133,38 @@ describe("clic → geoleaf:feature:click", () => {
     });
 });
 
-describe("choix des sous-couches de survol — fill > circle > line > tout", () => {
-    /** Returns the ids a `mousemove` was wired on. */
+describe("sous-couches de survol — toutes celles qui dessinent des entités, en UNE souscription", () => {
+    /** Returns the sub-layer list of each `mousemove` subscription. */
     function hoveredIds(subIds) {
         const map = fakeMap({ layers: subIds });
         bindFeatureInteractionEvents("L", {}, map, subIds);
         return map.on.mock.calls.filter((c) => c[0] === "mousemove").map((c) => c[1]);
     }
 
-    test("les `-fill` l'emportent (toute la surface du polygone, pas sa bordure)", () => {
-        expect(hoveredIds(["a-fill", "a-line", "a-circle"])).toEqual(["a-fill"]);
+    test("fond, ligne et point sont écoutés ensemble — plus de préséance", () => {
+        expect(hoveredIds(["a-fill", "a-line", "a-circle"])).toEqual([
+            ["a-fill", "a-line", "a-circle"],
+        ]);
     });
 
-    test("sans fill, les `-circle`", () => {
-        expect(hoveredIds(["a-circle", "a-line"])).toEqual(["a-circle"]);
+    test("le casing, sous sa ligne, n'élargit pas la bande survolée", () => {
+        expect(hoveredIds(["a-casing", "a-line"])).toEqual([["a-line"]]);
     });
 
-    test("sans fill ni circle, les `-line`", () => {
-        expect(hoveredIds(["a-line"])).toEqual(["a-line"]);
+    test("aucun suffixe reconnu : toutes les sous-couches", () => {
+        expect(hoveredIds(["a-quelconque"])).toEqual([["a-quelconque"]]);
     });
 
-    test("sinon, toutes les sous-couches", () => {
-        expect(hoveredIds(["a-quelconque"])).toEqual(["a-quelconque"]);
+    test("le nettoyage détache les trois gestes avec la liste même de leur souscription", () => {
+        const subIds = ["a-fill", "a-circle"];
+        const map = fakeMap({ layers: subIds });
+        bindFeatureInteractionEvents("L", {}, map, subIds);
+        // MapLibre finds a delegated listener by its handler AND its list: `off` must be
+        // given what `on` was given.
+        expect(trackMapCleanup).toHaveBeenCalledTimes(1);
+        trackMapCleanup.mock.calls[0][1]();
+        const sig = (calls) => calls.map((c) => [c[0], c[1], c[2]]);
+        expect(sig(map.off.mock.calls)).toEqual(sig(map.on.mock.calls));
     });
 });
 

@@ -103,7 +103,18 @@ describe("capabilities/filter/apply — applyFilterFromPanel", () => {
 
         expect(readActiveFilter).toHaveBeenCalledWith(panel, config);
         expect(filterFeatures).toHaveBeenCalledTimes(1);
-        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {
+            reason: "filter",
+        });
+    });
+
+    // A pass replayed because a layer was written says so: a listener that reloads its data on
+    // every pass would otherwise rewrite the layer, hence replay the pass, without end.
+    it("dit la cause de la passe : `data` quand elle est rejouée sur des données neuves", () => {
+        applyFilterFromPanel(null, { fields: [] }, "data");
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {
+            reason: "data",
+        });
     });
 
     it("fait passer la sélection par expandActiveFilter — la moitié VIVANTE de taxonomy-options.ts", () => {
@@ -177,13 +188,17 @@ describe("capabilities/filter/apply — le panneau dit quand le filtre ne garde 
         filterFeatures.mockReturnValueOnce(undefined);
         expect(() => applyFilterFromPanel(panel, { fields: [] })).not.toThrow();
         expect(status().textContent).toBe("");
-        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {
+            reason: "filter",
+        });
     });
 
     it("n'échoue pas sans panneau monté", () => {
         filterFeatures.mockReturnValueOnce({ filtered: 5, total: 5, visible: 0 });
         expect(() => applyFilterFromPanel(null, { fields: [] })).not.toThrow();
-        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {});
+        expect(dispatchGeoLeafEvent).toHaveBeenCalledWith("geoleaf:filters:applied", {
+            reason: "filter",
+        });
     });
 });
 

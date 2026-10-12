@@ -172,8 +172,11 @@ GeoLeaf.UI.Notifications.error("Network error", 8000);
 
 ```js
 // The panel is mounted by the `filter` capability (enabled by configuration).
-// React to a filter change:
-GeoLeaf.Events.on("geoleaf:filters:applied", () => {
+// React to a filter change. The pass is also replayed, with `reason: "data"`, each time a
+// layer is written while a filter is active: reload on "filter" only — a listener that
+// rewrites a layer on every pass triggers the next one, and loops.
+GeoLeaf.Events.on("geoleaf:filters:applied", (event) => {
+    if (event.detail.reason !== "filter") return;
     console.log(GeoLeaf.Filter.getActiveFilter());
 });
 

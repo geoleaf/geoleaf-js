@@ -34,40 +34,35 @@ interface InteractionFeature {
     properties?: Record<string, unknown> | null;
 }
 
+/** The sub-layer families that draw FEATURES — the ones a gesture can land on. */
+const _FEATURE_SUFFIXES = ["-fill", "-fill-extrusion", "-line", "-circle", "-symbol"] as const;
+
 /**
  * Returns the sub-layer IDs that carry **interaction** events — click AND hover, which share
- * this selector so a single gesture cannot be reported twice. Prefers `fill` sub-layers (cover
- * the whole polygon surface) over `line` (border only); falls back circle → line → all. Mirrors
- * the legacy popup binder selection so the pointer/tooltip fires anywhere inside a polygon, not
- * only on its border.
+ * this selector. Every sub-layer that draws features is listed, whatever its family: fill,
+ * extrusion, line, circle, icon. Falls back to the whole list when no suffix is recognised.
  *
- * 🛑 **Why one sub-layer and not all of them.** `_addSubLayers` stacks sub-layers per geometry
- * and cumulatively — a polygon gets `_addPolygonSubLayers` *then* `_addLineSubLayers`. Binding
- * all of them made MapLibre run one delegated listener per touched sub-layer, so a single click
- * emitted 2 events on an icon point, 2 on a cased line, 3 on a cased polygon and 4 on a vector
- * tile. Downstream, `feature-info` closes and reopens its popup on every event, so the user saw
- * it flicker.
+ * 🛑 **Every family, because a layer does not know at creation what it will hold.** A layer
+ * that ships empty is built with the sub-layers of the three families, and the set is decided
+ * once. This selector used to keep ONE family by precedence (fill, else circle, else line):
+ * such a layer, filled later with points, drew them and never heard them — a click on a point
+ * went to whatever another layer drew underneath.
  *
- * ⚠️ **What the precedence costs, measured.** `-symbol` is never selected, so on an icon point
- * the clickable area becomes the circle instead of the icon's collision box (the 12 px glyph
- * padded by `icon-padding`, default 2 px ⇒ a 16 px box). Measured against the five layers that
- * actually set `showIconsOnMap`: **nothing is lost on the axes** — every capture radius
- * (`radius + weight`) is at least equal to the box half-side. Only the diagonal ring is lost:
- * ~0.2 % of the box at radius 11, ~2.8 % at radius 10, ~21.5 % at radius 8 — and most of that
- * is the transparent padding, where a click arguably should never have registered.
- * Adding `-symbol` here is NOT the fix for that ring: it would bind both sub-layers again and
- * restore the double event this selector exists to prevent. The only other option is to bind
- * wide and deduplicate per gesture on `originalEvent`, which costs shared state — not worth it
- * for a diagonal sliver.
+ * 🛑 **One gesture, one event — and it is the engine that guarantees it, not this list.** The
+ * binder hands the whole list to ONE delegated listener (`map.on(type, ids[], fn)`): MapLibre
+ * queries the listed sub-layers together and calls the listener once, with the features sorted
+ * top-down. Binding each sub-layer on its own — one listener per id — is what emitted 2 events
+ * on an icon point, 2 on a cased line, 3 on a cased polygon and 4 on a vector tile, and made
+ * `feature-info` close and reopen its popup on each. A sub-layer added to this list costs no
+ * event; a second `map.on` would.
+ *
+ * ⚠️ **Left out, on purpose.** `-casing` lies under its line and is wider: listing it would
+ * widen the line's clickable band by the casing's overhang. `-clusters` / `-cluster-count`
+ * draw aggregates, which carry no attributes (see `_isCluster`).
  */
 function _interactionSubLayerIds(subLayerIds: string[]): string[] {
-    const fills = subLayerIds.filter((id) => id.endsWith("-fill"));
-    if (fills.length) return fills;
-    const circles = subLayerIds.filter((id) => id.endsWith("-circle"));
-    if (circles.length) return circles;
-    const lines = subLayerIds.filter((id) => id.endsWith("-line"));
-    if (lines.length) return lines;
-    return subLayerIds;
+    const drawn = subLayerIds.filter((id) => _FEATURE_SUFFIXES.some((s) => id.endsWith(s)));
+    return drawn.length ? drawn : subLayerIds;
 }
 
 /** Reads a stable feature id, falling back to `properties.id`, else `null`. */
@@ -86,12 +81,21 @@ function _isCluster(feature: InteractionFeature): boolean {
  * Binds click + hover handlers that emit `geoleaf:feature:click` /
  * `geoleaf:feature:hover` for an interactive layer. Kernel-only: no rendering,
  * no popup — only events + the pointer cursor. Safe no-op when the layer is
- * non-interactive (`interactiveShape === false`).
+ * non-interactive (`interactiveShape === false`) or when none of its sub-layers exists.
+ *
+ * ONE listener per gesture for the whole layer, over every sub-layer that draws features: a
+ * gesture on a feature emits one event however many sub-layers render it, and the feature
+ * reported is the one drawn on top — a point lying on a polygon of the same layer answers as
+ * the point. `leave` fires once the pointer has left every sub-layer of the layer, not when it
+ * crosses from one to another.
+ *
+ * ⚠️ Between two LAYERS nothing is arbitrated here: each layer under the pointer emits its
+ * own event, in the order the layers were bound.
  *
  * @param layerId - GeoLeaf layer id (forwarded on every event).
  * @param def - Layer definition; read for `interactiveShape` and `zIndex`.
  * @param nativeMap - The raw `maplibregl.Map` instance.
- * @param subLayerIds - MapLibre sub-layer IDs to bind events on.
+ * @param subLayerIds - The layer's MapLibre sub-layer IDs; the ones that draw features are bound.
  */
 export function bindFeatureInteractionEvents(
     layerId: string,
@@ -102,74 +106,68 @@ export function bindFeatureInteractionEvents(
     if (def.interactiveShape === false) return;
     const zIndex = typeof def.zIndex === "number" ? def.zIndex : 0;
 
+    // The SAME list for the three subscriptions, and one subscription each — see
+    // `_interactionSubLayerIds` for why neither may be split per sub-layer.
+    const ids = _interactionSubLayerIds(subLayerIds).filter((id) => nativeMap.getLayer(id));
+    if (ids.length === 0) return;
+
     // ── Click → geoleaf:feature:click ──
-    // Same selector as hover below: a gesture on ONE feature must emit ONE event, however many
-    // sub-layers render it. Binding every sub-layer emitted 2 events on an icon point, 2 on a
-    // cased line, 3 on a cased polygon and 4 on a vector tile — see `_interactionSubLayerIds`.
-    const clickIds = _interactionSubLayerIds(subLayerIds);
-    for (const subId of clickIds) {
-        if (!nativeMap.getLayer(subId)) continue;
-        const onClick = (e: MapInteractionEvent) => {
-            const hit = e.features?.[0];
-            if (!hit) return;
-            if (nativeMap.__geoleafExclusiveMode) return;
-            const feature = hit;
-            if (_isCluster(feature)) return;
-            const lngLat = e.lngLat;
-            if (!lngLat) return;
-            dispatchGeoLeafEvent("geoleaf:feature:click", {
-                layerId,
-                featureId: _featureId(feature),
-                properties: feature.properties ?? {},
-                geometry: feature.geometry,
-                lngLat: { lat: lngLat.lat, lng: lngLat.lng },
-                point: { x: e.point?.x ?? 0, y: e.point?.y ?? 0 },
-            });
-        };
-        nativeMap.on("click", subId, onClick);
-        trackMapCleanup(nativeMap, () => nativeMap.off("click", subId, onClick));
-    }
+    const onClick = (e: MapInteractionEvent) => {
+        const feature = e.features?.[0];
+        if (!feature) return;
+        if (nativeMap.__geoleafExclusiveMode) return;
+        if (_isCluster(feature)) return;
+        const lngLat = e.lngLat;
+        if (!lngLat) return;
+        dispatchGeoLeafEvent("geoleaf:feature:click", {
+            layerId,
+            featureId: _featureId(feature),
+            properties: feature.properties ?? {},
+            geometry: feature.geometry,
+            lngLat: { lat: lngLat.lat, lng: lngLat.lng },
+            point: { x: e.point?.x ?? 0, y: e.point?.y ?? 0 },
+        });
+    };
 
     // ── Hover → cursor pointer + geoleaf:feature:hover ──
-    const hoverIds = _interactionSubLayerIds(subLayerIds).filter((id) => nativeMap.getLayer(id));
-    for (const subId of hoverIds) {
-        const onMove = (e: MapInteractionEvent) => {
-            if (nativeMap.__geoleafExclusiveMode) return;
-            nativeMap.getCanvas().style.cursor = "pointer";
-            const hit = e.features?.[0];
-            if (!hit) return;
-            const feature = hit;
-            if (_isCluster(feature)) return;
-            const lngLat = e.lngLat;
-            if (!lngLat) return;
-            dispatchGeoLeafEvent("geoleaf:feature:hover", {
-                layerId,
-                featureId: _featureId(feature),
-                properties: feature.properties ?? {},
-                lngLat: { lat: lngLat.lat, lng: lngLat.lng },
-                point: { x: e.point?.x ?? 0, y: e.point?.y ?? 0 },
-                zIndex,
-                phase: "move",
-            });
-        };
-        const onLeave = () => {
-            if (nativeMap.__geoleafExclusiveMode) return;
-            nativeMap.getCanvas().style.cursor = "";
-            dispatchGeoLeafEvent("geoleaf:feature:hover", {
-                layerId,
-                featureId: null,
-                properties: {},
-                lngLat: { lat: 0, lng: 0 },
-                point: { x: 0, y: 0 },
-                zIndex,
-                phase: "leave",
-            });
-        };
-        nativeMap.on("mousemove", subId, onMove);
-        nativeMap.on("mouseleave", subId, onLeave);
-        trackMapCleanup(nativeMap, () => {
-            nativeMap.off("mousemove", subId, onMove);
-            nativeMap.off("mouseleave", subId, onLeave);
+    const onMove = (e: MapInteractionEvent) => {
+        if (nativeMap.__geoleafExclusiveMode) return;
+        nativeMap.getCanvas().style.cursor = "pointer";
+        const feature = e.features?.[0];
+        if (!feature) return;
+        if (_isCluster(feature)) return;
+        const lngLat = e.lngLat;
+        if (!lngLat) return;
+        dispatchGeoLeafEvent("geoleaf:feature:hover", {
+            layerId,
+            featureId: _featureId(feature),
+            properties: feature.properties ?? {},
+            lngLat: { lat: lngLat.lat, lng: lngLat.lng },
+            point: { x: e.point?.x ?? 0, y: e.point?.y ?? 0 },
+            zIndex,
+            phase: "move",
         });
-    }
+    };
+    const onLeave = () => {
+        if (nativeMap.__geoleafExclusiveMode) return;
+        nativeMap.getCanvas().style.cursor = "";
+        dispatchGeoLeafEvent("geoleaf:feature:hover", {
+            layerId,
+            featureId: null,
+            properties: {},
+            lngLat: { lat: 0, lng: 0 },
+            point: { x: 0, y: 0 },
+            zIndex,
+            phase: "leave",
+        });
+    };
+
+    nativeMap.on("click", ids, onClick);
+    nativeMap.on("mousemove", ids, onMove);
+    nativeMap.on("mouseleave", ids, onLeave);
+    trackMapCleanup(nativeMap, () => {
+        nativeMap.off("click", ids, onClick);
+        nativeMap.off("mousemove", ids, onMove);
+        nativeMap.off("mouseleave", ids, onLeave);
+    });
 }

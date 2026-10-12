@@ -474,9 +474,9 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
  * below and which a second path would silently lose: `styleRules` expressions,
  * {@link applyTaxonomyMarkerPaint} and {@link applyPendingBadgePaint}. Plus
  * `kernel/geojson/feature-interaction.ts` selects the sub-layers that carry **both**
- * interaction gestures — click and hover — through `_interactionSubLayerIds`, whose
- * precedence reaches points by the `-circle` suffix; a square sub-layer would receive
- * neither gesture until declared there.
+ * interaction gestures — click and hover — through `_interactionSubLayerIds`, which lists
+ * the families by suffix (`-circle` and `-symbol` for points); a square drawn by a sub-layer
+ * of another suffix would receive neither gesture until declared there.
  *
  * Treat it as a feature with its own CDC, not as a style option to slot in.
  */
