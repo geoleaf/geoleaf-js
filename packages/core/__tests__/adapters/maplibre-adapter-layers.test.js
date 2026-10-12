@@ -55,7 +55,11 @@ let mockMapInstance;
 beforeEach(() => {
     const _sources = {};
     const _layers = {};
+    // The style's drawing order, bottom first: `addLayer` inserts before `beforeId` when the
+    // style holds it, on top otherwise, as the engine does.
+    const _order = [];
     mockMapInstance = {
+        getLayersOrder: vi.fn(() => [..._order]),
         on: vi.fn(),
         off: vi.fn(),
         once: vi.fn(),
@@ -91,11 +95,15 @@ beforeEach(() => {
             delete _sources[id];
         }),
         getSource: vi.fn((id) => _sources[id] || null),
-        addLayer: vi.fn((layerDef) => {
+        addLayer: vi.fn((layerDef, beforeId) => {
             _layers[layerDef.id] = layerDef;
+            const at = beforeId === undefined ? -1 : _order.indexOf(beforeId);
+            if (at === -1) _order.push(layerDef.id);
+            else _order.splice(at, 0, layerDef.id);
         }),
         removeLayer: vi.fn((id) => {
             delete _layers[id];
+            if (_order.includes(id)) _order.splice(_order.indexOf(id), 1);
         }),
         // A bare spy: it keeps no order. What a move DOES to the stack is proven on an ordered
         // map in `maplibre-layer-order.test.ts`; here it only says whether the engine was asked.
@@ -346,6 +354,166 @@ describe("MaplibreAdapter — Layers", () => {
 
         it("does nothing for unknown layer id", () => {
             createInitedAdapter().updateLayerData("nonexistent", {});
+        });
+    });
+
+    // 🛑 A LAYER'S SUB-LAYERS WERE DECIDED ONCE, FROM ITS FIRST BATCH. A layer created with
+    // points had nothing to draw a polygon with: written later, the polygon was stored and
+    // never drawn. The set is now COMPLETED when a write shows a family the layer lacks.
+    describe("une écriture complète les sous-couches de la famille qui manque", () => {
+        const fc = (...types) => ({
+            type: "FeatureCollection",
+            features: types.map((type) => ({ type: "Feature", geometry: { type } })),
+        });
+        const subs = (adapter, id) => adapter.getLayerRegistry().getSubLayerIds(id);
+        /** The layer's sub-layers as the engine draws them, bottom first. */
+        const drawn = (id) =>
+            mockMapInstance.getLayersOrder().filter((layerId) => layerId.startsWith(`gl-${id}-`));
+
+        it("née avec des points, elle reçoit un polygone : fond et contour sont ajoutés", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            expect(subs(adapter, "L")).toEqual(["gl-L-circle"]);
+            adapter.updateLayerData("L", fc("Point", "Polygon"));
+            // Drawn BELOW the points, as a creation would have stacked them — and the
+            // registry lists them in that order: its first id is the bottom of the layer.
+            expect(drawn("L")).toEqual(["gl-L-fill", "gl-L-line", "gl-L-circle"]);
+            expect(subs(adapter, "L")).toEqual(["gl-L-fill", "gl-L-line", "gl-L-circle"]);
+        });
+
+        it("née avec des lignes, elle reçoit un polygone : le fond seul, pas une seconde ligne", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("LineString"));
+            const before = mockMapInstance.addLayer.mock.calls.length;
+            adapter.updateLayerData("L", fc("Polygon"));
+            const added = mockMapInstance.addLayer.mock.calls.slice(before).map((c) => c[0].id);
+            expect(added).toEqual(["gl-L-fill"]);
+            expect(drawn("L")).toEqual(["gl-L-fill", "gl-L-line"]);
+        });
+
+        it("née avec des polygones, elle reçoit un point : le cercle au-dessus de sa pile", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Polygon"));
+            adapter.addGeoJSONLayer("ABOVE", fc("Polygon"), { zIndex: 5 });
+            adapter.updateLayerData("L", fc("Polygon", "Point"));
+            // Above its own stack, and still below the layer ranked above it.
+            // The two layers' own sub-layers — the style also holds the POI sentinel, on top.
+            const own = (layerId) => /^gl-(L|ABOVE)-/.test(layerId);
+            expect(mockMapInstance.getLayersOrder().filter(own)).toEqual([
+                "gl-L-fill",
+                "gl-L-line",
+                "gl-L-circle",
+                "gl-ABOVE-fill",
+                "gl-ABOVE-line",
+            ]);
+        });
+
+        it("la sous-couche ajoutée porte sa garde de géométrie", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            adapter.updateLayerData("L", fc("Polygon"));
+            expect(mockMapInstance.getFilter("gl-L-fill")).toEqual([
+                "match",
+                ["geometry-type"],
+                ["Polygon", "MultiPolygon"],
+                true,
+                false,
+            ]);
+        });
+
+        it("elle naît masquée quand la couche l'est", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            adapter.hideLayer("L");
+            adapter.updateLayerData("L", fc("Polygon"));
+            const fill = mockMapInstance.addLayer.mock.calls.find((c) => c[0].id === "gl-L-fill");
+            expect(fill[0].layout.visibility).toBe("none");
+        });
+
+        it("elle reçoit le filtre que la couche porte, composé avec sa garde", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            const panel = ["in", ["get", "id"], ["literal", ["a"]]];
+            adapter.setLayerFilter("L", panel);
+            adapter.updateLayerData("L", fc("Polygon"));
+            expect(mockMapInstance.getFilter("gl-L-fill")).toEqual([
+                "all",
+                ["match", ["geometry-type"], ["Polygon", "MultiPolygon"], true, false],
+                panel,
+            ]);
+            // And clearing the filter later gives the guard back, not `null`.
+            adapter.setLayerFilter("L", null);
+            expect(mockMapInstance.getFilter("gl-L-fill")).toEqual([
+                "match",
+                ["geometry-type"],
+                ["Polygon", "MultiPolygon"],
+                true,
+                false,
+            ]);
+        });
+
+        it("elle est repeinte avec le style posé depuis la création", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"), { fillColor: "#111111" });
+            adapter.setLayerStyle("L", { fillColor: "#ff0000" });
+            mockMapInstance.setPaintProperty.mockClear();
+            adapter.updateLayerData("L", fc("Polygon"));
+            expect(mockMapInstance.setPaintProperty).toHaveBeenCalledWith(
+                "gl-L-fill",
+                "fill-color",
+                "#ff0000"
+            );
+        });
+
+        it("un diff qui AJOUTE une géométrie neuve complète la couche aussi", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"), { promoteId: "id" });
+            mockMapInstance.getSource("gl-src-L").updateData = vi.fn(() => Promise.resolve());
+            adapter.applyDataDiff("L", {
+                add: [
+                    {
+                        type: "Feature",
+                        id: "p",
+                        properties: { id: "p" },
+                        geometry: { type: "LineString", coordinates: [] },
+                    },
+                ],
+            });
+            expect(drawn("L")).toEqual(["gl-L-line", "gl-L-circle"]);
+        });
+
+        it("une écriture qui ne montre rien de neuf n'ajoute rien", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            const before = mockMapInstance.addLayer.mock.calls.length;
+            adapter.updateLayerData("L", fc("Point", "MultiPoint"));
+            adapter.updateLayerData("L", { type: "FeatureCollection", features: [] });
+            // Features without a geometry show nothing either — not "all three families".
+            adapter.updateLayerData("L", { type: "FeatureCollection", features: [{}, {}] });
+            expect(mockMapInstance.addLayer.mock.calls.length).toBe(before);
+        });
+
+        it("une couche REGROUPÉE n'est pas complétée : sa source n'indexe que des points", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"), { cluster: true });
+            const before = mockMapInstance.addLayer.mock.calls.length;
+            adapter.updateLayerData("L", fc("Point", "Polygon"));
+            expect(mockMapInstance.addLayer.mock.calls.length).toBe(before);
+        });
+
+        it("une couche recréée sous le même id repart de ses propres options", () => {
+            const adapter = createInitedAdapter();
+            adapter.addGeoJSONLayer("L", fc("Point"));
+            adapter.setLayerStyle("L", { fillColor: "#ff0000" });
+            adapter.removeLayer("L");
+            adapter.addGeoJSONLayer("L", fc("Point"), { fillColor: "#00ff00" });
+            mockMapInstance.setPaintProperty.mockClear();
+            adapter.updateLayerData("L", fc("Polygon"));
+            expect(mockMapInstance.setPaintProperty).not.toHaveBeenCalledWith(
+                "gl-L-fill",
+                "fill-color",
+                "#ff0000"
+            );
         });
     });
 

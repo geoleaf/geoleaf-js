@@ -79,6 +79,11 @@ export interface GeoJSONNativeMap {
     addSource(id: string, source: unknown): void;
     removeSource(id: string): void;
     getLayer(id: string): unknown;
+    /** Rendered features at a point, sorted top-down. Optional: reduced maps omit it. */
+    queryRenderedFeatures?(
+        point: [number, number],
+        options?: { layers?: string[] }
+    ): { layer?: { id?: string } }[];
     addLayer(layer: unknown, beforeId?: string): void;
     removeLayer(id: string): void;
     setPaintProperty(layerId: string, name: string, value: unknown): void;

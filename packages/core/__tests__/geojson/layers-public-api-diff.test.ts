@@ -326,3 +326,70 @@ describe("the diff and the store agree", () => {
         expect(adapter.updateLayerData).not.toHaveBeenCalled();
     });
 });
+
+// 🛑 THE UNIT MUTATIONS REACH THE ENGINE BY THEIR OWN ROAD. A whole-collection write names the
+// icon of each point of a layer that draws icons; `addFeature` and `mergeFeatures` go out as a
+// diff and never passed there, so the features they added drew bare discs.
+describe("une couche à icônes : les entités AJOUTÉES reçoivent leur `symbolId`", () => {
+    type Bag = { GeoLeaf?: unknown };
+    const resolvePoiIcon = vi.fn(({ properties }: { properties?: { cat?: string } | null }) =>
+        properties?.cat ? { useIcon: true, symbolId: `icon-${properties.cat}` } : null
+    );
+
+    /** Seeds a layer that draws icons, already holding one tagged feature. */
+    function seedIconLayer(layerId: string, showIconsOnMap = true) {
+        const entry = seed(layerId, [pt("a", { cat: "x" })]);
+        (entry as { config: unknown }).config = { showIconsOnMap };
+        resolvePoiIcon.mockClear();
+        return entry;
+    }
+
+    beforeEach(() => {
+        (globalThis as Bag).GeoLeaf = { Taxonomy: { resolvePoiIcon } };
+    });
+    afterEach(() => {
+        delete (globalThis as Bag).GeoLeaf;
+    });
+
+    it("`addFeature` — le diff envoyé au moteur ET le magasin portent l'icône", () => {
+        const entry = seedIconLayer("L");
+        api.addFeature("L", pt("b", { cat: "y" }));
+        const [, diff] = must(adapter.applyDataDiff.mock.calls[0], "diff") as [
+            string,
+            LayerDataDiff,
+        ];
+        expect(must(diff.add, "add")[0]?.properties?.symbolId).toBe("icon-y");
+        expect(entry.features?.at(-1)?.properties?.symbolId).toBe("icon-y");
+    });
+
+    it("`mergeFeatures` — chaque entité entrante porte l'icône, par le diff comme au magasin", () => {
+        const entry = seedIconLayer("L");
+        api.mergeFeatures("L", [pt("b", { cat: "y" }), pt("c", { cat: "z" })]);
+        const [, diff] = must(adapter.applyDataDiff.mock.calls[0], "diff") as [
+            string,
+            LayerDataDiff,
+        ];
+        expect(must(diff.add, "add").map((f) => f.properties?.symbolId)).toEqual([
+            "icon-y",
+            "icon-z",
+        ]);
+        expect(entry.features?.map((f) => f.properties?.symbolId).slice(1)).toEqual([
+            "icon-y",
+            "icon-z",
+        ]);
+    });
+
+    // Per mutation, the cost is the mutation's: a keystroke must not walk the whole store.
+    it("seules les entités ajoutées sont résolues, jamais le magasin entier", () => {
+        seedIconLayer("L");
+        api.mergeFeatures("L", [pt("b", { cat: "y" })]);
+        expect(resolvePoiIcon).toHaveBeenCalledTimes(1);
+    });
+
+    it("une couche sans `showIconsOnMap` n'interroge pas la taxonomie", () => {
+        seedIconLayer("L", false);
+        api.addFeature("L", pt("b", { cat: "y" }));
+        api.mergeFeatures("L", [pt("c", { cat: "z" })]);
+        expect(resolvePoiIcon).not.toHaveBeenCalled();
+    });
+});

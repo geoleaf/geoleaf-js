@@ -1372,8 +1372,10 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.rereg
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup | doc:54a1c866ffd9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer | doc:3ba9f647a41c
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.ensureSentinel.__type.__type | doc:-
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer | doc:f7dc70beffba
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex | doc:ab2a1055d62a
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.clear.clear | doc:27edd4c5ebd8
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend | doc:d9bc95431e37
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.get.get | doc:222f86ed8022
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getAllLayerIds.getAllLayerIds | doc:1d6f0ef88b4b
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getGeometryTypes.getGeometryTypes | doc:1b9cb7f50a9b
@@ -1410,8 +1412,9 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.buildZoom
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.detectGeometryTypes.detectGeometryTypes | doc:229b7f7794af
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreBounds.fromMapLibreBounds | doc:d065caebd629
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreLngLat.fromMapLibreLngLat | doc:ae3cb02e08e2
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.resolveGeometryTypes.resolveGeometryTypes | doc:ab008e0165f9
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.resolveGeometryTypes.resolveGeometryTypes | doc:94c6cf5d3d2f
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.safeBeforeId.safeBeforeId | doc:0576ae33f461
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.scanGeometryTypes.scanGeometryTypes | doc:8d486f24220b
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.setPaintAt.setPaintAt | doc:d0a143905ad7
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.toMapLibreBounds.toMapLibreBounds | doc:c0ca0455546f
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.toMapLibreLngLat.toMapLibreLngLat | doc:9e21fd2231bc
@@ -3046,6 +3049,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.o
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on.on | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once | doc:-
+CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures.queryRenderedFeatures | doc:6d55fc73c484
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeLayer.removeLayer | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeSource.removeSource | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.setPaintProperty.setPaintProperty | doc:-
@@ -3083,10 +3087,12 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.updateLa
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.validateFeature.__type.__type | doc:053938105ece
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.validateFeatureCollection.__type.__type | doc:e9b4a247bcc7
 CallSignature | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDiff | doc:fc50d7819f54
+CallSignature | GeoLeaf Core API.kernel/geojson/core.tagLayerIcons.tagLayerIcons | doc:99c4bb18b3ea
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.findMissingFields.findMissingFields | doc:818249803f34
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.kernelDeclaredFields.kernelDeclaredFields | doc:8caaa05a30d5
 CallSignature | GeoLeaf Core API.kernel/geojson/declared-fields.sampleFeatures.sampleFeatures | doc:f7594062f233
-CallSignature | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents | doc:e75d477fa398
+CallSignature | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents | doc:fa0daaffd099
+CallSignature | GeoLeaf Core API.kernel/geojson/feature-interaction.rebindFeatureInteractionEvents.rebindFeatureInteractionEvents | doc:46513a9dfc16
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeatureCollection.validateFeatureCollection | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateGeometry.validateGeometry | doc:-
@@ -4707,6 +4713,7 @@ Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatc
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer | doc:-
+Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.toSourceId | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.toSubLayerId | doc:-
@@ -4733,6 +4740,7 @@ Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreBo
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreLngLat | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.resolveGeometryTypes | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.safeBeforeId | doc:-
+Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.scanGeometryTypes | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.setPaintAt | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.toMapLibreBounds | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.toMapLibreLngLat | doc:-
@@ -5157,10 +5165,12 @@ Function | GeoLeaf Core API.kernel/config/view-extent.themeViewsOutside | doc:-
 Function | GeoLeaf Core API.kernel/events/event-bus.dispatchCancelableGeoLeafEvent | doc:-
 Function | GeoLeaf Core API.kernel/events/event-bus.dispatchGeoLeafEvent | doc:-
 Function | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff | doc:-
+Function | GeoLeaf Core API.kernel/geojson/core.tagLayerIcons | doc:-
 Function | GeoLeaf Core API.kernel/geojson/declared-fields.findMissingFields | doc:-
 Function | GeoLeaf Core API.kernel/geojson/declared-fields.kernelDeclaredFields | doc:-
 Function | GeoLeaf Core API.kernel/geojson/declared-fields.sampleFeatures | doc:-
 Function | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents | doc:-
+Function | GeoLeaf Core API.kernel/geojson/feature-interaction.rebindFeatureInteractionEvents | doc:-
 Function | GeoLeaf Core API.kernel/geojson/field-reconciliation.reconcileLayerFields | doc:-
 Function | GeoLeaf Core API.kernel/geojson/field-reconciliation.reconcileStyleFields | doc:-
 Function | GeoLeaf Core API.kernel/geojson/geojson-filter.canIdentifyFeatures | doc:-
@@ -6755,6 +6765,7 @@ Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.upd
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.updateMarkerPosition | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.updateVectorTileLayerStyle | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.clear | doc:-
+Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.get | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getAllLayerIds | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getGeometryTypes | doc:-
@@ -7564,6 +7575,7 @@ Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getZoom | d
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.off | doc:-
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.on | doc:-
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once | doc:-
+Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures | doc:-
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeLayer | doc:-
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeSource | doc:-
 Method | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.setPaintProperty | doc:-
@@ -10375,10 +10387,19 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJ
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.map | doc:986881a4aece
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.options | doc:eb0102fadf6e
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.registry | doc:3979808c95c7
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer.data | doc:19c975ecf10a
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer.id | doc:139fd52c490b
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer.map | doc:986881a4aece
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer.options | doc:6ceb75a23a5d
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer.registry | doc:3979808c95c7
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex.id | doc:139fd52c490b
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex.map | doc:986881a4aece
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex.registry | doc:3979808c95c7
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex.zIndex | doc:da289682b5d5
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend.added | doc:ad98101ba123
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend.drawingOrder | doc:b735cf82de7e
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend.geometryTypes | doc:9b985b7f9488
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend.layerId | doc:fad31822d983
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.get.get.layerId | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getGeometryTypes.getGeometryTypes.layerId | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.getInsertBeforeId.getInsertBeforeId.excludeLayerId | doc:a83c25615bd0
@@ -10452,6 +10473,7 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.resolveGeomet
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.resolveGeometryTypes.resolveGeometryTypes.declared | doc:f741841c8159
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.safeBeforeId.safeBeforeId.beforeId | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.safeBeforeId.safeBeforeId.map | doc:-
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.scanGeometryTypes.scanGeometryTypes.data | doc:3819c1a414a8
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.setPaintAt.setPaintAt.layerId | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.setPaintAt.setPaintAt.map | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.setPaintAt.setPaintAt.prop | doc:-
@@ -12433,6 +12455,8 @@ Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.onc
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once.type | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.once.once.type | doc:-
+Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures.queryRenderedFeatures.options | doc:-
+Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures.queryRenderedFeatures.point | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeLayer.removeLayer.id | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.removeSource.removeSource.id | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.setPaintProperty.setPaintProperty.layerId | doc:-
@@ -12484,6 +12508,8 @@ Parameter | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.validateFeat
 Parameter | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDiff.diff | doc:4cd81ce8fb52
 Parameter | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDiff.features | doc:9d7e9ddd5637
 Parameter | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDiff.layerId | doc:ae44f2c7dae1
+Parameter | GeoLeaf Core API.kernel/geojson/core.tagLayerIcons.tagLayerIcons.features | doc:60b81f29e3ee
+Parameter | GeoLeaf Core API.kernel/geojson/core.tagLayerIcons.tagLayerIcons.layerId | doc:0e43ca19bee9
 Parameter | GeoLeaf Core API.kernel/geojson/declared-fields.findMissingFields.findMissingFields.declared | doc:658e74b75920
 Parameter | GeoLeaf Core API.kernel/geojson/declared-fields.findMissingFields.findMissingFields.sample | doc:a3c34dbf4cac
 Parameter | GeoLeaf Core API.kernel/geojson/declared-fields.kernelDeclaredFields.kernelDeclaredFields.ctx | doc:02530d7a5f1d
@@ -12493,6 +12519,8 @@ Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInter
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.layerId | doc:158e59c2dd52
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.nativeMap | doc:82430a66e57b
 Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.bindFeatureInteractionEvents.bindFeatureInteractionEvents.subLayerIds | doc:ea158c939327
+Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.rebindFeatureInteractionEvents.rebindFeatureInteractionEvents.layerId | doc:139fd52c490b
+Parameter | GeoLeaf Core API.kernel/geojson/feature-interaction.rebindFeatureInteractionEvents.rebindFeatureInteractionEvents.subLayerIds | doc:20a739da918b
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature.feature | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeature.validateFeature.index | doc:-
 Parameter | GeoLeaf Core API.kernel/geojson/feature-validator.FeatureValidator.__type.validateFeatureCollection.validateFeatureCollection.collection | doc:-
@@ -17669,6 +17697,7 @@ Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONLayerEntry.layer | 
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONLayerEntry.visible | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getCenter.getCenter.__type.lat | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getCenter.getCenter.__type.lng | doc:-
+Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures.queryRenderedFeatures.options.__type.layers | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONSharedState.adapter | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONSharedState.geoJsonLayer | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONSharedState.layerGroup | doc:-
@@ -20149,6 +20178,7 @@ TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONInitOptions.onEa
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONInitOptions.pointToLayer.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONLayerEntry._visibility.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.getCenter.getCenter.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONNativeMap.queryRenderedFeatures.queryRenderedFeatures.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.LayerRegistryLike.register.register.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core-types.MapEventHandler.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type | doc:-

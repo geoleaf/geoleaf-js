@@ -54,12 +54,14 @@ const ALONE_PX = [260, -120];
  * Boots, lays the four points out on the camera the profile boots on, and creates the layer —
  * with them, or EMPTY and filled afterwards.
  * @param {import('@playwright/test').Page} page
- * @param {{ bornEmpty: boolean }} opts
+ * @param {{ filledBy: "create" | "updateLayerData" | "mergeFeatures" }} opts How the points
+ *   reach the layer: with its creation, or after it — as a whole collection, or as a merge.
  */
-async function bootWithLayer(page, { bornEmpty }) {
+async function bootWithLayer(page, { filledBy }) {
     await bootMapUntilIdle(page);
     await awaitSettledCamera(page);
-    await page.evaluate(async ([id, together, alone, empty]) => {
+    await page.evaluate(async ([id, together, alone, how]) => {
+        const empty = how !== "create";
         const w = /** @type {any} */ (window);
         const G = w.GeoLeaf;
         const map = G.Core.getMap().getNativeMap();
@@ -87,8 +89,9 @@ async function bootWithLayer(page, { bornEmpty }) {
             clustering: { enabled: true },
             inlineData: empty ? { type: "FeatureCollection", features: [] } : batch,
         });
-        if (empty) G.GeoJSON.updateLayerData(id, batch);
-    }, /** @type {[string, number[][], number[], boolean]} */ ([LAYER, TOGETHER_PX, ALONE_PX, bornEmpty]));
+        if (how === "updateLayerData") G.GeoJSON.updateLayerData(id, batch);
+        if (how === "mergeFeatures") G.Layers.mergeFeatures(id, batch.features);
+    }, /** @type {[string, number[][], number[], string]} */ ([LAYER, TOGETHER_PX, ALONE_PX, filledBy]));
 }
 
 /** What the engine and the store hold for the layer, in one reading. */
@@ -131,13 +134,22 @@ test.beforeEach(async ({ context }) => {
 test("[geojson] témoin — la couche créée AVEC ses points dessine une icône et une grappe", async ({
     page,
 }) => {
-    await bootWithLayer(page, { bornEmpty: false });
+    await bootWithLayer(page, { filledBy: "create" });
     await expect.poll(() => reading(page), { timeout: WAIT_MS }).toEqual(EXPECTED);
 });
 
 test("[geojson] la même couche née VIDE puis remplie dessine la même icône et la même grappe", async ({
     page,
 }) => {
-    await bootWithLayer(page, { bornEmpty: true });
+    await bootWithLayer(page, { filledBy: "updateLayerData" });
+    await expect.poll(() => reading(page), { timeout: WAIT_MS }).toEqual(EXPECTED);
+});
+
+// The unit mutations reach the engine as a DIFF, by another road than a whole-collection write:
+// the features they add were not given their icon either.
+test("[geojson] née VIDE puis remplie par `mergeFeatures` : la même icône et la même grappe", async ({
+    page,
+}) => {
+    await bootWithLayer(page, { filledBy: "mergeFeatures" });
     await expect.poll(() => reading(page), { timeout: WAIT_MS }).toEqual(EXPECTED);
 });

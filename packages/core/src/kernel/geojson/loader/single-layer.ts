@@ -572,7 +572,9 @@ async function _doLoadSingleLayerMapLibre(
     // Bind popups & tooltips via event-driven MapLibre pattern
     const nativeMap = adapter.getNativeMap() as GeoJSONNativeMap;
     const registry = adapter.getLayerRegistry?.();
-    const subLayerIds = registry?.getSubLayerIds(layerId) ?? [];
+    // A COPY: the registry's own array grows in place when a write completes the layer's
+    // sub-layers, and the kernel tells that it did by comparing its list to the registry's.
+    const subLayerIds = [...(registry?.getSubLayerIds(layerId) ?? [])];
 
     _bindSingleLayerInteractions(layerId, def, nativeMap, subLayerIds);
 

@@ -269,9 +269,14 @@ premier. Trois effets que cette capacité voit : un point posé sur un polygone 
 ouvre la bulle du **point** ; l'icône d'un point est cliquable sur toute sa boîte ; et le survol
 ne dit plus `leave` puis `move` en passant du fond d'un polygone à son contour.
 
-⚠️ **Ce que la garantie ne dit pas** : elle vaut **par couche**. Deux couches sous le pointeur
-émettent chacune leur clic, dans l'ordre de leur création, et la bulle affichée est celle du
-dernier — `geoleaf:feature:click` ne porte pas de `zIndex`, à la différence du survol.
+🛑 **Entre deux COUCHES sous le clic, seule celle du dessus émet (3.16.0).** Chaque couche a son
+écouteur : toutes deux émettaient, dans l'ordre de leur création, et la bulle affichée était
+celle de la dernière — un point posé sur le polygone d'une autre couche ouvrait la bulle du
+polygone dès que la couche du polygone était la plus récente. Le kernel demande au moteur quelle
+entité est dessinée au-dessus, toutes couches interactives confondues, et seule sa couche émet.
+C'est l'ordre de DESSIN qui décide, donc le `zIndex`. Une couche non interactive ne couvre rien,
+une grappe non plus. ⚠️ Le survol n'est pas arbitré là : chaque couche sous le pointeur émet son
+`geoleaf:feature:hover`, avec le `zIndex` par lequel l'infobulle les départage déjà.
 
 ### ✅ `geoleaf:popup:action` — promis longtemps, émis depuis le 29/07/2026
 

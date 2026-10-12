@@ -29,7 +29,7 @@ import type {
 } from "../../contracts/map-adapter.contract.ts";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
-import { MaplibreLayerRegistry, SENTINEL_POI } from "./maplibre-layer-registry.js";
+import { MaplibreLayerRegistry, SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
 import { applyLayerZIndex } from "./maplibre-layer-order.js";
 import { reregisterHatchPatterns, removeHatchPatterns } from "./maplibre-hatch-patterns.js";
@@ -60,7 +60,11 @@ import {
     POSITION_MAP,
     applyLayerZoomRange,
 } from "./maplibre-primitives.js";
-import { buildGeoJSONLayer, buildClusterGroup } from "./maplibre-layer-builders.js";
+import {
+    buildGeoJSONLayer,
+    buildClusterGroup,
+    growGeoJSONLayer,
+} from "./maplibre-layer-builders.js";
 import { isDiffableSource, toSourceDiff } from "./maplibre-source-diff.js";
 import { buildMarker, dropMarker, moveMarker, turnMarker } from "./maplibre-markers.js";
 import {
@@ -109,6 +113,11 @@ export class MaplibreAdapter implements IMapAdapter {
     private readonly _filterSlots: Map<string, Map<string, unknown>> = new Map();
     /** The filter each sub-layer was built with — see {@link MaplibreAdapter._builtFilter}. */
     private readonly _builtFilters: Map<string, unknown> = new Map();
+    /** What each GeoJSON layer was created with, and the style set on it since — see `_growLayer`. */
+    private readonly _createdWith: Map<
+        string,
+        { options: GeoLeafLayerOptions | undefined; style?: GeoLeafStyleOptions }
+    > = new Map();
     /** Engine ids placed outside this adapter and declared to it, by declarer. */
     private readonly _declaredStyleIds: Map<string, Required<DeclaredStyleIds>> = new Map();
 
@@ -408,6 +417,7 @@ export class MaplibreAdapter implements IMapAdapter {
             data,
             options
         );
+        this._createdWith.set(id, { options });
         // Taxonomy POI icons: the symbol sub-layer's `icon-image` reads `symbolId`
         // (injected by the GeoJSON loader). Ensure the profile sprite + its MapLibre
         // images are registered — idempotent, no-op without symbolId features.
@@ -460,6 +470,7 @@ export class MaplibreAdapter implements IMapAdapter {
         this._layerRegistry.unregister(id);
         // A layer created again under this id starts with no filter.
         this._filterSlots.delete(id);
+        this._createdWith.delete(id);
     }
 
     /** Returns `true` if the layer is registered in the adapter. */
@@ -497,6 +508,7 @@ export class MaplibreAdapter implements IMapAdapter {
         const entry = this._layerRegistry.get(id);
         if (!entry) return;
         const source = map.getSource(entry.sourceId) as GeoJSONSourceLike | undefined;
+        this._growLayer(map, id, data);
         if (source && typeof source.setData === "function") {
             source.setData(data);
         }
@@ -527,9 +539,13 @@ export class MaplibreAdapter implements IMapAdapter {
         if (!isDiffableSource(source)) return false;
         const sourceDiff = toSourceDiff(diff);
         if (!sourceDiff) return false;
+        if (diff.add?.length) this._growLayer(map, id, { features: diff.add });
         void source
             ?.updateData?.(sourceDiff)
             .catch((err: unknown) => Log.error("[MaplibreAdapter] updateData rejected", err));
+        // The features a diff ADDS may name icons the engine holds no image for yet — same
+        // idempotent step as a whole-collection write, no-op without `symbolId`.
+        if (diff.add?.length) ensureLayerSpriteIcons(this._map, { features: diff.add });
         return true;
     }
 
@@ -549,6 +565,32 @@ export class MaplibreAdapter implements IMapAdapter {
     /** Applies a style to an existing layer by updating paint properties on each sub-layer. */
     setLayerStyle(id: string, style: GeoLeafStyleOptions): void {
         applyLayerStyle(this._requireMap(), this._layerRegistry, id, style);
+        // Kept for a sub-layer added later: it is built from the creation's options, and
+        // must then be repainted with the style the layer wears now.
+        const created = this._createdWith.get(id);
+        if (created) created.style = style;
+    }
+
+    /**
+     * Completes a layer's sub-layers for the geometry it is about to receive, then brings
+     * the new ones to the state its other sub-layers are in: the style set since the
+     * creation, and the filters the layer carries — both live here, which is why the
+     * builder (`growGeoJSONLayer`) leaves them to its caller.
+     */
+    private _growLayer(map: MaplibreMap, id: string, data: unknown): void {
+        const created = this._createdWith.get(id);
+        if (!created) return;
+        const added = growGeoJSONLayer(map, this._layerRegistry, id, data, created.options);
+        if (added.length === 0) return;
+        if (created.style) applyLayerStyle(map, this._layerRegistry, id, created.style);
+        const active = [...(this._filterSlots.get(id)?.values() ?? [])];
+        if (active.length === 0) return;
+        const filter = active.length === 1 ? active[0] : ["all", ...active];
+        this._filterSubLayers(
+            map,
+            added.map((type) => toSubLayerId(id, type)),
+            filter
+        );
     }
 
     // ── Layer filtering ──────────────────────────────────────────────────────
@@ -594,7 +636,12 @@ export class MaplibreAdapter implements IMapAdapter {
 
         // Every sub-layer, whatever built it — a vector-tile one included, built with no
         // filter: the caller's is then drawn as it is.
-        for (const subId of this._layerRegistry.getSubLayerIds(id)) {
+        this._filterSubLayers(map, this._layerRegistry.getSubLayerIds(id), filter);
+    }
+
+    /** Draws `filter` on each of `subIds`, AND-ed with the filter the sub-layer was built with. */
+    private _filterSubLayers(map: MaplibreMap, subIds: readonly string[], filter: unknown): void {
+        for (const subId of subIds) {
             if (!map.getLayer(subId)) continue;
             const built = this._builtFilter(map, subId);
             const next = built == null ? filter : filter == null ? built : ["all", built, filter];

@@ -128,14 +128,26 @@ import { geometryKindToGeoJSONTypes } from "../../kernel/config/layer-geometry.j
  *
  * A layer whose data ships empty and is written at runtime says nothing about its geometry,
  * so every sub-layer is built. That over-rendering is HARMLESS — and only harmless — because
- * each sub-layer carries its own geometry guard: see {@link geometryGuard}. Narrowing this
- * would silently drop the sub-layer a later `setData` needs, since the sub-layer set is
- * decided once, at creation, and `updateLayerData` never revisits it.
+ * each sub-layer carries its own geometry guard: see {@link geometryGuard}.
+ *
+ * ⚠️ Narrowing this would no longer DROP what a later write needs — a write now completes the
+ * sub-layers of a family the layer lacks (`growGeoJSONLayer`) — but it would move the cost
+ * from creation to the first write, and lose the one case growth does not cover: a clustered
+ * source, which is never grown.
  */
 const _UNKNOWN_GEOMETRY = ["Point", "LineString", "Polygon"] as const;
 
-/** Reads the geometry types actually present in the data. Empty when there are none. */
-function _scanGeometryTypes(data: unknown): Set<string> {
+/**
+ * Reads the geometry types actually present in the data.
+ *
+ * Unlike {@link detectGeometryTypes}, it answers an EMPTY set when the data shows none — no
+ * feature, or features without a geometry — instead of assuming the three families. A caller
+ * that must tell "shows nothing" from "shows everything" reads this one.
+ *
+ * @param data - The GeoJSON to scan: a collection, or a single feature.
+ * @returns The geometry types found. Empty when there are none.
+ */
+export function scanGeometryTypes(data: unknown): Set<string> {
     const types = new Set<string>();
     const d = data as
         | {
@@ -163,8 +175,9 @@ function _scanGeometryTypes(data: unknown): Set<string> {
  * declares ONE lowercase kind, which is the layer's SEMANTIC kind (the legend, the editor's
  * dropdown and the theme applier all read the same field). A layer whose kind is narrower
  * than its content — a computed itinerary is a `polyline` that also carries its stops —
- * would lose the sub-layers a restrictive reading leaves out, and lose them permanently,
- * since the set is decided at creation and `updateLayerData` never revisits it.
+ * would lose the sub-layers a restrictive reading leaves out until its first write showed
+ * them (`growGeoJSONLayer` completes a layer then) — and for good when the layer ships its
+ * data and is never written again.
  *
  * 🛑 Corollary, and it is the half that is easy to get wrong: **only the DATA may say
  * "unknown".** The three-type fallback is keyed on an empty SCAN, never on the absence of a
@@ -181,7 +194,7 @@ function _scanGeometryTypes(data: unknown): Set<string> {
  * @returns The geometry types to build sub-layers for. Never empty.
  */
 export function resolveGeometryTypes(data: unknown, declared: unknown): Set<string> {
-    const types = _scanGeometryTypes(data);
+    const types = scanGeometryTypes(data);
     if (types.size === 0) for (const t of _UNKNOWN_GEOMETRY) types.add(t);
     for (const t of geometryKindToGeoJSONTypes(declared)) types.add(t);
     return types;
@@ -209,6 +222,11 @@ interface AddSubLayersOptions {
     showIconsOnMap?: boolean;
     /** Config-driven geometry override (e.g. "fill-extrusion"). */
     configGeometry?: string;
+    /**
+     * Where each sub-layer goes, when one `beforeId` for all is not enough: a layer that
+     * GROWS inserts each new sub-layer at its own place among those it already has.
+     */
+    placeBefore?: (type: SubLayerType) => string | undefined;
 }
 
 /** Shared rendering context passed to the per-geometry sub-layer builders. */
@@ -365,25 +383,43 @@ export function addSubLayers(
     return created;
 }
 
+/**
+ * Adds one sub-layer, unless the layer already has it, and says whether it did.
+ *
+ * Every builder below goes through here rather than calling `map.addLayer` itself, because
+ * the same builders serve two moments: a layer's creation, where nothing exists yet, and its
+ * GROWTH — a layer that receives a geometry it has no sub-layer for (`growGeoJSONLayer`).
+ * Growing a layer that draws lines with a polygon needs the fill and not a second line, and
+ * MapLibre throws on an id it already holds.
+ *
+ * @param ctx - The rendering context of the layer being built.
+ * @param type - The sub-layer family, which names its id and its place in the stack.
+ * @param spec - The MapLibre layer to add.
+ * @returns `true` when the sub-layer was added, `false` when it already existed.
+ */
+function _place(ctx: SubLayerCtx, type: SubLayerType, spec: MaplibreLayerSpec): boolean {
+    if (ctx.map.getLayer(spec.id)) return false;
+    const placeBefore = ctx.options?.placeBefore;
+    ctx.map.addLayer(spec, placeBefore ? placeBefore(type) : ctx.beforeId);
+    return true;
+}
+
 /** Adds the fill (or fill-extrusion) sub-layer for polygon geometries. */
 function _addPolygonSubLayers(ctx: SubLayerCtx, cfgGeom: string | undefined): SubLayerType[] {
-    const { map, id, sourceId, flat, layoutBase, beforeId, zoomProps, options } = ctx;
+    const { map, id, sourceId, flat, layoutBase, zoomProps, options } = ctx;
     if (cfgGeom === "fill-extrusion") {
         // fill-extrusion: extruded 3D polygons
         const extPaint = toFillExtrusionPaint(flat);
-        map.addLayer(
-            {
-                id: toSubLayerId(id, "fill-extrusion"),
-                type: "fill-extrusion",
-                source: sourceId,
-                filter: geometryGuard("fill-extrusion"),
-                paint: extPaint,
-                layout: { ...layoutBase },
-                ...zoomProps,
-            } as MaplibreLayerSpec,
-            beforeId
-        );
-        return ["fill-extrusion"];
+        const placedExtrusion = _place(ctx, "fill-extrusion", {
+            id: toSubLayerId(id, "fill-extrusion"),
+            type: "fill-extrusion",
+            source: sourceId,
+            filter: geometryGuard("fill-extrusion"),
+            paint: extPaint,
+            layout: { ...layoutBase },
+            ...zoomProps,
+        } as MaplibreLayerSpec);
+        return placedExtrusion ? ["fill-extrusion"] : [];
     }
     // Register hatch patterns before creating the fill layer
     const hatchPatterns = collectHatchPatterns(flat, options?.styleRules, id);
@@ -395,43 +431,37 @@ function _addPolygonSubLayers(ctx: SubLayerCtx, cfgGeom: string | undefined): Su
         ? styleRulesToPaint(options.styleRules, flat, "fill", id)
         : toFillPaint(flat, id);
 
-    map.addLayer(
-        {
-            id: toSubLayerId(id, "fill"),
-            type: "fill",
-            source: sourceId,
-            filter: geometryGuard("fill"),
-            paint: fillPaint,
-            layout: { ...layoutBase },
-            ...zoomProps,
-        } as MaplibreLayerSpec,
-        beforeId
-    );
-    return ["fill"];
+    const placedFill = _place(ctx, "fill", {
+        id: toSubLayerId(id, "fill"),
+        type: "fill",
+        source: sourceId,
+        filter: geometryGuard("fill"),
+        paint: fillPaint,
+        layout: { ...layoutBase },
+        ...zoomProps,
+    } as MaplibreLayerSpec);
+    return placedFill ? ["fill"] : [];
 }
 
 /** Adds the optional casing + main line sub-layers for line/polygon outlines. */
 function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
-    const { map, id, sourceId, flat, layoutBase, beforeId, zoomProps, options } = ctx;
+    const { id, sourceId, flat, layoutBase, zoomProps, options } = ctx;
     const created: SubLayerType[] = [];
 
     // Casing: thicker line behind the main stroke for outline effect
     const casing = flat.casing as CasingConfig | undefined;
     if (casing?.enabled) {
         const mainWeight = typeof flat.weight === "number" ? flat.weight : 1;
-        map.addLayer(
-            {
-                id: toSubLayerId(id, "casing"),
-                type: "line",
-                source: sourceId,
-                filter: geometryGuard("casing"),
-                paint: toCasingPaint(casing, mainWeight),
-                layout: { ...layoutBase },
-                ...zoomProps,
-            } as MaplibreLayerSpec,
-            beforeId
-        );
-        created.push("casing");
+        const placedCasing = _place(ctx, "casing", {
+            id: toSubLayerId(id, "casing"),
+            type: "line",
+            source: sourceId,
+            filter: geometryGuard("casing"),
+            paint: toCasingPaint(casing, mainWeight),
+            layout: { ...layoutBase },
+            ...zoomProps,
+        } as MaplibreLayerSpec);
+        if (placedCasing) created.push("casing");
     }
 
     const linePaint = (
@@ -443,19 +473,16 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
     applyPendingLineBadgePaint(linePaint);
     // The `selected` feature-state, set by `GeoLeaf.Layers.focus` (maplibre-selection-paint.ts).
     applyLineSelectionPaint(linePaint);
-    map.addLayer(
-        {
-            id: toSubLayerId(id, "line"),
-            type: "line",
-            source: sourceId,
-            filter: geometryGuard("line"),
-            paint: linePaint,
-            layout: { ...layoutBase },
-            ...zoomProps,
-        } as MaplibreLayerSpec,
-        beforeId
-    );
-    created.push("line");
+    const placedLine = _place(ctx, "line", {
+        id: toSubLayerId(id, "line"),
+        type: "line",
+        source: sourceId,
+        filter: geometryGuard("line"),
+        paint: linePaint,
+        layout: { ...layoutBase },
+        ...zoomProps,
+    } as MaplibreLayerSpec);
+    if (placedLine) created.push("line");
     return created;
 }
 
@@ -481,7 +508,7 @@ function _addLineSubLayers(ctx: SubLayerCtx): SubLayerType[] {
  * Treat it as a feature with its own CDC, not as a style option to slot in.
  */
 function _addPointSubLayers(ctx: SubLayerCtx): SubLayerType[] {
-    const { map, id, sourceId, flat, layoutBase, beforeId, zoomProps, options } = ctx;
+    const { id, sourceId, flat, layoutBase, zoomProps, options } = ctx;
     const created: SubLayerType[] = [];
 
     const circlePaint = options?.styleRules?.length
@@ -501,43 +528,37 @@ function _addPointSubLayers(ctx: SubLayerCtx): SubLayerType[] {
     //    it while it lasts, and the badge comes back as its fallback.
     applyCircleSelectionPaint(circlePaint);
 
-    map.addLayer(
-        {
-            id: toSubLayerId(id, "circle"),
-            type: "circle",
-            source: sourceId,
-            filter: geometryGuard("circle"),
-            paint: circlePaint,
-            layout: { ...layoutBase },
-            ...zoomProps,
-        } as MaplibreLayerSpec,
-        beforeId
-    );
-    created.push("circle");
+    const placedCircle = _place(ctx, "circle", {
+        id: toSubLayerId(id, "circle"),
+        type: "circle",
+        source: sourceId,
+        filter: geometryGuard("circle"),
+        paint: circlePaint,
+        layout: { ...layoutBase },
+        ...zoomProps,
+    } as MaplibreLayerSpec);
+    if (placedCircle) created.push("circle");
 
     if (options?.showIconsOnMap) {
-        map.addLayer(
-            {
-                id: toSubLayerId(id, "symbol"),
-                type: "symbol",
-                source: sourceId,
-                // Only features the symbol injector actually tagged carry an icon;
-                // without this filter MapLibre allocates a symbol bucket for every
-                // feature in the layer and evaluates `icon-image` to null on most.
-                filter: withGeometryGuard("symbol", ["has", "symbolId"]),
-                layout: {
-                    ...layoutBase,
-                    "icon-image": ["get", "symbolId"],
-                    "icon-size": resolveIconSize(),
-                    "icon-allow-overlap": true,
-                    "icon-ignore-placement": true,
-                },
-                paint: {},
-                ...zoomProps,
-            } as MaplibreLayerSpec,
-            beforeId
-        );
-        created.push("symbol");
+        const placedSymbol = _place(ctx, "symbol", {
+            id: toSubLayerId(id, "symbol"),
+            type: "symbol",
+            source: sourceId,
+            // Only features the symbol injector actually tagged carry an icon;
+            // without this filter MapLibre allocates a symbol bucket for every
+            // feature in the layer and evaluates `icon-image` to null on most.
+            filter: withGeometryGuard("symbol", ["has", "symbolId"]),
+            layout: {
+                ...layoutBase,
+                "icon-image": ["get", "symbolId"],
+                "icon-size": resolveIconSize(),
+                "icon-allow-overlap": true,
+                "icon-ignore-placement": true,
+            },
+            paint: {},
+            ...zoomProps,
+        } as MaplibreLayerSpec);
+        if (placedSymbol) created.push("symbol");
     }
     return created;
 }

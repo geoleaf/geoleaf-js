@@ -236,3 +236,105 @@ test("[geojson] le survol suit la même règle que le clic", async ({ page }) =>
     const moves = await seam(page, "geoleaf:feature:hover", BORN_EMPTY);
     expect(new Set(moves.map((e) => e.featureId))).toEqual(new Set(["point-over-other-layer"]));
 });
+
+// 🛑 BETWEEN TWO LAYERS, THE ONE DRAWN ON TOP ANSWERS — AND IT ALONE. Each layer under the
+// pointer used to emit its own click, in the order the layers were created, and the popup shown
+// was the last one's: which layer answered depended on when it had been created, not on what
+// the user saw.
+test("[geojson] deux couches sous le clic : seule celle du dessus émet", async ({ page }) => {
+    await bootWithBornEmptyLayer(page);
+    const at = await pagePoint(page, "point");
+    await page.mouse.click(at.x, at.y);
+
+    await expect
+        .poll(() => seam(page, "geoleaf:feature:click"), { timeout: WAIT_MS })
+        .not.toEqual([]);
+    // The point of the layer born empty lies ON the polygon of the other layer.
+    expect((await seam(page, "geoleaf:feature:click")).map((e) => e.layerId)).toEqual([BORN_EMPTY]);
+
+    // And the layer underneath still answers where nothing covers it.
+    await page.mouse.click(at.x + 45, at.y + 45);
+    await expect
+        .poll(async () => (await seam(page, "geoleaf:feature:click")).map((e) => e.layerId), {
+            timeout: WAIT_MS,
+        })
+        .toEqual([BORN_EMPTY, BELOW]);
+});
+
+// 🛑 A LAYER CREATED WITH ONE GEOMETRY DRAWS ANOTHER ONE IT RECEIVES LATER. The sub-layers were
+// decided once, from the first batch: a layer created with points had no sub-layer for a
+// polygon, which was then stored, listed in the table, and never drawn.
+test("[geojson] une couche créée avec des points dessine et entend le polygone reçu ensuite", async ({
+    page,
+}) => {
+    await bootMapUntilIdle(page);
+    await awaitSettledCamera(page);
+    const ID = "e2e_born_with_points";
+    const at = await page.evaluate(async (id) => {
+        const w = /** @type {any} */ (window);
+        const G = w.GeoLeaf;
+        const map = G.Core.getMap().getNativeMap();
+        const canvas = map.getCanvas();
+        const mid = [canvas.clientWidth / 2, canvas.clientHeight / 2];
+        const ll = (dx, dy) => map.unproject([mid[0] + dx, mid[1] + dy]).toArray();
+        const point = {
+            type: "Feature",
+            id: "first-point",
+            properties: { id: "first-point" },
+            geometry: { type: "Point", coordinates: ll(-200, 0) },
+        };
+        const polygon = {
+            type: "Feature",
+            id: "late-polygon",
+            properties: { id: "late-polygon" },
+            geometry: {
+                type: "Polygon",
+                coordinates: [[ll(-50, -50), ll(50, -50), ll(50, 50), ll(-50, 50), ll(-50, -50)]],
+            },
+        };
+        await G.Layers.create({
+            id,
+            label: "E2E — née avec des points",
+            // Not clustered, and it has to be said: this profile clusters every point layer, and
+            // a clustered source indexes points alone — such a layer is never completed.
+            clustering: false,
+            inlineData: { type: "FeatureCollection", features: [point] },
+        });
+        w.__clicks = [];
+        document.addEventListener("geoleaf:feature:click", (e) => {
+            const d = /** @type {CustomEvent} */ (e).detail;
+            w.__clicks.push({ layerId: d.layerId, featureId: d.featureId });
+        });
+        G.GeoJSON.updateLayerData(id, { type: "FeatureCollection", features: [point, polygon] });
+        const box = canvas.getBoundingClientRect();
+        return { x: box.left + mid[0] + 20, y: box.top + mid[1] + 20 };
+    }, ID);
+
+    await expect
+        .poll(
+            () =>
+                page.evaluate((id) => {
+                    const adapter = /** @type {any} */ (window).GeoLeaf.Core.getMap();
+                    const map = adapter.getNativeMap();
+                    const fill = adapter
+                        .getLayerRegistry()
+                        .getSubLayerIds(id)
+                        .find((s) => s.endsWith("-fill"));
+                    return fill
+                        ? // Deduplicated: a polygon across a tile boundary is rendered once per tile.
+                          [
+                              ...new Set(
+                                  map.queryRenderedFeatures({ layers: [fill] }).map((f) => f.id)
+                              ),
+                          ]
+                        : "aucune sous-couche de fond";
+                }, ID),
+            { timeout: WAIT_MS, message: "le polygone reçu après la création est dessiné" }
+        )
+        .toEqual(["late-polygon"]);
+
+    await page.mouse.click(at.x, at.y);
+    await expect
+        .poll(() => page.evaluate(() => /** @type {any} */ (window).__clicks), { timeout: WAIT_MS })
+        .toEqual([{ layerId: ID, featureId: "late-polygon" }]);
+});

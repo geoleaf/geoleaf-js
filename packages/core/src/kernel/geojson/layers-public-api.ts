@@ -33,7 +33,7 @@
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { dispatchGeoLeafEvent } from "../events/event-bus.js";
 import { GeoJSONShared } from "./shared.js";
-import { GeoJSONCore, applyLayerDiff } from "./core.js";
+import { GeoJSONCore, applyLayerDiff, tagLayerIcons } from "./core.js";
 import { loadLayerDefinition } from "./loader/profile.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
 import { readFeaturePropId } from "./geojson-filter.js";
@@ -322,6 +322,8 @@ function diffId(feature: StoreFeature): string | number | null {
 
 function addFeatureImpl(layerId: string, feature: GeoJSON.Feature): void {
     const added = feature as unknown as StoreFeature;
+    // Before the diff is built: the engine and the store must both receive the icon.
+    tagLayerIcons(layerId, [feature]);
     writeDiff(layerId, { add: [feature] }, (features) => {
         features.push(added);
     });
@@ -405,6 +407,9 @@ function patchFeatureImpl(
 
 function mergeFeaturesImpl(layerId: string, features: readonly GeoJSON.Feature[]): boolean {
     const incoming = features as unknown as readonly StoreFeature[];
+    // The incoming features only: those the store already holds went through here, or
+    // through the loader, when they entered it.
+    tagLayerIcons(layerId, features);
     const idIndex = new Map<string, number>();
     const result: StoreFeature[] = [];
     const upsert = (f: StoreFeature): void => {

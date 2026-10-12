@@ -39,6 +39,9 @@ function createMockMap() {
     const _eventHandlers = {};
     const _sources = {};
     const _layers = {};
+    // The style's drawing order, bottom first — what `getLayersOrder()` answers. `addLayer`
+    // inserts before `beforeId` when the style holds it, on top otherwise, as the engine does.
+    const _order = [];
     const _controls = [];
     const _images = {};
     /** The map's one and only canvas — see `getCanvas` below for why it must be stable. */
@@ -79,11 +82,16 @@ function createMockMap() {
         // Layers
         addLayer: vi.fn((layerDef, beforeId) => {
             _layers[layerDef.id] = layerDef;
+            const at = beforeId === undefined ? -1 : _order.indexOf(beforeId);
+            if (at === -1) _order.push(layerDef.id);
+            else _order.splice(at, 0, layerDef.id);
         }),
         removeLayer: vi.fn((id) => {
             delete _layers[id];
+            if (_order.includes(id)) _order.splice(_order.indexOf(id), 1);
         }),
         getLayer: vi.fn((id) => _layers[id] || null),
+        getLayersOrder: vi.fn(() => [..._order]),
         setFilter: vi.fn(),
         setLayoutProperty: vi.fn(),
         setPaintProperty: vi.fn(),

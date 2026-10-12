@@ -198,6 +198,44 @@ export class MaplibreLayerRegistry {
         return entry;
     }
 
+    /**
+     * Records sub-layers added to a layer AFTER its registration — a layer that received a
+     * geometry it had no sub-layer for (`growGeoJSONLayer`).
+     *
+     * `subLayerIds` is read bottom-up by the ordering code — its first id is the bottom of
+     * the layer's stack, which {@link getInsertBeforeId} anchors other layers on — so the
+     * list is put back in the order the engine DRAWS, never appended to.
+     *
+     * @param layerId - GeoLeaf layer identifier.
+     * @param added - The sub-layer families added.
+     * @param geometryTypes - The GeoJSON geometry types the layer now also holds.
+     * @param drawingOrder - Every layer id of the style, bottom first.
+     * @returns `true` if the layer is registered; `false` otherwise, and nothing changed.
+     */
+    extend(
+        layerId: string,
+        added: readonly SubLayerType[],
+        geometryTypes: Iterable<string>,
+        drawingOrder: readonly string[]
+    ): boolean {
+        const entry = this._entries.get(layerId);
+        if (!entry) return false;
+        for (const type of added) {
+            const subId = toSubLayerId(layerId, type);
+            if (!entry.subLayerIds.includes(subId)) entry.subLayerIds.push(subId);
+            entry.subLayerTypes.add(type);
+        }
+        // An id the style does not hold keeps its place at the end: `Array.sort` is stable.
+        const rank = (id: string): number => {
+            const at = drawingOrder.indexOf(id);
+            return at === -1 ? Number.MAX_SAFE_INTEGER : at;
+        };
+        entry.subLayerIds.sort((x, y) => rank(x) - rank(y));
+        const known = (entry.geometryTypes ??= new Set<string>());
+        for (const t of geometryTypes) known.add(t);
+        return true;
+    }
+
     /** Unregisters a layer. Returns `true` if it existed. */
     unregister(layerId: string): boolean {
         return this._entries.delete(layerId);

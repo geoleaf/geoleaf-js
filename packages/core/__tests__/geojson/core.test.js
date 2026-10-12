@@ -354,6 +354,50 @@ describe("geojson/core", () => {
             });
         });
 
+        // ---- updateLayerData: the sub-layers a write may ADD ----
+        //
+        // The adapter completes a layer's sub-layers when it receives a geometry it could
+        // not draw; the entry's own list was read once, at the load.
+        describe("updateLayerData — la liste de sous-couches suit ce que l'écriture ajoute", () => {
+            const withRegistry = (ids) => {
+                sharedState.adapter.getLayerRegistry = () => ({ getSubLayerIds: () => ids });
+            };
+
+            it("une sous-couche ajoutée par l'adaptateur entre dans la fiche de la couche", () => {
+                const entry = { features: [], config: {}, _maplibreSubLayerIds: ["gl-l1-circle"] };
+                sharedState.layers.set("l1", entry);
+                withRegistry(["gl-l1-fill", "gl-l1-line", "gl-l1-circle"]);
+                GeoJSON.updateLayerData("l1", { type: "FeatureCollection", features: [] });
+                expect(entry._maplibreSubLayerIds).toEqual([
+                    "gl-l1-fill",
+                    "gl-l1-line",
+                    "gl-l1-circle",
+                ]);
+            });
+
+            // 🛑 Seen in a browser, not here: the entry held the REGISTRY'S OWN array, which
+            // grows in place — so the two lists were always equal, and nothing was bound again.
+            it("la fiche ne partage pas son tableau avec le registre : elle voit qu'il a grandi", () => {
+                const registryIds = ["gl-l1-circle"];
+                const entry = { features: [], config: {}, _maplibreSubLayerIds: [...registryIds] };
+                sharedState.layers.set("l1", entry);
+                withRegistry(registryIds);
+                registryIds.unshift("gl-l1-fill");
+                GeoJSON.updateLayerData("l1", { type: "FeatureCollection", features: [] });
+                expect(entry._maplibreSubLayerIds).toEqual(["gl-l1-fill", "gl-l1-circle"]);
+                expect(entry._maplibreSubLayerIds).not.toBe(registryIds);
+            });
+
+            it("une écriture qui n'ajoute rien laisse la liste telle quelle — le même tableau", () => {
+                const ids = ["gl-l1-circle"];
+                const entry = { features: [], config: {}, _maplibreSubLayerIds: ids };
+                sharedState.layers.set("l1", entry);
+                withRegistry(["gl-l1-circle"]);
+                GeoJSON.updateLayerData("l1", { type: "FeatureCollection", features: [] });
+                expect(entry._maplibreSubLayerIds).toBe(ids);
+            });
+        });
+
         // ---- updateLayerData: the icons of a layer that draws them ----
         //
         // The icon sub-layer draws the features carrying a `symbolId`, which only the first

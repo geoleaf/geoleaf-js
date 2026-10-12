@@ -52,9 +52,36 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
   polygon; a point that draws its icon is clickable over the whole box of the icon, not only
   over its circle; a polygon is hovered and clicked on the outer half of its outline too; and
   `geoleaf:feature:hover` no longer says `leave` then `move` when the pointer crosses from a
-  polygon's surface to its outline. Not changed: between two LAYERS under the pointer, each
-  emits its own event, in the order the layers were created — and a layer created with points
-  only still has no sub-layer for a line or a polygon it would receive later.
+  polygon's surface to its outline.
+- **A layer created with one geometry draws another one it receives later** (`@geoleaf/core`
+  3.16.0). A layer's sub-layers were decided once, from its first batch: a layer created
+  with points had nothing to draw a polygon with, so a polygon written to it afterwards was
+  stored, listed in the table, counted by the filter — and never drawn. Whether a layer could
+  hold several geometries therefore depended on what its FIRST batch happened to contain. A
+  write that shows a geometry the layer does not draw — a whole collection
+  (`GeoLeaf.GeoJSON.updateLayerData`, `GeoLeaf.Layers.setData`) or features added
+  (`addFeature`, `mergeFeatures`) — now gives the layer the sub-layers it lacks: built from
+  the options the layer was created with, inserted at their place in the layer's stack, with
+  its current visibility, zoom range, style and filters, and bound to its click and hover.
+  **What you may see**: geometries that were silently absent from the map now appear; a
+  layer's sub-layer list (`getLayerRegistry().getSubLayerIds(id)`) may grow after its
+  creation. A write only ever adds what is missing. Not covered: a vector-tile layer, and a
+  CLUSTERED layer — a clustered source indexes points alone, so lines and polygons written to
+  it are still not drawn.
+- **Between two layers under a click, the one drawn on top answers — and it alone**
+  (`@geoleaf/core` 3.16.0). Each interactive layer under the pointer emitted its own
+  `geoleaf:feature:click`, in the order the layers had been CREATED, and the popup shown was
+  the last one's: a point lying on another layer's polygon opened the polygon's popup
+  whenever the polygon layer happened to be the younger of the two. The core now asks the
+  engine which feature is drawn on top at the clicked point, among every interactive layer,
+  and only that feature's layer emits. **What you may see — and it removes events**: a click
+  on a place where two interactive layers overlap now emits ONE `geoleaf:feature:click`,
+  where it emitted one per layer; a listener that relied on the click of the layer
+  UNDERNEATH no longer receives it there. What decides is the drawing order, hence
+  `zIndex` — a point layer meant to answer over a polygon layer must be drawn above it. A
+  layer that is not interactive (`interactiveShape: false`) covers nothing, however opaque;
+  neither does a cluster bubble. Hover is unchanged: every layer under the pointer still
+  emits `geoleaf:feature:hover`, with the `zIndex` the tooltip ranks by.
 - **A point layer created empty draws its icons and its clusters once filled**
   (`@geoleaf/core` 3.16.0). Two things were decided once, at a layer's creation, from its
   first batch — so a layer created with no feature and filled afterwards never got them, and
@@ -74,8 +101,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
   was into those of a first load. Not changed: a layer that ships empty and declares no
   geometry, or another one, stays unclustered — a clustered source draws points only, so
   guessing would cost the lines and polygons written to it later; data that shows features
-  is still believed over the declaration; and the unit mutations (`addFeature`,
-  `mergeFeatures`) still do not name the icon of the features they add.
+  is still believed over the declaration.
+- **`addFeature` and `mergeFeatures` give the features they add their icon**
+  (`@geoleaf/core` 3.16.0). The unit mutations reach the engine as a diff, by another road
+  than a whole-collection write, and that road named no icon either: on a layer with
+  `showIconsOnMap`, a feature added through `GeoLeaf.Layers.addFeature` or
+  `GeoLeaf.Layers.mergeFeatures` drew a bare disc. Each added feature is now given the icon
+  its taxonomy resolves, in the diff sent to the engine and in the store alike, and the
+  images it names are registered. Only the features being added are resolved, never the
+  whole layer. **What you may see**: `properties.symbolId` is written into the features you
+  pass to these two methods on an icon layer.
 
 ---
 

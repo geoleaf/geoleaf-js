@@ -56,6 +56,7 @@ import type {
     TaxonomySymbolResolver,
 } from "./loader/loader-types.js";
 import { injectSymbolIds } from "./loader/symbol-injector.js";
+import { rebindFeatureInteractionEvents } from "./feature-interaction.js";
 
 /** Minimal Utils surface read during init() for map resolution / option merging. */
 interface InitUtils {
@@ -118,10 +119,33 @@ export function applyLayerDiff(
         }
     }
     const adapter = state.adapter;
-    if (entry && _isDiffable(entry, layerId) && adapter?.applyDataDiff?.(layerId, diff) === true) {
-        return;
-    }
+    const diffed =
+        !!entry && _isDiffable(entry, layerId) && adapter?.applyDataDiff?.(layerId, diff) === true;
+    if (diffed) _followSubLayers(state, layerId);
+    if (diffed) return;
     adapter?.updateLayerData?.(layerId, { type: "FeatureCollection", features });
+    _followSubLayers(state, layerId);
+}
+
+/**
+ * Brings the kernel up to date with the sub-layers a write may have ADDED to a layer.
+ *
+ * The adapter completes a layer's sub-layers when it receives a geometry it could not draw.
+ * Two things on this side were read once, at the layer's load, and would otherwise describe
+ * the layer as it was: the sub-layer list its entry keeps, and the gestures bound on it — a
+ * sub-layer drawn and never heard is the defect a layer created empty had.
+ *
+ * Compared by count: a write only ever adds, and a layer whose list did not grow pays one
+ * registry read.
+ */
+function _followSubLayers(state: GeoJSONSharedState, layerId: string): void {
+    const entry = state.layers?.get(layerId);
+    const adapter = state.adapter;
+    const known = entry?._maplibreSubLayerIds;
+    const now = adapter?.getLayerRegistry?.()?.getSubLayerIds(layerId);
+    if (!entry || !known || !now || now.length === known.length) return;
+    entry._maplibreSubLayerIds = [...now];
+    rebindFeatureInteractionEvents(layerId, entry._maplibreSubLayerIds);
 }
 
 /**
@@ -145,6 +169,26 @@ function _tagIcons(state: GeoJSONSharedState, layerId: string, data: unknown): v
     const taxonomy = getGeoLeaf()?.Taxonomy as
         { resolvePoiIcon?: TaxonomySymbolResolver } | undefined;
     injectSymbolIds(fc, layerId, taxonomy?.resolvePoiIcon);
+}
+
+/**
+ * Names the icon of features about to be ADDED to a layer that draws icons — the unit
+ * mutations' side of what `GeoJSONCore.updateLayerData` does for a whole collection.
+ *
+ * `addFeature` and `mergeFeatures` reach the engine as a diff, by a road that never passes
+ * through the whole-collection write: the features they added drew bare discs on an icon
+ * layer. Only the features passed in are resolved — never the whole store, which a mutation
+ * per keystroke would otherwise walk each time.
+ *
+ * A free function, not a member of `GeoJSONCore`, for the reason `applyLayerDiff` gives: that
+ * object is mounted wholesale as `GeoLeaf.GeoJSON`.
+ *
+ * @param layerId - The layer the features are added to.
+ * @param features - The features being added; `properties.symbolId` is written into them.
+ */
+export function tagLayerIcons(layerId: string, features: readonly unknown[]): void {
+    const state = getState();
+    if (state) _tagIcons(state, layerId, { features: features as unknown[] });
 }
 
 /**
@@ -386,6 +430,7 @@ const GeoJSONModule = {
         if (adapter && typeof adapter.updateLayerData === "function") {
             adapter.updateLayerData(layerId, data);
         }
+        _followSubLayers(state, layerId);
         // Keep in-memory state consistent so getLayerData() returns fresh data.
         // Delegated to the shared state's own writer — see its header for why every
         // whole-collection write must pass through exactly one place. It also invalidates

@@ -65,6 +65,52 @@ function _interactionSubLayerIds(subLayerIds: string[]): string[] {
     return drawn.length ? drawn : subLayerIds;
 }
 
+/**
+ * Every sub-layer a click is bound on, per map — what {@link _isCoveredByAnotherLayer} asks
+ * the engine about. Held per map so that a destroyed map takes its set with it.
+ */
+const _clickableByMap = new WeakMap<object, Set<string>>();
+
+/**
+ * How to bind each bound layer again, by layer id — see {@link rebindFeatureInteractionEvents}.
+ *
+ * Keyed by layer id and not by map: the caller is the kernel's write path, which holds a layer
+ * id and would otherwise have to reach for the native map only to hand it back here. Each
+ * entry closes over the map it was bound on, and leaves with that map's cleanups.
+ */
+const _rebinders = new Map<string, (subLayerIds: string[]) => void>();
+
+/**
+ * True when the feature drawn ON TOP at the clicked point, among every sub-layer a click is
+ * bound on, belongs to another layer than the one asking.
+ *
+ * 🛑 **Between two layers, the one the user sees on top answers, and it alone.** Each layer
+ * has its own listener, so each layer under the pointer emitted its own
+ * `geoleaf:feature:click`, in the order the layers had been CREATED — and the popup shown was
+ * the last one's. Which layer answered depended on when it was created, not on what was drawn:
+ * a point lying on another layer's polygon opened the polygon's popup whenever the polygon
+ * layer happened to be the younger of the two.
+ *
+ * The engine is the only one that knows the drawing order, so it is asked: one query over
+ * the bound sub-layers that exist, features sorted top-down, and the first one decides.
+ *
+ * ⚠️ Only sub-layers bound HERE are compared. A layer that is not interactive covers nothing,
+ * however opaque it is drawn; neither does a cluster bubble, which has its own handler.
+ * Hover is not arbitrated here: its event carries a `zIndex` the tooltip already ranks by.
+ */
+function _isCoveredByAnotherLayer(
+    nativeMap: GeoJSONNativeMap,
+    point: { x: number; y: number } | undefined,
+    ownIds: readonly string[]
+): boolean {
+    const bound = _clickableByMap.get(nativeMap);
+    if (!bound || !point || typeof nativeMap.queryRenderedFeatures !== "function") return false;
+    const layers = [...bound].filter((id) => nativeMap.getLayer(id));
+    const top = nativeMap.queryRenderedFeatures([point.x, point.y], { layers })[0];
+    const topId = top?.layer?.id;
+    return topId !== undefined && !ownIds.includes(topId);
+}
+
 /** Reads a stable feature id, falling back to `properties.id`, else `null`. */
 function _featureId(feature: InteractionFeature): string | number | null {
     if (feature.id !== undefined) return feature.id;
@@ -89,8 +135,9 @@ function _isCluster(feature: InteractionFeature): boolean {
  * the point. `leave` fires once the pointer has left every sub-layer of the layer, not when it
  * crosses from one to another.
  *
- * ⚠️ Between two LAYERS nothing is arbitrated here: each layer under the pointer emits its
- * own event, in the order the layers were bound.
+ * Between two LAYERS under a click, only the one drawn on top emits: see
+ * {@link _isCoveredByAnotherLayer}. A hover is emitted by each layer under the pointer, with
+ * the `zIndex` its listeners rank by.
  *
  * @param layerId - GeoLeaf layer id (forwarded on every event).
  * @param def - Layer definition; read for `interactiveShape` and `zIndex`.
@@ -106,11 +153,6 @@ export function bindFeatureInteractionEvents(
     if (def.interactiveShape === false) return;
     const zIndex = typeof def.zIndex === "number" ? def.zIndex : 0;
 
-    // The SAME list for the three subscriptions, and one subscription each — see
-    // `_interactionSubLayerIds` for why neither may be split per sub-layer.
-    const ids = _interactionSubLayerIds(subLayerIds).filter((id) => nativeMap.getLayer(id));
-    if (ids.length === 0) return;
-
     // ── Click → geoleaf:feature:click ──
     const onClick = (e: MapInteractionEvent) => {
         const feature = e.features?.[0];
@@ -119,6 +161,7 @@ export function bindFeatureInteractionEvents(
         if (_isCluster(feature)) return;
         const lngLat = e.lngLat;
         if (!lngLat) return;
+        if (_isCoveredByAnotherLayer(nativeMap, e.point, bound)) return;
         dispatchGeoLeafEvent("geoleaf:feature:click", {
             layerId,
             featureId: _featureId(feature),
@@ -162,12 +205,54 @@ export function bindFeatureInteractionEvents(
         });
     };
 
-    nativeMap.on("click", ids, onClick);
-    nativeMap.on("mousemove", ids, onMove);
-    nativeMap.on("mouseleave", ids, onLeave);
+    // The SAME list for the three subscriptions, and one subscription each — see
+    // `_interactionSubLayerIds` for why neither may be split per sub-layer. `bound` is what
+    // is subscribed NOW: a layer that grows a sub-layer is detached and attached again.
+    let bound: string[] = [];
+    const detach = (): void => {
+        for (const id of bound) _clickableByMap.get(nativeMap)?.delete(id);
+        if (bound.length === 0) return;
+        nativeMap.off("click", bound, onClick);
+        nativeMap.off("mousemove", bound, onMove);
+        nativeMap.off("mouseleave", bound, onLeave);
+        bound = [];
+    };
+    const attach = (ids: string[]): void => {
+        detach();
+        bound = _interactionSubLayerIds(ids).filter((id) => nativeMap.getLayer(id));
+        if (bound.length === 0) return;
+        let clickable = _clickableByMap.get(nativeMap);
+        if (!clickable) _clickableByMap.set(nativeMap, (clickable = new Set()));
+        for (const id of bound) clickable.add(id);
+        nativeMap.on("click", bound, onClick);
+        nativeMap.on("mousemove", bound, onMove);
+        nativeMap.on("mouseleave", bound, onLeave);
+    };
+
+    attach(subLayerIds);
+    // Registered even when nothing could be bound yet: the sub-layer may come with a write.
+    _rebinders.set(layerId, attach);
     trackMapCleanup(nativeMap, () => {
-        nativeMap.off("click", ids, onClick);
-        nativeMap.off("mousemove", ids, onMove);
-        nativeMap.off("mouseleave", ids, onLeave);
+        detach();
+        if (_rebinders.get(layerId) === attach) _rebinders.delete(layerId);
     });
+}
+
+/**
+ * Binds a layer's gestures again, on the sub-layers it has NOW — for a layer that was given
+ * a sub-layer after its creation.
+ *
+ * A layer's sub-layers are completed when it receives a geometry it could not draw
+ * (`growGeoJSONLayer`), and the engine's delegated listener only knows the list it was
+ * subscribed with: without this, the new sub-layer would be drawn and never heard — the very
+ * defect a layer created empty had. The handlers are the ones of the first binding, on the
+ * map of the first binding; only the list changes.
+ *
+ * No-op for a layer that was never bound: a layer that is not interactive stays so.
+ *
+ * @param layerId - GeoLeaf layer id.
+ * @param subLayerIds - The layer's MapLibre sub-layer IDs, as they are now.
+ */
+export function rebindFeatureInteractionEvents(layerId: string, subLayerIds: string[]): void {
+    _rebinders.get(layerId)?.(subLayerIds);
 }
