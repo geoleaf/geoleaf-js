@@ -49,12 +49,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
   a feature still emits exactly one event per layer, however many sub-layers render it; on a
   layer holding several geometries, the feature reported is the one drawn ON TOP — a point
   lying on a polygon of the same layer answers as the point, where it used to answer as the
-  polygon; an icon point is clickable over the whole box of its icon, not only over its
-  circle; a polygon is hovered and clicked on the outer half of its outline too; and
+  polygon; a point that draws its icon is clickable over the whole box of the icon, not only
+  over its circle; a polygon is hovered and clicked on the outer half of its outline too; and
   `geoleaf:feature:hover` no longer says `leave` then `move` when the pointer crosses from a
   polygon's surface to its outline. Not changed: between two LAYERS under the pointer, each
   emits its own event, in the order the layers were created — and a layer created with points
   only still has no sub-layer for a line or a polygon it would receive later.
+- **A point layer created empty draws its icons and its clusters once filled**
+  (`@geoleaf/core` 3.16.0). Two things were decided once, at a layer's creation, from its
+  first batch — so a layer created with no feature and filled afterwards never got them, and
+  a host had to create it with a first feature to work around both. **Icons**: a layer with
+  `showIconsOnMap` draws the icon of the points that carry a `symbolId`, which only the
+  first load injected, and the sprite's images were registered only when the layer was
+  added. A collection written afterwards reached the map bare: discs, no icon — on a layer
+  created empty, and equally on a layer loaded with its icons, which lost them at the first
+  whole-collection write. `GeoLeaf.GeoJSON.updateLayerData` and `GeoLeaf.Layers.setData` now
+  give each point the icon its taxonomy resolves, as the first load does, and register the
+  images it names. **Clusters**: a source is clustered or not for good, and the strategy
+  answered "no" to a collection holding no point — which an empty one is. A layer that ships
+  EMPTY is now clustered when it DECLARES a point geometry (`geometry` or `geometryType`:
+  `point`, `multipoint`) and the cluster configuration asks for it. **What you may see**:
+  such a layer now shows icons and bubbles where it showed discs; `properties.symbolId` is
+  written into the features you pass to `updateLayerData` on an icon layer, as it already
+  was into those of a first load. Not changed: a layer that ships empty and declares no
+  geometry, or another one, stays unclustered — a clustered source draws points only, so
+  guessing would cost the lines and polygons written to it later; data that shows features
+  is still believed over the declaration; and the unit mutations (`addFeature`,
+  `mergeFeatures`) still do not name the icon of the features they add.
 
 ---
 

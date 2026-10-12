@@ -195,3 +195,48 @@ describe("getClusteringStrategy — radius/zoom override vs defaults (ANO-031 pa
         ).toEqual({ shouldCluster: true, useSharedCluster: false });
     });
 });
+
+// 🛑 A SOURCE IS CLUSTERED OR NOT FOR GOOD, AT CREATION. The strategy read the first batch
+// alone, so a point layer created empty and filled afterwards was never clustered.
+describe("getClusteringStrategy — une couche servie VIDE", () => {
+    const EMPTY = { features: [] };
+
+    it("déclarée en points, elle est regroupée comme si elle en portait", () => {
+        setCluster({ clustering: true });
+        expect(getClusteringStrategy({ geometry: "point" }, EMPTY)).toEqual(SHARED);
+        expect(
+            getClusteringStrategy({ geometry: "point", clustering: { enabled: true } }, EMPTY)
+        ).toEqual(SHARED);
+    });
+
+    it("les deux orthographes de la déclaration sont lues, dans les deux vocabulaires", () => {
+        setCluster({ clustering: true });
+        expect(getClusteringStrategy({ geometryType: "point" }, EMPTY)).toEqual(SHARED);
+        expect(getClusteringStrategy({ geometry: "MultiPoint" }, EMPTY)).toEqual(SHARED);
+    });
+
+    // A clustered source indexes points alone: lines and polygons written to it later would
+    // not be drawn. Only a declared point family may answer for an empty collection.
+    it("sans déclaration, ou déclarée autrement qu'en points, elle n'est PAS regroupée", () => {
+        setCluster({ clustering: true });
+        expect(getClusteringStrategy({}, EMPTY)).toEqual(NONE);
+        expect(getClusteringStrategy({ geometry: "polygon" }, EMPTY)).toEqual(NONE);
+        expect(getClusteringStrategy({ geometry: "mixed" }, EMPTY)).toEqual(NONE);
+        expect(getClusteringStrategy({ geometry: "point" }, {})).toEqual(SHARED);
+    });
+
+    it("la donnée qui montre des entités l'emporte sur la déclaration", () => {
+        setCluster({ clustering: true });
+        expect(getClusteringStrategy({ geometry: "point" }, LINES)).toEqual(NONE);
+        expect(getClusteringStrategy({ geometry: "polygon" }, POINTS)).toEqual(SHARED);
+    });
+
+    it("les refus d'avant tiennent : capacité coupée, couche qui s'y oppose", () => {
+        setCluster({ enabled: false, clustering: true });
+        expect(getClusteringStrategy({ geometry: "point" }, EMPTY)).toEqual(NONE);
+        setCluster({ clustering: true });
+        expect(getClusteringStrategy({ geometry: "point", clustering: false }, EMPTY)).toEqual(
+            NONE
+        );
+    });
+});

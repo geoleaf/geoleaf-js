@@ -50,7 +50,12 @@ import type {
 } from "./core-types.js";
 import type { GeoJSONFeature } from "./geojson-types.js";
 import type { LayerDataDiff } from "../../contracts/map-adapter.contract.js";
-import type { CoreLayerManagerLike, CoreLoaderLike } from "./loader/loader-types.js";
+import type {
+    CoreLayerManagerLike,
+    CoreLoaderLike,
+    TaxonomySymbolResolver,
+} from "./loader/loader-types.js";
+import { injectSymbolIds } from "./loader/symbol-injector.js";
 
 /** Minimal Utils surface read during init() for map resolution / option merging. */
 interface InitUtils {
@@ -117,6 +122,29 @@ export function applyLayerDiff(
         return;
     }
     adapter?.updateLayerData?.(layerId, { type: "FeatureCollection", features });
+}
+
+/**
+ * Names the icon of each point of a collection about to be written to a layer that draws
+ * icons (`showIconsOnMap`) — the step a first load runs on its data, replayed on a write.
+ *
+ * 🛑 The icon sub-layer draws the features that carry a `symbolId`, and only the loader
+ * injected it: a collection written afterwards reached the source bare, so a layer created
+ * empty and filled later never showed an icon, and a layer loaded with its icons lost them at
+ * the first whole-collection write. Idempotent — a collection that already went through the
+ * loader's preparation resolves to the same ids.
+ *
+ * ⚠️ Like the first load, it writes `properties.symbolId` INTO the features it is given.
+ * No-op without the taxonomy capability, whose resolver it reads when called, not at import.
+ */
+function _tagIcons(state: GeoJSONSharedState, layerId: string, data: unknown): void {
+    const def = state.layers?.get(layerId)?.config as { showIconsOnMap?: unknown } | undefined;
+    if (!def?.showIconsOnMap) return;
+    const fc = data as { features?: unknown[] } | null | undefined;
+    if (!fc || !Array.isArray(fc.features)) return;
+    const taxonomy = getGeoLeaf()?.Taxonomy as
+        { resolvePoiIcon?: TaxonomySymbolResolver } | undefined;
+    injectSymbolIds(fc, layerId, taxonomy?.resolvePoiIcon);
 }
 
 /**
@@ -341,12 +369,18 @@ const GeoJSONModule = {
      * table and an active filter follow it, as they follow `GeoLeaf.Layers.setData`. Since
      * 3.15.0 — the write was silent before.
      *
+     * On a layer that draws icons (`showIconsOnMap`), each point of the collection is given
+     * the `symbolId` its taxonomy resolves, as at the first load — written into the features
+     * passed in — and the images it names are registered. Since 3.16.0: a layer created empty
+     * and filled through this method drew bare discs before.
+     *
      * @param {string} layerId - ID of the layer to update.
      * @param {unknown} data - GeoJSON FeatureCollection (or any valid GeoJSON) to set.
      */
     updateLayerData(layerId: string, data: unknown): void {
         const state = getState();
         if (!state) return;
+        _tagIcons(state, layerId, data);
         // Update MapLibre source via adapter
         const adapter = state.adapter;
         if (adapter && typeof adapter.updateLayerData === "function") {

@@ -11,6 +11,8 @@ const sharedState = vi.hoisted(() => ({
 }));
 vi.mock("../../src/kernel/geojson/shared.js", () => ({
     GeoJSONShared: {
+        // The store's own writer — not this file's subject, but `updateLayerData` ends in it.
+        setLayerCollection: vi.fn(),
         state: sharedState,
     },
 }));
@@ -349,6 +351,67 @@ describe("geojson/core", () => {
             expect(sharedState.adapter.updateLayerData).toHaveBeenCalledWith("l1", {
                 type: "FeatureCollection",
                 features: [feat1],
+            });
+        });
+
+        // ---- updateLayerData: the icons of a layer that draws them ----
+        //
+        // The icon sub-layer draws the features carrying a `symbolId`, which only the first
+        // load injected: a layer created empty and filled later drew bare discs.
+        describe("updateLayerData — les icônes d'une couche écrite après sa création", () => {
+            const point = (props) => ({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [0, 0] },
+                properties: props,
+            });
+            const resolver = () =>
+                vi.fn(({ properties }) =>
+                    properties?.cat ? { useIcon: true, symbolId: `icon-${properties.cat}` } : null
+                );
+
+            it("une couche `showIconsOnMap` reçoit le `symbolId` de chaque point écrit", () => {
+                globalThis.GeoLeaf.Taxonomy = { resolvePoiIcon: resolver() };
+                sharedState.layers.set("l1", { features: [], config: { showIconsOnMap: true } });
+                const data = { type: "FeatureCollection", features: [point({ cat: "a" })] };
+                GeoJSON.updateLayerData("l1", data);
+                // Tagged BEFORE the source is written: the engine receives the icon.
+                const written = sharedState.adapter.updateLayerData.mock.calls[0][1];
+                expect(written.features[0].properties.symbolId).toBe("icon-a");
+                expect(globalThis.GeoLeaf.Taxonomy.resolvePoiIcon).toHaveBeenCalledWith({
+                    layerId: "l1",
+                    properties: expect.objectContaining({ cat: "a" }),
+                });
+            });
+
+            it("un point que la taxonomie ne résout pas reste sans icône", () => {
+                globalThis.GeoLeaf.Taxonomy = { resolvePoiIcon: resolver() };
+                sharedState.layers.set("l1", { features: [], config: { showIconsOnMap: true } });
+                const data = { type: "FeatureCollection", features: [point({})] };
+                GeoJSON.updateLayerData("l1", data);
+                expect(data.features[0].properties).not.toHaveProperty("symbolId");
+            });
+
+            it("une couche sans `showIconsOnMap` n'interroge pas la taxonomie", () => {
+                globalThis.GeoLeaf.Taxonomy = { resolvePoiIcon: resolver() };
+                sharedState.layers.set("l1", { features: [], config: {} });
+                const data = { type: "FeatureCollection", features: [point({ cat: "a" })] };
+                GeoJSON.updateLayerData("l1", data);
+                expect(globalThis.GeoLeaf.Taxonomy.resolvePoiIcon).not.toHaveBeenCalled();
+                expect(data.features[0].properties).not.toHaveProperty("symbolId");
+            });
+
+            it("sans la capacité taxonomie, l'écriture passe telle quelle", () => {
+                sharedState.layers.set("l1", { features: [], config: { showIconsOnMap: true } });
+                const data = { type: "FeatureCollection", features: [point({ cat: "a" })] };
+                expect(() => GeoJSON.updateLayerData("l1", data)).not.toThrow();
+                expect(sharedState.adapter.updateLayerData).toHaveBeenCalledWith("l1", data);
+            });
+
+            it("une donnée qui n'est pas une collection passe telle quelle", () => {
+                globalThis.GeoLeaf.Taxonomy = { resolvePoiIcon: resolver() };
+                sharedState.layers.set("l1", { features: [], config: { showIconsOnMap: true } });
+                expect(() => GeoJSON.updateLayerData("l1", null)).not.toThrow();
+                expect(globalThis.GeoLeaf.Taxonomy.resolvePoiIcon).not.toHaveBeenCalled();
             });
         });
 

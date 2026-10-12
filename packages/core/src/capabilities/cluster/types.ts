@@ -70,6 +70,9 @@ export interface ClusterLayerDef {
     clustering?: boolean | LayerClusteringConfig;
     clusterRadius?: number;
     disableClusteringAtZoom?: number;
+    /** The declared geometry kind — read when the layer ships empty. Both spellings exist. */
+    geometry?: unknown;
+    geometryType?: unknown;
 }
 
 /** GeoJSON data surface probed for Point features. */

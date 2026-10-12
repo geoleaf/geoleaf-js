@@ -500,6 +500,9 @@ export class MaplibreAdapter implements IMapAdapter {
         if (source && typeof source.setData === "function") {
             source.setData(data);
         }
+        // A layer created empty registered no image: the collection it was added with named
+        // no icon. Same idempotent step as `addGeoJSONLayer` — no-op without `symbolId`.
+        ensureLayerSpriteIcons(this._map, data);
     }
 
     /**

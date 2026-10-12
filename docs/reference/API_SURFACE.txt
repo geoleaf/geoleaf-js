@@ -3079,7 +3079,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setLayer
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.setWorkerUrl.setWorkerUrl | doc:f899102342d1
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.showLayer.showLayer | doc:-
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.toggleLayer.toggleLayer | doc:-
-CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.updateLayerData.updateLayerData | doc:e79e0520757b
+CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.updateLayerData.updateLayerData | doc:3474754a9fa9
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.validateFeature.__type.__type | doc:053938105ece
 CallSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.validateFeatureCollection.__type.__type | doc:e9b4a247bcc7
 CallSignature | GeoLeaf Core API.kernel/geojson/core.applyLayerDiff.applyLayerDiff | doc:fc50d7819f54
@@ -10611,8 +10611,8 @@ Parameter | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONClusterOpt
 Parameter | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONClusterOptions.applyGeoJSONClusterOptions.adapterOptions | doc:ea78f8e663c7
 Parameter | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONClusterOptions.applyGeoJSONClusterOptions.def | doc:8435da16530a
 Parameter | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONClusterOptions.applyGeoJSONClusterOptions.layerId | doc:f25747c7c9fa
-Parameter | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy.def | doc:02214d4c3ef1
-Parameter | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy.geojsonData | doc:9176da2247aa
+Parameter | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy.def | doc:3848d2c7cc39
+Parameter | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy.geojsonData | doc:79b7ea408c98
 Parameter | GeoLeaf Core API.capabilities/coordinates/lifecycle.CoordinatesLifecycle.__type.init.init.map | doc:-
 Parameter | GeoLeaf Core API.capabilities/coordinates/module.CoordinatesModule.init.init._config | doc:97a86e29838b
 Parameter | GeoLeaf Core API.capabilities/coordinates/module.CoordinatesModule.init.init.adapter | doc:d739fd5fbd0d
@@ -11906,8 +11906,8 @@ Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONCl
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONClusterOptions.__type.__type.adapterOptions | doc:ea78f8e663c7
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONClusterOptions.__type.__type.def | doc:8435da16530a
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONClusterOptions.__type.__type.layerId | doc:f25747c7c9fa
-Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type.def | doc:02214d4c3ef1
-Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type.geojsonData | doc:9176da2247aa
+Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type.def | doc:3848d2c7cc39
+Parameter | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type.geojsonData | doc:79b7ea408c98
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._LayerVisibilityManager.__type.__index.key | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._LayerVisibilityManager.__type.getVisibilityState.__type.__type.layerId | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal._LegendControl.__type.__index.key | doc:-
@@ -15554,6 +15554,8 @@ Property | GeoLeaf Core API.capabilities/cluster/types.ClusterGeoJSONData.featur
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.clusterRadius | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.clustering | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.disableClusteringAtZoom | doc:-
+Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.geometry | doc:f35c3edc763d
+Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.geometryType | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult.shouldCluster | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult.useSharedCluster | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.LayerClusteringConfig.disableClusteringAtZoom | doc:-
