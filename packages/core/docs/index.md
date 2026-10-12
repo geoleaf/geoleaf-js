@@ -31,12 +31,44 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.14.2 <Badge type="tip" text="2026-10-04" />
+## Release v3.15.0 <Badge type="tip" text="2026-10-12" />
 
-A patch release: no new public member. An application mounted again gets its plugins back, a
-vector-tile layer of lines is drawn, and a configuration key that hardened nothing is gone.
+A minor release, published with fifteen plugins and `@geoleaf/field-renderer`. A basemap's relief
+can follow the tilt of the map, a theme declares where it frames the map, the table says when a
+row is activated, and a new version of the application waits for the user before it takes over.
 
 **Highlights:**
+
+- **Added** — a basemap's relief can follow the tilt of the map (`terrain.activation: "pitch"`):
+  absent while the map is flat, put on when the camera stops tilted. The hillshade can be drawn
+  as an overlay of any basemap (`hillshade.overlay`), and shown only while a relief is on
+  (`hillshade.onlyWithTerrain`).
+- **Added** — a theme declares the view it frames the map on (`themes[].view`): an extent, or a
+  centre and a zoom. The map starts on the view of the theme the profile starts on.
+- **Added** — the table says when a row is activated — a double-click, or Enter on the focused
+  row — with `geoleaf:table:rowActivated` (`@geoleaf-plugins/table` 1.2.0). A double-click no
+  longer changes the selection.
+- **Added** — a new version of the application waits for the user's gesture, and says so
+  (`geoleaf:sw:update-waiting`, `GeoLeaf.PWA.applyUpdate()`); `@geoleaf-plugins/offline-ui` 1.7.0
+  shows it, acts on the captures set aside and exports the log.
+- **Added** — `GeoLeaf.<Plugin>` is typed for whoever installs the plugin, and
+  `GeoLeaf.Storage.CacheManager.cacheProfile()` resolves with a typed result.
+- **Fixed** — `map.initialMaxZoom` caps the initial framing: it was documented as that ceiling
+  and capped nothing. A profile that declares it on a small extent now starts at the zoom it
+  asked for.
+- **Fixed** — the offline preparation judges each resource on the origins the profile declares,
+  and scrolling a large table no longer keeps every row it scrolled past.
+- **Breaking** — three changes carry the mark in the changelog: the ambient type of
+  `GeoLeaf.Storage` names every member and ends with no index signature (types only); six
+  label keys that nothing drew leave the profile schemas; and the HTTPS rule of
+  `@geoleaf-plugins/connector` 1.4.0 judges the destination of the credential, and covers the
+  login URL.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.14.2 (2026-10-04) — a patch release, no new public member: an application mounted
+again gets its plugins back, a vector-tile layer of lines is drawn, and a configuration key that
+hardened nothing is gone.
 
 - **Fixed** — an application mounted again gives its plugins back, and takes them down when it is
   unmounted (`@geoleaf-plugins/connector` 1.3.5, `editor` 1.5.7, `geocoding` 1.1.3, `measure`
