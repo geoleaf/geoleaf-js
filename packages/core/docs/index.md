@@ -31,13 +31,39 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.15.0 <Badge type="tip" text="2026-10-12" />
+## Release v3.16.0 <Badge type="tip" text="2026-10-12" />
 
-A minor release, published with fifteen plugins and `@geoleaf/field-renderer`. A basemap's relief
-can follow the tilt of the map, a theme declares where it frames the map, the table says when a
-row is activated, and a new version of the application waits for the user before it takes over.
+A minor release of `@geoleaf/core` alone. A layer no longer depends on what its first batch
+happened to contain — its gestures, its icons, its clusters and its sub-layers follow what it is
+filled with afterwards —, a click on two overlapping layers answers for the one drawn on top, and
+`geoleaf:filters:applied` says why the pass ran.
 
 **Highlights:**
+
+- **Added** — `geoleaf:filters:applied` carries `detail.reason`: `"filter"` when the filter was
+  applied, `"data"` when the same filter is replayed because a layer was written. Do not rewrite
+  a layer in answer to `"data"`: the write replays the pass, and a listener that reloads its data
+  on every pass loops.
+- **Fixed** — a layer created empty hears a click and a hover on whatever it is filled with
+  afterwards. A layer's gestures are bound to every sub-layer that draws features; on a layer
+  holding several geometries, the feature reported is the one drawn on top.
+- **Fixed** — between two layers under a click, only the one drawn on top emits
+  `geoleaf:feature:click`. This removes events: a listener that relied on the click of the layer
+  underneath no longer receives it where another interactive layer covers it.
+- **Fixed** — a point layer created empty draws its icons and its clusters once filled, and
+  `GeoLeaf.GeoJSON.updateLayerData`, `GeoLeaf.Layers.setData`, `addFeature` and `mergeFeatures`
+  give the points they write their icon. A layer that ships empty is clustered when it declares a
+  point geometry.
+- **Fixed** — a layer created with one geometry draws another one it receives later: a write
+  completes the sub-layers the layer lacks. Not covered: a clustered layer, whose source indexes
+  points alone.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.15.0 (2026-10-12) — a minor release, published with fifteen plugins and
+`@geoleaf/field-renderer`: a basemap's relief can follow the tilt of the map, a theme declares
+where it frames the map, the table says when a row is activated, and a new version of the
+application waits for the user before it takes over.
 
 - **Added** — a basemap's relief can follow the tilt of the map (`terrain.activation: "pitch"`):
   absent while the map is flat, put on when the camera stops tilted. The hillshade can be drawn
@@ -63,8 +89,6 @@ row is activated, and a new version of the application waits for the user before
   label keys that nothing drew leave the profile schemas; and the HTTPS rule of
   `@geoleaf-plugins/connector` 1.4.0 judges the destination of the credential, and covers the
   login URL.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.14.2 (2026-10-04) — a patch release, no new public member: an application mounted
 again gets its plugins back, a vector-tile layer of lines is drawn, and a configuration key that
