@@ -4,8 +4,8 @@ title: table — la vue tabulaire des couches, et son pont vers la carte
 plugin_id: table
 package: "@geoleaf-plugins/table"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 00df8afc3
-date: 11 octobre 2026
+verifie_contre: b560ff758
+date: 13 octobre 2026
 ---
 
 # table — la vue tabulaire des couches, et son pont vers la carte
