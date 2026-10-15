@@ -153,7 +153,7 @@ const PLUGIN_SCOPE = "@geoleaf-plugins";
 // directory names verbatim (`offline-ui`, `editor`, `cog`) and they had to be fixed
 // TWICE — the two renames above — each time with the same risk of going green while
 // guarding nothing anymore. SYNC-02 does not replay that game: it asks the registry,
-// which THROWS if the workspace globs stop matching. The 12 plugins are covered, not
+// which THROWS if the workspace globs stop matching. Every plugin is covered, not
 // 3, and a plugin added tomorrow is too without touching this file.
 const KNOWN_PLUGIN_NAMES = new Set(registry.plugins().map((p) => p.pluginName));
 const PLUGIN_DIR_ALTERNATIVES = registry

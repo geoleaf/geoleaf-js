@@ -73,7 +73,10 @@ const BASELINE = path.join(ROOT, "scripts", ".baselines", "specs-verified-agains
 const UPDATE = process.argv.includes("--update-baseline");
 const LIST = process.argv.includes("--list");
 
-/** Minimum plausible corpus size — the repository ships 21 capabilities, 12 plugins, 2 libs. */
+/**
+ * Minimum plausible corpus size — well under the sheets the repository ships, one per
+ * capability, plugin and lib: `ls docs/specs/{capacites,plugins,libs}`.
+ */
 const CORPUS_FLOOR = 30;
 
 /**

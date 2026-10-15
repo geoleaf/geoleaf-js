@@ -630,7 +630,7 @@ jobs:
             # étape ne pesait que le core : les 12 budgets de `PLUGIN_BUDGETS_GZ_KB` — 20
             # seuils boot + total, maintenus et commentés un par un — n'étaient évalués par
             # AUCUNE gate. Un plugin pouvait doubler de poids sans qu'une ligne rougisse.
-            - name: Bundle size — core (dur 300 Ko / alerte 270) + CSS + 12 plugins
+            - name: Bundle size — core (dur 300 Ko / alerte 270) + CSS + plugins
               run: npm run size -- --plugins
 
             # ── Le poids de l'APPLICATION ────────────────────────────────────────

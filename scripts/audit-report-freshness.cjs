@@ -1543,7 +1543,7 @@ function sourceCoreDocs() {
  * ⚠️ **This function IS the 4th base, and without it the source measures
  * nothing useful.» A capability sheet cites `lifecycle.ts`, `config.ts`,
  * `public-api.ts` — the module contract's names, carried identically by
- * the 21 capabilities and the 12 plugins. Resolved globally they are
+ * every capability and every plugin. Resolved globally they are
  * ambiguous at 20-30 candidates and `suffixIndex` refuses to settle
  * (rightly); resolved from the sheet's SUBJECT directory, they are exact.
  * Measured on 11/08/2026: the subject root alone resolves **51.4%** of the

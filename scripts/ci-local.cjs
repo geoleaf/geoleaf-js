@@ -391,7 +391,7 @@ const STEPS = [
     // At the 12/08 measure it returns **95.7 / 122**, but that is a version
     // fact, not a protection.
     {
-        name: "Bundle size (core + 12 plugins, budget dur)",
+        name: "Bundle size (core + plugins, budget dur)",
         run: ["npm", "run", "size", "--", "--plugins"],
     },
     // ── The APPLICATION's weight ───────────────────────────

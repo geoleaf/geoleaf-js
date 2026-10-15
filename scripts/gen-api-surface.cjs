@@ -237,9 +237,9 @@ async function build() {
         {
             entryPoints: dirs,
             entryPointStrategy: "packages",
-            // The 13 plugins have NO `typedoc.json`, and it is intended:
+            // The plugins have NO `typedoc.json`, and it is intended:
             // `generated-artifacts.cjs#declaredOutputs()` THROWS for any package
-            // typedoc.json lacking `out`. Creating 13 would create 13 errors at the
+            // typedoc.json lacking `out`. Creating one per plugin would create as many errors at the
             // hygiene check 5c. `packageOptions` covers them without a byte of
             // per-plugin config. The core, for its part, has its config — TypeDoc
             // reads it and it WINS over these options.

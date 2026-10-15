@@ -37,7 +37,7 @@
  * declaration, unable to carry a `rootDir` — their tsconfigs compiled the
  * core's SOURCES. That debt is paid: both have no `@core/*` import left and
  * emit 34 and 36 declarations, **0 from the core**. So they are here, and the
- * 13 plugins are now all held by the compiler.
+ * plugins are now all held by the compiler — every one of them, the list below.
  */
 
 // ── Libraries (packages/libs/) ───────────────────────────────────────────────────────────────

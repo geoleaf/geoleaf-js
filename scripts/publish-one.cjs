@@ -8,7 +8,7 @@
  * ## Why this script exists, and why NOT inside `publish-plugins.cjs`
  *
  * `publish.yml` publishes `@geoleaf/core` then `@geoleaf/field-renderer` BEFORE
- * the 12 plugins — the 12 declare the core at `^3.0.0`, and `editor` additionally
+ * the plugins — they declare the core as a dependency, and `editor` additionally
  * declares `field-renderer`. Those two steps were BARE `npm publish`: on a version
  * already at the registry, npm returns `E403` and the workflow dies at its first
  * step, never reaching what it exists to publish. Measured on 2026-08-15, with

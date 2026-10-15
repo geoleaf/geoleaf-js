@@ -455,7 +455,7 @@ function throwMissingBundle(bundleFile, variant) {
             `registers a lazy slot for a bundle it does not carry: the button is painted and ` +
             `the first click 404s. Rebuild everything before deploying — ` +
             `\`npx turbo run build\`, THEN \`npm run build:deploy\`. Step 2 of this script ` +
-            `does not cover all twelve plugins, which is precisely why this is fatal.`
+            `does not cover every plugin, which is precisely why this is fatal.`
     );
 }
 

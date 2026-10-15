@@ -417,7 +417,7 @@ for (const pkg of packages) {
  * ## Why `ignoreIssues` and not `exclude`
  *
  * Root-level `exclude: ["exports","types"]` was measured too, and rejected: it blinds
- * the 13 plugins and 2 libs as well. They report nothing today because they are clean
+ * every plugin and lib as well. They report nothing today because they are clean
  * — silent is not the same as absent, and the probes proved knip DOES see a
  * dead export in `packages/plugins/table` and `packages/libs/field-renderer`. Scoping
  * by path keeps that watch alive. It also leaves the `__tests__` ignore entries of

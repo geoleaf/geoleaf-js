@@ -46,7 +46,7 @@ flowchart TD
     end
 
     subgraph ADD["④ CE QUI S'AJOUTE"]
-        PLUG["15 PLUGINS — packages/plugins/<br/>editor · connector · offline-ui · table<br/>print · measure · geocoding · cog…"]
+        PLUG["PLUGINS — packages/plugins/<br/>editor · connector · offline-ui · table<br/>print · measure · geocoding · cog…"]
         LIBS["2 LIBS — packages/libs/<br/>host-runtime · field-renderer"]
     end
 
@@ -260,7 +260,7 @@ l'utilisateur recevrait deux notifications pour une seule action.
 
 - **Le hors-ligne préparé** — déclaré dans le profil, téléchargé à l'avance, données _et_ tuiles :
   fiche [`docs/specs/capacites/offline.md`](../specs/capacites/offline.md).
-- **Le détail des 21 capacités et des 15 plugins** : une fiche chacun sous
+- **Le détail des capacités et des plugins** : une fiche chacun sous
   [`docs/specs/`](../specs/CDC_kernel.md).
 - **L'arbre de fichiers complet** : `docs/reference/ARBORESCENCE_QUALIFIEE.md`, **généré** par
   `npm run docs:tree`.
