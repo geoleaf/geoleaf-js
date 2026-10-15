@@ -42,6 +42,14 @@ export {
     type PluginRegisterOptions,
 } from "./host.js";
 export { getUINotifications, type UINotificationsSeam } from "./notify-seam.js";
+export {
+    isGeolocationActive,
+    isGeolocationEnabled,
+    readUserPosition,
+    requestUserPosition,
+    type GeolocationSeam,
+    type UserPosition,
+} from "./geolocation-seam.js";
 export { Log } from "./log-seam.js";
 export { tLabel, getActiveLang } from "./i18n-seam.js";
 export {

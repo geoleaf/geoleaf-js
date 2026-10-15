@@ -42,7 +42,8 @@
             "route": "config/plugins/route.json",
             "position-share": "config/plugins/position-share.json",
             "routing": "config/plugins/routing.json",
-            "navigation": "config/plugins/navigation.json"
+            "navigation": "config/plugins/navigation.json",
+            "isochrone": "config/plugins/isochrone.json"
         }
     }
 }

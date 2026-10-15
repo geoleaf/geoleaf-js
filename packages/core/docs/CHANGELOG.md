@@ -11,6 +11,66 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.16.1] - 2026-10-15
+
+### Added
+
+- **The zones reachable from a point within a given time: `@geoleaf-plugins/isochrone`**
+  (`@geoleaf-plugins/isochrone` 1.0.0, first publication). A new MIT plugin, mounted as
+  `GeoLeaf.Isochrone` and configured under `modules.isochrone`. It asks a routing engine for the
+  zones reachable from a point — placed on the map, or the user's position read from the core's
+  GPS — by car, on foot or by bike, one zone per duration, and draws them as a stack the user
+  reorders, recolours, hides and removes from a floating window, every action with a named
+  button. The plugin computes nothing itself: the built-in provider asks a Valhalla instance,
+  by default a shared public server with no guarantee, which stops at 60 minutes; an
+  application in service declares its own `endpoint`, `https://` only. A key is never written in
+  a profile: it is given at runtime, `GeoLeaf.Isochrone.configure({ endpoint, query })`, and kept
+  out of the plugin's own traces. The zones live strictly between `modules.isochrone.zIndex` and
+  the next rank, among the profile's layers, and move on the map through
+  `IMapAdapter.setLayerZIndex` (3.15.0). Peers: `@geoleaf/core` 3.15.0 or later, `maplibre-gl` 6. The plugin's README lists every key, member and failure reason.
+
+### Fixed
+
+- **A GPS measurement no longer switches off a GPS the user had switched on**
+  (`@geoleaf-plugins/measure` 1.0.11). The GPS tool read whether the core's geolocation was on
+  from a field the core has never exposed: it always answered no, so the tool always clicked the
+  core's geolocation control — and that click toggles it. Started with the GPS already on, a
+  measurement switched it off, and the measurement then stopped itself, since it follows the
+  GPS being switched off from outside. The tool now reads the core's state through
+  `@geoleaf/host-runtime`'s shared GPS seam: it switches the GPS on only when it is off, and off
+  on leaving only when it switched it on. Unchanged for a host: no API, configuration key or
+  event is added or removed.
+
+- **« Your position » in the routing panel routes from the user's position**
+  (`@geoleaf-plugins/routing` 1.0.4). The button always answered that the position was not known
+  yet, whatever the GPS: the plugin read the core's geolocation state under three names the core
+  has never exposed. It now reads it through `@geoleaf/host-runtime`'s shared GPS seam: it uses
+  the fix the core holds, and when the GPS is off it switches it on — through the core's own
+  control, the only path that asks for the permission — and waits for the first fix, 20 s at
+  most. Three answers stay distinct: geolocation unavailable or turned off by the profile; the
+  permission refused, read through the Permissions API; no fix. A second press while a fix is
+  awaited is ignored. Unchanged for a host: no API, configuration key or event is added or
+  removed.
+
+- **A write no longer makes the engine report the icons it names as missing**
+  (`@geoleaf/core` 3.16.1). Since 3.16.0 a point layer created empty and filled afterwards
+  draws its icons — and MapLibre logged, once per image the write named,
+  `Image "<id>" could not be loaded. Please make sure you have added the image before it is
+needed with map.addImage()…`. Nothing was missing on screen: the features reach the source
+  carrying their `symbolId` before the images are registered, the engine asked in between,
+  and got them a moment later. It showed whenever a write left before the profile's sprite
+  had been registered — a first `GeoLeaf.Layers.setData` sent as soon as the map is ready,
+  typically — and for `GeoLeaf.GeoJSON.updateLayerData`, `addFeature` and `mergeFeatures`
+  alike. The map now carries a missing-image resolver
+  (`map.setMissingStyleImageResolver`): asked for one of the profile's icons, it waits for
+  the sprite and registers it, so the engine gets every image in its first answer and has
+  nothing to report. Unchanged for a host: `properties.symbolId` is written as in 3.16.0,
+  and no `geoleaf:` event is added or removed. Three things to know. An icon the sprite does
+  not hold is still reported, as before. While the sprite is on its way, the points of that
+  layer are drawn WITH their icons when it lands instead of bare first — bounded to five
+  seconds, after which they are drawn bare and the icons follow as in 3.16.0. And the map
+  holds a single resolver: a host that sets its own on the native map replaces this one.
+
 ## [3.16.0] - 2026-10-12
 
 ### Added

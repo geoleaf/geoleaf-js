@@ -43,6 +43,13 @@ const DEFAULT_TINT = "white";
 /** Guard against a `<use>` chain that references itself. */
 const MAX_USE_DEPTH = 4;
 
+/**
+ * How long the engine is kept waiting for the profile sprite before it is told the image is
+ * missing. While it waits, the tile that asked is held — discs and labels included — so the
+ * wait is bounded: past it, the icons arrive as they did before, one repaint later.
+ */
+const SPRITE_WAIT_MS = 5000;
+
 // ─── Canvas helpers ──────────────────────────────────────────────────────────
 
 function _createCanvas(width: number, height: number): HTMLCanvasElement {
@@ -468,6 +475,14 @@ export async function registerSpriteIcons(mapArg: unknown): Promise<void> {
         });
     }
 
+    _registerSpriteImages(map);
+}
+
+/**
+ * The registration itself, synchronous: every image the sprite and the taxonomy name that the
+ * map does not hold yet. The caller answers for the style being there to take them.
+ */
+function _registerSpriteImages(map: MaplibreMap): void {
     const spriteEl = document.querySelector<Element>('svg[data-geoleaf-sprite="profile"]');
     if (!spriteEl) {
         if (Log)
@@ -503,6 +518,67 @@ export async function registerSpriteIcons(mapArg: unknown): Promise<void> {
     ).length;
 
     if (Log) Log.info(`[POI] ${registered} icon(s) + ${tinted} tinted variant(s) registered.`);
+}
+
+/**
+ * Whether `id` is an image this module is the one to register: a tinted variant the taxonomy
+ * references, or a symbol of the profile's sprite. Anything else — an image a basemap style
+ * names, a host's own — is not ours to answer for.
+ */
+function _isProfileIcon(id: string): boolean {
+    if (_getTaxonomyIconVariants().some((v) => v.symbolId === id)) return true;
+    const prefix = _getSymbolPrefix();
+    // A profile that declares no prefix gives no way to tell its symbols apart by name: only a
+    // sprite already in the DOM can say, and no fetch is started on a guess.
+    if (prefix) return id.startsWith(prefix);
+    const sprite = document.querySelector('svg[data-geoleaf-sprite="profile"]');
+    return sprite?.querySelector(`symbol[id="${CSS.escape(id)}"]`) != null;
+}
+
+/** Resolves when the profile sprite is in the DOM — or after {@link SPRITE_WAIT_MS}. */
+async function _awaitSprite(): Promise<void> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const bound = new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, SPRITE_WAIT_MS);
+    });
+    try {
+        await Promise.race([ensureProfileSpriteInjectedSync(), bound]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
+ * Has the engine ASK before it declares one of the profile's icons missing.
+ *
+ * Features reach a source carrying their `symbolId` before the images those ids name are
+ * registered: the registration is asynchronous (the sprite may still be on its way) and waits
+ * for the style to settle, which a source loading its data keeps it from doing. The engine
+ * then asked for the images in between, logged `Image "<id>" could not be loaded` once per
+ * image, and drew them a moment later. With this resolver it waits for the sprite and gets
+ * every image in its first answer.
+ *
+ * Only the profile's own icons are answered for. Any other id returns at once, and an icon the
+ * sprite does not hold is still reported by the engine — as is one whose sprite takes longer
+ * than five seconds, which then arrives the way it did before.
+ *
+ * ⚠️ The map holds ONE resolver. A host that sets its own on the native map replaces this one
+ * and gets the previous behaviour back. No-op on an engine that predates the method.
+ *
+ * @param map - The native MapLibre map, right after its construction.
+ */
+export function installSpriteImageResolver(map: MaplibreMap): void {
+    if (typeof map.setMissingStyleImageResolver !== "function") return;
+    map.setMissingStyleImageResolver(async (id) => {
+        try {
+            if (!_isProfileIcon(id)) return;
+            await _awaitSprite();
+            // One call registers the whole sprite: the ids asked alongside find theirs there.
+            if (hasProfileSprite() && !map.hasImage(id)) _registerSpriteImages(map);
+        } catch (err) {
+            if (Log) Log.warn(`[POI] image resolver failed for "${id}":`, err);
+        }
+    });
 }
 
 /**

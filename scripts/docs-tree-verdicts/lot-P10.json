@@ -162,6 +162,20 @@
             "confidence": "haute",
             "rationale": "58 LOC, famille canonique `*-seam.ts` et conforme : deux accesseurs gardés, résolus à l'appel. Né de la fusion STRUCT S2 (F4) des 3 corps identiques de `_getNativeMap` (editor, measure, print — seul le cast différait, d'où le générique) et des 2 `_warnNoCore` (measure, print — seul le préfixe différait, d'où le paramètre `scope`). `warnNoCore` garde `console.warn` et NON le seam Log : la seule condition qu'il rapporte est « il n'y a pas de core », soit exactement quand le logger du core ne peut pas exister"
         },
+        "packages/libs/host-runtime/src/geolocation-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Seam runtime vers la capacité geolocation du core : la forme de son état déclarée une fois, la position lue veille allumée, et la veille allumée par le contrôle du core — sans le basculer quand elle tourne déjà",
+            "confidence": "haute",
+            "rationale": "Famille canonique `*-seam.ts`, résolu à l'appel par getGeoLeaf(), sans import du core. Né le 15/10/2026 comme la « surface de type que les plugins puissent importer » que demande docs/specs/capacites/geolocation.md : trois plugins redéclaraient la forme, et la copie de routing lisait des champs inexistants. Premier lecteur : isochrone"
+        },
         "packages/libs/host-runtime/src/notify-seam.ts": {
             "kind": "file",
             "name": "ok",

@@ -1,7 +1,7 @@
 {
     "_comment": "NMA-01/02 — appels à `getNativeMap()` par fichier de production, hors `adapters/maplibre/`, gelés à la pose. Un appel de plus rougit : passer par l'adaptateur, ou relever CE compte dans un commit qui dit pourquoi l'accès natif est nécessaire. Un appel de moins rougit aussi, jusqu'à ce que le gel soit resserré. Clés sans numéro de ligne — les lignes dérivent sans information.",
     "_generated": "node scripts/check-native-map-access.cjs --update-baseline",
-    "total": 52,
+    "total": 53,
     "entries": {
         "packages/core/src/app/init-features.ts": 2,
         "packages/core/src/capabilities/feature-info/surfaces/popup.ts": 2,
@@ -20,6 +20,7 @@
         "packages/plugins/editor/src/internal.ts": 2,
         "packages/plugins/editor/src/sub-menu/floating-menu.ts": 2,
         "packages/plugins/flatgeobuf/src/fgb-api.ts": 1,
+        "packages/plugins/isochrone/src/pick-on-map.ts": 1,
         "packages/plugins/measure/src/draw-layers.ts": 3,
         "packages/plugins/measure/src/floating-menu.ts": 2,
         "packages/plugins/measure/src/internal.ts": 1,

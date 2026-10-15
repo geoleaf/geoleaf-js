@@ -202,12 +202,12 @@ qui ne coûte pas du temps mais des **données de terrain non synchronisées**.
 
 Tout le reste est paresseux, en quatre familles de déclencheur :
 
-| Famille             | Plugins                                                              | Ce qui les charge                                              |
-| ------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------- |
-| API pure            | `cog`, `file-import`, `websocket`                                    | `plugins.load(id)` explicite par le consommateur               |
-| Couche déclarative  | `flatgeobuf`                                                         | la couture `ensurePluginLoaded` du core                        |
-| Créneau de barre    | `geocoding`, `table`, `print`, `measure`, `editor`, `position-share` | `registerLazyForAction`, qui déclare le bouton AVANT le bundle |
-| Dépendant du profil | `realtime-layer`, `connector`, `geocoding`                           | le hook `beforeBoot`                                           |
+| Famille             | Plugins                                                                           | Ce qui les charge                                              |
+| ------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| API pure            | `cog`, `file-import`, `websocket`                                                 | `plugins.load(id)` explicite par le consommateur               |
+| Couche déclarative  | `flatgeobuf`                                                                      | la couture `ensurePluginLoaded` du core                        |
+| Créneau de barre    | `geocoding`, `table`, `print`, `measure`, `isochrone`, `editor`, `position-share` | `registerLazyForAction`, qui déclare le bouton AVANT le bundle |
+| Dépendant du profil | `realtime-layer`, `connector`, `geocoding`                                        | le hook `beforeBoot`                                           |
 
 **`beforeBoot` est le seul point du cycle** qui court après le chargement du config de profil et
 avant la création de la carte — donc avant `geoleaf:profile:loaded`, `geoleaf:map:ready` et
@@ -248,6 +248,10 @@ du paquet déclare de son côté — les deux déclarations gouvernent le même 
 plugin est paresseux, l'autre quand un intégrateur charge le bundle lui-même, et un profil ne
 peut pas savoir à laquelle il s'adresse.
 
+Un plugin né après les drapeaux `ui.show*` — `table`, `position-share`, `isochrone` — n'en a
+aucun : il déclare `profileKey` seul, comme son `entry.ts`. Ce qui oblige, c'est l'identité des
+deux déclarations, et SLOT-01 la vérifie créneau par créneau.
+
 ⚠️ **Quatre créneaux ont porté l'ancienne clé SEULE**, sans repli — `print`, `measure`, `editor`,
 `geocoding`. Conséquence mesurée sur un profil servi : `modules.print.showButton: false` laissait
 le bouton dessiné, alors que c'est la seule clé que la configuration du paquet lit. Le drapeau
@@ -275,8 +279,8 @@ n'est posé que sur les créneaux dont le `entry.ts` porte **déjà** la même c
 `measure`, `editor` — et les trois créneaux du plugin `editor` (`editor`, l'export de session,
 l'ajout de POI), que son `entry.ts` imbrique dans le même test.
 
-🛑 **Ne pas en faire une règle uniforme.** Trois des six plugins à créneau paresseux
-s'enregistrent sans condition — `table`, `geocoding`, `position-share` — et ce n'est pas un
+🛑 **Ne pas en faire une règle uniforme.** Quatre des sept plugins à créneau paresseux
+s'enregistrent sans condition — `table`, `geocoding`, `position-share`, `isochrone` — et ce n'est pas un
 oubli : leur `enabled` ne veut pas dire « fonctionnalité absente ». Le profil `tourism` déclare
 `position-share: { enabled: false, showButton: true }` : pour ce plugin, `enabled` gouverne
 l'**émission**, et le bouton **est** l'interrupteur qui l'allume. Une garde appliquée à tous

@@ -18,6 +18,15 @@ const TRAVEL_MODES: readonly TravelMode[] = ["car", "foot", "bike"];
 /** A colour the plugin accepts: `#rrggbb`, and nothing else. */
 const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
 
+/**
+ * The highest `maxLayers` a profile may set.
+ *
+ * ⚠️ It is not a taste: the stack spaces its zones by `1 / (MAX_LAYER_CAP + 1)` above
+ * `zIndex`, and a larger cap would push the top zone to `zIndex + 1` or beyond — into the rank
+ * of the profile's next layers.
+ */
+export const MAX_LAYER_CAP = 99;
+
 const DEFAULTS = {
     enabled: true,
 
@@ -46,7 +55,7 @@ const DEFAULTS = {
     // The durations offered, in minutes.
     durations: [5, 10, 15],
 
-    // Cap on the number of zones displayed.
+    // Cap on the number of zones displayed — at most MAX_LAYER_CAP.
     maxLayers: 8,
 
     // Base of the stack: the zones live strictly between `zIndex` and `zIndex + 1`.
@@ -95,7 +104,7 @@ export interface PluginConfig {
     modes: readonly TravelMode[];
     /** Durations offered, in whole positive minutes, ascending. */
     durations: readonly number[];
-    /** Cap on the number of zones displayed. */
+    /** Cap on the number of zones displayed: a whole number from 1 to 99. */
     maxLayers: number;
     /** Base rank of the stack of zones. */
     zIndex: number;
@@ -149,7 +158,7 @@ function list<T>(value: unknown, fallback: readonly T[], accept: (v: unknown) =>
  * @param v Any value.
  * @returns Whether it is one of the three modes.
  */
-function isTravelMode(v: unknown): v is TravelMode {
+export function isTravelMode(v: unknown): v is TravelMode {
     return typeof v === "string" && (TRAVEL_MODES as readonly string[]).includes(v);
 }
 
@@ -159,17 +168,27 @@ function isTravelMode(v: unknown): v is TravelMode {
  * @param v Any value.
  * @returns Whether it is usable.
  */
-function isDuration(v: unknown): v is number {
+export function isDuration(v: unknown): v is number {
     return typeof v === "number" && Number.isInteger(v) && v > 0;
 }
 
 /**
- * Tells a colour written `#rrggbb`.
+ * Tells a cap on the zones the stack can rank: a whole number from 1 to `MAX_LAYER_CAP`.
+ *
+ * @param n A finite number.
+ * @returns Whether it is usable.
+ */
+function isLayerCap(n: number): boolean {
+    return Number.isInteger(n) && n >= 1 && n <= MAX_LAYER_CAP;
+}
+
+/**
+ * Tells a colour written `#rrggbb` — what the profile's palette and a restyled zone accept.
  *
  * @param v Any value.
  * @returns Whether it is usable.
  */
-function isColour(v: unknown): v is string {
+export function isColour(v: unknown): v is string {
     return typeof v === "string" && HEX_COLOUR.test(v);
 }
 
@@ -208,7 +227,7 @@ export function getPluginConfig(): PluginConfig {
         durations: list<number>(raw.durations, DEFAULTS.durations, isDuration).sort(
             (a, b) => a - b
         ),
-        maxLayers: num(raw.maxLayers, DEFAULTS.maxLayers, (n) => Number.isInteger(n) && n >= 1),
+        maxLayers: num(raw.maxLayers, DEFAULTS.maxLayers, isLayerCap),
         zIndex: num(raw.zIndex, DEFAULTS.zIndex, () => true),
         palette: list<string>(raw.palette, DEFAULTS.palette, isColour),
         fillOpacity: num(raw.fillOpacity, DEFAULTS.fillOpacity, (n) => n >= 0 && n <= 1),

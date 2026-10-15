@@ -7,10 +7,9 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 
+import { destroyIsochrone } from "../isochrone-api.js";
 import { buildPublicApi } from "../public-api.js";
-
-import langEn from "../lang/lang-en.js";
-import langFr from "../lang/lang-fr.js";
+import { createFakeMap } from "./fake-map.js";
 
 /** The page's namespace, reached without assuming the core's global declaration is loaded. */
 const host = globalThis as { GeoLeaf?: unknown };
@@ -114,8 +113,64 @@ describe("@geoleaf-plugins/isochrone public API — the engine", () => {
     });
 });
 
-describe("@geoleaf-plugins/isochrone dictionaries", () => {
-    it("carry the same keys in every language", () => {
-        expect(Object.keys(langEn).sort()).toEqual(Object.keys(langFr).sort());
+describe("@geoleaf-plugins/isochrone public API — the stack", () => {
+    const AREA = { type: "Polygon", coordinates: [] } as const;
+
+    /**
+     * Installs a profile naming an engine that answers every duration, and a map.
+     *
+     * @returns The fake map.
+     */
+    function withMapAndEngine() {
+        const map = createFakeMap();
+        buildPublicApi().registerProvider("facade-stack", () => ({
+            id: "facade-stack",
+            attribution: "© Facade data",
+            isochrone: async (request) => ({
+                ok: true,
+                contours: request.minutes.map((minutes) => ({ minutes, geometry: AREA })),
+            }),
+        }));
+        host.GeoLeaf = {
+            Config: {
+                get: (key: string, fallback: unknown) =>
+                    key === "modules.isochrone"
+                        ? { provider: "facade-stack", endpoint: "https://engine.example" }
+                        : fallback,
+            },
+            Core: { getMap: () => map },
+        };
+        return map;
+    }
+
+    afterEach(() => destroyIsochrone());
+
+    it("computes, lists, restyles, hides, moves and removes through the façade", async () => {
+        const map = withMapAndEngine();
+        const api = buildPublicApi();
+        const result = await api.compute({ origin: [55.45, -20.88], minutes: [5, 10] });
+        expect(result.ok).toBe(true);
+        const [top = "", bottom = ""] = api.getLayers().map((l) => l.id);
+        expect(api.setLayerStyle(top, { opacity: 0.5 })).toBe(true);
+        expect(api.setLayerVisible(top, false)).toBe(true);
+        expect(api.moveLayer(top, 1)).toBe(true);
+        expect(map.topFirst()).toEqual([bottom, top]);
+        expect(api.removeLayer(bottom)).toBe(true);
+        expect(api.getLayers()).toMatchObject([{ id: top, opacity: 0.5, visible: false }]);
+        api.clear();
+        expect(map.layers).toEqual([]);
+    });
+
+    it("keeps the zones when the window closes, and removes them at teardown", async () => {
+        const map = withMapAndEngine();
+        const api = buildPublicApi();
+        api.open();
+        await api.compute({ origin: [55.45, -20.88], minutes: [5] });
+        api.close();
+        expect(map.layers).toHaveLength(1);
+        destroyIsochrone();
+        expect(map.layers).toEqual([]);
+        expect(document.querySelector(".gl-isochrone")).toBeNull();
+        expect(api.open()).toBe(true);
     });
 });

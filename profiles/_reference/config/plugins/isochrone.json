@@ -1,0 +1,23 @@
+{
+    "enabled": true,
+    "showButton": true,
+    "provider": "valhalla",
+    "endpoint": "",
+    "timeoutMs": 10000,
+    "mode": "car",
+    "modes": ["car", "foot", "bike"],
+    "durations": [5, 10, 15],
+    "maxLayers": 8,
+    "zIndex": 50,
+    "palette": [
+        "#3987e5",
+        "#d95926",
+        "#199e70",
+        "#c98500",
+        "#d55181",
+        "#008300",
+        "#9085e9",
+        "#e66767"
+    ],
+    "fillOpacity": 0.25
+}

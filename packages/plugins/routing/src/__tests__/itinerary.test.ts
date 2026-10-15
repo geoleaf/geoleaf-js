@@ -65,7 +65,7 @@ vi.mock("../publish.js", () => ({
 const _fits: unknown[][] = [];
 
 let _origin: unknown = { ok: false, reason: "unavailable" };
-vi.mock("../origin.js", () => ({ originFromUserPosition: () => _origin }));
+vi.mock("../origin.js", () => ({ originFromUserPosition: async () => _origin }));
 /**
  * The plugin registry the double returns.
  *
@@ -233,16 +233,17 @@ describe("computing", () => {
 });
 
 describe("your position", () => {
-    it("PREPENDS it — the journey starts there", () => {
+    it("PREPENDS it — the journey starts there", async () => {
         // Appending would make the user their own destination: a route of length zero.
         _origin = { ok: true, waypoint: { coordinates: [1, 2], name: "routing.origin.you" } };
         openPanel([{ coordinates: [3, 4], name: "Cible" }]);
         captured!.handlers.onUseMyPosition();
+        await vi.waitFor(() => expect(setTo).not.toBeNull());
         expect(setTo?.[0]?.name).toBe("routing.origin.you");
         expect(setTo?.[1]?.name).toBe("Cible");
     });
 
-    it("reports each refusal with its OWN reason, never folded into a routing failure", () => {
+    it("reports each refusal with its OWN reason, never folded into a routing failure", async () => {
         // 🛑 A refused permission is NOT a routing failure. Folding it onto
         // `refused` would tell the user their configuration is at fault, when
         // it is they who said no — and the next step they must know is unrelated.
@@ -257,7 +258,7 @@ describe("your position", () => {
             _origin = { ok: false, reason };
             openPanel();
             captured!.handlers.onUseMyPosition();
-            expect(shown).toEqual([expected]);
+            await vi.waitFor(() => expect(shown).toEqual([expected]));
         }
     });
 });

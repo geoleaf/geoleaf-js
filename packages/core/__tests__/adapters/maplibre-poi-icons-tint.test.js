@@ -15,7 +15,10 @@
 vi.mock("../../src/utils/log/index.js", () => ({
     Log: { warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
-import { registerSpriteIcons } from "../../src/adapters/maplibre/maplibre-poi-icons.js";
+import {
+    registerSpriteIcons,
+    installSpriteImageResolver,
+} from "../../src/adapters/maplibre/maplibre-poi-icons.js";
 import { Log } from "../../src/utils/log/index.js";
 
 global.Path2D = class Path2D {
@@ -232,5 +235,71 @@ describe("basemap swap", () => {
         await registerSpriteIcons(map);
 
         expect(map._registered.has("t-icon--f00")).toBe(true);
+    });
+});
+
+// The engine asks the resolver before it reports an image missing. What matters is that the
+// answer does NOT wait for the style to settle: a source loading its data keeps
+// `isStyleLoaded()` false and fires no `styledata`, and that wait is what let the engine warn.
+describe("missing-image resolver", () => {
+    /** A map whose style never settles, and that keeps the resolver it is given. */
+    function unsettledMap(setupOptions) {
+        const map = setup(setupOptions);
+        map.isStyleLoaded = () => false;
+        map.once = vi.fn();
+        map.setMissingStyleImageResolver = vi.fn((resolver) => {
+            map._resolver = resolver;
+        });
+        return map;
+    }
+
+    const SPRITE = () => [createSymbol("t-icon", svgEl("path", { d: "M0 0" }))];
+
+    it("registers a tinted variant the engine asks for, without waiting for the style", async () => {
+        const map = unsettledMap({
+            symbols: SPRITE(),
+            variants: [{ svgId: "icon", symbolId: "t-icon--f00", color: "#f00" }],
+        });
+        installSpriteImageResolver(map);
+
+        await map._resolver("t-icon--f00");
+
+        expect(map._registered.has("t-icon--f00")).toBe(true);
+        expect(map.once).not.toHaveBeenCalled();
+    });
+
+    it("registers a raw sprite symbol named by the profile's prefix", async () => {
+        const map = unsettledMap({ symbols: SPRITE() });
+        installSpriteImageResolver(map);
+
+        await map._resolver("t-icon");
+
+        expect(map._registered.has("t-icon")).toBe(true);
+    });
+
+    it("leaves an image that is not the profile's alone", async () => {
+        const map = unsettledMap({ symbols: SPRITE() });
+        installSpriteImageResolver(map);
+
+        await map._resolver("basemap-shield");
+
+        expect(map.addImage).not.toHaveBeenCalled();
+    });
+
+    it("does not scan the sprite again for an image the map already holds", async () => {
+        const map = unsettledMap({ symbols: SPRITE() });
+        installSpriteImageResolver(map);
+        await map._resolver("t-icon");
+        map.addImage.mockClear();
+        mockCtx.getImageData.mockClear();
+
+        await map._resolver("t-icon");
+
+        expect(mockCtx.getImageData).not.toHaveBeenCalled();
+    });
+
+    it("is a no-op on an engine that has no resolver slot", () => {
+        const map = setup({ symbols: SPRITE() });
+        expect(() => installSpriteImageResolver(map)).not.toThrow();
     });
 });

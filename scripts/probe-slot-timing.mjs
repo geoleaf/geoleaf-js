@@ -38,7 +38,7 @@ const URL = process.env.GEOLEAF_PROBE_URL || `${baseURL("core")}/`;
 const LATE_WARNING = /registered AFTER init\(\)/i;
 
 /** Plugins the app loads lazily AND that declare a toolbar slot in their `entry.ts`. */
-const LAZY_WITH_SLOT = ["table", "print", "measure", "position-share"];
+const LAZY_WITH_SLOT = ["table", "print", "measure", "isochrone", "position-share"];
 
 const results = [];
 const check = (name, ok, detail = "") => {

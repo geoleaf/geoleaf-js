@@ -6,6 +6,7 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
+import { isGeolocationEnabled, requestUserPosition } from "@geoleaf/host-runtime";
 import type { Waypoint } from "./model.js";
 
 /**
@@ -14,7 +15,10 @@ import type { Waypoint } from "./model.js";
  * The core already owns a geolocation capability: it holds the permission, the watch, and the
  * last known fix. Asking the browser a second time from here would open a second watch, prompt a
  * second time on some browsers, and give two answers that drift apart — with no way for a user to
- * tell which one the route was computed from.
+ * tell which one the route was computed from. The core is read through `@geoleaf/host-runtime`,
+ * which declares its state ONCE: this module used to declare its own — `permission`, `position`,
+ * `coordinates`, three names the core never had —, and « your position » answered `no-fix`
+ * whatever the watch, with no test turning red, the tests faking the same wrong shape.
  *
  * ## Why a refusal is not an error
  *
@@ -30,64 +34,41 @@ export type OriginOutcome =
 
 /** Why the position could not be used. */
 export type OriginRefusal =
-    /** The core exposes no geolocation capability — the host is older, or it is disabled. */
+    /** The core exposes no geolocation capability — the host is older, or the profile turns it off. */
     | "unavailable"
     /** The user declined, or the browser refuses. Manual entry stays open. */
     | "denied"
-    /** Permission is there, but no fix has been acquired yet. Retrying later may work. */
+    /** No fix came — no device, or too slow. Retrying later may work. */
     | "no-fix";
 
-/** The slice of the core's geolocation state this reads. */
-interface GeolocationState {
-    /** Whether the capability holds a usable permission. */
-    readonly permission?: string;
-    /** Last known position, when one has been acquired. */
-    readonly position?: { readonly lng?: number; readonly lat?: number } | null;
-    /** Some hosts expose the raw pair instead. */
-    readonly coordinates?: readonly number[] | null;
-}
-
 /**
- * The user's position as a waypoint.
+ * The user's position as a waypoint — switching the core's GPS on when it is off.
  *
  * @param label What to call it in the step list. Passed in rather than hard-coded so the caller
  *              can use the interface language — this module holds no strings.
  * @returns The waypoint, or why not.
  */
-export function originFromUserPosition(label: string): OriginOutcome {
-    const geo = (globalThis as { GeoLeaf?: { Geolocation?: { getState?(): GeolocationState } } })
-        .GeoLeaf?.Geolocation;
-    if (typeof geo?.getState !== "function") return { ok: false, reason: "unavailable" };
-
-    const state = geo.getState();
-    // `denied` is checked BEFORE the fix: a denied permission with a stale fix from an earlier
-    // session would otherwise route from a place the user has revoked access to.
-    if (state?.permission === "denied") return { ok: false, reason: "denied" };
-
-    const coordinates = readCoordinates(state);
-    if (!coordinates) return { ok: false, reason: "no-fix" };
-
-    return { ok: true, waypoint: { coordinates, name: label } };
+export async function originFromUserPosition(label: string): Promise<OriginOutcome> {
+    if (!isGeolocationEnabled()) return { ok: false, reason: "unavailable" };
+    const fix = await requestUserPosition();
+    if (fix) return { ok: true, waypoint: { coordinates: [fix.lng, fix.lat], name: label } };
+    return { ok: false, reason: (await permissionDenied()) ? "denied" : "no-fix" };
 }
 
 /**
- * `[longitude, latitude]` from whichever shape the host exposes.
+ * Whether the browser holds the geolocation permission as refused.
  *
- * ⚠️ Two shapes are read because two exist: `position: {lng, lat}` and a raw `coordinates` pair.
- * Reading only one would work on the host it was written against and answer `no-fix` forever on
- * the other — a failure that looks like a permission problem and is not one.
+ * ⚠️ Asked only AFTER no fix came, and only to name the refusal: the core stops its watch with
+ * `active: false` on a refusal and on a timeout alike, and tells them apart to nobody. The
+ * Permissions API reads the answer the user gave; it asks the device nothing.
  *
- * @param state The core's geolocation state.
- * @returns The pair, or `null` when neither shape carries a usable one.
+ * @returns `true` on a refusal; `false` when the answer is anything else, or cannot be read.
  */
-function readCoordinates(state: GeolocationState | undefined): [number, number] | null {
-    const p = state?.position;
-    if (p && typeof p.lng === "number" && typeof p.lat === "number") {
-        return [p.lng, p.lat];
+async function permissionDenied(): Promise<boolean> {
+    try {
+        const status = await globalThis.navigator?.permissions?.query({ name: "geolocation" });
+        return status?.state === "denied";
+    } catch {
+        return false;
     }
-    const c = state?.coordinates;
-    if (Array.isArray(c) && c.length >= 2 && typeof c[0] === "number" && typeof c[1] === "number") {
-        return [c[0], c[1]];
-    }
-    return null;
 }

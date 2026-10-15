@@ -145,9 +145,17 @@ describe("@geoleaf-plugins/isochrone configuration — fallbacks", () => {
         }
     );
 
-    it.each([[0], [2.5], [-1], ["4"]])("falls back on the default cap for %s", (maxLayers) => {
-        withProfileBranch({ maxLayers });
-        expect(getPluginConfig().maxLayers).toBe(8);
+    it.each([[0], [2.5], [-1], ["4"], [100]])(
+        "falls back on the default cap for %s",
+        (maxLayers) => {
+            withProfileBranch({ maxLayers });
+            expect(getPluginConfig().maxLayers).toBe(8);
+        }
+    );
+
+    it("keeps a cap of 99, the highest the stack can rank", () => {
+        withProfileBranch({ maxLayers: 99 });
+        expect(getPluginConfig().maxLayers).toBe(99);
     });
 
     it("takes any finite number as the base rank, and nothing else", () => {

@@ -49,7 +49,11 @@ const WEBKIT_PROJECTS = [
         // Blob/File values there ("Error preparing Blob/File data to be stored in object store").
         // Re-admit it only once a WebKit run reads a File offline — and re-measure the store.
         name: "webkit",
-        testMatch: ["e2e/38-editor-line-edit.spec.js", "e2e/43-editor-polygon-edit.spec.js"],
+        testMatch: [
+            "e2e/38-editor-line-edit.spec.js",
+            "e2e/43-editor-polygon-edit.spec.js",
+            "e2e/87-isochrone-layer-order.spec.js",
+        ],
         testIgnore: ["**/.claude/**"],
         use: { ...devices["Desktop Safari"], deviceScaleFactor: 1, launchOptions: {} },
     },

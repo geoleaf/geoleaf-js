@@ -97,7 +97,13 @@ export interface MockGeoLeaf {
     plugins: { isLoaded: ReturnType<typeof vi.fn>; register: ReturnType<typeof vi.fn> };
     registry: { register: ReturnType<typeof vi.fn> };
     I18n: { registerDict: ReturnType<typeof vi.fn>; getLabel: ReturnType<typeof vi.fn> };
-    UI: { _geolocationActive: boolean };
+    /** The core's geolocation capability, as the core exposes it: `getState()` is live. */
+    Geolocation: {
+        isEnabled: () => boolean;
+        getState: () => { active: boolean; userPosition: { lat: number; lng: number } | null };
+    };
+    /** The live state `Geolocation.getState()` returns — tests switch the watch through it. */
+    geoState: { active: boolean; userPosition: { lat: number; lng: number } | null };
 }
 
 export function installMockGeoLeaf(overrides?: {
@@ -137,8 +143,12 @@ export function installMockGeoLeaf(overrides?: {
             registerDict: vi.fn(),
             getLabel: vi.fn((key: string) => key),
         },
-        UI: {
-            _geolocationActive: overrides?.geolocActive ?? false,
+        // 🛑 The CORE's shape — `active`, `userPosition` — and no other. This mock used to fake
+        // `UI._geolocationActive`, a field the core has never had, and kept the tool's guard green.
+        geoState: { active: overrides?.geolocActive ?? false, userPosition: null },
+        Geolocation: {
+            isEnabled: () => true,
+            getState: () => mockGL.geoState,
         },
     };
 

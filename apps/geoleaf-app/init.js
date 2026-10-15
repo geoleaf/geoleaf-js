@@ -11,15 +11,17 @@
 // PWA — the Service Worker is registered by GeoLeaf's `pwa` capability (gated on
 // modules.pwa.enabled), not here, so a core-only page honours the opt-in gate.
 
-// Lazy-load table / print / measure / editor on first use. Bundles are NOT loaded at boot;
-// toolbar buttons appear immediately via registerLazyForAction. Icons are copied from each
+// Lazy-load table / print / measure / isochrone / editor on first use. Bundles are NOT loaded at
+// boot; toolbar buttons appear immediately via registerLazyForAction. Icons are copied from each
 // plugin's entry.ts and are stable across minor versions.
 //
 // 🛑 EVERY SLOT BELOW DECLARES `modules.<id>.showButton` AS `profileKey`, WITH THE `ui.show*`
 // FLAG AS `legacyProfileKey` — NEVER THE LEGACY KEY ALONE. The pair mirrors what the owning
 // package declares in its own `entry.ts`, and the two declarations must not drift: this file
 // draws the button when the plugin is lazy, `entry.ts` draws it when an integrator loads the
-// bundle eagerly, and a profile cannot tell which one it is talking to.
+// bundle eagerly, and a profile cannot tell which one it is talking to. A plugin born after the
+// `ui.show*` flags (table, position-share, isochrone) has none, and declares `profileKey` alone —
+// what binds is the identity with its `entry.ts`, which SLOT-01 checks.
 //
 // ⚠️ Four slots carried the legacy key ALONE until 20/08/2026 — print, measure, editor and
 // geocoding. Measured on a served profile: `modules.print.showButton: false` left the button
@@ -132,6 +134,34 @@
             profileKey: "modules.measure.showButton",
             legacyProfileKey: "ui.showMeasure",
             action: "measure",
+        },
+    });
+
+    // ── Isochrone ─────────────────────────────────────────────────────────────
+    // No `gateOnModuleEnabled` and no `legacyProfileKey`: its `entry.ts` gates the button on
+    // `modules.isochrone.showButton` alone, and the plugin was born after the `ui.show*` flags.
+    // ⚠️ No `desktopTabButton` either: above 1440 px the core moves every slot that has one to the
+    // right-hand band, and this button belongs to the left-hand pill at every width, beside the
+    // map's own tools — as `measure` does.
+    const _ISOCHRONE_ICON =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
+        ' stroke-linecap="round" stroke-linejoin="round">' +
+        '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
+    gl.I18n.registerDict("isochrone", {
+        fr: { "isochrone.toolbar.button": "Isochrones" },
+        en: { "isochrone.toolbar.button": "Isochrones" },
+        es: { "isochrone.toolbar.button": "Isócronas" },
+        pt: { "isochrone.toolbar.button": "Isócronas" },
+        it: { "isochrone.toolbar.button": "Isocrone" },
+        de: { "isochrone.toolbar.button": "Isochronen" },
+    });
+    gl.plugins.registerLazy("isochrone", () => import("./dist/geoleaf-isochrone.plugin.js"));
+    gl.plugins.registerLazyForAction("isochrone", "isochrone", {
+        mobileIcon: {
+            icon: _ISOCHRONE_ICON,
+            labelKey: "isochrone.toolbar.button",
+            profileKey: "modules.isochrone.showButton",
+            action: "isochrone",
         },
     });
 
@@ -263,10 +293,6 @@
     // ─── GEOLEAF-DEPLOY:GATED-BLOCK cog ─── END ────────────────────────────────
     gl.plugins.registerLazy("file-import", () => import("./dist/geoleaf-file-import.plugin.js"));
     gl.plugins.registerLazy("websocket", () => import("./dist/geoleaf-websocket.plugin.js"));
-    // ⚠️ `isochrone` has NO toolbar slot here, deliberately: its window does not exist yet, and
-    // a button declared now would be a control that opens nothing. Until it does, the plugin
-    // is reached the way the three above are — `plugins.load("isochrone")`, then its API.
-    gl.plugins.registerLazy("isochrone", () => import("./dist/geoleaf-isochrone.plugin.js"));
 
     // ── Declarative layer — loaded by the core's `ensurePluginLoaded` seam when a profile
     // names the plugin. Without that seam the layer would be skipped at 0 feature, and the
@@ -367,6 +393,22 @@ if (window.GEOLEAF_DEV_CONNECTOR) {
     } catch (e) {
         console.warn("[GeoLeaf] Connector dev config failed:", e);
     }
+}
+
+// Isochrone engine of the local workstation — its address and key, given at RUNTIME, never by a
+// profile (a profile is a served file). Same containment as the block above: only `deploy-local`
+// sets the object. Unlike `connector`, nothing is loaded here: the plugin stays lazy, and the
+// settings reach `configure()` the moment its bundle mounts — `geoleaf:plugin:loaded` fires once
+// the namespace exists.
+// 🛑 The object carries a key: it is never logged. A refusal is logged by the plugin, which names
+// the field and never its value.
+if (window.GEOLEAF_DEV_ISOCHRONE) {
+    document.addEventListener("geoleaf:plugin:loaded", (e) => {
+        if (e.detail?.name !== "isochrone") return;
+        if (GeoLeaf.Isochrone?.configure(window.GEOLEAF_DEV_ISOCHRONE) !== true) {
+            console.warn("[GeoLeaf] Isochrone dev config not applied — see the warning above.");
+        }
+    });
 }
 
 // ── Preloading the plugins THE PROFILE requires ─────────────────────────────

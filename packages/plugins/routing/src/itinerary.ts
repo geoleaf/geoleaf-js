@@ -63,6 +63,9 @@ let lastRoute: RouteResult | null = null;
  */
 let picking: PickMode | null = null;
 
+/** A position is being sought for « your position »: a second press waits for the first. */
+let seekingPosition = false;
+
 /** Leaves the pick mode, if one is running. Idempotent, and safe with no panel. */
 function stopPicking(): void {
     picking?.stop();
@@ -217,7 +220,7 @@ export function ensurePanel(): ItineraryPanel {
             void compute(next);
         },
         onUseMyPosition: () => {
-            useMyPosition();
+            void useMyPosition();
         },
         onClose: () => {
             // ⚠️ The mode goes with the panel. It is the exit this file exists to guarantee:
@@ -377,17 +380,28 @@ async function startGuidance(): Promise<void> {
  * programmatic entry. Advertising one "in case" is how a surface grows methods nobody calls and
  * nobody can remove later without a major.
  *
+ * ⚠️ Asynchronous: the core's GPS is switched on when it is off, and a first fix is waited for.
+ * A press while one is awaited is ignored — two requests would add the position twice. The
+ * waypoints are read when the fix ARRIVES, not when the button was pressed: the user may have
+ * edited the list meanwhile.
+ *
  * @returns Whether a position was available.
  */
-function useMyPosition(): boolean {
-    const res = originFromUserPosition(tLabel("routing.origin.you"));
-    if (!res.ok) {
-        panel?.showFailure(`origin-${res.reason}` as const);
-        return false;
+async function useMyPosition(): Promise<boolean> {
+    if (seekingPosition) return false;
+    seekingPosition = true;
+    try {
+        const res = await originFromUserPosition(tLabel("routing.origin.you"));
+        if (!res.ok) {
+            panel?.showFailure(`origin-${res.reason}` as const);
+            return false;
+        }
+        const next = [res.waypoint, ...waypoints.filter((w) => w.name !== res.waypoint.name)];
+        panel?.setWaypoints(next);
+        return true;
+    } finally {
+        seekingPosition = false;
     }
-    const next = [res.waypoint, ...waypoints.filter((w) => w.name !== res.waypoint.name)];
-    panel?.setWaypoints(next);
-    return true;
 }
 
 /**

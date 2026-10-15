@@ -73,7 +73,7 @@ export function setupConfig(): void {
 // so there is nothing for the registry to order. It was made lazy by the micro-core split, which
 // broke the boot twice — `46cd88dc` (GeoLeaf.I18n gone before boot(), plugins lost their dicts
 // silently) and `192c6865` (APIController built at import with 0 managers). The compensation was
-// a rustine in `built-in/api/controller.ts`, which fired this chain from a getter; S6 removed it.
+// a rustine in `kernel/api/controller.ts`, which fired this chain from a getter; S6 removed it.
 //
 // The inversion is structural, not accidental: `boot-core.ts` calls `loadConfig()` — which needs
 // `GeoLeaf.Config.init` — BEFORE `registry.init()`, because the modules need the MERGED config to

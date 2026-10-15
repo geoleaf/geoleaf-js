@@ -34,7 +34,8 @@
             "taxonomy": "config/plugins/taxonomy.json",
             "feature-info": "config/plugins/feature-info.json",
             "filter": "config/plugins/filter.json",
-            "offline": "config/plugins/offline.json"
+            "offline": "config/plugins/offline.json",
+            "isochrone": "config/plugins/isochrone.json"
         }
     }
 }

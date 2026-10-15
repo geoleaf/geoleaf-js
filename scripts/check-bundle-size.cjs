@@ -323,6 +323,11 @@ const PLUGIN_BUDGETS_GZ_KB = {
     // `ceil(×1.15)` and `ceil(×1.30)` render 13 and 15: above the ~7 KB where the
     // rounding rule collides, hence no manual raise.
     routing: { boot: { warn: 13, fail: 15 }, total: { warn: 13, fail: 15 } }, // 11.05
+    // isochrone — no npm dependency, no lazy chunk: the entry is the whole plugin (engine
+    // adapter, stack, window, six dictionaries). Anchored on its first measure, on a purged
+    // `dist/`; until this key existed it was weighed against the default 40/60, where it could
+    // not have fired before quadrupling.
+    isochrone: { boot: { warn: 16, fail: 19 }, total: { warn: 16, fail: 19 } }, // 13.9
     // ⚠️ `navigation` re-anchored 1.49 → 6.90 on 2026-08-21, and it BIT to make it
     // happen: the guidance engine landed there (projection, progression, hysteresis,
     // state machine), the three platform adapters, the maneuver UI and the camera —

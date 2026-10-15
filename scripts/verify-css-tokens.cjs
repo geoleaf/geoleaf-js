@@ -67,6 +67,11 @@ const RUNTIME_SET = {
     "--gl-editor-left":
         "packages/plugins/editor/src/sub-menu/floating-menu.ts:242, :511 (+ host-runtime/src/ui/drag.ts:65)",
     "--gl-editor-right": "packages/plugins/editor/src/sub-menu/floating-menu.ts:243, :512",
+    // The isochrone window: placed beside its button, then moved by the shared drag.
+    "--gl-isochrone-top":
+        "packages/plugins/isochrone/src/ui/floating-window.ts:331 (+ host-runtime/src/ui/drag.ts:66)",
+    "--gl-isochrone-left":
+        "packages/plugins/isochrone/src/ui/floating-window.ts:332 (+ host-runtime/src/ui/drag.ts:65)",
     "--gl-editor-bottom": "packages/plugins/editor/src/sub-menu/floating-menu.ts:244, :510",
     // The form overlay pinned to the visual viewport — all four written by one `sync()`.
     "--gl-form-viewport-top": "packages/libs/field-renderer/src/ui/visual-viewport.ts:65",

@@ -4,8 +4,8 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 45c7c0eb2
-date: 7 octobre 2026
+verifie_contre: e472affd2
+date: 15 octobre 2026
 ---
 
 # routing — le calcul d'itinéraire, utilisable sans le guidage
@@ -407,6 +407,18 @@ Les opérations de liste étaient les puits. Il manquait les sources.
 | Lecture d'une paire tapée       | `src/parse-point.ts`       | l'ordre `lat, lon`, et les formes ambiguës refusées           |
 | Clic sur la carte               | `src/pick-on-map.ts`       | un mode dont ce qui compte est la SORTIE                      |
 | Recherche d'adresse optionnelle | `src/geocode-seam.ts`      | lue sur le namespace à l'appel, jamais déclarée en dépendance |
+| Votre position                  | `src/origin.ts`            | la veille GPS du cœur, allumée si elle est éteinte            |
+
+🛑 **« Votre position » lit le GPS du cœur par `@geoleaf/host-runtime`, jamais par une forme
+déclarée ici.** Jusqu'au 15/10/2026, `src/origin.ts` redéclarait l'état de la capacité
+`geolocation` et y lisait `permission`, `position` et `coordinates` — trois noms que le cœur n'a
+jamais exposés, qui expose `active` et `userPosition`. Le bouton répondait « position pas encore
+connue » quelle que soit la veille, et rien ne rougissait : les tests simulaient la même forme
+fausse. Depuis, il passe par `requestUserPosition()` : la position tenue, sinon le GPS allumé par
+le contrôle du cœur et sa première position attendue, 20 s au plus — un second appui pendant
+l'attente est ignoré. Trois refus restent distincts : `unavailable` (pas de capacité, ou le profil
+la coupe), `denied` (la permission refusée, lue par l'API Permissions une fois qu'aucune position
+n'est venue — le cœur ne distingue pas un refus d'une attente trop longue), `no-fix` (le reste).
 
 ### 🛑 `latitude, longitude` — le seul endroit du dépôt où l'ordre s'inverse
 

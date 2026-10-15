@@ -1091,6 +1091,10 @@ export default [
             pkgGlob("@geoleaf-plugins/connector", "src/login-ui.ts"),
             pkgGlob("@geoleaf-plugins/geocoding", "src/control.ts"),
             pkgGlob("@geoleaf-plugins/print", "src/emprise-selector.ts"),
+            // The isochrone window and its rows: one subtree each, its handlers closing over
+            // the controls they read — the focus and the Escape order live in those closures.
+            pkgGlob("@geoleaf-plugins/isochrone", "src/ui/floating-window.ts"),
+            pkgGlob("@geoleaf-plugins/isochrone", "src/ui/layer-list.ts"),
             // `print/src/modal-renderer.ts` removed: the file is renamed
             // `modal-open.ts`, but the exemption was ALREADY inert — `openModal`
             // is 75 lines for a 100 ceiling. Re-targeting it would have frozen a

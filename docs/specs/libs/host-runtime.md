@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 83f3efeb7
-date: 11 octobre 2026
+verifie_contre: 51aa42851
+date: 15 octobre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -74,6 +74,7 @@ Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Accès à l'hôte**        | `getGeoLeaf()` · `ensureGeoLeaf()` · `coreConfigGet(...)` · types `GeoLeafHost`, `HostMapAdapter`, `HostDeclaredStyleIds`, `PluginRegisterOptions`                                                     |
 | **Seam notifications**    | `getUINotifications()` · type `UINotificationsSeam`                                                                                                                                                    |
+| **Seam GPS**              | `isGeolocationEnabled()` · `isGeolocationActive()` · `readUserPosition()` · `requestUserPosition(...)` · types `UserPosition`, `GeolocationSeam`                                                       |
 | **Seam journalisation**   | `Log`                                                                                                                                                                                                  |
 | **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                      |
 | **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                            |
@@ -92,6 +93,35 @@ sous-chemin »**, ce que cette ligne a affirmé : la carte `exports` du `package
 l'honore, et `rollup.config.mjs` n'émet qu'un seul fichier de sortie. Ce ne sont donc pas des exports
 en demi-état mais des helpers **internes au paquet** — leur seul consommateur est `src/ui/touch-drag.ts`,
 qui partage la géométrie avec le chemin souris pour qu'ils ne divergent pas.
+
+### Le seam GPS — une seule déclaration de l'état de la capacité `geolocation` (15/10/2026)
+
+`src/geolocation-seam.ts`. Le cœur tient la permission, la veille et la dernière position ; un
+greffon les **lit**, il n'appelle jamais `navigator.geolocation`. Trois greffons redéclaraient la
+forme de cet état à côté du cœur, et l'un d'eux — `routing` — lisait trois noms qui n'y ont jamais
+existé : « partir de ma position » y répondait `no-fix` quelle que soit la veille, sans que rien ne
+rougisse. Ce module est la déclaration qu'un greffon importe à la place, comme le demandait la fiche
+de la capacité ([`docs/specs/capacites/geolocation.md`](../capacites/geolocation.md)).
+
+- `readUserPosition()` ne rend une position que **veille allumée** : le cœur oublie la dernière
+  position dès que la veille s'arrête.
+- `requestUserPosition()` rend la position tenue, sinon **clique le contrôle du cœur** — seul
+  chemin de demande de permission du dépôt — et attend sa première position, 20 s par défaut. 🛑 Ce
+  clic **bascule** la veille : il n'est fait que veille éteinte, sinon il éteindrait le GPS de
+  l'utilisateur.
+- Un refus, une absence d'appareil et une attente trop longue rendent tous `null` : le cœur émet
+  `active: false` dans les deux premiers cas, et ne les distingue pour personne.
+- ⚠️ La forme est **redéclarée**, pas importée : ce paquet n'importe rien de `@geoleaf/core`, pas
+  même un type. Elle suit `GeolocationPublicApi` et `GeolocationStateSnapshot`
+  (`packages/core/src/capabilities/geolocation/public-api.ts`).
+
+- `isGeolocationActive()` dit si la veille tourne, position ou pas : c'est la question à poser
+  AVANT de cliquer soi-même le contrôle.
+
+Lecteurs : `isochrone` ; `routing` et `measure`, dont les copies fautives sont ainsi corrigées —
+`measure` lisait `UI._geolocationActive`, un champ inexistant, et éteignait un GPS allumé.
+`position-share` et `editor` gardent la leur, juste ; les migrer ne change rien pour l'utilisateur
+et coûterait une publication chacun.
 
 ### `registerPluginModule` — le démontage d'un greffon, sur ses deux chemins de chargement (04/10/2026)
 

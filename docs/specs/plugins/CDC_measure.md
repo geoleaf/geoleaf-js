@@ -4,8 +4,8 @@ title: measure — la mesure éphémère, et ses annotations
 plugin_id: measure
 package: "@geoleaf-plugins/measure"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1dcdbcaf2
-date: 6 octobre 2026
+verifie_contre: 51aa42851
+date: 15 octobre 2026
 ---
 
 # measure — la mesure éphémère, et ses annotations
@@ -280,6 +280,15 @@ plugin l'écoute aussi et **ferme le sien** dès qu'un autre `id` l'émet. ⚠�
 | `geoleaf:toolbar:action`          | `entry.ts`          | filtré sur `measure` — ouvre le menu, en transportant l'élément déclencheur                                  |
 | `geoleaf:submenu:open`            | `floating-menu.ts`  | ferme ce menu quand un autre sous-menu s'ouvre                                                               |
 | `geoleaf:geolocation:statechange` | `tools/tool-gps.ts` | sur le conteneur de carte, outil GPS armé : coupe la mesure si la géolocalisation est arrêtée de l'extérieur |
+
+🛑 **L'outil GPS n'allume la veille du cœur que si elle est éteinte, et ne l'éteint en sortant que
+s'il l'a allumée** — il lit son état par `isGeolocationActive()` de `@geoleaf/host-runtime`, parce
+que le clic sur le contrôle du cœur BASCULE la veille. Jusqu'au 15/10/2026 il lisait
+`GeoLeaf.UI._geolocationActive`, un champ que le cœur n'a jamais eu : toujours faux, il cliquait
+toujours. Une mesure GPS lancée GPS allumé l'éteignait, et l'`active: false` qui suivait, écouté
+ci-dessus, arrêtait la mesure elle-même. Les tests simulaient le même champ inventé. Sa propre
+`watchPosition` reste : il lui faut chaque position pour ses sommets, et le cœur ne rend que la
+dernière.
 
 ⚠️ **Le dernier s'appelait `gl:geoloc:statechange` jusqu'au 16/08/2026** (EM-03 : un littéral
 d'événement qui contient un `:` doit commencer par `geoleaf:`). Il est émis par le core avec

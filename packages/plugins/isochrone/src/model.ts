@@ -124,3 +124,74 @@ export interface RuntimeOverrides {
     /** Query parameters added to every request. `json` is reserved for the question. */
     readonly query?: Readonly<Record<string, string>>;
 }
+
+/**
+ * Why `compute()` drew nothing — the provider's own reasons, and those the plugin decides
+ * before any request leaves.
+ *
+ * - **invalid** — the call itself cannot be read: an origin that is not a position, an
+ *   unknown mode, no duration, a duration that is not a whole positive number of minutes.
+ * - **no-map** — no map is mounted.
+ * - **no-engine** — no usable provider resolves: unknown name, refused address, no credit.
+ * - **busy** — a computation is already running. It is never queued behind.
+ * - **too-long** — a duration exceeds what the provider declares; `limit` carries it.
+ * - **cap-reached** — the batch would exceed `maxLayers`; `limit` carries the cap.
+ */
+export type ComputeRefusal =
+    IsochroneFailure | "invalid" | "no-map" | "no-engine" | "busy" | "too-long" | "cap-reached";
+
+/** What `compute()` is given. */
+export interface ComputeOptions {
+    /** Where the zones start from — longitude first. */
+    readonly origin: readonly [lon: number, lat: number];
+    /** How the traveller moves. Defaults to the profile's `mode`. */
+    readonly mode?: TravelMode;
+    /** The durations, in whole minutes. Defaults to the profile's `durations`. */
+    readonly minutes?: readonly number[];
+}
+
+/** What `compute()` answers: the zones drawn, or why none was. */
+export type ComputeResult =
+    | {
+          readonly ok: true;
+          /** The identifiers of the zones drawn, top of the stack first. */
+          readonly ids: readonly string[];
+      }
+    | {
+          readonly ok: false;
+          readonly reason: ComputeRefusal;
+          /** For `too-long`, the longest duration; for `cap-reached`, the cap. */
+          readonly limit?: number;
+          /** For `http`, the status of the refusal. */
+          readonly status?: number;
+          /** For `http`, the engine's own code, when its body could be read. */
+          readonly code?: number;
+      };
+
+/** One zone of the stack, as `getLayers()` shows it. */
+export interface IsochroneLayer {
+    /** Stable identifier — the one every stack member takes. */
+    readonly id: string;
+    /** Where the zone starts from — longitude first. */
+    readonly origin: readonly [lon: number, lat: number];
+    /** How the traveller moved. */
+    readonly mode: TravelMode;
+    /** The duration this zone answers, in minutes. */
+    readonly minutes: number;
+    /** Fill and outline colour, `#rrggbb`. */
+    readonly color: string;
+    /** Opacity of the fill, from 0 to 1. The outline stays opaque. */
+    readonly opacity: number;
+    /** Whether the zone is drawn. A hidden zone keeps its place in the stack. */
+    readonly visible: boolean;
+    /** The credit the provider's data owes. */
+    readonly attribution: string;
+}
+
+/** What `setLayerStyle()` changes. An absent member is kept. */
+export interface LayerStyle {
+    /** `#rrggbb`. */
+    readonly color?: string;
+    /** From 0 to 1. */
+    readonly opacity?: number;
+}

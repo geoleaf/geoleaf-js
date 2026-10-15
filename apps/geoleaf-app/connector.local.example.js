@@ -7,16 +7,18 @@
  * `docker-compose.dev.yml`.
  * ⚠️ Said "addpoi / editor" until 09/08/2026; `addpoi` was merged into `editor` on 05/08/2026.
  *
- * `init.js` dynamically imports `connector.local.js` (if present) BEFORE GeoLeaf.boot()
- * and calls `GeoLeaf.Connector.configure(window.GEOLEAF_DEV_CONNECTOR)`. The Connector
- * plugin then injects `Authorization: Bearer <token>` on every request to `baseUrl`
+ * `index.html` loads `connector.local.js` by a `<script type="module">` tag placed BEFORE
+ * `init.js`, between the `GEOLEAF-DEPLOY:DEV-CONNECTOR` markers. `init.js` then calls
+ * `GeoLeaf.Connector.configure(window.GEOLEAF_DEV_CONNECTOR)` before `GeoLeaf.boot()`, and the
+ * Connector plugin injects `Authorization: Bearer <token>` on every request to `baseUrl`
  * (reads via the GeoJSON loader and writes via the editor alike).
  *
  * ## Where the filled-in file may be served from — and where it may NOT
  *
  * ONE variant carries it: `deploy-local`, built on demand by `npm run build:deploy:local`
- * and never shipped. The deliverable variants (`deploy-core`, `deploy-full`) always get an
- * inert stub instead, whether or not you have this file on your machine.
+ * and never shipped. The deliverable variants (`deploy-core`, `deploy-full`) have neither the
+ * file nor the tag that loads it: `build-deploy.cjs` cuts the marked block and copies nothing,
+ * whether or not you have this file on your machine.
  *
  * 🛑 That is a BUILD guarantee, not a matter of discipline, and it was added on 09/08/2026
  * because discipline had not been enough: `build-deploy.cjs` used to copy the real file into
@@ -37,3 +39,12 @@ window.GEOLEAF_DEV_CONNECTOR = {
     // Called on every intercepted request to `baseUrl`. Return null to skip injection.
     getToken: async () => "PASTE_YOUR_DEV_JWT_HERE",
 };
+
+// Optional — the isochrone plugin's engine of the workstation: its address and its key, given at
+// runtime and never written in a profile. `init.js` hands this object to
+// `GeoLeaf.Isochrone.configure()` the moment the plugin loads; nothing is loaded in advance.
+// The local engine expects its key as the `api_key` parameter of the query string.
+// window.GEOLEAF_DEV_ISOCHRONE = {
+//     endpoint: "https://localhost:8443",
+//     query: { api_key: "KEY" },
+// };

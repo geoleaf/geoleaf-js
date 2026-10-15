@@ -1,17 +1,18 @@
-# GeoLeaf-Js — Ce qui a été examiné et écarté pour le routage et le guidage
+# GeoLeaf-Js — Ce qui a été examiné et écarté pour le routage, le guidage et les isochrones
 
-> **Version :** 1.0.1 | **Dernière mise à jour :** 28 septembre 2026
+> **Version :** 1.1.0 | **Dernière mise à jour :** 15 octobre 2026
 
-**Six arbitrages, avec leur mesure et leur condition de réouverture.** Ce document existe pour une
+**Des arbitrages, avec leur mesure et leur condition de réouverture.** Ce document existe pour une
 raison précise : un silence n'est pas un arbitrage. Sans trace écrite, la recherche se refait — et
 elle se refait mal, parce que le second passage ne dispose plus des mesures du premier.
 
 Ces études ont décidé de ce que `@geoleaf-plugins/routing` et `@geoleaf-plugins/navigation` sont, et
 surtout de ce qu'ils ne sont pas. Elles vivaient jusqu'ici dans deux documents de cadrage internes,
-et n'avaient aucun autre domicile.
+et n'avaient aucun autre domicile. Celles de `@geoleaf-plugins/isochrone` (§7), venues de son cahier
+des charges, les ont rejointes le 15 octobre 2026.
 
 > ⚠️ **Chaque chiffre porte sa date et sa commande.** Ils ont été mesurés entre le 7 et le 20 août
-> 2026 ; ils **se relancent, ils ne se croient pas**. Un verdict dont on ne peut plus retrouver la
+> 2026, et les 10 et 11 octobre pour le §7 ; ils **se relancent, ils ne se croient pas**. Un verdict dont on ne peut plus retrouver la
 > mesure ne se périme pas — il se fossilise.
 
 ---
@@ -183,6 +184,107 @@ n'a aucune occurrence de routage, d'itinéraire ni de guidage.
 > confort vers la condition. Sa politique publiée est d'une requête par utilisateur et par seconde,
 > avec la mention explicite qu'elle n'est pas utilisable pour un service tiers en production.
 > **L'auto-hébergement n'est donc pas un agrément : c'est la condition de mise en service.**
+
+---
+
+## 7. Le plugin isochrone — six arbitrages, et deux réponses du serveur public
+
+`@geoleaf-plugins/isochrone` demande à un moteur les zones atteignables en un temps donné depuis un
+point, et les affiche en couches empilables. Ses arbitrages ont été tranchés le 4 octobre 2026, et
+les deux qui portent sur le serveur public le 11, après mesure. Ce que le plugin fait se lit dans sa
+fiche, [`docs/specs/plugins/CDC_isochrone.md`](../specs/plugins/CDC_isochrone.md) ; ici, ce qui a été écarté, et pourquoi.
+
+### 7.1 Un plugin dédié, et non une extension de `routing`
+
+**Décision : un paquet à lui, chargé au premier clic sur son bouton.**
+
+`routing` est chargé au démarrage de chaque page, parce qu'il possède un point d'entrée dans les
+fiches d'objet : y loger la fenêtre des zones ferait payer son poids à toutes les pages. Son contrat
+de fournisseur est celui dont dépend `navigation` — l'élargir pour un besoin que tous les moteurs ne
+servent pas l'affaiblirait. Et `routing` ne dessine pas, quand un outil d'isochrones possède une
+pile de couches. Une capacité du cœur n'était pas une option non plus : elle consommerait le réseau,
+pèserait sur le budget de démarrage et lierait le cœur à un backend.
+
+**Ce que le choix coûte** : le moteur se déclare deux fois au profil, une par plugin.
+
+**Condition de réouverture** : si la déclaration unique du moteur devenait une exigence
+d'intégrateur.
+
+### 7.2 Le rang d'une couche — une primitive du cœur
+
+**Décision : `IMapAdapter.setLayerZIndex`, membre optionnel qui rend un booléen.**
+
+| Critère                           | Primitive du cœur     | Retirer et reposer         | Couches natives du plugin |
+| --------------------------------- | --------------------- | -------------------------- | ------------------------- |
+| Changement du cœur                | Un membre public      | Aucun                      | Aucun                     |
+| Coût d'un déplacement             | Aucune reconstruction | La source est reconstruite | Aucune reconstruction     |
+| Place parmi les couches du profil | Par `zIndex`          | Par `zIndex`               | Décidée par le plugin     |
+| Accès natif à la carte            | Aucun                 | Aucun                      | Permanent                 |
+
+Rien dans le dépôt ne changeait le rang d'une couche déjà posée : le manque était celui du cœur.
+**Retirer et reposer** reste le repli du plugin quand la primitive refuse, ou qu'un cœur plus ancien
+ne l'a pas. ⚠️ Une fois publiée, la primitive ne se retire plus sans version majeure : elle est donc
+**étroite par construction** — elle garde son refus des tuiles vectorielles, dont le motif
+technique est tombé le 10 octobre 2026, parce qu'un refus se lève dans une mineure sans casser un
+appelant, et ne se rétablit pas sans version majeure.
+Son contrat se lit dans [`docs/specs/CDC_kernel.md`](../specs/CDC_kernel.md).
+
+### 7.3 La clé d'un moteur — donnée à l'exécution
+
+**Décision : `configure({ endpoint, query })`, jamais le profil.**
+
+Un profil est un fichier servi à tout visiteur. Le relais sur la même origine reste la forme la plus
+sûre — la clé ne quitte pas le serveur —, et il ne demande rien au plugin : `endpoint` désigne alors
+le relais. Les deux chemins coexistent. Une « porte sans clé » sur le frontal du moteur est écartée :
+elle ne sert pas un hôte en production.
+
+### 7.4 La surface — une fenêtre flottante, ni volet ni modale
+
+Régler la transparence d'une zone sans la voir est un réglage à l'aveugle, et le pointage demande une
+carte dégagée. Le volet hébergé, sous 1440 px, s'ouvre dans une feuille dont le voile couvre la
+carte ; la modale pose ce voile à toute largeur.
+
+**Condition de réouverture** : si la feuille mobile du volet cessait de voiler la carte.
+
+### 7.5 La requête — GET, et non POST
+
+La question tient en une centaine de caractères. En GET, elle est une **requête simple** au sens de
+CORS : un aller-retour au lieu de deux, et aucune dépendance au traitement du pré-vol par un frontal
+qu'on ne maîtrise pas. POST est la forme de `routing`.
+
+**Condition de réouverture** : si la question grossissait — plusieurs origines, des options de coût
+détaillées.
+
+### 7.6 Le crédit de la donnée — affiché par le plugin
+
+L'option `attribution` d'une couche est déclarée au contrat de l'adaptateur et **lue par personne**.
+La brancher aurait ouvert, dans le cœur, une chaîne venue d'un profil rendue comme du HTML. Le
+plugin écrit donc son crédit lui-même, par `textContent`, tant qu'une zone existe : la donnée routée
+l'exige, il ne peut pas dépendre d'un chemin qui n'existe pas.
+
+**Condition de réouverture** : si l'option de l'adaptateur était un jour lue avec un rendu sûr.
+
+### 7.7 Le serveur public — deux réponses mesurées, deux décisions
+
+Mesuré le 10 octobre 2026 sur l'adresse par défaut du fournisseur livré, rejoué le 11.
+`scripts/capture-isochrone-fixtures.cjs`, lancé à la main, rejoue les trois questions et versionne
+les réponses dans le paquet — dont le point en mer et la durée refusée.
+
+**① Un point loin de toute voie n'est pas refusé.** Deux points en mer reçoivent un **200**, avec un
+polygone par durée : une maille de moins de 200 m, centrée sur le point. **Décision : aucun motif
+« aucune voie à proximité ».** Rien ne s'écrit contre un refus jamais capturé, et reconnaître la
+réponse dégénérée serait juger une géométrie côté client, sur un seuil qu'aucune documentation du
+moteur ne donne. Le refus réel d'une autre instance se lit comme tout refus : son statut et le code
+du moteur. **Condition de réouverture** : le jour où un tel refus est capturé — re-capturer le point
+en mer est le geste qui le montrerait.
+
+**② Le serveur plafonne la durée à 60 minutes**, quand le fournisseur livré en déclare 120 — la
+valeur lue dans la configuration d'une instance auto-hébergée. Au-delà, un 400 de code 151 ; un
+cinquième contour, un 400 de code 152. **Décision : le fournisseur garde 120.** Il sert aussi toute
+instance qu'un intégrateur désigne par `endpoint`, et lui imposer le plafond du serveur de
+démonstration obligerait à enregistrer un fournisseur pour la seule raison de dépasser une heure.
+Conséquence assumée : sur l'adresse par défaut, une durée de 61 à 120 minutes part et revient
+refusée — tard, mais nommée.
 
 ---
 

@@ -9,7 +9,7 @@
  * Stopping: Space key, re-click GPS button, or external geoloc deactivation.
  * https://geoleaf.dev
  */
-import { getGeoLeaf } from "@geoleaf/host-runtime";
+import { isGeolocationActive } from "@geoleaf/host-runtime";
 import type { MeasureConfig, MeasureMap, MeasureMapMouseEvent } from "../types.js";
 import { getMeasureConfig } from "../config.js";
 import { _el, _getLabel } from "../internal.js";
@@ -53,8 +53,18 @@ function _getGeolocLink(): HTMLAnchorElement | null {
     return document.querySelector(".geoleaf-ctrl-geolocation a");
 }
 
+/**
+ * Whether the core's watch is on — read through `@geoleaf/host-runtime`, which declares its state
+ * once.
+ *
+ * 🛑 Until 15/10/2026 this read `GeoLeaf.UI._geolocationActive`, a field the core has never had: it
+ * was always `false`, so the tool always clicked the control — and the click TOGGLES the watch. A
+ * GPS measurement started with the GPS already on switched it OFF, and the `active: false` that
+ * followed made this tool stop its own measurement. The tests faked the same field, and stayed
+ * green.
+ */
 function _isGeolocActive(): boolean {
-    return !!getGeoLeaf()?.UI?._geolocationActive;
+    return isGeolocationActive();
 }
 
 // ---------------------------------------------------------------------------

@@ -38,6 +38,7 @@ import {
     registerSpriteIcons,
     hasProfileSprite,
     ensureLayerSpriteIcons,
+    installSpriteImageResolver,
 } from "./maplibre-poi-icons.js";
 import {
     buildGeoLeafStyleTransform,
@@ -208,6 +209,8 @@ export class MaplibreAdapter implements IMapAdapter {
             this._initError = err;
             throw err;
         }
+        // Before any layer exists: the engine asks this before it reports a profile icon missing.
+        installSpriteImageResolver(this._map);
         if (options.bounds)
             this._map.fitBounds(toMapLibreBounds(options.bounds), { animate: false });
         this._ready = true;

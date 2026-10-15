@@ -1,0 +1,6 @@
+{
+    "enabled": true,
+    "mode": "foot",
+    "durations": [5, 10, 15],
+    "zIndex": 96
+}

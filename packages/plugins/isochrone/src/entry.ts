@@ -9,7 +9,7 @@
 import "./css/geoleaf-isochrone.css";
 
 import { buildPublicApi, type IsochronePublicApi } from "./public-api.js";
-import { closeIsochrone, openIsochrone } from "./isochrone-api.js";
+import { destroyIsochrone, openIsochrone } from "./isochrone-api.js";
 // Side effect: registers the engine this package ships with. An integrator plugging their own
 // goes through `GeoLeaf.Isochrone.registerProvider()`.
 import "./providers/builtins.js";
@@ -19,8 +19,12 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 
 import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 
-import langFr from "./lang/lang-fr.js";
+import langDe from "./lang/lang-de.js";
 import langEn from "./lang/lang-en.js";
+import langEs from "./lang/lang-es.js";
+import langFr from "./lang/lang-fr.js";
+import langIt from "./lang/lang-it.js";
+import langPt from "./lang/lang-pt.js";
 
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
@@ -29,6 +33,10 @@ const _VERSION = "__GEOLEAF_VERSION__";
 getGeoLeaf()?.I18n?.registerDict?.("isochrone", {
     fr: langFr,
     en: langEn,
+    es: langEs,
+    pt: langPt,
+    it: langIt,
+    de: langDe,
 });
 
 /** The API this plugin mounts as `GeoLeaf.Isochrone`. */
@@ -67,14 +75,19 @@ getGeoLeaf()?.plugins?.register?.("isochrone", {
 // this plugin answers. Types only — omitting them would hand an integrator a `TS2305` that
 // nothing on this side would ever show.
 export type {
+    ComputeOptions,
+    ComputeRefusal,
+    ComputeResult,
     IIsochroneProvider,
     IsochroneContour,
     IsochroneFailure,
     IsochroneGeometry,
+    IsochroneLayer,
     IsochroneOutcome,
     IsochronePosition,
     IsochroneProviderFactory,
     IsochroneRequest,
+    LayerStyle,
     ProviderLimits,
     ProviderOptions,
     RuntimeOverrides,
@@ -82,15 +95,18 @@ export type {
 } from "./model.js";
 
 // Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity.
+// A clock — "reachable within the same time". Not a bare circle: that is `routing`'s icon, and
+// the two buttons sit side by side in the toolbar.
 const _ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
-    ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
 
 // 5 — Register the module: the teardown, and the toolbar slot.
 //
 // The TEARDOWN is registered on both loading paths. `GeoLeaf.mount()` unmounts the application by
 // destroying the core's module registry, and this module is how that reaches what the plugin
-// built in the page.
+// built in the page and on the map — the zones go, the settings given to `configure()` stay.
 //
 // The SLOT only counts on the EAGER path, and `registerPluginModule` is what tells the two apart:
 // loaded before `GeoLeaf.boot()`, this call is the ONLY declaration of the button. Loaded on
@@ -98,18 +114,13 @@ const _ICON =
 // `registerLazyForAction()` declaration, which the core draws again at every boot.
 //
 // `profileKey` sits under `modules.isochrone.*` — the SAME branch `config.ts` reads (INV-CONFIG).
+// ⚠️ ONE slot, the left-hand pill's: a `desktopTabButton` would send the button to the right-hand
+// band above 1440 px, away from the map's own tools.
 registerPluginModule({
     id: "isochrone",
-    destroy: () => closeIsochrone(),
+    destroy: () => destroyIsochrone(),
     ui: {
         mobileIcon: {
-            icon: _ICON,
-            labelKey: "isochrone.toolbar.button",
-            profileKey: "modules.isochrone.showButton",
-            requiresPlugin: "isochrone",
-            action: "isochrone",
-        },
-        desktopTabButton: {
             icon: _ICON,
             labelKey: "isochrone.toolbar.button",
             profileKey: "modules.isochrone.showButton",
@@ -127,7 +138,8 @@ if (typeof document !== "undefined") {
     document.addEventListener("geoleaf:toolbar:action", (e: Event) => {
         const ce = e as CustomEvent<GeoLeafRawEventMap["geoleaf:toolbar:action"]>;
         if (ce.detail?.action === "isochrone") {
-            openIsochrone();
+            // The button is the anchor: the window opens beside it.
+            openIsochrone(ce.detail.element);
         }
     });
 }

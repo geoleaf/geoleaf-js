@@ -530,12 +530,12 @@ describe("deactivateGps", () => {
         const { link, ctrl } = installGeolocButtonMock();
         const clickSpy = vi.spyOn(link, "click");
 
-        // GeoLeaf.UI._geolocationActive must be true after activation for deactivate to trigger
+        // The core's watch must be on after activation for deactivate to trigger
         activateGps(map); // clicks button once (activate)
         expect(clickSpy).toHaveBeenCalledTimes(1);
 
         // Simulate that geoloc became active after button click
-        (globalThis as any).GeoLeaf.UI._geolocationActive = true;
+        (globalThis as any).GeoLeaf.geoState.active = true;
 
         deactivateGps(); // should click again (deactivate)
         expect(clickSpy).toHaveBeenCalledTimes(2);

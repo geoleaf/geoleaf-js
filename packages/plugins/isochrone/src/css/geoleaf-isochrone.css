@@ -1,4 +1,309 @@
-/* @geoleaf-plugins/isochrone — styles (loaded via rollup-plugin-postcss, injected at runtime) */
+/*!
+ * @geoleaf-plugins/isochrone — Styles
+ * © 2026 Mattieu Pottier — MIT License
+ *
+ * The floating window and its rows. Colours come from the theme's tokens, so the window
+ * follows the light and dark themes; every rule lives under the root class.
+ */
+
+/* ---------------------------------------------------------------------------
+   Root — fixed over the map; the drag writes its offset
+--------------------------------------------------------------------------- */
 .gl-isochrone {
-    /* Every rule of the plugin lives under this root class. */
+    position: fixed;
+    top: var(--gl-isochrone-top, 10px);
+    left: var(--gl-isochrone-left, 64px);
+    z-index: 980;
+    font-family: inherit;
+    font-size: var(--gl-font-size-sm, 0.78rem);
+    line-height: 1.4;
+}
+
+.gl-isochrone__panel {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(22rem, calc(100vw - 32px));
+    /* Measured from where the window stands: it grows with its rows after being placed. */
+    max-height: calc(100dvh - var(--gl-isochrone-top, 10px) - 16px);
+    background: var(--gl-color-bg-surface, #ffffff);
+    color: var(--gl-color-text-main, #1f2937);
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: var(--gl-border-radius, 8px);
+    box-shadow: var(--gl-shadow-panel, 0 4px 12px rgba(0, 0, 0, 0.12));
+    overflow: hidden;
+}
+
+/* ---------------------------------------------------------------------------
+   Title bar
+--------------------------------------------------------------------------- */
+.gl-isochrone__header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 4px 4px 8px;
+    border-bottom: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+}
+
+.gl-isochrone__grip,
+.gl-isochrone__handle {
+    cursor: grab;
+    color: var(--gl-color-text-muted, #6b7280);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+.gl-isochrone__title {
+    flex: 1;
+    margin: 0;
+    font-size: var(--gl-font-size-base, 0.9rem);
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+   Buttons — every one is named; the glyph is drawn, the sentence is its label
+--------------------------------------------------------------------------- */
+.gl-isochrone__fold,
+.gl-isochrone__close,
+.gl-isochrone__visibility,
+.gl-isochrone__up,
+.gl-isochrone__down,
+.gl-isochrone__remove {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--gl-border-radius, 6px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.gl-isochrone__pick,
+.gl-isochrone__locate,
+.gl-isochrone__cancel,
+.gl-isochrone__clear {
+    min-height: 32px;
+    padding: 4px 10px;
+    border: 1px solid var(--gl-color-border-strong, #9ca3af);
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-bg-surface, #ffffff);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.gl-isochrone__pick[aria-pressed="true"] {
+    background: var(--gl-color-accent, #2563eb);
+    border-color: var(--gl-color-accent, #2563eb);
+    color: var(--gl-color-accent-contrast, #ffffff);
+}
+
+.gl-isochrone__panel button:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.gl-isochrone__panel button:hover:not(:disabled) {
+    border-color: var(--gl-color-border-strong, #9ca3af);
+}
+
+.gl-isochrone__panel button:focus-visible,
+.gl-isochrone__panel input:focus-visible {
+    outline: 2px solid var(--gl-color-focus-ring, #2563eb);
+    outline-offset: 1px;
+}
+
+/* ---------------------------------------------------------------------------
+   State and failures — outside the folded part
+--------------------------------------------------------------------------- */
+.gl-isochrone__status {
+    margin: 0;
+    padding: 4px 8px 0;
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-isochrone__status:empty {
+    display: none;
+}
+
+.gl-isochrone__error {
+    margin: 4px 8px 0;
+    padding: 4px 8px;
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-danger-alpha, rgba(211, 47, 47, 0.1));
+    color: var(--gl-color-danger, #d32f2f);
+}
+
+/* ---------------------------------------------------------------------------
+   Form — its list scrolls, the window never outgrows the screen
+--------------------------------------------------------------------------- */
+.gl-isochrone__body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.gl-isochrone__body[hidden] {
+    display: none;
+}
+
+.gl-isochrone__modes,
+.gl-isochrone__durations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.gl-isochrone__legend {
+    width: 100%;
+    padding: 0;
+    font-weight: 600;
+}
+
+.gl-isochrone__option {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.gl-isochrone__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+   Rows
+--------------------------------------------------------------------------- */
+.gl-isochrone__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--gl-color-border-soft, #e5e7eb);
+}
+
+.gl-isochrone__row {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--gl-color-border-soft, #e5e7eb);
+}
+
+.gl-isochrone__row-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.gl-isochrone__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gl-isochrone__row--hidden .gl-isochrone__name {
+    color: var(--gl-color-text-muted, #6b7280);
+    text-decoration: line-through;
+}
+
+.gl-isochrone__swatch {
+    width: 28px;
+    height: 24px;
+    padding: 0;
+    border: 1px solid var(--gl-color-border-soft, #e5e7eb);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.gl-isochrone__opacity {
+    display: block;
+    width: calc(100% - 40px);
+    margin: 2px 0 0 40px;
+    accent-color: var(--gl-color-accent, #2563eb);
+}
+
+.gl-isochrone__empty {
+    margin: 0;
+    color: var(--gl-color-text-muted, #6b7280);
+}
+
+.gl-isochrone__clear {
+    align-self: flex-start;
+}
+
+.gl-isochrone__clear[hidden],
+.gl-isochrone__cancel[hidden],
+.gl-isochrone__error[hidden],
+.gl-isochrone__empty[hidden] {
+    display: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Finger — 44 px targets
+--------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+    .gl-isochrone__fold,
+    .gl-isochrone__close,
+    .gl-isochrone__visibility,
+    .gl-isochrone__up,
+    .gl-isochrone__down,
+    .gl-isochrone__remove,
+    .gl-isochrone__pick,
+    .gl-isochrone__locate,
+    .gl-isochrone__cancel,
+    .gl-isochrone__clear,
+    .gl-isochrone__swatch,
+    .gl-isochrone__option {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .gl-isochrone__opacity {
+        min-height: 44px;
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Origin marker — the point the zones start from
+--------------------------------------------------------------------------- */
+/* 🛑 This rule IS the marker. The adapter builds an empty element for a class without an icon:
+   without a size it measures 0 × 0 and shows nothing. A disc in the main text colour, ringed in
+   the surface colour — the pair the theme keeps opposed, so the disc reads on any basemap in
+   either theme — and shaded so it lifts off the zones.
+   ⚠️ Not the accent pair: `--gl-color-accent-contrast` is the colour of TEXT ON the accent, near
+   black in the light theme, where the accent itself is a pale tint — a pale disc, black ring.
+   `pointer-events: none` — the marker sits exactly where a user may click again to place a new
+   point; it must not catch that click. */
+.gl-isochrone-origin {
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: var(--gl-color-text-main, #1f2937);
+    border: 3px solid var(--gl-color-bg-surface, #ffffff);
+    box-shadow: var(--gl-shadow-panel, 0 4px 12px rgba(0, 0, 0, 0.12));
+    pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Small screen — the window keeps a gutter on both sides, and goes over the toolbar
+--------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+    /* Too wide to stand beside the toolbar (1000): the open window goes over it. */
+    .gl-isochrone {
+        left: var(--gl-isochrone-left, 16px);
+        z-index: 1001;
+    }
 }

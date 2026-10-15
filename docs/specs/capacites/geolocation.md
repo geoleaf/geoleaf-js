@@ -145,11 +145,14 @@ les utilisateurs associent à « ma position ».
 positions suivantes changer sous lui. ⚠️ **Cette ligne a nommé `filter` et `measure` comme les
 exploitants de cette référence vivante jusqu'au 01/09/2026, et ni l'un ni l'autre ne passe par ce
 membre** : le mode de proximité de `filter` importe le module d'état **directement** (voir §Le seul
-lien capacité → capacité), et `measure` ne lit pas l'état du tout — il écoute l'événement et monte
-sa propre veille. Les lecteurs du seam sont hors du core, et ils le rappellent à chaque usage
-plutôt que de retenir la référence : `packages/plugins/editor/src/add-form/placement-form.ts`,
-`packages/plugins/routing/src/origin.ts` et `packages/plugins/position-share/src/emitter.ts`. Ne
-pas le muter depuis l'extérieur.
+lien capacité → capacité). `measure`, lui, monte sa propre veille pour ses sommets, et ne lisait
+l'état que pour savoir si la veille tournait — sous un nom inexistant, `UI._geolocationActive` :
+il cliquait toujours le contrôle, et éteignait le GPS d'un utilisateur qui l'avait allumé. Corrigé
+le 15/10/2026 par `isGeolocationActive()` de `@geoleaf/host-runtime`. Les lecteurs du seam sont
+hors du core, et ils le rappellent à chaque usage plutôt que de retenir la référence :
+`packages/libs/host-runtime/src/geolocation-seam.ts` — lu par `isochrone`, `routing` et `measure`
+—, `packages/plugins/editor/src/add-form/placement-form.ts` et
+`packages/plugins/position-share/src/emitter.ts`. Ne pas le muter depuis l'extérieur.
 
 Typage publié : `src/global.d.ts`, section des capacités (`Geolocation?:` →
 `GeolocationPublicApi`). Ne pas citer de numéro de ligne pour ce fichier.
@@ -266,6 +269,11 @@ que soit la veille en cours. C'est le coût exact d'un seam décrit ailleurs que
 lecteur hors du core ne peut pas se tromper **contre** `GeolocationPublicApi`, il ne peut se
 tromper que contre une copie de mémoire. Un quatrième lecteur qui redéclare la forme à côté vaut
 donc moins un élargissement du seam qu'une **surface de type que les plugins puissent importer**.
+
+✅ **Elle existe depuis le 15/10/2026** : `packages/libs/host-runtime/src/geolocation-seam.ts`
+déclare la forme une fois, lit la position et allume la veille par le contrôle — sans le basculer
+quand elle tourne déjà. Le quatrième lecteur, `isochrone`, l'importe au lieu de redéclarer, et
+`routing` y est passé le même jour : son « partir de votre position » fonctionne depuis.
 
 ### Frontière `capabilities/` → `kernel/` (règle ESLint R.8)
 

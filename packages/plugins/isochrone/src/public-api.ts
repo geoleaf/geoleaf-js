@@ -8,8 +8,24 @@
  */
 
 import { getPluginConfig, type PluginConfig } from "./config.js";
+import {
+    clearLayers,
+    computeIsochrone,
+    listLayers,
+    moveLayer,
+    removeLayer,
+    showLayer,
+    styleLayer,
+} from "./controller.js";
 import { closeIsochrone, openIsochrone } from "./isochrone-api.js";
-import type { IsochroneProviderFactory, RuntimeOverrides } from "./model.js";
+import type {
+    ComputeOptions,
+    ComputeResult,
+    IsochroneLayer,
+    IsochroneProviderFactory,
+    LayerStyle,
+    RuntimeOverrides,
+} from "./model.js";
 import { getProvider, registerProvider, type ProviderIdentity } from "./provider.js";
 import { setOverrides } from "./runtime-overrides.js";
 
@@ -46,21 +62,86 @@ export interface IsochronePublicApi {
      */
     getProvider(): ProviderIdentity | null;
     /**
-     * Opens the plugin.
+     * Opens the plugin's window, over the map, and closes the other floating tools'. Opening it
+     * again keeps the one already open.
      *
+     * @param anchor An element to place the window beside — the toolbar button, typically.
+     *   Without one, the window keeps the place it had, or its default one.
      * @returns `false` when the profile switched the plugin off, `true` once it is open.
      */
-    open(): boolean;
-    /** Closes the plugin. Calling it when the plugin is not open does nothing. */
+    open(anchor?: Element): boolean;
+    /**
+     * Closes the window, and leaves the picking of a point if it was armed. The zones stay on
+     * the map. Calling it when the window is not open does nothing.
+     */
     close(): void;
+    /**
+     * Computes the zones reachable from a point, and draws them on top of the stack — the same
+     * path as a point placed on the map, without the click.
+     *
+     * One zone per duration, the shortest on top, each in the first colour of the palette no
+     * zone wears. All or nothing: no zone is drawn unless the engine answered every duration.
+     *
+     * Refused before any request, in this order: `invalid` (an origin that is not a position,
+     * an unknown mode, no duration, one that is not a whole positive number of minutes),
+     * `no-map`, `no-engine`, `busy`, `too-long` (a duration beyond what the provider declares,
+     * carried as `limit`), `cap-reached` (more zones than `maxLayers`, carried as `limit`).
+     * Then the engine's own reasons — `http` with its `status` and `code`, `timeout`,
+     * `network`, `malformed` — and `aborted` when the plugin is torn down meanwhile.
+     *
+     * @param options Origin `[lon, lat]`; the mode and the durations default to the profile's.
+     * @returns The identifiers of the zones drawn, top first, or the reason none was.
+     *
+     * @example
+     * ```ts
+     * const result = await GeoLeaf.Isochrone.compute({ origin: [55.45, -20.88], minutes: [10] });
+     * if (!result.ok) console.warn(result.reason);
+     * ```
+     */
+    compute(options: ComputeOptions): Promise<ComputeResult>;
+    /**
+     * A snapshot of the stack, top first — the order the zones are drawn in, the top one
+     * above.
+     *
+     * @returns Copies: changing them changes nothing.
+     */
+    getLayers(): IsochroneLayer[];
+    /**
+     * Changes a zone's colour or the opacity of its fill. The outline stays opaque.
+     *
+     * @param id The zone's identifier.
+     * @param style `color` as `#rrggbb`, `opacity` from 0 to 1; an absent member is kept.
+     * @returns `false` for an unknown id or a value refused — and then nothing changes.
+     */
+    setLayerStyle(id: string, style: LayerStyle): boolean;
+    /**
+     * Hides or shows a zone. A hidden zone keeps its place in the stack.
+     *
+     * @returns `false` for an unknown id.
+     */
+    setLayerVisible(id: string, visible: boolean): boolean;
+    /**
+     * Moves a zone to a row of the stack, `0` being the top. The map follows, without asking
+     * the engine again.
+     *
+     * @returns `false` for an unknown id or a row outside the stack.
+     */
+    moveLayer(id: string, toIndex: number): boolean;
+    /**
+     * Removes a zone. Its origin's marker goes with the last zone of that origin, the credit
+     * with the last zone of all.
+     *
+     * @returns `false` for an unknown id.
+     */
+    removeLayer(id: string): boolean;
+    /** Removes every zone, the markers and the credit. */
+    clear(): void;
 }
 
 /**
  * Builds the object mounted on `GeoLeaf.Isochrone`.
  *
- * ⚠️ No `compute()` member YET: a zone is nothing without the stack it lands in, and a method
- * advertised before what it feeds exists would answer something nobody can display. Facade
- * methods delegate; they never hold logic (`check-facade-purity`).
+ * Facade methods delegate; they never hold logic (`check-facade-purity`).
  *
  * @returns The plugin's public surface.
  */
@@ -71,7 +152,14 @@ export function buildPublicApi(): IsochronePublicApi {
         registerProvider: (id: string, factory: IsochroneProviderFactory): void =>
             registerProvider(id, factory),
         getProvider: (): ProviderIdentity | null => getProvider(),
-        open: (): boolean => openIsochrone(),
+        open: (anchor?: Element): boolean => openIsochrone(anchor),
         close: (): void => closeIsochrone(),
+        compute: (options: ComputeOptions): Promise<ComputeResult> => computeIsochrone(options),
+        getLayers: (): IsochroneLayer[] => listLayers(),
+        setLayerStyle: (id: string, style: LayerStyle): boolean => styleLayer(id, style),
+        setLayerVisible: (id: string, visible: boolean): boolean => showLayer(id, visible),
+        moveLayer: (id: string, toIndex: number): boolean => moveLayer(id, toIndex),
+        removeLayer: (id: string): boolean => removeLayer(id),
+        clear: (): void => clearLayers(),
     };
 }
