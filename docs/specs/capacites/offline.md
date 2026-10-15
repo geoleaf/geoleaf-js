@@ -144,6 +144,11 @@ les objets créés hors ligne quand le réseau revient.
   [`editor`](../plugins/CDC_editor.md).
 - **Elle n'est pas chargée au démarrage.** Son moteur arrive par **import dynamique**, hors du
   chemin de boot.
+- **Elle ne prépare pas les tuiles d'élévation.** Un fond `offline: true` qui déclare un relief
+  (`terrain`) ou un ombrage (`hillshade`) est préparé sans elles, et s'affiche à plat hors réseau.
+  Décidé le 15/10/2026 : ces tuiles viennent le plus souvent d'un serveur d'élévation tiers, et
+  la préparation ne l'aspire pas en masse — la démo publique refuse déjà, pour la même raison, un
+  cache de tuiles actif. Le guide des configurations (§11) et le README des fonds le disent.
 
 ---
 

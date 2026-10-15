@@ -224,3 +224,102 @@ describe("bascule entre deux fonds vectoriels au même style", () => {
         expect(engine.order()).toEqual(["land", "place"]);
     });
 });
+
+describe("revenir au fond dont le style est posé, pendant qu'un autre se télécharge", () => {
+    // A landed, B asked by URL and still downloading, A asked again: A's `setStyle` aborts B,
+    // and A's style through the transform equals the live one — the diff is empty, nothing is
+    // emitted, and the switch never finished: no event, and A's relief, cut when B was asked,
+    // stayed off. The real engine is judged by `e2e/89-basemap-back-to-landed-style.spec.js`.
+    const OTHER_URL = "https://tiles.test/styles/autre.json";
+    // The adapter hands `setStyle` a transform — always, in the application: the hook that finishes
+    // a switch the engine had nothing to do for rides on it. This one carries nothing over.
+    const host = globalThis as unknown as { GeoLeaf?: Record<string, unknown> };
+    let previousCore: unknown;
+    beforeEach(() => {
+        previousCore = host.GeoLeaf?.Core;
+        host.GeoLeaf = {
+            ...(host.GeoLeaf ?? {}),
+            Core: {
+                getAdapter: () => ({
+                    buildStyleChangeTransform: () => (_previous: unknown, incoming: unknown) =>
+                        incoming,
+                    reregisterStyleImages: vi.fn(),
+                }),
+            },
+        };
+    });
+    afterEach(() => {
+        host.GeoLeaf = { ...(host.GeoLeaf ?? {}), Core: previousCore };
+    });
+
+    it("🔴 la bascule s'achève : clé, événement et repères du style posé", async () => {
+        register("plan", STYLE_URL);
+        register("autre", OTHER_URL);
+        setBaseLayer("plan");
+        engine.deliver(planStyle());
+        expect(changes).toEqual(["plan"]);
+
+        setBaseLayer("autre");
+        expect(engine.pendingUrl()).toBe(OTHER_URL);
+
+        setBaseLayer("plan");
+        expect(engine.pendingUrl()).toBe(STYLE_URL);
+        engine.deliver(planStyle());
+        expect(changes, "rien ne doit s'achever pendant le passage du style").toEqual(["plan"]);
+        await Promise.resolve();
+
+        expect(getActiveKey()).toBe("plan");
+        expect(changes, "la bascule ne s'est pas achevée").toEqual(["plan", "plan"]);
+        // The map holds plan's style again: a later switch to a twin may take the shortcut.
+        expect(basemapsState._landedStyleKey).toBe("plan");
+    });
+
+    it("un relief coupé laisse sa source dans le style : le diff n'est pas vide, `style.load` vient", async () => {
+        // Measured on this double, which follows MapLibre on the point: `setTerrain(null)` leaves
+        // the DEM source in the live style, so going back is NOT an empty diff. Kept as a witness
+        // that the fix does not finish a switch twice.
+        register("plan-relief", STYLE_URL, { terrain: TERRAIN });
+        register("autre", OTHER_URL);
+        setBaseLayer("plan-relief");
+        engine.deliver(planStyle());
+        setBaseLayer("autre");
+        setBaseLayer("plan-relief");
+        engine.deliver(planStyle());
+        await Promise.resolve();
+
+        expect(changes).toEqual(["plan-relief", "plan-relief"]);
+        expect(engine.getTerrain()).not.toBeNull();
+    });
+
+    it("un style REFUSÉ par la validation n'achève aucune bascule", async () => {
+        // It went through the transform, and nothing was applied: the live style does not have
+        // the shape the transform rendered. Finishing here would declare a basemap the map does
+        // not show.
+        register("plan", STYLE_URL);
+        register("autre", OTHER_URL);
+        setBaseLayer("plan");
+        engine.deliver(planStyle());
+
+        setBaseLayer("autre");
+        engine.deliverRefused({
+            ...planStyle(),
+            layers: [{ id: "sea", type: "fill", source: "base" }],
+        });
+        await Promise.resolve();
+
+        expect(changes, "une bascule refusée s'est dite achevée").toEqual(["plan"]);
+        expect(engine.order()).toEqual(["land", "place"]);
+    });
+
+    it("un style qui CHANGE le style vivant s'achève une seule fois, par `style.load`", async () => {
+        register("plan", STYLE_URL);
+        register("autre", OTHER_URL);
+        setBaseLayer("plan");
+        engine.deliver(planStyle());
+        setBaseLayer("autre");
+        engine.deliver({ ...planStyle(), layers: [{ id: "sea", type: "fill", source: "base" }] });
+        await Promise.resolve();
+
+        expect(changes).toEqual(["plan", "autre"]);
+    });
+});

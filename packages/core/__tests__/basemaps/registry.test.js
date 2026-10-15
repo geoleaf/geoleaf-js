@@ -349,7 +349,7 @@ describe("basemaps/registry (MapLibre native)", () => {
     // ⚠️ This test is written against the MEASURED order: `styledata` stops while the predicate
     // is still false. A mock that keeps emitting `styledata` afterwards proves nothing — that is
     // exactly the hole the first witness had.
-    it("le prédicat bascule APRÈS le dernier `styledata`, porté par `sourcedata`", () => {
+    it("le prédicat bascule APRÈS le dernier `styledata`, porté par `sourcedata`", async () => {
         const map = makeMockMap({ styleLoaded: false });
         setMap(map);
         registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
@@ -364,6 +364,8 @@ describe("basemaps/registry (MapLibre native)", () => {
         // `styledata` is DONE. The sources finish, and it is `sourcedata` that carries the flip.
         map.isStyleLoaded.mockReturnValue(true);
         const ran = emit(map, "sourcedata");
+        // The activation runs in a microtask, out of the engine's emission.
+        await Promise.resolve();
 
         expect(
             ran,
@@ -387,7 +389,7 @@ describe("basemaps/registry (MapLibre native)", () => {
     //
     // `idle` is strictly stronger than what this deferral needs: it waits for the map to stop
     // moving, when all it wants is a LOADED STYLE. That surplus is the defect.
-    it("un style qui ne devient JAMAIS `idle` applique quand même le fond", () => {
+    it("un style qui ne devient JAMAIS `idle` applique quand même le fond", async () => {
         const map = makeMockMap({ styleLoaded: false });
         setMap(map);
         registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
@@ -399,6 +401,8 @@ describe("basemaps/registry (MapLibre native)", () => {
         // never comes. This is the boot of a rich profile, not a pathological case.
         map.isStyleLoaded.mockReturnValue(true);
         const ran = emit(map, "styledata");
+        // The activation runs in a microtask, out of the engine's emission.
+        await Promise.resolve();
 
         expect(
             ran,
@@ -449,6 +453,73 @@ describe("basemaps/registry (MapLibre native)", () => {
         // And it lets go: a stale deferral that stays subscribed wakes up on every later style
         // change, for the lifetime of the map.
         expect(map.off).toHaveBeenCalledWith("styledata", deferred);
+    });
+
+    // 🛑 The deferral woke INSIDE the engine's own emission. MapLibre 6.7.0 fires a `sourcedata`
+    // from within `Style.update`, looping over its tile managers; replacing the style there left
+    // the loop on a manager that was gone — `TypeError … reading 'used'`, uncaught, seen in a
+    // browser. The real engine is judged by `e2e/88-basemap-switch-inside-style-update.spec.js`;
+    // here, the order: nothing is applied during the emission, everything right after it.
+    it("le réveil n'applique pas le fond DANS l'émission du moteur, mais juste après", async () => {
+        const map = makeMockMap({ styleLoaded: false });
+        setMap(map);
+        registerBaseLayer("st", { tiles: ["https://tile.example/{z}/{x}/{y}.png"] });
+        setBaseLayer("st");
+
+        map.isStyleLoaded.mockReturnValue(true);
+        emit(map, "sourcedata");
+        expect(getActiveKey(), "le fond s'est appliqué pendant l'émission").toBe(null);
+        expect(map.addSource).not.toHaveBeenCalled();
+
+        await Promise.resolve();
+        expect(getActiveKey()).toBe("st");
+    });
+
+    it("une demande arrivée entre le réveil et son exécution l'emporte", async () => {
+        const map = makeMockMap({ styleLoaded: false });
+        setMap(map);
+        registerBaseLayer("a", { tiles: ["https://tile.example/a/{z}/{x}/{y}.png"] });
+        registerBaseLayer("b", { tiles: ["https://tile.example/b/{z}/{x}/{y}.png"] });
+        setBaseLayer("a");
+
+        // A's deferral wakes and schedules itself…
+        map.isStyleLoaded.mockReturnValue(true);
+        emit(map, "sourcedata");
+        // …and B is asked before it runs, on a style now ready.
+        setBaseLayer("b");
+        await Promise.resolve();
+
+        expect(getActiveKey(), "le réveil de A a écrasé la demande de B").toBe("b");
+    });
+
+    // ⚠️ Asking again for the ACTIVE basemap left a pending switch alive.
+    //
+    // Basemap A active, B asked while the style loads: B is deferred, and the active key stays
+    // A. A asked again: the call returned on « already active » BEFORE taking a ticket, so
+    // nothing superseded B — which applied when the style got ready. The last click said A.
+    it("redemander le fond actif annule le report d'un autre fond", () => {
+        const map = makeMockMap();
+        setMap(map);
+        registerBaseLayer("a", { tiles: ["https://tile.example/a/{z}/{x}/{y}.png"] });
+        registerBaseLayer("b", { tiles: ["https://tile.example/b/{z}/{x}/{y}.png"] });
+        setBaseLayer("a");
+        expect(getActiveKey()).toBe("a");
+
+        // B asked while the style loads: deferred, A stays active.
+        map.isStyleLoaded.mockReturnValue(false);
+        setBaseLayer("b");
+        expect(getActiveKey()).toBe("a");
+
+        // A asked again — the user's last choice.
+        setBaseLayer("a");
+
+        // The style gets ready: B's deferral wakes, and must recognise itself stale.
+        map.isStyleLoaded.mockReturnValue(true);
+        expect(emit(map, "sourcedata"), "aucun report armé").toBeGreaterThan(0);
+
+        expect(getActiveKey(), "le report de B s'est appliqué contre le dernier choix, A").toBe(
+            "a"
+        );
     });
 
     // ─── setBaseLayer — switcher ──────────────────────────────────────────────

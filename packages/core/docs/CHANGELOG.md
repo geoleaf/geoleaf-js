@@ -11,6 +11,48 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A basemap that displays is no longer reported as missing something** (`@geoleaf/core`
+  3.16.2). Loading a profile warned `basemaps.<id>: "url" or "style" is required` for every
+  basemap carrying neither — yet the basemap registry has always drawn more than that: a basemap
+  made of `tiles` alone, `type: "maplibre"`, and the four types configured by their own block,
+  `image`, `hillshade`, `wmts` and `wms`. Those basemaps displayed, and the console said
+  otherwise. The check now asks exactly what the registry accepts, through the same test; it
+  still warns for an entry with nothing to draw, an empty `tiles` list or an unknown type, and
+  its message names the four ways to be drawable. Unchanged for a host: no API, configuration
+  key or event is added or removed.
+
+- **Asking again for the active basemap cancels a switch still waiting** (`@geoleaf/core`
+  3.16.2). A basemap asked while the map's style loads waits for it. Basemap A active, B asked
+  in that window, then A asked again: the second request returned on « already active » and left
+  B waiting — and B applied when the style got ready, against the last choice. The active
+  basemap asked again now supersedes any waiting switch, as any other request does.
+  `setBaseLayer()` says it: the last call wins. Unchanged for a host: no API, configuration key
+  or event is added or removed.
+
+- **A basemap asked while the style updates no longer makes MapLibre throw** (`@geoleaf/core`
+  3.16.2). A basemap asked while the map's style is not loaded waits for it, and wakes on the
+  engine's `styledata`, `sourcedata` or `idle`. MapLibre 6.7.0 fires one `sourcedata` from
+  inside its own style update — when layers hidden for a frame are shown again — and the waiting
+  basemap replaced the style right there, under the engine's loop:
+  `TypeError: Cannot read properties of undefined (reading 'used')`, uncaught, out of the render
+  loop. The gesture was ordinary: a theme that shows layers, then a basemap picked at once. The
+  waiting basemap now applies right after the engine's emission, in a microtask — still before
+  the next frame — and a request that came in between wins. Unchanged for a host: no API,
+  configuration key or event is added or removed.
+
+- **Going back to a vector basemap while another one downloads finishes the switch**
+  (`@geoleaf/core` 3.16.2). Vector basemap A shown, B asked and its style still downloading, A
+  asked again: A's style aborted B's download and, once through, equalled the style the map
+  held — MapLibre 6.7.0 then applies nothing and emits nothing, no `style.load`. The active
+  basemap read A, but `geoleaf:basemap:change` was never emitted, and whatever A puts on when it
+  lands was skipped. The switch is now finished when the style has passed through and the live
+  style has the shape it rendered; a style the engine refuses finishes nothing. Unchanged for a
+  host: no API, configuration key or event is added or removed.
+
 ## [3.16.1] - 2026-10-15
 
 ### Added

@@ -2531,8 +2531,8 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.init.__t
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.refreshBasemap.__type.__type | doc:04ff6cc17a90
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.registerBaseLayer.__type.__type | doc:bb8dd1fd65f3
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.registerBaseLayers.__type.__type | doc:165c110e25af
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.setActive.__type.__type | doc:cafacaaba1b2
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.setBaseLayer.__type.__type | doc:cafacaaba1b2
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.setActive.__type.__type | doc:2911e05bd67a
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.BaseLayers.__type.setBaseLayer.__type.__type | doc:2911e05bd67a
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.destroy.__type.__type | doc:5a626a6e643c
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.getActiveId.__type.__type | doc:9d88fe069d2d
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.getActiveKey.__type.__type | doc:9d88fe069d2d
@@ -2542,8 +2542,8 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.init.__t
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.refreshBasemap.__type.__type | doc:04ff6cc17a90
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.registerBaseLayer.__type.__type | doc:bb8dd1fd65f3
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.registerBaseLayers.__type.__type | doc:165c110e25af
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.setActive.__type.__type | doc:cafacaaba1b2
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.setBaseLayer.__type.__type | doc:cafacaaba1b2
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.setActive.__type.__type | doc:2911e05bd67a
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Baselayers.__type.setBaseLayer.__type.__type | doc:2911e05bd67a
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Config.__type.clearThemesCache.clearThemesCache | doc:e2a57a767dbb
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Config.__type.get.get | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Config.__type.getActiveProfile.getActiveProfile | doc:797efc0c9fa0
@@ -2912,10 +2912,12 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._resolveBasemapT
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles | doc:a98d468d1e13
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles.onWarn.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.declaredAttribution.declaredAttribution | doc:18033694b6c7
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.hasRenderedShape.hasRenderedShape | doc:16261bd60fdd
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.insertBelow.insertBelow | doc:da49e8f7a813
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.readStyleLandmarks.readStyleLandmarks | doc:964f17d231e5
-CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle | doc:8647c016cbea
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle | doc:bcdc1720f825
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.__type.landmarks.__type.__type | doc:-
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.onPassed.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._core._core | doc:fd7ed047c0db
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._nextActivationRequest._nextActivationRequest | doc:2ed84776d3b9
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._nextStyleGeneration._nextStyleGeneration | doc:d9c1a8e9d768
@@ -2926,7 +2928,7 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setActiveType._
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setLandedStyleKey._setLandedStyleKey | doc:2dd679e30978
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setMap._setMap | doc:f88ffdc06465
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-state._setWmtsAbort._setWmtsAbort | doc:afbb1db0f1e5
-CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyViaStyleChange._applyViaStyleChange | doc:58c33d32834d
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyViaStyleChange._applyViaStyleChange | doc:59a331346445
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._applyWmtsBasemap._applyWmtsBasemap | doc:07ba9163d8a1
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-strategies._dispatchBasemapChange._dispatchBasemapChange | doc:7ba0f55638b9
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-types.BasemapsCoreSurface.getAdapter.__type.__type | doc:-
@@ -2968,8 +2970,8 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.init._
 CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.refreshBasemap.__type.__type | doc:04ff6cc17a90
 CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.registerBaseLayer.__type.__type | doc:bb8dd1fd65f3
 CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.registerBaseLayers.__type.__type | doc:165c110e25af
-CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.setActive.__type.__type | doc:cafacaaba1b2
-CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.setBaseLayer.__type.__type | doc:cafacaaba1b2
+CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.setActive.__type.__type | doc:2911e05bd67a
+CallSignature | GeoLeaf Core API.kernel/basemaps/facade.Baselayers.__type.setBaseLayer.__type.__type | doc:2911e05bd67a
 CallSignature | GeoLeaf Core API.kernel/basemaps/facade.resetBasemaps.resetBasemaps | doc:71ce6c734d09
 CallSignature | GeoLeaf Core API.kernel/basemaps/hillshade.applyHillshadeBasemap.applyHillshadeBasemap | doc:5eb14c8c9667
 CallSignature | GeoLeaf Core API.kernel/basemaps/hillshade.buildHillshadeSourceSpec.buildHillshadeSourceSpec | doc:546554bea251
@@ -2989,7 +2991,7 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/registry.refreshBasemap.refresh
 CallSignature | GeoLeaf Core API.kernel/basemaps/registry.registerBaseLayer.registerBaseLayer | doc:bb8dd1fd65f3
 CallSignature | GeoLeaf Core API.kernel/basemaps/registry.registerBaseLayers.registerBaseLayers | doc:165c110e25af
 CallSignature | GeoLeaf Core API.kernel/basemaps/registry.resetBasemapRegistry.resetBasemapRegistry | doc:397db7da88c0
-CallSignature | GeoLeaf Core API.kernel/basemaps/registry.setBaseLayer.setBaseLayer | doc:cafacaaba1b2
+CallSignature | GeoLeaf Core API.kernel/basemaps/registry.setBaseLayer.setBaseLayer | doc:2911e05bd67a
 CallSignature | GeoLeaf Core API.kernel/basemaps/registry.setMap.setMap | doc:691d7dac374d
 CallSignature | GeoLeaf Core API.kernel/basemaps/terrain.activateTerrain.activateTerrain | doc:670416a5821a
 CallSignature | GeoLeaf Core API.kernel/basemaps/terrain.deactivateTerrain.deactivateTerrain | doc:014c101f4e04
@@ -3051,7 +3053,7 @@ CallSignature | GeoLeaf Core API.kernel/config/profile-load-report.resetProfileL
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.expandLayerTemplates.expandLayerTemplates | doc:5e29422040e6
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.extractRawLayers.extractRawLayers | doc:052dc584420e
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.mergeModuleBags.mergeModuleBags | doc:1bebf2daf623
-CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateBasemaps.validateBasemaps | doc:c51fad240d32
+CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateBasemaps.validateBasemaps | doc:dde0b9d5ba9b
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateBasemaps.validateBasemaps.warn.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateFiles.validateFiles | doc:5ad5192b888b
 CallSignature | GeoLeaf Core API.kernel/config/profile-loader-helpers.validateFiles.validateFiles.warn.__type.__type | doc:-
@@ -3601,6 +3603,7 @@ CallSignature | GeoLeaf Core API.utils/errors/errors.isErrorType.isErrorType | d
 CallSignature | GeoLeaf Core API.utils/errors/errors.normalizeError.normalizeError | doc:26a6292acd99
 CallSignature | GeoLeaf Core API.utils/errors/errors.safeErrorHandler.safeErrorHandler | doc:116b914717d9
 CallSignature | GeoLeaf Core API.utils/errors/errors.sanitizeErrorMessage.sanitizeErrorMessage | doc:62f9b6e715f2
+CallSignature | GeoLeaf Core API.utils/general/basemap-shape.hasDrawableBasemapShape.hasDrawableBasemapShape | doc:6512ae5256c4
 CallSignature | GeoLeaf Core API.utils/general/di-accessors.getLog.getLog | doc:0ad40be25af7
 CallSignature | GeoLeaf Core API.utils/general/dom-helpers.appendChild.appendChild | doc:453769049c78
 CallSignature | GeoLeaf Core API.utils/general/dom-helpers.applyCssText.applyCssText | doc:52c178716675
@@ -5197,6 +5200,7 @@ Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply._buildRasterSourceSpe
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply._resolveBasemapType | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply.declaredAttribution | doc:-
+Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply.hasRenderedShape | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply.insertBelow | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply.readStyleLandmarks | doc:-
 Function | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle | doc:-
@@ -5446,6 +5450,7 @@ Function | GeoLeaf Core API.utils/errors/errors.isErrorType | doc:-
 Function | GeoLeaf Core API.utils/errors/errors.normalizeError | doc:-
 Function | GeoLeaf Core API.utils/errors/errors.safeErrorHandler | doc:-
 Function | GeoLeaf Core API.utils/errors/errors.sanitizeErrorMessage | doc:-
+Function | GeoLeaf Core API.utils/general/basemap-shape.hasDrawableBasemapShape | doc:-
 Function | GeoLeaf Core API.utils/general/di-accessors.getLog | doc:-
 Function | GeoLeaf Core API.utils/general/dom-helpers.appendChild | doc:-
 Function | GeoLeaf Core API.utils/general/dom-helpers.applyCssText | doc:-
@@ -9006,6 +9011,7 @@ Module | GeoLeaf Core API.utils/constants/constants | doc:-
 Module | GeoLeaf Core API.utils/controls/focus-trap | doc:-
 Module | GeoLeaf Core API.utils/controls/propagation-blocker | doc:-
 Module | GeoLeaf Core API.utils/errors/errors | doc:-
+Module | GeoLeaf Core API.utils/general/basemap-shape | doc:-
 Module | GeoLeaf Core API.utils/general/di-accessors | doc:-
 Module | GeoLeaf Core API.utils/general/dom-helpers | doc:-
 Module | GeoLeaf Core API.utils/general/event-listener-manager | doc:-
@@ -12407,9 +12413,13 @@ Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._t
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles.onWarn.__type.__type.message | doc:-
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles.previous | doc:cfb09e68abc3
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.declaredAttribution.declaredAttribution.definition | doc:15f8e8b211b7
+Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.hasRenderedShape.hasRenderedShape.live | doc:0edb9792dd99
+Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.hasRenderedShape.hasRenderedShape.rendered | doc:47e78309b220
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.insertBelow.insertBelow.layerSpec | doc:be961c0b4a43
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.insertBelow.insertBelow.map | doc:e79238635079
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.readStyleLandmarks.readStyleLandmarks.style | doc:a5595fe33ed6
+Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.onPassed | doc:9ab335743687
+Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.onPassed.__type.__type.rendered | doc:-
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.transform | doc:032ef4c9ebe3
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-state._onActiveKeyChange._onActiveKeyChange.listener | doc:-
 Parameter | GeoLeaf Core API.kernel/basemaps/basemaps-state._setActiveKey._setActiveKey.key | doc:-
@@ -13294,6 +13304,7 @@ Parameter | GeoLeaf Core API.utils/errors/errors.safeErrorHandler.safeErrorHandl
 Parameter | GeoLeaf Core API.utils/errors/errors.safeErrorHandler.safeErrorHandler.handler | doc:76302b41438c
 Parameter | GeoLeaf Core API.utils/errors/errors.sanitizeErrorMessage.sanitizeErrorMessage.maxLength | doc:74d896643a36
 Parameter | GeoLeaf Core API.utils/errors/errors.sanitizeErrorMessage.sanitizeErrorMessage.message | doc:33d0b54735da
+Parameter | GeoLeaf Core API.utils/general/basemap-shape.hasDrawableBasemapShape.hasDrawableBasemapShape.definition | doc:9ce013c35e57
 Parameter | GeoLeaf Core API.utils/general/dom-helpers.CreateElementProps.__index.key | doc:-
 Parameter | GeoLeaf Core API.utils/general/dom-helpers.appendChild.appendChild.children | doc:-
 Parameter | GeoLeaf Core API.utils/general/dom-helpers.appendChild.appendChild.parent | doc:-
@@ -17977,6 +17988,7 @@ Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.NativeMapErrorEvent.s
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.NativeMapErrorEvent.target | doc:d7da722696db
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.NativeSourceView.tiles | doc:-
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.NativeStyleView.layers | doc:-
+Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.NativeStyleView.sources | doc:-
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.SetBaseLayerOptions.silent | doc:23c868b92d0c
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.StyleLandmarks.firstSymbolId | doc:177b07e104b1
 Property | GeoLeaf Core API.kernel/basemaps/basemaps-types.StyleLandmarks.lastLayerId | doc:3841c06188e9
@@ -20676,6 +20688,7 @@ TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-apply._buildRasterSource
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles.onWarn.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.__type.landmarks.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-apply.trackIncomingStyle.trackIncomingStyle.onPassed.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-state._onActiveKeyChange._onActiveKeyChange.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-types.BasemapDefinition.offlineBounds.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/basemaps/basemaps-types.BasemapDefinition.options.__type | doc:-

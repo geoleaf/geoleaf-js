@@ -242,20 +242,52 @@ export function readStyleLandmarks(style: NativeStyleView | null | undefined): S
 }
 
 /**
+ * Whether the live style has the shape a transform rendered: the same layers in the same order,
+ * and the same sources. A style the engine finished applying has it; one it refused, or is still
+ * rebuilding, does not.
+ *
+ * @param live - The live style, as `getStyle()` serializes it.
+ * @param rendered - What the transform returned.
+ * @returns `true` when both carry the same layer ids, in order, and the same source ids.
+ */
+export function hasRenderedShape(
+    live: NativeStyleView | null | undefined,
+    rendered: NativeStyleView | null | undefined
+): boolean {
+    if (!live || !rendered) return false;
+    const ids = (style: NativeStyleView) =>
+        JSON.stringify((style.layers ?? []).map((layer) => layer.id));
+    const sources = (style: NativeStyleView) =>
+        JSON.stringify(Object.keys(style.sources ?? {}).sort());
+    return ids(live) === ids(rendered) && sources(live) === sources(rendered);
+}
+
+/**
  * Wraps a style transform so that the INCOMING style is read as it passes — before the
  * transform appends to it the layers carried over from the previous style.
  *
  * That moment is the only one where a basemap's own layers can be told apart: once the style is
  * live, a carried `symbol` layer reads exactly like one of the basemap's.
  *
+ * It is also the only point that sees the style through, and so the only one that can tell a
+ * switch MapLibre had nothing to do for. MapLibre 6.7.0's `Style.setState` runs the transform,
+ * diffs, and — when the diff holds no operation — returns without emitting anything: no
+ * `style.load`. When it has operations, `style.load` fires in the same call, right after the
+ * transform. `onPassed`, when given, is therefore called in a microtask after each run of the
+ * transform, with what it returned: by then, `style.load` has come or will not come for that run.
+ *
  * MapLibre runs a transform twice when it rebuilds a style instead of diffing it; the reading
- * is the same both times.
+ * is the same both times, and `onPassed` is called after each.
  *
  * @param transform - The adapter's transform, or `null` when it gave none.
+ * @param onPassed - Called in a microtask after each run, with the style the transform returned.
  * @returns The transform to hand to `setStyle` — `null` when none was given, so that a plain
  *   `setStyle` stays one —, and a reader of the landmarks: `null` until the transform has run.
  */
-export function trackIncomingStyle(transform: StyleTransform | null): {
+export function trackIncomingStyle(
+    transform: StyleTransform | null,
+    onPassed?: (rendered: NativeStyleView) => void
+): {
     transform: StyleTransform | null;
     landmarks: () => StyleLandmarks | null;
 } {
@@ -264,7 +296,9 @@ export function trackIncomingStyle(transform: StyleTransform | null): {
     return {
         transform: (previous, incoming) => {
             seen = readStyleLandmarks(incoming as NativeStyleView);
-            return transform(previous, incoming);
+            const rendered = transform(previous, incoming);
+            if (onPassed) queueMicrotask(() => onPassed(rendered as NativeStyleView));
+            return rendered;
         },
         landmarks: () => seen,
     };

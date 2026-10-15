@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "fonds-de-carte",
+    "scope": ["packages/core/src/utils/general/basemap-shape.ts"],
+    "verdicts": {
+        "packages/core/src/utils/general/basemap-shape.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "`hasDrawableBasemapShape` — ce qu'une définition de fond doit porter pour être dessinée, seul test du registre des fonds et de l'avertissement du chargeur de profil",
+            "confidence": "haute",
+            "rationale": "Le chargeur avertissait « url ou style requis » quand le registre acceptait aussi `tiles`, `maplibre` et quatre types à bloc : un fond qui s'affichait était dit incomplet. Un prédicat unique empêche les deux de rediverger. Sous `utils/general/` : `kernel/config` et `kernel/basemaps` l'importent tous deux, sans dépendre l'un de l'autre. Tenu par `__tests__/config/basemaps-validation-shape.test.ts`, vu rouge avant le correctif et sur deux mutations"
+        }
+    }
+}

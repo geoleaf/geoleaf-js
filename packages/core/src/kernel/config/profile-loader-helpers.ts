@@ -13,6 +13,7 @@
 import { ConfigStore } from "./storage.js";
 import { isUnsafeKey } from "../../utils/general/object-path-guard.js";
 import { layerDataPath } from "../../utils/general/layer-data-path.js";
+import { hasDrawableBasemapShape } from "../../utils/general/basemap-shape.js";
 
 /**
  * A profile as declared on disk, before its referenced files are fetched.
@@ -169,19 +170,22 @@ export function mergeModuleBags(
     return merged;
 }
 
-/** Warns for every basemap entry missing both `url` and `style`. */
+/**
+ * Warns for every basemap entry the registry could not draw: one carrying no `url`, no
+ * non-empty `tiles`, no `style`, and no basemap type configured by its own block (`maplibre`,
+ * `image`, `hillshade`, `wmts`, `wms`). The test is the registry's own, `hasDrawableBasemapShape`.
+ */
 export function validateBasemaps(
     basemaps: Record<string, unknown>,
     warn: (msg: string) => void
 ): void {
     for (const [id, entry] of Object.entries(basemaps)) {
-        const bm = entry as Record<string, unknown> | null;
-        if (!bm || (!bm.url && !bm.style)) {
+        if (!hasDrawableBasemapShape(entry)) {
             // Sanitize id before logging: limit to 64 chars and strip control chars
             const safeId = String(id)
                 .replaceAll(/[^\w.-]/g, "_")
                 .slice(0, 64);
-            warn(`basemaps.${safeId}: "url" or "style" is required`);
+            warn(`basemaps.${safeId}: "url", "tiles", "style" or a basemap type is required`);
         }
     }
 }

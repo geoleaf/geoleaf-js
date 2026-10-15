@@ -276,9 +276,11 @@ function bootWithDefault(definition: Record<string, unknown>): void {
 }
 
 /** The deferred activation wakes: the sources settle, `sourcedata` carries the flip. */
-function settleSources(): void {
+async function settleSources(): Promise<void> {
     engine.setLoaded(true);
     engine.fire("sourcedata", { dataType: "source" });
+    // The deferred activation runs in a microtask, out of the engine's emission.
+    await Promise.resolve();
 }
 
 /**
@@ -324,7 +326,7 @@ describe("boot sur un fond vectoriel par défaut — les couches créées pendan
             // Deferred: `isStyleLoaded()` was false when the default basemap was requested.
             expect(engine.setStyle).not.toHaveBeenCalled();
 
-            settleSources();
+            await settleSources();
             expect(engine.pendingUrl(), "le fond par défaut n'a pas été demandé").toBe(STYLE_URL);
 
             // The integrator's layer lands while the style downloads.
@@ -347,7 +349,7 @@ describe("boot sur un fond vectoriel par défaut — les couches créées pendan
     it("le crédit déclaré reste posé sur les sources du fond qui n'en portent aucun, jamais sur une source GeoLeaf", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL, attribution: CREDIT });
-        settleSources();
+        await settleSources();
         await createLayerNow("late");
         engine.deliver(vectorStyle("vector"));
 
@@ -360,7 +362,7 @@ describe("boot sur un fond vectoriel par défaut — les couches créées pendan
     it("basculer ensuite vers un autre fond vectoriel garde toutes les couches, dans leur ordre", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         engine.deliver(vectorStyle("vector"));
         // The layer exists BEFORE the switch begins: the user's own switch, which the fix must
         // leave exactly as it was — this case is green on either side of it.
@@ -384,7 +386,7 @@ describe("boot sur un fond vectoriel par défaut — les couches créées pendan
         expect(engine.setStyle).not.toHaveBeenCalled();
 
         await createLayerNow("late");
-        settleSources();
+        await settleSources();
 
         const after = engine.style();
         expect(engine.setStyle).not.toHaveBeenCalled();
@@ -435,7 +437,7 @@ describe("étiquettes — posées hors du registre, reconstruites à chaque remp
     it("🔴 au boot, les étiquettes posées pendant le téléchargement du style sont reconstruites dans sa police", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         await createLayerNow("late");
         // Built against the empty boot style: no symbol layer to read a font from.
         const built = await labelNow("late");
@@ -452,7 +454,7 @@ describe("étiquettes — posées hors du registre, reconstruites à chaque remp
     it("🔴 basculer vers un autre fond vectoriel reconstruit les étiquettes dans la police du nouveau style", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         engine.deliver(labelledStyle("vector", ["Premier Sans"]));
         await createLayerNow("late");
         expect((await labelNow("late")).layout?.["text-font"]).toEqual(["Premier Sans"]);
@@ -472,7 +474,7 @@ describe("étiquettes — posées hors du registre, reconstruites à chaque remp
     it("🔴 vers un fond raster — un style vide appliqué d'un bloc —, les étiquettes restent", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         engine.deliver(labelledStyle("vector", ["Premier Sans"]));
         await createLayerNow("late");
         await labelNow("late");
@@ -496,7 +498,7 @@ describe("étiquettes — posées hors du registre, reconstruites à chaque remp
     it("des étiquettes éteintes par l'utilisateur ne reviennent pas avec le nouveau style", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         engine.deliver(labelledStyle("vector", ["Premier Sans"]));
         await createLayerNow("late");
         await labelNow("late");
@@ -515,7 +517,7 @@ describe("couches posées hors de l'adaptateur et DÉCLARÉES — la forme d'un 
     it("🔴 une source et ses couches déclarées traversent la bascule, dans leur ordre, avec leurs données", async () => {
         engine.setLoaded(false);
         bootWithDefault({ type: "maplibre", style: STYLE_URL });
-        settleSources();
+        await settleSources();
         engine.deliver(vectorStyle("vector"));
         // What a plugin does: straight to the engine, then declared to the adapter.
         const plugin = engine as unknown as {

@@ -13,6 +13,7 @@ import { Log } from "../../utils/log/index.js";
 // The events a deferred activation re-tests `isStyleLoaded()` on — ONE list for every wait on
 // the style. The measurement that chose them is written out in `setBaseLayer`, below.
 import { STYLE_READY_EVENTS } from "../../utils/general/style-ready.js";
+import { hasDrawableBasemapShape } from "../../utils/general/basemap-shape.js";
 import {
     _core,
     _map,
@@ -227,14 +228,9 @@ export function registerBaseLayer(key: string, definition: BasemapDefinition) {
 
     const label = merged.label || actualKey;
 
-    // Validate: must have url, tiles, style, or be one of the extended raster types
-    const hasRaster = !!merged.url || (Array.isArray(merged.tiles) && merged.tiles.length > 0);
-    const hasVector = !!(merged.style || merged.type === "maplibre");
-    const hasExtendedType =
-        typeof merged.type === "string" &&
-        ["image", "hillshade", "wmts", "wms"].includes(merged.type);
-
-    if (!hasRaster && !hasVector && !hasExtendedType) {
+    // Validate: must have url, tiles, style, or be one of the extended types — the same
+    // predicate the profile check warns with.
+    if (!hasDrawableBasemapShape(merged)) {
         Log.warn(
             "[GeoLeaf.Baselayers] Invalid definition for layer:",
             actualKey,
@@ -418,7 +414,8 @@ function _applySameStyleSwitch(
  * only what differs between them is applied. Either way the work is
  * **deferred until the style is loaded** — re-tested on `styledata`, `sourcedata` and `idle`,
  * never on the one-shot `load` —, so the active key is not guaranteed to have changed by the
- * time this returns.
+ * time this returns. The last call wins: a deferred activation is dropped by any later call that
+ * asks for another basemap, the active one included.
  *
  * An unknown or missing key logs a warning and leaves the current basemap in place.
  *
@@ -452,10 +449,17 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
         return;
     }
 
-    if (_activeKey === key) return;
+    // Asking for the ACTIVE basemap is not a no-op when another one waits on a deferral: it is
+    // the user's last choice, and it must supersede that deferral. Returning before the ticket
+    // let B — asked while the style loaded, then A asked again — apply when the style got ready.
+    // The ticket costs nothing when nothing is pending.
+    if (_activeKey === key) {
+        _nextActivationRequest();
+        return;
+    }
 
-    // Every genuine activation request takes a ticket, AFTER the guards above so that a
-    // no-op or invalid call cannot cancel a legitimate pending deferral.
+    // Every other genuine activation request takes a ticket, AFTER the guards above so that an
+    // invalid call cannot cancel a legitimate pending deferral.
     const requestId = _nextActivationRequest();
 
     // Boot regression (F0/S8): the profile GeoJSON layers now load earlier (GeoJSONModule.init,
@@ -513,7 +517,21 @@ export function setBaseLayer(key: string, options: SetBaseLayerOptions = {}) {
             if (typeof deferredMap.isStyleLoaded === "function" && !deferredMap.isStyleLoaded())
                 return;
             detach();
-            setBaseLayer(key, options);
+            // 🛑 NOT HERE, IN THE ENGINE'S OWN EMISSION. MapLibre 6.7.0 fires a `sourcedata`
+            // (`visibility`) from INSIDE `Style.update`, while looping over its tile managers —
+            // when a source's layers were hidden for a frame and shown again. Replacing the style
+            // here removed tile managers under that loop, which resumed on one that was gone:
+            // `TypeError: Cannot read properties of undefined (reading 'used')` out of
+            // `Map._render`, uncaught. A microtask runs once the render callback has returned,
+            // still before the next frame; the ticket is read again there, since a newer request
+            // may have come in between.
+            queueMicrotask(() => {
+                if (requestId !== _activationRequest) {
+                    Log.info("[GeoLeaf.Baselayers] deferred activation superseded, skipping:", key);
+                    return;
+                }
+                setBaseLayer(key, options);
+            });
         };
         for (const evt of STYLE_READY_EVENTS) deferredMap.on(evt, onStyleReady);
         return;

@@ -91,6 +91,7 @@ export interface BasemapDefinition extends BasemapConfig {
  */
 export interface NativeStyleView {
     layers?: Array<{ id?: string; type?: string }>;
+    sources?: Record<string, unknown>;
 }
 
 /**

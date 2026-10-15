@@ -10,6 +10,8 @@
  * - at delivery `transformStyle` runs on the live style. When what it returns EQUALS the live
  *   style, the diff holds no operation and NOTHING is emitted — no `style.load`;
  * - otherwise the style becomes what the transform returned, then `style.load` fires;
+ * - a style the validation refuses has been through the transform all the same; it fires an
+ *   `error`, is not applied, and nothing else is emitted (`deliverRefused`);
  * - `addSource` throws on a known id; `removeSource` throws on an unknown one and refuses, with
  *   an `error` event, while a layer reads the source;
  * - `addLayer` refuses a known id and a missing `beforeId` with an `error` event, adding nothing;
@@ -227,6 +229,17 @@ export function createStyleEngine() {
             if (!request) throw new Error("aucun style en attente de téléchargement");
             pending = null;
             apply(json, request.options);
+        },
+        /**
+         * The download completes with a style the validation refuses: the transform has run, an
+         * `error` fires, and the live style is left as it was — no `style.load`.
+         */
+        deliverRefused(json: StyleJSON): void {
+            const request = pending;
+            if (!request) throw new Error("aucun style en attente de téléchargement");
+            pending = null;
+            request.options?.transformStyle?.(clone(style), clone(json));
+            refuse("style refusé par la validation");
         },
         /** The live style, as `getStyle()` serializes it. */
         style(): StyleJSON {

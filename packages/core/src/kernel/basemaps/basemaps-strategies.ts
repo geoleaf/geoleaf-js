@@ -41,6 +41,7 @@ import { buildWmsUrl, resolveWmtsTilesUrl } from "./wmts-resolver.js";
 import {
     _buildRasterSourceSpec,
     declaredAttribution,
+    hasRenderedShape,
     insertBelow,
     trackIncomingStyle,
     BASEMAP_SOURCE_ID,
@@ -51,6 +52,7 @@ import type {
     BasemapRenderType,
     BasemapChangeDetail,
     NativeMap,
+    NativeStyleView,
     SetBaseLayerOptions,
 } from "./basemaps-types.js";
 
@@ -191,7 +193,10 @@ export function _applyWmtsBasemap(
  * `buildStyleChangeTransform`), so they survive the swap natively — no teardown,
  * no re-injection (the former `geoleaf:style:rebuild` dance; audit redundancy #1).
  *
- * After the new style loads:
+ * After the new style loads — or, when MapLibre had nothing to apply and so fired no
+ * `style.load`, once the style has passed through the transform and the live style has the shape
+ * it rendered (going back to the vector basemap whose style the map holds, while another one
+ * downloads):
  * 1. Puts back the runtime images (hatch patterns, sprite icons) a style REBUILD wiped —
  *    the engine keeps them when it can diff the two styles.
  * 2. Applies the target basemap (raster source/layer inserted at the bottom, or
@@ -234,15 +239,37 @@ export function _applyViaStyleChange(
     const attribution = targetType === "vector" ? declaredAttribution(definition) : "";
     // Wrapped so that the incoming style is read as it passes, before the carried layers are
     // appended to it: a hillshade overlay is placed by the basemap's OWN layers.
+    //
+    // 🛑 A switch MapLibre has nothing to do for never fires `style.load`. Going back to the
+    // vector basemap whose style the map holds, while another one downloads, aborts that download
+    // and diffs the held style against itself: `Style.setState` returns without an event, and the
+    // switch never finished — the active key read the basemap, no `geoleaf:basemap:change` was
+    // emitted, and what it puts on at landing stayed off. The wrapper tells when the style has
+    // passed; if `style.load` has not come by then and the live style has the shape the transform
+    // rendered, the engine applied it with nothing to do, and the switch is finished here.
+    let finished = false;
     const incoming = trackIncomingStyle(
-        adapter?.buildStyleChangeTransform?.(attribution ? { attribution } : undefined) ?? null
+        adapter?.buildStyleChangeTransform?.(attribution ? { attribution } : undefined) ?? null,
+        (rendered) => {
+            if (finished || _styleGeneration !== generation) return;
+            let live: NativeStyleView | undefined;
+            try {
+                live = nativeMap.getStyle();
+            } catch {
+                return; // A style still rebuilding: its own `style.load` will come.
+            }
+            if (!hasRenderedShape(live, rendered)) return;
+            nativeMap.off("style.load", onStyleLoad);
+            onStyleLoad();
+        }
     );
     const transform = incoming.transform;
 
     // Register the listener BEFORE calling setStyle(). For inline style
     // objects (e.g. EMPTY_STYLE) MapLibre may fire `style.load` synchronously
     // during setStyle(), so the handler must already be in place.
-    nativeMap.once("style.load", () => {
+    function onStyleLoad(): void {
+        finished = true;
         // Guard against superseded style changes (rapid basemap switching)
         if (_styleGeneration !== generation) return;
 
@@ -284,7 +311,8 @@ export function _applyViaStyleChange(
         if (!options.silent) {
             _dispatchBasemapChange(key, previousKey, definition);
         }
-    });
+    }
+    nativeMap.once("style.load", onStyleLoad);
 
     // Trigger style replacement AFTER the listener is in place. transformStyle
     // merges the GeoLeaf sources/layers into the incoming basemap style.
