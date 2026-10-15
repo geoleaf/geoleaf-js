@@ -1,8 +1,8 @@
 # GeoLeaf — Guide complet de toutes les configurations
 
 **Produit :** GeoLeaf Platform V3
-**Version :** 2.20.0
-**Date :** 15 octobre 2026 — le plugin isochrone entre au guide (§13e) : ses douze clés `modules.isochrone.*`, aux défauts de l'inventaire, et ce que le serveur public par défaut accepte. Précédemment, 11 octobre 2026 — la surcouche d'ombrage d'un fond peut SUIVRE LE RELIEF, montrée seulement tant qu'il est posé : `hillshade.onlyWithTerrain` entre au schéma des fonds et à ce guide (§11). Précédemment, 11 octobre 2026 — le relief d'un fond peut SUIVRE L'INCLINAISON de la carte : `terrain.activation`, `terrain.activateFromPitch` et `terrain.deactivateBelowPitch` entrent au schéma des fonds et à ce guide (§11). Précédemment, 11 octobre 2026 — l'ombrage du relief se dessine en SURCOUCHE d'un fond quelconque : `hillshade.overlay` et `hillshade.beforeLayer` entrent au schéma des fonds et à ce guide (§11), avec les neuf clés `hillshade.*` que le schéma portait déjà et que ce guide ne nommait pas. Précédemment, 10 octobre 2026 — un thème peut déclarer la vue sur laquelle il cadre la carte : `themes[].view.bounds`, `themes[].view.center` et `themes[].view.zoom` entrent au schéma des thèmes et à ce guide (§5.2), et le §3.2 dit ce que le thème de départ change au cadrage initial. Précédemment, 4 octobre 2026 — quatre paramètres lus par le code et absents de ce guide y entrent (§19) : `modules.offline.enabled`, `modules.offline.banner.enabled`, `modules.offline.drain.pollIntervalMs`, `modules.pwa.offlineDetector.badgePosition` ; le défaut de `modules.legend.title` s'écrit `"Légende"`, libellé de dictionnaire. Le même jour, `performance.themeBatchSize`, lue par le code, entre au schéma de profil et à ce guide (§3.5) ; les trois lignes `maxConcurrentLayers`, `layerLoadDelay` et `fitBoundsOnThemeChange` du §21, que le §3.5 disait déjà sans lecteur, sortent. Le même jour, `geometry` admet `"mixed"` pour une couche de tuiles vectorielles, et le guide nomme toutes les valeurs que le schéma accepte. Le même jour, six clés de label que rien ne lisait quittent les schémas et ce guide : `label.font.family`, `.weight`, `.bold`, `.italic`, `label.buffer.opacity` (et `label.buffer.noFill`, qui n'avait pas de ligne ici) — un style qui déclare l'une d'elles est désormais refusé par `npm run validate:profiles` ; `label.background.enabled`, que le schéma refusait déjà, sort du guide avec elles. Le même jour, `map.target` et `map.id` sont des IDENTIFIANTS d'élément, pas des sélecteurs CSS (le guide disait le contraire), et entrent au schéma de profil, qui les refusait ; `map.mapOptions`, qu'aucun code ne lit depuis la configuration, sort du guide. Précédemment, 3 octobre 2026 — les **valeurs par défaut** de tout le guide confrontées à l'inventaire et au code, et désormais gardées (`npm run check:doc-config-defaults`) : une vingtaine corrigées, dont le plafond FlatGeobuf (§28, `100 000`) et `data.ogcApi.bbox` (§7.2, §26 — un tableau, pas un booléen) ; §11b, §13b, §13c, §13d, §16, §17 et §18 re-clefées sous `modules.<id>.*`, les clés racine qu'elles enseignaient n'étant plus lues ; §13c (Measure) et §29 (COG) réécrites depuis le code · 28 septembre 2026 — §3.0 et §4 : un champ déclaré et absent de la donnée est dit au chargement, et chaque clé a SA notation ; §4 et §7.1 relus (la taxonomie est opt-out, et l'icône suit les colonnes qu'elle déclare) · plus tôt le même jour : les schémas et types de profil livrés par le paquet (§3.0), `features.json` (§3.3, 13d) et `performance` (§3.5) relus contre le schéma
+**Version :** 2.21.0
+**Date :** 15 octobre 2026 — les plugins routing, navigation et position-share entrent au guide (§13f, §13g, §13h) : leurs trente-trois clés, aux défauts de l'inventaire, vérifiés contre le code. Précédemment, 15 octobre 2026 — le plugin isochrone entre au guide (§13e) : ses douze clés `modules.isochrone.*`, aux défauts de l'inventaire, et ce que le serveur public par défaut accepte. Précédemment, 11 octobre 2026 — la surcouche d'ombrage d'un fond peut SUIVRE LE RELIEF, montrée seulement tant qu'il est posé : `hillshade.onlyWithTerrain` entre au schéma des fonds et à ce guide (§11). Précédemment, 11 octobre 2026 — le relief d'un fond peut SUIVRE L'INCLINAISON de la carte : `terrain.activation`, `terrain.activateFromPitch` et `terrain.deactivateBelowPitch` entrent au schéma des fonds et à ce guide (§11). Précédemment, 11 octobre 2026 — l'ombrage du relief se dessine en SURCOUCHE d'un fond quelconque : `hillshade.overlay` et `hillshade.beforeLayer` entrent au schéma des fonds et à ce guide (§11), avec les neuf clés `hillshade.*` que le schéma portait déjà et que ce guide ne nommait pas. Précédemment, 10 octobre 2026 — un thème peut déclarer la vue sur laquelle il cadre la carte : `themes[].view.bounds`, `themes[].view.center` et `themes[].view.zoom` entrent au schéma des thèmes et à ce guide (§5.2), et le §3.2 dit ce que le thème de départ change au cadrage initial. Précédemment, 4 octobre 2026 — quatre paramètres lus par le code et absents de ce guide y entrent (§19) : `modules.offline.enabled`, `modules.offline.banner.enabled`, `modules.offline.drain.pollIntervalMs`, `modules.pwa.offlineDetector.badgePosition` ; le défaut de `modules.legend.title` s'écrit `"Légende"`, libellé de dictionnaire. Le même jour, `performance.themeBatchSize`, lue par le code, entre au schéma de profil et à ce guide (§3.5) ; les trois lignes `maxConcurrentLayers`, `layerLoadDelay` et `fitBoundsOnThemeChange` du §21, que le §3.5 disait déjà sans lecteur, sortent. Le même jour, `geometry` admet `"mixed"` pour une couche de tuiles vectorielles, et le guide nomme toutes les valeurs que le schéma accepte. Le même jour, six clés de label que rien ne lisait quittent les schémas et ce guide : `label.font.family`, `.weight`, `.bold`, `.italic`, `label.buffer.opacity` (et `label.buffer.noFill`, qui n'avait pas de ligne ici) — un style qui déclare l'une d'elles est désormais refusé par `npm run validate:profiles` ; `label.background.enabled`, que le schéma refusait déjà, sort du guide avec elles. Le même jour, `map.target` et `map.id` sont des IDENTIFIANTS d'élément, pas des sélecteurs CSS (le guide disait le contraire), et entrent au schéma de profil, qui les refusait ; `map.mapOptions`, qu'aucun code ne lit depuis la configuration, sort du guide. Précédemment, 3 octobre 2026 — les **valeurs par défaut** de tout le guide confrontées à l'inventaire et au code, et désormais gardées (`npm run check:doc-config-defaults`) : une vingtaine corrigées, dont le plafond FlatGeobuf (§28, `100 000`) et `data.ogcApi.bbox` (§7.2, §26 — un tableau, pas un booléen) ; §11b, §13b, §13c, §13d, §16, §17 et §18 re-clefées sous `modules.<id>.*`, les clés racine qu'elles enseignaient n'étant plus lues ; §13c (Measure) et §29 (COG) réécrites depuis le code · 28 septembre 2026 — §3.0 et §4 : un champ déclaré et absent de la donnée est dit au chargement, et chaque clé a SA notation ; §4 et §7.1 relus (la taxonomie est opt-out, et l'icône suit les colonnes qu'elle déclare) · plus tôt le même jour : les schémas et types de profil livrés par le paquet (§3.0), `features.json` (§3.3, 13d) et `performance` (§3.5) relus contre le schéma
 
 > **Rôle de ce document :** Référence complète et narrative pour les intégrateurs. Chaque paramètre est accompagné de descriptions longues, d'exemples et de notes contextuelles.
 
@@ -1514,6 +1514,117 @@ Défini dans `config/plugins/isochrone.json` (bloc `modules.isochrone`, référe
 | 275l | `modules.isochrone.fillOpacity` | number   | `0.25`                                                                                     | Opacité du fond        | Opacité initiale du fond d'une zone, de 0 à 1. L'utilisateur la règle ensuite zone par zone ; le contour reste opaque.                                                                                                                  |
 
 > Pour l'API `GeoLeaf.Isochrone.*`, la porte d'une clé, le fournisseur livré et le branchement d'un autre moteur, voir le [README du plugin](../../packages/plugins/isochrone/README.md).
+
+---
+
+## 13f. Configuration plugin Routing (`@geoleaf-plugins/routing`)
+
+Défini dans `config/plugins/routing.json` (bloc `modules.routing`, référencé par `Files.modules.routing`). Calcule un itinéraire entre deux points ou plus : un **moteur de routage externe** le calcule, le plugin compose les étapes, normalise la réponse quel que soit le moteur et la publie dans une couche du profil. Le panneau d'itinéraire s'ouvre par l'action « Itinéraire vers ici » d'une fiche, ou par le bouton de barre d'outils quand `showButton` l'affiche. Nécessite le chargement de `@geoleaf-plugins/routing` **après** `@geoleaf/core`. Tous les champs sont optionnels.
+
+```jsonc
+// config/plugins/routing.json
+{
+    "enabled": true,
+    "showButton": true,
+    "profile": "car",
+    "labelField": ["Name", "NAME"],
+}
+```
+
+> ⚠️ **Une adresse refusée n'est jamais remplacée.** `endpoint` vide sélectionne l'adresse par défaut du fournisseur ; une valeur qui ne commence pas par `https://` est **refusée**, jamais remplacée en silence par le défaut — une requête de routage porte où quelqu'un se trouve et où il va. De même, un `provider` sans adaptateur enregistré ne donne aucun moteur, jamais un autre.
+>
+> ⚠️ **`labelField` porte une contrainte qu'aucun schéma n'exprime** : la propriété qu'il nomme doit aussi figurer dans le `payloadFields` du widget `action` de la couche. Sans les deux, la destination arrive sans nom. Il accepte une liste, parce que les couches d'un même profil ne nomment pas toutes leur libellé de la même façon : la première propriété présente et non vide gagne.
+>
+> ⚠️ **`showButton` est fermé par défaut**, contrairement aux autres plugins : le panneau s'ouvre d'abord depuis une fiche.
+
+| #    | Paramètre                      | Type               | Défaut            | Libellé court          | Description longue                                                                                                                                        |
+| ---- | ------------------------------ | ------------------ | ----------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 276a | `modules.routing.enabled`      | boolean            | `true`            | Activer le plugin      | Active le plugin.                                                                                                                                         |
+| 276b | `modules.routing.showButton`   | boolean            | `false`           | Afficher le bouton     | Affiche le point d'entrée dans la barre d'outils. Fermé par défaut : le panneau s'ouvre depuis l'action « Itinéraire vers ici » d'une fiche.              |
+| 276c | `modules.routing.provider`     | string             | `"valhalla"`      | Moteur interrogé       | `"valhalla"`, `"osrm"` ou l'id d'un fournisseur enregistré. Un id sans adaptateur enregistré ne donne aucun moteur — **aucune substitution silencieuse**. |
+| 276d | `modules.routing.endpoint`     | string             | `""`              | Adresse du moteur      | Adresse de base du moteur. Vide : celle du fournisseur. Hors `https://` : **refusée**, sans repli.                                                        |
+| 276e | `modules.routing.timeoutMs`    | number             | `10000`           | Délai par requête (ms) | Délai avant abandon de la requête. Une valeur nulle, négative ou non finie retombe sur le défaut.                                                         |
+| 276f | `modules.routing.profile`      | string             | `"car"`           | Mode de déplacement    | Mode demandé au moteur : `"car"`, `"foot"` ou `"bike"`. Un mode inconnu retombe sur `"car"` ; il n'est jamais transmis au moteur.                         |
+| 276g | `modules.routing.maxWaypoints` | number             | `10`              | Plafond d'étapes       | Nombre maximal d'étapes, départ et arrivée compris. Au-delà, l'ajout est refusé avec la limite nommée. Sous 2 : retombe sur le défaut.                    |
+| 276h | `modules.routing.layerId`      | string             | `"routing-route"` | Couche du tracé        | Couche du profil où le tracé est publié. Si le profil ne la déclare pas, la publication est refusée, et le dit.                                           |
+| 276i | `modules.routing.labelField`   | string \| string[] | `"name"`          | Propriété du libellé   | Propriété(s) du point portant son libellé, par ordre de préférence. Doit aussi figurer dans le `payloadFields` du widget `action`.                        |
+
+> Pour l'API `GeoLeaf.Routing.*`, les fournisseurs livrés, leur crédit et le branchement d'un autre moteur, voir le [README du plugin](../../packages/plugins/routing/README.md).
+
+---
+
+## 13g. Configuration plugin Navigation (`@geoleaf-plugins/navigation`)
+
+Défini dans `config/plugins/navigation.json` (bloc `modules.navigation`, référencé par `Files.modules.navigation`). Guide pas à pas sur un itinéraire calculé par `@geoleaf-plugins/routing` : suit la position, annonce la prochaine manœuvre, et recalcule quand l'utilisateur quitte le tracé. Le guidage s'ouvre depuis le panneau d'itinéraire de `routing`. Nécessite le chargement de `@geoleaf-plugins/navigation` **après** `@geoleaf/core`. Tous les champs sont optionnels.
+
+```jsonc
+// config/plugins/navigation.json
+{
+    "enabled": true,
+    "voiceEnabled": true,
+    "keepScreenAwake": true,
+}
+```
+
+> ⚠️ **Une valeur hors bornes retombe sur son défaut — ni honorée, ni levée.** `confirmExit: 0` ferait de chaque relevé bruité une sortie confirmée, donc un itinéraire recalculé à chaque seconde ; `arrivalRadiusMetres: -5` rendrait l'arrivée inatteignable.
+>
+> ⚠️ **`offRouteThresholdMetres` doit rester plus large que `arrivalRadiusMetres`** : un véhicule arrêté à une étape est souvent plus loin de la route que de l'étape, et si les deux seuils se croisent, chaque arrivée se lit comme une sortie de tracé.
+>
+> ⚠️ **`maxRetryFixes` inférieur à `retryAfterFixes` est relevé à celui-ci** : chaque valeur est valide seule, mais l'attente rétrécirait à chaque échec au lieu de croître.
+
+| #    | Paramètre                                    | Type    | Défaut  | Libellé court            | Description longue                                                                                                                                 |
+| ---- | -------------------------------------------- | ------- | ------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 277a | `modules.navigation.enabled`                 | boolean | `true`  | Activer le plugin        | Active le plugin.                                                                                                                                  |
+| 277b | `modules.navigation.showButton`              | boolean | `false` | Afficher le bouton       | Affiche un point d'entrée dans la barre d'outils. Fermé par défaut : le guidage s'ouvre depuis le panneau d'itinéraire, une fois un tracé calculé. |
+| 277c | `modules.navigation.arrivalRadiusMetres`     | number  | `30`    | Rayon d'arrivée (m)      | Distance sous laquelle une étape compte comme atteinte. Trop petit, on ne l'atteint jamais ; trop grand, on l'annonce tôt. Au moins 1.             |
+| 277d | `modules.navigation.offRouteThresholdMetres` | number  | `40`    | Seuil hors tracé (m)     | Distance au tracé au-delà de laquelle un relevé compte comme hors tracé. Au moins 1.                                                               |
+| 277e | `modules.navigation.confirmExit`             | number  | `3`     | Confirmer une sortie     | Relevés consécutifs hors tracé avant de confirmer une sortie et de recalculer. `1` : aucune confirmation.                                          |
+| 277f | `modules.navigation.confirmReturn`           | number  | `2`     | Confirmer un retour      | Relevés consécutifs sur le tracé avant de confirmer un retour — plus bas que la sortie, délibérément.                                              |
+| 277g | `modules.navigation.retryAfterFixes`         | number  | `2`     | Première attente         | Relevés d'attente avant la première nouvelle tentative de recalcul après un échec.                                                                 |
+| 277h | `modules.navigation.maxRetryFixes`           | number  | `8`     | Attente maximale         | Plafond de l'attente, qui double à chaque échec. Sous `retryAfterFixes`, relevé à celui-ci.                                                        |
+| 277i | `modules.navigation.voiceEnabled`            | boolean | `true`  | Annonces vocales         | État de départ des annonces. Reste commutable en cours de guidage ; couper interrompt ce qui parle.                                                |
+| 277j | `modules.navigation.voiceAnnounceAtMetres`   | number  | `200`   | Distance d'annonce (m)   | Distance à laquelle une manœuvre est annoncée une première fois. Au moins 1.                                                                       |
+| 277k | `modules.navigation.keepScreenAwake`         | boolean | `true`  | Écran allumé             | Maintient l'écran allumé pendant le guidage. Un confort, jamais un prérequis : un refus du navigateur est sans effet sur le guidage.               |
+| 277l | `modules.navigation.followZoom`              | number  | `17.5`  | Zoom de suivi            | Zoom tenu pendant le suivi, de 1 à 22. Réappliqué à chaque relevé : un zoom manuel est ramené au cadrage en moins d'une seconde.                   |
+| 277m | `modules.navigation.followPitch`             | number  | `60`    | Inclinaison de suivi     | Inclinaison tenue pendant le suivi, de 0 à 80 — la limite du moteur de rendu.                                                                      |
+| 277n | `modules.navigation.cameraMaxTransitionMs`   | number  | `1000`  | Transition maximale (ms) | Plafond d'une transition de caméra, de 1 à 5000 ms. Au-delà de l'écart entre deux relevés, chaque mouvement arrive en retard et la caméra traîne.  |
+
+> Pour l'API `GeoLeaf.Navigation.*`, l'entrée dans le guidage et les annonces vocales, voir le [README du plugin](../../packages/plugins/navigation/README.md).
+
+---
+
+## 13h. Configuration plugin Position Share (`@geoleaf-plugins/position-share`)
+
+Défini dans `config/plugins/position-share.json` (bloc `modules.position-share`, référencé par `Files.modules.position-share`). Envoie la position GPS de l'utilisateur à un serveur, par un transport interchangeable, et peut afficher celle des autres utilisateurs. Nécessite le chargement de `@geoleaf-plugins/position-share` **après** `@geoleaf/core`.
+
+```jsonc
+// config/plugins/position-share.json
+{
+    "enabled": true,
+    "mode": "manual",
+    "transport": "http",
+    "endpoint": "https://example.invalid/positions",
+}
+```
+
+> 🛑 **`enabled` ET `mode` sont fermés par défaut, et la redondance est voulue.** Ce plugin transporte la position d'une personne : aucun profil à moitié rempli ne doit pouvoir déclencher une émission. Il faut `enabled: true` **et** un `mode` autre que `"off"`.
+>
+> ⚠️ **`endpoint` et `channel` n'ont aucun défaut** : chacun est requis par exactement un transport — `endpoint` pour `"http"`, `channel` pour `"websocket"`. Un `transport` inconnu n'est pas une erreur de configuration — un transport tiers s'enregistre à l'exécution — : il n'émet rien, et un message le nomme.
+
+| #    | Paramètre                                | Type    | Défaut   | Libellé court           | Description longue                                                                                                             |
+| ---- | ---------------------------------------- | ------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| 278a | `modules.position-share.enabled`         | boolean | `false`  | Activer le partage      | Opt-in dur. Sans lui, rien n'est jamais émis.                                                                                  |
+| 278b | `modules.position-share.mode`            | string  | `"off"`  | Mode d'émission         | `"auto"` émet dès le démarrage, `"manual"` au clic sur la pastille, `"off"` jamais.                                            |
+| 278c | `modules.position-share.transport`       | string  | `"http"` | Transport               | `"http"`, `"websocket"` ou la clé d'un transport enregistré. Une clé inconnue : aucune émission, avec un message qui la nomme. |
+| 278d | `modules.position-share.endpoint`        | string  | —        | Adresse du POST         | URL à laquelle chaque position est postée. **Requise** si `transport` vaut `"http"`.                                           |
+| 278e | `modules.position-share.channel`         | string  | —        | Canal WebSocket         | Canal sur lequel les positions sont publiées. **Requis** si `transport` vaut `"websocket"`.                                    |
+| 278f | `modules.position-share.intervalMs`      | number  | `30000`  | Cadence (ms)            | Intervalle entre deux émissions.                                                                                               |
+| 278g | `modules.position-share.minDistanceM`    | number  | `10`     | Déplacement minimal (m) | Sous ce déplacement depuis la dernière émission, la position n'est pas émise. `0` désactive la garde.                          |
+| 278h | `modules.position-share.showButton`      | boolean | `true`   | Afficher la pastille    | Affiche la pastille de barre d'outils.                                                                                         |
+| 278i | `modules.position-share.receive.enabled` | boolean | `false`  | Voir les autres         | Affiche les positions des autres utilisateurs dès le démarrage, par une couche temps réel (`@geoleaf-plugins/realtime-layer`). |
+| 278j | `modules.position-share.receive.layerId` | string  | —        | Couche de réception     | Couche du profil qui reçoit les positions des autres. Absente : la réception est refusée, avec un message.                     |
+
+> Pour l'API `GeoLeaf.PositionShare.*`, les transports et la réception, voir le [README du plugin](../../packages/plugins/position-share/README.md).
 
 ---
 
