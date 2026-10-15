@@ -24,6 +24,13 @@ Some configuration keys in `profile.json` and `ui.json` only take effect once th
 | _(no key)_                       | `@geoleaf-plugins/cog`                                             | Enables the `GeoLeaf.COG.*` API                                 |
 | _(no key)_                       | `@geoleaf-plugins/websocket`                                       | Real-time connection over WebSocket (`GeoLeaf.Ws`)              |
 | _(no key)_                       | `@geoleaf-plugins/realtime-layer`                                  | Auto-refreshing layers                                          |
+| `modules.geocoding`              | `@geoleaf-plugins/geocoding`                                       | Address search pill                                             |
+| `modules.measure`                | `@geoleaf-plugins/measure`                                         | Measurement tools in the toolbar                                |
+| `modules.print`                  | `@geoleaf-plugins/print`                                           | Print / export button                                           |
+| `modules.routing`                | `@geoleaf-plugins/routing`                                         | Itinerary panel                                                 |
+| `modules.navigation`             | `@geoleaf-plugins/navigation`                                      | Guidance along a computed itinerary                             |
+| `modules.position-share`         | `@geoleaf-plugins/position-share`                                  | Shares the user's position — off by default                     |
+| `modules.isochrone`              | `@geoleaf-plugins/isochrone`                                       | Reachable-zone window in the toolbar                            |
 
 ---
 
@@ -680,6 +687,72 @@ The table emits ten events, all named `geoleaf:table:…` — two of them on exp
 | `geoleaf:table:exportLayer`     | `{ layerId, format, count }`             | `Table.exportLayer()`     |
 
 The eight others, and their payloads, are listed in [the Table guide](table/GeoLeaf_Table_README.md).
+
+---
+
+## Plugin Geocoding — `@geoleaf-plugins/geocoding`
+
+Address search: the user types an address or a place name in a floating pill, and the plugin
+asks a provider — Addok / BAN by default, Nominatim, Photon, a custom HTTPS endpoint, or the
+map's own features (`layers`), alone or as an ordered list. Its configuration lives under
+`modules.geocoding`; the keys and the providers are described in
+[its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/geocoding).
+
+---
+
+## Plugin Measure — `@geoleaf-plugins/measure`
+
+Measurement tools: distances, surfaces (rectangle, circle, polygon), a GPS track and
+georeferenced annotations, exported as GeoJSON — and composed on the printed page when
+`@geoleaf-plugins/print` is loaded. Its configuration lives under `modules.measure`, every key
+optional; see [its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/measure).
+
+---
+
+## Plugin Print — `@geoleaf-plugins/print`
+
+Exports the map at a controlled scale to a paper format (A4, A3), as a PDF or a JPG at 300 DPI.
+Its configuration lives under `modules.print`, every key optional. The former root key
+`printConfig` is no longer read: a profile that still carries it gets the defaults. See
+[its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/print).
+
+---
+
+## Plugin Routing — `@geoleaf-plugins/routing`
+
+Route computation between two or more points, from an itinerary panel that the « Route to
+here » action of a feature sheet opens. It asks an external engine — Valhalla by default, OSRM
+built in, others registered with `GeoLeaf.Routing.registerProvider()`. Its configuration lives
+under `modules.routing`; its toolbar entry point is hidden unless `showButton` is `true`. See
+[its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/routing).
+
+---
+
+## Plugin Navigation — `@geoleaf-plugins/navigation`
+
+Turn-by-turn guidance along a route computed by `@geoleaf-plugins/routing`: it follows the
+user's position, announces the next manoeuvre and recomputes when the user leaves the path.
+Guidance is entered from the itinerary panel of `routing`. Its configuration lives under
+`modules.navigation`; see [its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/navigation).
+
+---
+
+## Plugin Position Share — `@geoleaf-plugins/position-share`
+
+Sends the user's GPS position to a server over an interchangeable transport — `http`,
+`websocket`, or a registered one — and can show where the other users are. It is **off until
+the profile turns it on**: `modules.position-share.enabled` defaults to `false`. See
+[its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/position-share).
+
+---
+
+## Plugin Isochrone — `@geoleaf-plugins/isochrone`
+
+The zones reachable from a point within a given time, asked of a routing engine and stacked on
+the map from a floating window. Its configuration lives under `modules.isochrone` — modes,
+durations, rank of the zones, palette. 🛑 **No engine key is ever written in a profile**: a
+profile is a served file, and a key is given at runtime with `GeoLeaf.Isochrone.configure()`.
+See [its README](https://github.com/geoleaf/geoleaf-js/tree/main/packages/plugins/isochrone).
 
 ---
 

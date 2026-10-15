@@ -84,7 +84,7 @@ GeoLeaf-JS/                          ← monorepo racine
 │   │                                  `extracted-features.guard.test.js` (tokens de features retirées, absents de src/)
 │   │                                  `doc-profile-examples.guard.test.js` (S5 : les exemples `Files` des docs
 │   │                                  NORMATIVES valident contre profiles/schemas/profile.schema.json — AJV)
-│   ├── plugins/                     ← ⭐ les 13 plugins, regroupés
+│   ├── plugins/                     ← ⭐ les plugins, regroupés — leur liste se dérive : `ls packages/plugins/`
 │   │   ├── offline-ui/           ← @geoleaf-plugins/offline-ui (ESM pur, MIT, npmjs.org public)
 │   │   │   ├── src/cache/layer-selector/config-cache.ts  ← [PLUGINS S7] mémoïsation des 2 N+1 de la modale. ⚠️ DEUX mémos à durées de vie
 │   │   │   │                                différentes : config de couche = vie de la page (immuable) ; manifeste de cache = PAR PASSE
@@ -99,8 +99,6 @@ GeoLeaf-JS/                          ← monorepo racine
 │   │   │                                    (opérations en attente, sync, sauvegardes + Restaurer). Monté dans l'onglet EXPORT, de façon SYNCHRONE :
 │   │   │                                    dans le callback de getPendingPOIs() il ne rendait rien (whenReady() ne se règle pas moteur offline absent).
 │   │   │                                    ⚠️ le chemin CacheControl ne connaît plus la sync — il la construisait puis export-logic la supprimait
-│   │   ├── file-import/                 ← @geoleaf-plugins/file-import (ESM pur)
-│   │   ├── flatgeobuf/                  ← @geoleaf-plugins/flatgeobuf (ESM pur)
 │   │   ├── geocoding/                   ← @geoleaf-plugins/geocoding (ESM pur, MIT, npmjs.org public) — recherche d'adresse extraite du core
 │   │   ├── table/                       ← @geoleaf-plugins/table (ESM pur, MIT, npmjs.org public) — tableau de données extrait du core
 │   │   ├── print/                       ← @geoleaf-plugins/print (ESM pur, MIT, npmjs.org public)
@@ -137,6 +135,11 @@ GeoLeaf-JS/                          ← monorepo racine
 │   │   │   └── src/ws-lifecycle.ts        ← [PLUGINS B.12] collaborateurs + singletons de module + séquence init/destroy,
 │   │   │                                sortis de public-api.ts. Les singletons sont REMPLACÉS à l'init (pas mutés) :
 │   │   │                                c'est ce qui rend un seul buildPublicApi() valide à travers les cycles
+│   │   ├── routing/                     ← @geoleaf-plugins/routing (ESM pur, MIT, npmjs.org public) — calcul d'itinéraire, moteurs enfichables (Valhalla, OSRM)
+│   │   ├── navigation/                  ← @geoleaf-plugins/navigation (ESM pur, MIT, npmjs.org public) — guidage sur un itinéraire calculé par routing
+│   │   ├── position-share/              ← @geoleaf-plugins/position-share (ESM pur, MIT, npmjs.org public) — partage de la position, transport enfichable
+│   │   ├── isochrone/                   ← @geoleaf-plugins/isochrone (ESM pur, MIT, npmjs.org public depuis le 15/10/2026) — zones atteignables,
+│   │   │                                seul appelant de IMapAdapter.setLayerZIndex (packages/plugins/isochrone/src/map-binding.ts)
 │   │
 │   ├── libs/                        ← ⭐ bibliothèques internes : aucune n'appelle register(), aucune n'est un plugin
 │   │   ├── field-renderer/              ← @geoleaf/field-renderer v1.0.0 (ESM pur, MIT, npmjs.org public)
