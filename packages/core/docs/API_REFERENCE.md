@@ -288,7 +288,9 @@ demand, and the next mount draws every toolbar button again — those of the plu
 the first boot included. `connector` 1.3.5, `editor` 1.5.7, `geocoding` 1.1.3, `measure` 1.0.9,
 `position-share` 1.0.2, `print` 1.3.4 and `table` 1.1.3 leave the page with the application and
 work again on the next map; `realtime-layer` stops with it — from its 1.0.6 when it was loaded
-before the boot, from its 1.0.8 when it was loaded on demand too.
+before the boot, from its 1.0.8 when it was loaded on demand too. `isochrone` 1.0.0 removes its
+zones, their origin markers, its credit and its window, and its button opens a new window that
+computes on the new map — measured loaded on demand, as its button loads it.
 
 The plugins that draw no button of their own were measured the same way, each brought to its
 built state, then unmounted and mounted again:
@@ -313,6 +315,8 @@ What `unmount()` leaves alone, because it is the host's and set once for the pag
   is authenticated without configuring again.
 - **`GeoLeaf.Ws.init()`** — the connection stays open across the unmount, and the next
   application finds it connected, subscriptions included. `GeoLeaf.Ws.destroy()` closes it.
+- **`GeoLeaf.Isochrone.configure()`** — the engine's address and query parameters stay, and the
+  next computation sends them.
 
 A position shared by hand (`GeoLeaf.PositionShare.start()`) is stopped, and is not resumed by
 the next mount; a guidance session is not resumed either.

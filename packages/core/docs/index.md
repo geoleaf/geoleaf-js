@@ -31,14 +31,31 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.16.0 <Badge type="tip" text="2026-10-12" />
+## Release v3.16.1 <Badge type="tip" text="2026-10-15" />
 
-A minor release of `@geoleaf/core` alone. A layer no longer depends on what its first batch
-happened to contain — its gestures, its icons, its clusters and its sub-layers follow what it is
-filled with afterwards —, a click on two overlapping layers answers for the one drawn on top, and
-`geoleaf:filters:applied` says why the pass ran.
+A patch release of `@geoleaf/core`, published with two fixed plugins and a new one:
+`@geoleaf-plugins/isochrone` 1.0.0 shows the zones reachable from a point within a given time.
 
 **Highlights:**
+
+- **Added** — `@geoleaf-plugins/isochrone` 1.0.0, a new MIT plugin (`GeoLeaf.Isochrone`,
+  `modules.isochrone`). It asks a routing engine for the zones reachable from a point of the map,
+  or from the user's position, by car, on foot or by bike, and stacks them in a floating window
+  where they are reordered, recoloured, hidden and removed. The built-in provider asks a Valhalla
+  instance — by default a shared public server with no guarantee, which stops at 60 minutes. A
+  key is never written in a profile: it is given at runtime with `configure()`.
+- **Fixed** — a write no longer makes MapLibre report the profile's icons as missing: the map
+  waits for the sprite before answering the engine, five seconds at most.
+- **Fixed** — « Your position » in the routing panel routes from the user's position
+  (`@geoleaf-plugins/routing` 1.0.4), and a GPS measurement no longer switches off a GPS the user
+  had switched on (`@geoleaf-plugins/measure` 1.0.11). Both read the core's geolocation state
+  under names it never exposed.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.16.0 (2026-10-12) — a minor release of `@geoleaf/core` alone: a layer no longer
+depends on what its first batch happened to contain, a click on two overlapping layers answers
+for the one drawn on top, and `geoleaf:filters:applied` says why the pass ran.
 
 - **Added** — `geoleaf:filters:applied` carries `detail.reason`: `"filter"` when the filter was
   applied, `"data"` when the same filter is replayed because a layer was written. Do not rewrite
@@ -57,8 +74,6 @@ filled with afterwards —, a click on two overlapping layers answers for the on
 - **Fixed** — a layer created with one geometry draws another one it receives later: a write
   completes the sub-layers the layer lacks. Not covered: a clustered layer, whose source indexes
   points alone.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.15.0 (2026-10-12) — a minor release, published with fifteen plugins and
 `@geoleaf/field-renderer`: a basemap's relief can follow the tilt of the map, a theme declares

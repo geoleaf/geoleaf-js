@@ -73,9 +73,12 @@ write profiles. The public API is what the versioning policy protects.
   `realtime-layer` stops with the application on both loading paths from its 1.0.8, a guidance
   session of `navigation` ends with it from its 1.0.3, the offline window of `offline-ui` closes
   with it from its 1.7.0, and the itinerary pane of `routing` leaves with it from
-  `@geoleaf/core` 3.15.0. `cog`, `file-import` and `flatgeobuf` leave nothing behind. What
-  stays is the host's own: the session of `connector`, and the connection `websocket` opened —
-  both are set once for the page, not for one application.
+  `@geoleaf/core` 3.15.0. `isochrone` takes its zones, their origin markers, its credit and its
+  window down with the application from its 1.0.0 — measured loaded on demand, as its button
+  loads it. `cog`, `file-import` and `flatgeobuf` leave nothing behind. What stays is the host's
+  own: the session of `connector`, the connection `websocket` opened, and the engine settings
+  given to `GeoLeaf.Isochrone.configure()` — all set once for the page, not for one
+  application.
 
 ## Versions
 

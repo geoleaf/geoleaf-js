@@ -10,7 +10,7 @@ date: 15 octobre 2026
 
 # isochrone — les zones atteignables depuis un point, demandées à un moteur de routage
 
-**Type :** plugin, pas encore publié · **Paquet :** `@geoleaf-plugins/isochrone` ·
+**Type :** plugin publié · **Paquet :** `@geoleaf-plugins/isochrone` ·
 **Code :** `packages/plugins/isochrone/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici dans d'autres fiches, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
 > **Trois règles, héritées de [`CDC_kernel.md`](../CDC_kernel.md).**
@@ -22,9 +22,6 @@ date: 15 octobre 2026
 >    ou depuis son `src/`, et à défaut depuis `packages/core/src/`. Un chemin qui commence par
 >    `packages/`, `scripts/`, `profiles/`, `docs/`, `apps/` ou `e2e/` est relatif à la **racine du
 >    dépôt**.
-
-> ⚠️ **Cette fiche décrit un paquet pas encore publié.** Elle ne rend compte que de ce qui est
-> écrit : chaque section dit ce que le code fait aujourd'hui, et rien de ce qu'il fera.
 
 ---
 

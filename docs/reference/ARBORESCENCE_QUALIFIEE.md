@@ -30,7 +30,7 @@ awk -F'|' '$5 ~ /déplacer/ {print $1, $6}' ARBORESCENCE_QUALIFIEE.md
 | Packages | 21 |
 | Répertoires | 199 |
 | Fichiers | **1285** — 1030 `.ts` · 58 `.css` · 197 `scripts/` |
-| Lignes de code | 271 301 |
+| Lignes de code | 271 310 |
 | Artefacts qualifiés | **1484 / 1484** (100.0 %) |
 
 | Verdict | Artefacts |
@@ -2376,7 +2376,7 @@ Outillage du dépôt : 62 exécutables à la racine et 8 modules partagés sous 
 ├── probe-tile-cache-trim.mjs           |  214 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── probe-typedoc-surface.mjs           |  321 |  ok |  ok | justifié  | Sonde de la surface que TypeDoc rendrait s'il était élargi (expand +…
 ├── publish-one.cjs                     |  142 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
-├── publish-plugins.cjs                 |  213 |  ok |  ok | justifié  | Publie sur npm la liste de plugins retenue par politique, identifiés par…
+├── publish-plugins.cjs                 |  222 |  ok |  ok | justifié  | Publie sur npm la liste de plugins retenue par politique, identifiés par…
 ├── purge-dist.cjs                      |   62 |  ok |  ok | justifié  | (en-tête absent — fichier de données ou baril)
 ├── purge-turbo-cache.cjs               |  309 |  ok |  ok | justifié  | Ramène `.turbo/cache` sous un budget de taille — le seul critère qui…
 ├── release-check.cjs                   |  311 |  ok |  ok | justifié  | RELEASE-CHECK — the gate sequence that stands between this repo and an…

@@ -23,25 +23,25 @@
 
 Contient les **packages npm** du monorepo.
 
-| Package                             | Rôle                                                                                                      | Licence | Publication       |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------- | ------- | ----------------- |
-| **packages/core**                   | Bibliothèque GeoLeaf (core)                                                                               | MIT     | npm public        |
-| **packages/plugins/connector**      | Connecteur HTTP REST générique                                                                            | MIT     | npm public        |
-| **packages/plugins/websocket**      | Transport WebSocket temps réel                                                                            | MIT     | npm public        |
-| **packages/plugins/realtime-layer** | Couche temps réel (WebSocket+polling)                                                                     | MIT     | npm public        |
-| **packages/plugins/file-import**    | Import fichiers géospatiaux                                                                               | MIT     | npm public        |
-| **packages/plugins/flatgeobuf**     | Chargement FlatGeobuf + bbox spatial                                                                      | MIT     | npm public        |
-| **packages/plugins/print**          | Plugin impression/export carte (PDF, JPG, 300 DPI, A4/A3)                                                 | MIT     | npmjs.org public  |
-| **packages/plugins/measure**        | Mesure et annotation cartographique                                                                       | MIT     | npmjs.org public  |
-| **packages/plugins/offline-ui**     | UI offline (sélecteur couches / cache / sync) — moteur in-core (`modules.offline`)                        | MIT     | npmjs (public)    |
-| **packages/plugins/geocoding**      | Recherche d'adresse                                                                                       | MIT     | npm public        |
-| **packages/plugins/table**          | Tableau attributaire des entités d'une couche                                                             | MIT     | npm public        |
-| **packages/plugins/routing**        | Calcul d'itinéraire                                                                                       | MIT     | npm public        |
-| **packages/plugins/navigation**     | Guidage sur un itinéraire                                                                                 | MIT     | npm public        |
-| **packages/plugins/position-share** | Partage de la position des utilisateurs, sur un transport enfichable                                      | MIT     | npm public        |
-| **packages/plugins/isochrone**      | Zones atteignables depuis un point en un temps donné — en construction                                    | MIT     | pas encore publié |
-| **packages/plugins/editor**         | Édition géométries (Point/Ligne/Polygone) + catalogue form + persistance online/offline (Terra Draw lazy) | MIT     | npmjs.org         |
-| **packages/plugins/cog**            | Rendu Cloud Optimized GeoTIFF                                                                             | MIT     | npmjs.org         |
+| Package                             | Rôle                                                                                                      | Licence | Publication      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------- | ------- | ---------------- |
+| **packages/core**                   | Bibliothèque GeoLeaf (core)                                                                               | MIT     | npm public       |
+| **packages/plugins/connector**      | Connecteur HTTP REST générique                                                                            | MIT     | npm public       |
+| **packages/plugins/websocket**      | Transport WebSocket temps réel                                                                            | MIT     | npm public       |
+| **packages/plugins/realtime-layer** | Couche temps réel (WebSocket+polling)                                                                     | MIT     | npm public       |
+| **packages/plugins/file-import**    | Import fichiers géospatiaux                                                                               | MIT     | npm public       |
+| **packages/plugins/flatgeobuf**     | Chargement FlatGeobuf + bbox spatial                                                                      | MIT     | npm public       |
+| **packages/plugins/print**          | Plugin impression/export carte (PDF, JPG, 300 DPI, A4/A3)                                                 | MIT     | npmjs.org public |
+| **packages/plugins/measure**        | Mesure et annotation cartographique                                                                       | MIT     | npmjs.org public |
+| **packages/plugins/offline-ui**     | UI offline (sélecteur couches / cache / sync) — moteur in-core (`modules.offline`)                        | MIT     | npmjs (public)   |
+| **packages/plugins/geocoding**      | Recherche d'adresse                                                                                       | MIT     | npm public       |
+| **packages/plugins/table**          | Tableau attributaire des entités d'une couche                                                             | MIT     | npm public       |
+| **packages/plugins/routing**        | Calcul d'itinéraire                                                                                       | MIT     | npm public       |
+| **packages/plugins/navigation**     | Guidage sur un itinéraire                                                                                 | MIT     | npm public       |
+| **packages/plugins/position-share** | Partage de la position des utilisateurs, sur un transport enfichable                                      | MIT     | npm public       |
+| **packages/plugins/isochrone**      | Zones atteignables depuis un point en un temps donné                                                      | MIT     | npm public       |
+| **packages/plugins/editor**         | Édition géométries (Point/Ligne/Polygone) + catalogue form + persistance online/offline (Terra Draw lazy) | MIT     | npmjs.org        |
+| **packages/plugins/cog**            | Rendu Cloud Optimized GeoTIFF                                                                             | MIT     | npmjs.org        |
 
 > **Licence — MIT, sans exception.** Tous les paquets du dépôt déclarent `license: MIT`, et c'est désormais gaté (`LIC-05`, `scripts/check-license-headers.cjs`). Le nombre de paquets, ceux qui portent un fichier `LICENSE` et ceux qui portent un `publishConfig` ne sont **pas** recopiés ici : ils se mesurent, `npm run versions:check`.
 >

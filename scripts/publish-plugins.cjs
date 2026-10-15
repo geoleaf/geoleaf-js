@@ -71,6 +71,14 @@ const { alreadyPublished } = require("./lib/npm-registry.cjs");
 // 📌 The three were ready on their own terms before joining: `v1.0.0`, `@geoleaf/core` at
 // `^3.0.0` (satisfied by the registry), `publishConfig.access: public`, `files[]`, MIT
 // `LICENSE`. Nothing about them was bumped for this — joining the list is the whole change.
+//
+// ✅ **THIRD WIDENING, 2026-10-15 — Mattieu's decision.** `isochrone` joins, **15 to 16**,
+// and only AFTER its first publication. A package that was never published has no trusted
+// publisher on npmjs — one is declared per package, on a package that exists —, so the
+// workflow's OIDC `PUT` for it would have died in `E404`. `isochrone@1.0.0` was therefore
+// published by hand through `publish-one.cjs` (`dist.attestations: null`), its trusted
+// publisher declared next, and only then did it enter this list: its next version goes
+// through the workflow, with provenance. A future new plugin follows the same order.
 const PUBLISHED_PLUGINS = [
     "@geoleaf-plugins/cog",
     "@geoleaf-plugins/connector",
@@ -78,6 +86,7 @@ const PUBLISHED_PLUGINS = [
     "@geoleaf-plugins/file-import",
     "@geoleaf-plugins/flatgeobuf",
     "@geoleaf-plugins/geocoding",
+    "@geoleaf-plugins/isochrone",
     "@geoleaf-plugins/measure",
     "@geoleaf-plugins/navigation",
     "@geoleaf-plugins/offline-ui",
