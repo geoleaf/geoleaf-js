@@ -1,0 +1,16 @@
+{
+    "id": "reseau_cables",
+    "label": "Réseau câbles",
+    "zIndex": 80,
+    "geometry": "line",
+    "interactiveShape": false,
+    "data": {
+        "directory": "data",
+        "file": "reseau_cables.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [{ "id": "defaut", "label": "Défaut", "file": "defaut.json" }]
+    }
+}
