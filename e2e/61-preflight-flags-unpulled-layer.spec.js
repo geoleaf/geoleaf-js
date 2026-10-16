@@ -28,7 +28,9 @@ import { readRecord, GEOLEAF_DB } from "./helpers/idb.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 import { assertZeroNetwork, goOffline } from "./helpers/offline.js";
 
-test.use({ baseURL: baseURL("full") });
+// It downloads: a browser of its own, so the next spec does not pay for its storage —
+// see `ownBrowser` in `helpers/test.js`.
+test.use({ baseURL: baseURL("full"), ownBrowser: "61-preflight-flags-unpulled-layer" });
 
 const OGC = "https://backend.test/ogc";
 const ORIGIN = baseURL("full");

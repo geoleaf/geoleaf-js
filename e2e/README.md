@@ -222,6 +222,17 @@ heure. Le relief reste déclaré : une spec peut encore l'activer.
   actif et la caméra posée, qu'il est positif, que le fond actif ne demande plus le relief, et
   que la caméra est à plat sans relief.
 
+🛑 **Une spec qui télécharge le cache tourne dans son propre navigateur** :
+`test.use({ ownBrowser: "<nom du fichier>" })`, option de [`helpers/test.js`](helpers/test.js). Le
+téléchargement laisse environ 28 Mo dans le contexte ; la création du contexte SUIVANT dans le
+même navigateur prenait alors 7 à 37 s, et le test qui venait après — sans rapport avec le
+téléchargement — dépassait ses 60 s sur le runner, nuit après nuit. L'option, à portée worker,
+donne au fichier son propre worker : le coût se paie à l'arrêt de ce worker, sans délai, et plus
+par un test. Mesuré le 16/10/2026 : le test suivant repasse de 37-42 s à 3 s, le run entier dure
+autant. Posée par `54`, `55` et `61` — toute spec neuve qui clique `#gl-cache-download` la pose.
+⚠️ La valeur est le nom du fichier, pas `true` : Playwright regroupe dans un même worker les
+fichiers dont les options sont égales, et avec `true` partout `55` retardait `61` de 27 s.
+
 ## Débogage
 
 ```bash

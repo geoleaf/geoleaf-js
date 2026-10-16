@@ -35,7 +35,9 @@ import { baseURL } from "./helpers/base-url.js";
 import { readStore, readRecord, GEOLEAF_DB } from "./helpers/idb.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 
-test.use({ baseURL: baseURL("full") });
+// It downloads: a browser of its own, so the next spec does not pay for its storage —
+// see `ownBrowser` in `helpers/test.js`.
+test.use({ baseURL: baseURL("full"), ownBrowser: "55-stop-stops-the-pull" });
 
 // The basemap is not this spec's subject: its third-party latency must not decide it.
 test.beforeEach(async ({ context }) => {

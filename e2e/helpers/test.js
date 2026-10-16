@@ -101,6 +101,13 @@ export async function turnReliefOff(context) {
  *   subject is the relief, or the real boot. Defaults to `false`.
  */
 
+/**
+ * @typedef {object} OwnBrowserOption
+ * @property {string | false} ownBrowser A name UNIQUE to the file — its own name — runs it in a
+ *   worker of its own, so in a browser of its own: for a spec that fills its context's storage
+ *   (see the comment on the fixture). Defaults to `false`.
+ */
+
 /** @typedef {import("@playwright/test").PlaywrightTestArgs & import("@playwright/test").PlaywrightTestOptions} TestArgs */
 /** @typedef {import("@playwright/test").PlaywrightWorkerArgs & import("@playwright/test").PlaywrightWorkerOptions} WorkerArgs */
 
@@ -147,8 +154,28 @@ function watchServiceWorkerEscapes(page, context) {
 }
 
 export const test = base.extend(
-    /** @type {import("@playwright/test").Fixtures<ReliefOption & { _relief: void, _swEscapes: void }, {}, TestArgs, WorkerArgs>} */ ({
+    /** @type {import("@playwright/test").Fixtures<ReliefOption & { _relief: void, _swEscapes: void }, OwnBrowserOption, TestArgs, WorkerArgs>} */ ({
         relief: [false, { option: true }],
+        // 🛑 A CONTEXT THAT LEAVES TENS OF MEGABYTES BEHIND STALLS THE NEXT ONE IN THE SAME
+        // BROWSER. A spec that runs the offline download writes about 28 MB into its context
+        // (Cache Storage and IndexedDB). The context closes in a quarter of a second, and the
+        // download is over — measured on 16/10/2026: no request and no cache write in the 20 s
+        // after the button comes back. But the NEXT `browser.newContext()` of the worker then
+        // took 7 to 37 s instead of a few milliseconds, and on a slower runner it overran the
+        // 60 s of the test that happened to come next — a test that had nothing to do with it,
+        // failing night after night under `Test timeout … while setting up "context"`.
+        //
+        // A WORKER-scoped option set by `test.use()` gives the file a worker of its own, so a
+        // browser of its own: the cost moves to that worker's shutdown, where the browser
+        // fixture closes with no timeout, and no test pays it. Measured: the next test went
+        // from 37-42 s back to 3 s; the whole run lasted as long as before. The cost is MOVED,
+        // not removed — which is all that was needed. Set it in a spec that downloads.
+        //
+        // ⚠️ THE VALUE IS THE FILE'S OWN NAME, NOT `true`. Playwright groups the files whose
+        // worker options are EQUAL into one worker: with `true` everywhere, the three spec files
+        // that download shared one browser, and the first one's storage delayed the next one's
+        // context by 27 s — measured the same day. A name unique to the file gives each its own.
+        ownBrowser: [/** @type {string | false} */ (false), { scope: "worker", option: true }],
         _relief: [
             async ({ context, relief }, use) => {
                 if (!relief) await turnReliefOff(context);
