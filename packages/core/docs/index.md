@@ -31,12 +31,28 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.16.1 <Badge type="tip" text="2026-10-15" />
+## Release v3.16.2 <Badge type="tip" text="2026-10-16" />
 
-A patch release of `@geoleaf/core`, published with two fixed plugins and a new one:
-`@geoleaf-plugins/isochrone` 1.0.0 shows the zones reachable from a point within a given time.
+A patch release of `@geoleaf/core` alone, on switching basemaps: four fixes, no API change.
 
 **Highlights:**
+
+- **Fixed** — a basemap asked while the map's style updates no longer makes MapLibre throw
+  `Cannot read properties of undefined (reading 'used')` out of its render loop — a theme that
+  shows layers, then a basemap picked at once.
+- **Fixed** — going back to a vector basemap while another one downloads finishes the switch:
+  `geoleaf:basemap:change` is emitted, and what the basemap puts on when it lands is put on.
+- **Fixed** — asking again for the active basemap cancels a switch still waiting for the style:
+  the last call wins.
+- **Fixed** — a basemap that displays is no longer reported as missing something when the
+  profile loads: `tiles` alone, `type: "maplibre"`, `image`, `hillshade`, `wmts` and `wms` are
+  all drawable.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.16.1 (2026-10-15) — a patch release of `@geoleaf/core`, published with two fixed
+plugins and a new one: `@geoleaf-plugins/isochrone` 1.0.0 shows the zones reachable from a point
+within a given time.
 
 - **Added** — `@geoleaf-plugins/isochrone` 1.0.0, a new MIT plugin (`GeoLeaf.Isochrone`,
   `modules.isochrone`). It asks a routing engine for the zones reachable from a point of the map,
@@ -50,8 +66,6 @@ A patch release of `@geoleaf/core`, published with two fixed plugins and a new o
   (`@geoleaf-plugins/routing` 1.0.4), and a GPS measurement no longer switches off a GPS the user
   had switched on (`@geoleaf-plugins/measure` 1.0.11). Both read the core's geolocation state
   under names it never exposed.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.16.0 (2026-10-12) — a minor release of `@geoleaf/core` alone: a layer no longer
 depends on what its first batch happened to contain, a click on two overlapping layers answers
