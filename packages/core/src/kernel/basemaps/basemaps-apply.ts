@@ -13,6 +13,7 @@
  */
 
 import { normalizeTilesArray } from "./providers.js";
+import { sanitizeAttribution } from "../security/map-credit.js";
 import type { StyleTransform } from "../../adapters/maplibre/maplibre-style-transform.js";
 import type {
     BasemapDefinition,
@@ -68,13 +69,15 @@ export function _resolveBasemapType(definition: BasemapDefinition): BasemapRende
  * The credit a basemap declares — `attribution`, or the Leaflet-era `options.attribution`.
  *
  * One reader for both paths: the raster builders set it on the source they build, and a vector
- * basemap hands it to the style transform, which sets it on the incoming style's sources.
+ * basemap hands it to the style transform, which sets it on the incoming style's sources. The
+ * credit comes from a profile and ends as HTML in the engine's attribution control, so it is
+ * CLEANED here, once for both paths (`sanitizeAttribution`, `kernel/security/map-credit.ts`).
  *
  * @param definition - The basemap definition.
- * @returns The declared credit, or `""`.
+ * @returns The declared credit, cleaned — inline formatting and safe links kept — or `""`.
  */
 export function declaredAttribution(definition: BasemapDefinition): string {
-    return definition.attribution ?? definition.options?.attribution ?? "";
+    return sanitizeAttribution(definition.attribution ?? definition.options?.attribution ?? "");
 }
 
 /**

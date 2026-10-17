@@ -111,13 +111,11 @@ describe("the application teardown resets what the next mount reads", () => {
         expect(stopSync).toHaveBeenCalledTimes(1);
     });
 
-    it("🛑 the theme applier fits the next map again, and forgets the theme it applied", () => {
-        ThemeApplierCore._isFirstLoad = false;
+    it("🛑 the theme applier forgets the theme it applied", () => {
         ThemeApplierCore._currentThemeId = "t1";
 
         new ThemeEngineModule().destroy();
 
-        expect(ThemeApplierCore._isFirstLoad).toBe(true);
         expect(ThemeApplierCore.getCurrentThemeId()).toBeNull();
     });
 

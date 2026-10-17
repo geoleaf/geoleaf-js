@@ -27,9 +27,9 @@ npm install @geoleaf/core maplibre-gl
 
 ```html
 <!-- MapLibre GL JS — peer dependency, load it BEFORE GeoLeaf -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -49,9 +49,9 @@ npm install @geoleaf/core maplibre-gl
 **unpkg** variant — the same four tags, a different origin:
 
 ```html
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://unpkg.com/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 <link rel="stylesheet" href="https://unpkg.com/@geoleaf/core@3/dist/geoleaf-main.min.css" />
@@ -78,9 +78,9 @@ tiles are handled by MapLibre's own vector sources.
 **CDN/ESM:**
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -253,9 +253,9 @@ Check that the GeoLeaf script uses `type="module"`, and above all that **the Map
 JavaScript** is loaded before it — not only its stylesheet:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 <link

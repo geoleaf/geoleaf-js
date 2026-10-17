@@ -105,7 +105,9 @@ function _injectMobileThemeToggle(): void {
         document.querySelector<HTMLElement>(".gl-map-toolbar__scroll") ??
         document.querySelector<HTMLElement>(".gl-map-toolbar");
     if (!scroll) return;
-    if (scroll.querySelector("[data-variant='mobile-theme']")) return;
+    // The class AND the variant: the language switcher and the palette post their own
+    // `data-variant="mobile"` buttons into this toolbar, and must not stand for the toggle.
+    if (scroll.querySelector(".gl-rp-theme-toggle[data-variant='mobile']")) return;
     const btn = _buildThemeToggleBtn("mobile");
     btn.classList.add("gl-map-toolbar__btn");
     scroll.appendChild(btn);

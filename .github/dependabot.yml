@@ -19,6 +19,11 @@
 # pas. Mesuré le 07/09/2026 sur un lot de 13 montées : 98 gates jouées, une seule rouge, et
 # c'était le cliquet d'intégrité du lock demandant à être resserré.
 #
+# 📌 Depuis le 17/10/2026 c'est le SEUL pré-vol distant : sur l'atelier, la CI des PR
+# Dependabot est sautée (garde de dépôt du job de `ci.yml`, quota rare). La PR d'atelier
+# reste lisible comme diff, sans verdict. Rien n'est changé ici : les deux dépôts lisent ce
+# fichier, et les mises à jour elles-mêmes ne consomment pas de minutes facturées.
+#
 # ⚠️ Portée exacte de cet oracle, et elle est étroite : il prouve que ces VERSIONS passent, et
 # **pas** que le lock régénéré en amont passera — celui-là reste à éprouver par `ci:push`. Il
 # ne prouve pas non plus les versions qu'on installera : les plages sont en `^`, et `npm

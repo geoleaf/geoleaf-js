@@ -232,24 +232,24 @@ GeoLeaf.boot();
 
 ### Événements DOM
 
-| Événement                     | Émetteur           | Quand                                     | Utilisation                   |
-| ----------------------------- | ------------------ | ----------------------------------------- | ----------------------------- |
-| `geoleaf:plugin:loaded`       | PluginRegistry     | Plugin enregistré via `register()`        | Détection plugins             |
-| `geoleaf:config:loaded`       | Config             | Config + profil chargés                   | Init carte                    |
-| `geoleaf:profile:loaded`      | Profile            | Profil actif chargé                       | Toast notification            |
-| `geoleaf:theme:applying`      | ThemeApplier       | Début chargement thème                    | Toast loading                 |
-| `geoleaf:theme:applied`       | ThemeApplier       | Toutes les couches visibles chargées      | Reveal + fitBounds            |
-| `geoleaf:map:ready`           | app/init-reveal.ts | Carte + couches prêtes                    | Analytics, hooks              |
-| `geoleaf:app:ready`           | app/init-reveal.ts | Application entièrement initialisée       | Boot toast, metrics           |
-| `geoleaf:poi:click`           | —                  | 🛑 Déclaré, **jamais émis**               | S'y abonner ne déclenche rien |
-| `geoleaf:basemap:change`      | Baselayers         | Changement fond de plan                   | Analytics                     |
-| `geoleaf:storage:initialized` | Storage            | Storage initialisé                        | Cache ready                   |
-| `geoleaf:offline`             | OfflineDetector    | Connexion perdue                          | Mode offline                  |
-| `geoleaf:online`              | OfflineDetector    | Connexion rétablie                        | Synchronisation               |
-| `geoleaf:sw:updated`          | sw-register        | Un worker neuf s'est activé               | Journal, métriques            |
-| `geoleaf:sw:update-waiting`   | sw-register        | Une version neuve est installée et attend | Bandeau « Recharger »         |
-| `geoleaf:map:move`            | MaplibreAdapter    | Fin de déplacement carte                  | Permalink sync                |
-| `geoleaf:map:zoom`            | MaplibreAdapter    | Fin de zoom carte                         | Permalink sync                |
+| Événement                     | Émetteur           | Quand                                     | Utilisation                                |
+| ----------------------------- | ------------------ | ----------------------------------------- | ------------------------------------------ |
+| `geoleaf:plugin:loaded`       | PluginRegistry     | Plugin enregistré via `register()`        | Détection plugins                          |
+| `geoleaf:config:loaded`       | Config             | Config + profil chargés                   | Init carte                                 |
+| `geoleaf:profile:loaded`      | Profile            | Profil actif chargé                       | Toast notification                         |
+| `geoleaf:theme:applying`      | ThemeApplier       | Début chargement thème                    | Toast loading                              |
+| `geoleaf:theme:applied`       | ThemeApplier       | Toutes les couches visibles chargées      | Reveal, gestionnaire de couches, permalien |
+| `geoleaf:map:ready`           | app/init-reveal.ts | Carte + couches prêtes                    | Analytics, hooks                           |
+| `geoleaf:app:ready`           | app/init-reveal.ts | Application entièrement initialisée       | Boot toast, metrics                        |
+| `geoleaf:poi:click`           | —                  | 🛑 Déclaré, **jamais émis**               | S'y abonner ne déclenche rien              |
+| `geoleaf:basemap:change`      | Baselayers         | Changement fond de plan                   | Analytics                                  |
+| `geoleaf:storage:initialized` | Storage            | Storage initialisé                        | Cache ready                                |
+| `geoleaf:offline`             | OfflineDetector    | Connexion perdue                          | Mode offline                               |
+| `geoleaf:online`              | OfflineDetector    | Connexion rétablie                        | Synchronisation                            |
+| `geoleaf:sw:updated`          | sw-register        | Un worker neuf s'est activé               | Journal, métriques                         |
+| `geoleaf:sw:update-waiting`   | sw-register        | Une version neuve est installée et attend | Bandeau « Recharger »                      |
+| `geoleaf:map:move`            | MaplibreAdapter    | Fin de déplacement carte                  | Permalink sync                             |
+| `geoleaf:map:zoom`            | MaplibreAdapter    | Fin de zoom carte                         | Permalink sync                             |
 
 ---
 

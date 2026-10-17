@@ -127,7 +127,7 @@
                     "description": "Ceiling on the zoom of the initial framing: a map that starts on an extent - `map.bounds`, or the `view.bounds` of the start theme - never frames closer than this zoom. Only a declared key caps. It caps neither the user's zoom (`maxZoom` does) nor a later theme switch, and has no effect when the map starts on a centre and a zoom."
                 },
                 "padding": {
-                    "description": "Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}.",
+                    "description": "Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}, an edge it does not name being 0.",
                     "oneOf": [
                         {
                             "type": "array",

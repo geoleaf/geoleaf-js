@@ -1574,7 +1574,7 @@ CallSignature | GeoLeaf Core API.app/boot-modules/geojson.module.GeoJSONModule.d
 CallSignature | GeoLeaf Core API.app/boot-modules/geojson.module.GeoJSONModule.init.init | doc:f2a22d72c888
 CallSignature | GeoLeaf Core API.app/boot-modules/shared.module.SharedModule.destroy.destroy | doc:8b1a6d18f102
 CallSignature | GeoLeaf Core API.app/boot-modules/shared.module.SharedModule.init.init | doc:f2a22d72c888
-CallSignature | GeoLeaf Core API.app/boot-modules/theme-engine.module.ThemeEngineModule.destroy.destroy | doc:97f922e7559d
+CallSignature | GeoLeaf Core API.app/boot-modules/theme-engine.module.ThemeEngineModule.destroy.destroy | doc:f38829b3eb84
 CallSignature | GeoLeaf Core API.app/boot-modules/theme-engine.module.ThemeEngineModule.init.init | doc:f2a22d72c888
 CallSignature | GeoLeaf Core API.app/boot-modules/ui.module.UIModule.destroy.destroy | doc:c5213d17783a
 CallSignature | GeoLeaf Core API.app/boot-modules/ui.module.UIModule.init.init | doc:f2a22d72c888
@@ -2911,7 +2911,7 @@ CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._buildRasterSour
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._resolveBasemapType._resolveBasemapType | doc:f0579f358c77
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles | doc:a98d468d1e13
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply._trySwitchByTiles._trySwitchByTiles.onWarn.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.declaredAttribution.declaredAttribution | doc:18033694b6c7
+CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.declaredAttribution.declaredAttribution | doc:13d3071dc4a1
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.hasRenderedShape.hasRenderedShape | doc:16261bd60fdd
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.insertBelow.insertBelow | doc:da49e8f7a813
 CallSignature | GeoLeaf Core API.kernel/basemaps/basemaps-apply.readStyleLandmarks.readStyleLandmarks | doc:964f17d231e5
@@ -3373,6 +3373,7 @@ CallSignature | GeoLeaf Core API.kernel/security/dom-security.DOMSecurity.__type
 CallSignature | GeoLeaf Core API.kernel/security/escaping.createSafeElement.createSafeElement | doc:292b664af61d
 CallSignature | GeoLeaf Core API.kernel/security/escaping.escapeAttribute.escapeAttribute | doc:7b234ae5cb8f
 CallSignature | GeoLeaf Core API.kernel/security/escaping.escapeHtml.escapeHtml | doc:8d93771dfbbb
+CallSignature | GeoLeaf Core API.kernel/security/map-credit.sanitizeAttribution.sanitizeAttribution | doc:a291c8b0c7dd
 CallSignature | GeoLeaf Core API.kernel/security/sanitizers.containsDangerousHtml.containsDangerousHtml | doc:9fc73ad12b33
 CallSignature | GeoLeaf Core API.kernel/security/sanitizers.parseHtmlSafely.parseHtmlSafely | doc:c14223272886
 CallSignature | GeoLeaf Core API.kernel/security/sanitizers.sanitizeHTML.sanitizeHTML | doc:6cafe084ec91
@@ -3472,7 +3473,6 @@ CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierMo
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._applyThemeLayers._applyThemeLayers | doc:-
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._checkPendingLayerConfigs._checkPendingLayerConfigs | doc:-
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._cleanup._cleanup | doc:-
-CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._fitBoundsOnAllLayers._fitBoundsOnAllLayers | doc:-
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._getProfilesBasePath._getProfilesBasePath | doc:-
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._hideAllLayers._hideAllLayers | doc:-
 CallSignature | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._init._init | doc:-
@@ -5353,6 +5353,7 @@ Function | GeoLeaf Core API.kernel/security.validateUrl | doc:-
 Function | GeoLeaf Core API.kernel/security/escaping.createSafeElement | doc:-
 Function | GeoLeaf Core API.kernel/security/escaping.escapeAttribute | doc:-
 Function | GeoLeaf Core API.kernel/security/escaping.escapeHtml | doc:-
+Function | GeoLeaf Core API.kernel/security/map-credit.sanitizeAttribution | doc:-
 Function | GeoLeaf Core API.kernel/security/sanitizers.containsDangerousHtml | doc:-
 Function | GeoLeaf Core API.kernel/security/sanitizers.parseHtmlSafely | doc:-
 Function | GeoLeaf Core API.kernel/security/sanitizers.sanitizeHTML | doc:-
@@ -6407,7 +6408,6 @@ Interface | GeoLeaf Core API.kernel/shared/legend-slot.LegendSink | doc:6bdaf183
 Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ActiveProfile | doc:714c432c683a
 Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ProfileLayerConfig | doc:6c332a15dc25
 Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule | doc:84168203abf1
-Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeBounds | doc:7bba382c5a55
 Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeConfig | doc:b690f7f7b900
 Interface | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeLayerConfig | doc:98325416138e
 Interface | GeoLeaf Core API.kernel/themes/theme-loader.NormalizedTheme | doc:4adc448c47ba
@@ -7905,7 +7905,6 @@ Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._a
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._applyThemeLayers | doc:-
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._checkPendingLayerConfigs | doc:-
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._cleanup | doc:-
-Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._fitBoundsOnAllLayers | doc:-
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._getProfilesBasePath | doc:-
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._hideAllLayers | doc:-
 Method | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._init | doc:-
@@ -8944,6 +8943,7 @@ Module | GeoLeaf Core API.kernel/map/theme | doc:-
 Module | GeoLeaf Core API.kernel/security | doc:-
 Module | GeoLeaf Core API.kernel/security/dom-security | doc:-
 Module | GeoLeaf Core API.kernel/security/escaping | doc:-
+Module | GeoLeaf Core API.kernel/security/map-credit | doc:-
 Module | GeoLeaf Core API.kernel/security/sanitizers | doc:-
 Module | GeoLeaf Core API.kernel/security/validators | doc:-
 Module | GeoLeaf Core API.kernel/shared | doc:-
@@ -13082,6 +13082,7 @@ Parameter | GeoLeaf Core API.kernel/security/escaping.createSafeElement.createSa
 Parameter | GeoLeaf Core API.kernel/security/escaping.createSafeElement.createSafeElement.tagName | doc:1a8d3109f194
 Parameter | GeoLeaf Core API.kernel/security/escaping.escapeAttribute.escapeAttribute.str | doc:ac0ad86599b0
 Parameter | GeoLeaf Core API.kernel/security/escaping.escapeHtml.escapeHtml.str | doc:ac0ad86599b0
+Parameter | GeoLeaf Core API.kernel/security/map-credit.sanitizeAttribution.sanitizeAttribution.html | doc:87d8259505f9
 Parameter | GeoLeaf Core API.kernel/security/sanitizers.containsDangerousHtml.containsDangerousHtml.str | doc:841fa1940343
 Parameter | GeoLeaf Core API.kernel/security/sanitizers.parseHtmlSafely.parseHtmlSafely.allowedTags | doc:03ec7095caf2
 Parameter | GeoLeaf Core API.kernel/security/sanitizers.parseHtmlSafely.parseHtmlSafely.html | doc:2adee8e1fc53
@@ -16007,7 +16008,7 @@ Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.OwnedStyl
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.OwnedStyleIds.sourceIds | doc:cf17cc98736f
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleSpecLike.layers | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleSpecLike.sources | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleTransformOptions.attribution | doc:7eaabec37b4f
+Property | GeoLeaf Core API.adapters/maplibre/maplibre-style-transform.StyleTransformOptions.attribution | doc:6c7e88446036
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.ensureSprite | doc:6fcf46b66531
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getCategories | doc:70f365b37bb0
 Property | GeoLeaf Core API.api/geoleaf.taxonomy.Taxonomy.__type.getFieldMappings | doc:25c6a6caffe3
@@ -17294,7 +17295,7 @@ Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafBounds.west | doc
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafControl.position | doc:7abcd8e44f1c
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLatLng.lat | doc:ac1d1ccc43a1
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLatLng.lng | doc:52741a1affe6
-Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLayerOptions.attribution | doc:b778692c0d2a
+Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLayerOptions.attribution | doc:33d7e034e760
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLayerOptions.cluster | doc:b037bff34fbe
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLayerOptions.clusterMaxZoom | doc:d81d07f6d5a0
 Property | GeoLeaf Core API.contracts/map-adapter.types.GeoLeafLayerOptions.clusterRadius | doc:3efdbe4756ab
@@ -18695,13 +18696,8 @@ Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ProfileLayerConfig.
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ProfileLayerConfig.visible | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ProfileLayerConfig.write | doc:026e30e75271
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._currentThemeId | doc:-
-Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._isFirstLoad | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._pendingCheckTimer | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeApplierModule._pendingLayerConfigs | doc:-
-Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeBounds.east | doc:-
-Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeBounds.north | doc:-
-Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeBounds.south | doc:-
-Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeBounds.west | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeConfig.config | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeConfig.id | doc:-
 Property | GeoLeaf Core API.kernel/themes/theme-applier/core.ThemeConfig.label | doc:-

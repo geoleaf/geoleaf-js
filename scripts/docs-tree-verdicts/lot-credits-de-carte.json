@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "credits-de-carte",
+    "scope": ["packages/core/src/kernel/security/map-credit.ts"],
+    "verdicts": {
+        "packages/core/src/kernel/security/map-credit.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "`sanitizeAttribution` — la seule porte d'un crédit de carte vers le contrôle d'attribution du moteur : mise en forme en ligne et liens à URL sûre gardés, le reste devient texte",
+            "confidence": "haute",
+            "rationale": "Le crédit d'un fond (profil) et l'option `attribution` d'une couche sont du HTML qui finit dans le contrôle d'attribution ; une seule fonction les nettoie, ils ne peuvent pas diverger. Sous `kernel/security/`, à côté du sanitiseur qu'il emploie, et NON ré-exporté par le baril : couture interne, pas un membre de `GeoLeaf.Security`. Lu par `kernel/basemaps/basemaps-apply.ts`, `adapters/maplibre/maplibre-style-transform.ts` et `adapters/maplibre/maplibre-layer-builders.ts`. Tenu par `__tests__/security/map-credit.test.ts` et les cas d'attribution des suites de l'adaptateur, vus rouges avant le branchement et sur une mutation de la liste blanche"
+        }
+    }
+}

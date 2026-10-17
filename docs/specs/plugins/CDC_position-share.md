@@ -108,7 +108,8 @@ typer est un point d'extension qu'il n'utilisera pas : l'omission rend un `TS230
 🛑 **Le montage s'écrit `.PositionShare = buildPublicApi()` LITTÉRALEMENT, et ce n'est pas une
 préférence de style.** Deux gardes reconnaissent cette forme **par expression régulière** —
 `doc-plugin-manifest.guard.test.js` et `plugin-namespace-declared.guard.test.js` —, et **aucune des
-deux** ne reconnaît la forme `const _api = buildPublicApi(); _host.X = _api;` que le scaffold émet.
+deux** ne reconnaît la forme `const _api = buildPublicApi(); _host.X = _api;` que le scaffold
+émettait jusqu'au 16/10/2026 — il émet désormais la forme littérale, gardée par SCAF-14.
 Garder la façade dans une variable locale épargne une assertion chez l'écouteur, mais coûte les
 deux gardes : c'est le mauvais échange. L'écouteur relit donc à travers une assertion étroite,
 exactement comme `packages/plugins/table/src/entry.ts`.

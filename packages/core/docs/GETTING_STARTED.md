@@ -136,9 +136,9 @@ in your `script-src`. The self-hosted recipe has neither limitation.
 :::
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -196,7 +196,7 @@ flowchart TD
         <title>GeoLeaf — First Map</title>
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
+            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css"
         />
         <link
             rel="stylesheet"
@@ -213,7 +213,7 @@ flowchart TD
         <div id="map"></div>
 
         <script type="module">
-            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
             globalThis.maplibregl = maplibregl;
         </script>
         <script

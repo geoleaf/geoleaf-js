@@ -215,21 +215,6 @@
             "editor.toolbar.poi_add": "POI hinzufügen",
         },
     });
-    // ── navigation — LAZY, and WITHOUT a toolbar slot ────────────────────────────────────
-    //
-    // 🛑 No `registerLazyForAction` here, deliberately. Guidance has nothing to
-    // follow while no route exists: a toolbar button would be a control that
-    // does nothing most of the time, and `modules.navigation.showButton` is
-    // `false` for exactly that reason. The entry point lives where the route
-    // lives — in `routing`'s panel, which is loaded EAGER and thus always knows
-    // when to offer the button.
-    //
-    // ⚠️ `routing` tests availability with `isLazyAvailable`, NEVER `isLoaded`: a
-    // lazy plugin only enters the registry after its load, and the only gesture
-    // that would load it is precisely this button. Gating on `isLoaded` would
-    // hide the entry point behind the condition it serves to satisfy.
-    gl.plugins.registerLazy("navigation", () => import("./dist/geoleaf-navigation.plugin.js"));
-
     gl.plugins.registerLazy("editor", () => import("./dist/geoleaf-editor.plugin.js"));
     gl.plugins.registerLazyForAction("editor", "editor", {
         gateOnModuleEnabled: true,
@@ -363,11 +348,32 @@
     );
     gl.plugins.registerLazy("connector", () => import("./dist/geoleaf-connector.plugin.js"));
 
-    // navigation is LAZY, and it is the exact counterpart of routing being eager. Guidance is
-    // only ever entered AFTER a route exists — that is, from an interface already drawn by a
-    // plugin already loaded — so the guard that forces routing to load early does not apply,
-    // and this is the heavier of the two. It declares `requires: ["routing"]`, which the eager
-    // tag in index.html satisfies before this resolver is ever called.
+    // ── navigation — LAZY, and WITHOUT a toolbar slot ────────────────────────────────────
+    //
+    // 🛑 No `registerLazyForAction` here, deliberately. Guidance has nothing to
+    // follow while no route exists: a toolbar button would be a control that
+    // does nothing most of the time, and `modules.navigation.showButton` is
+    // `false` for exactly that reason. The entry point lives where the route
+    // lives — in `routing`'s panel, which is loaded EAGER and thus always knows
+    // when to offer the button.
+    //
+    // ⚠️ `routing` tests availability with `isLazyAvailable`, NEVER `isLoaded`: a
+    // lazy plugin only enters the registry after its load, and the only gesture
+    // that would load it is precisely this button. Gating on `isLoaded` would
+    // hide the entry point behind the condition it serves to satisfy.
+    //
+    // LAZY is the exact counterpart of routing being eager. Guidance is only ever entered AFTER
+    // a route exists — from an interface already drawn by a plugin already loaded — so the guard
+    // that forces routing to load early does not apply, and this is the heavier of the two. It
+    // declares `requires: ["routing"]`, which the eager tag in index.html satisfies before this
+    // resolver is ever called. Registered ONCE: a second `registerLazy` of the same name
+    // replaces the first, and a change made to one of two copies would silently not apply.
+    //
+    // 🛑 OUTSIDE every GATED-BLOCK, and the placement is the point: `deploy-core` ships
+    // `routing` and `navigation`, and a registration inside the editor block is stripped
+    // from it with that block — the variant then serves a bundle nothing asks for
+    // (DEPLOY-SERVER-CONTRACT, SC-07). Seen on 16/10/2026, when the copy kept was the one
+    // inside the block.
     gl.plugins.registerLazy("navigation", () => import("./dist/geoleaf-navigation.plugin.js"));
 })();
 

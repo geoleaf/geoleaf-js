@@ -17,7 +17,8 @@ on:
     # part : ni sur push, ni sur PR, ni en cron, ni avant publication. Sur l'atelier
     # (compte free, quota rare) elle coûte 2 h 12 par run, mesurées — impayable. Sur le
     # public, les Actions sont gratuites : le cron y tourne, et le job entier est SAUTÉ
-    # ailleurs (voir l'`if:` de `build-and-test`). Un job sauté n'est pas facturé.
+    # ailleurs — comme tout événement autre que manuel depuis le 17/10/2026 (voir l'`if:`
+    # de `build-and-test`). Un job sauté n'est pas facturé.
     #
     # ⚠️ Le rapport d'avis produit demandait « cron nocturne ET sur PR vers `main` sur le
     # dépôt public ». Le volet PR est écarté avec son motif, mesuré : `port-to-public.cjs`
@@ -64,15 +65,23 @@ permissions:
 
 jobs:
     build-and-test:
-        # 🛑 Le cron ne concerne QUE le dépôt public. Sans cette ligne il ferait tourner les
-        # 114 étapes chaque nuit sur l'atelier, dont le quota Actions est rare et a déjà été
-        # épuisé une fois (31/08/2026 — les runs sortaient « failure » en 1 s, sans qu'aucune
-        # gate n'ait tourné). Un job dont l'`if:` est faux est SAUTÉ, donc non facturé.
+        # 🛑 Sur le dépôt PUBLIC, tout tourne : push du portage, PR, cron, déclenchement
+        # manuel — ses Actions sont gratuites. AILLEURS (l'atelier privé, quota rare, déjà
+        # épuisé une fois le 31/08/2026), SEUL le déclenchement manuel tourne. Un job dont
+        # l'`if:` est faux est SAUTÉ, donc non facturé.
         #
-        # ⚠️ La condition ne mentionne QUE `schedule` : les push, PR et déclenchements manuels
-        # gardent leur comportement des deux côtés. Élargir cette garde à d'autres événements
-        # rendrait l'atelier aveugle à ses propres pushes.
-        if: github.event_name != 'schedule' || github.repository == 'geoleaf/geoleaf-js'
+        # ⚠️ DÉCISION RENVERSÉE le 17/10/2026. Cette garde ne visait que `schedule`, et son
+        # commentaire disait : l'élargir « rendrait l'atelier aveugle à ses propres pushes ».
+        # Mesuré ce jour-là : le push de `main` coûtait ~28 min par run et les PR Dependabot
+        # ~16, soit ~85 % du quota du compte — pour un verdict que DEUX autres instruments
+        # rendent déjà. `ci:local` ∪ `atelier:check` ⊇ ce fichier (PARITY-03), `ci:push` rejoue
+        # sur clone frais, et ce même fichier, porté à l'octet, tourne gratuitement sur le
+        # public à chaque portage, sur 2-4 cœurs. L'atelier n'est pas aveugle : son verdict
+        # distant a changé de dépôt. Ce qui se perd : un verdict distant ENTRE deux portages.
+        #
+        # 📌 Le fichier étant porté, la divergence ne peut tenir QUE par cette garde de dépôt.
+        # Retirer `push` ou `pull_request` des déclencheurs couperait aussi le public.
+        if: github.repository == 'geoleaf/geoleaf-js' || github.event_name == 'workflow_dispatch'
         runs-on: ubuntu-latest
         steps:
             # ⚠️ `fetch-depth: 0` est EXIGÉ par la gate « Secret scan (gitleaks) », et son absence

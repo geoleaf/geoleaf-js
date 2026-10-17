@@ -8,11 +8,15 @@
  * images survive. When the diff fails it rebuilds the style from scratch, with a new image
  * manager: the layers are carried by the transform, the images they name are not.
  *
- * 🛑 WHAT MAKES THE DIFF FAIL, measured here and read in MapLibre 6.7.0 — not a sprite or a
- * glyphs change, which the engine diffs. An incoming style that declares `centerAltitude` (a
- * command the diff emits and nothing implements), or `terrain` (its operation calls
- * `Map.setTerrain` on the wrong receiver and throws). The second also fails on the way OUT of
- * such a style, the terrain then being in the outgoing one.
+ * 🛑 WHAT MAKES THE DIFF FAIL — not a sprite or a glyphs change, which the engine diffs. An
+ * incoming style that declares `centerAltitude`: a command the diff emits and nothing implements.
+ * Measured in MapLibre 6.7.0, and still so in 6.12.0.
+ *
+ * `terrain` USED to: its operation called `Map.setTerrain` on the wrong receiver and threw, on the
+ * way in and on the way out. Fixed upstream in 6.10.0 ("Fix `setStyle` calling `Map.setTerrain`
+ * with the wrong `this`"); measured on 16/10/2026, once the repository moved to 6.12.0, the very
+ * case below turned red — the engine no longer rebuilt. It stays, its expectation inverted: a
+ * future MapLibre that breaks the terrain diff again reddens it.
  *
  * ⚠️ THE CONTROL IS THE FIRST TEST, and it is what makes the two others mean something: the same
  * switch through a style the engine can diff keeps the engine's style object, and the pattern.
@@ -71,9 +75,9 @@ const CASES = [
         style: () => ({ ...DIFFABLE, centerAltitude: 100 }),
     },
     {
-        name: "un style qui déclare `terrain` fait reconstruire le style, à l'aller et au retour",
-        rebuilds: true,
-        rebuildsOnTheWayBack: true,
+        name: "un style qui déclare `terrain` se différencie, à l'aller et au retour (MapLibre ≥ 6.10)",
+        rebuilds: false,
+        rebuildsOnTheWayBack: false,
         style: (origin) => ({
             ...DIFFABLE,
             sources: {

@@ -4,7 +4,7 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 83f3efeb7
+verifie_contre: fd04286cf
 date: 11 octobre 2026
 ---
 
@@ -34,6 +34,11 @@ date: 11 octobre 2026
 > corps compris et validée comme un renouvellement (CN-43). `90b8cd24c` : un renouvellement
 > refusé n'est demandé qu'une fois (CN-44). Les trois lignes sont écrites avec leur commit.
 > Relu et inchangé : le reste.
+
+> ⚠️ **L'estampille du 16/10/2026 est collatérale elle aussi.** `fd04286cf` épingle MapLibre sur la
+> mineure testée (`maplibre-gl@6.12`) dans les blocs de démarrage de `docs/CONNECTOR_GUIDE.md`,
+> comme dans toutes les recettes ; aucune ligne de `src/` ne bouge, et rien de ce que la fiche
+> décrit n'en dépend. Relu : inchangé.
 
 > ⚠️ **L'estampille du 19/09/2026 est COLLATÉRALE, et ne couvre rien de neuf.** Elle a été
 > reportée deux fois sans qu'une ligne de `src/` bouge : l'épingle CDN de

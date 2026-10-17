@@ -382,7 +382,7 @@ function checkMapLibrePresence(code) {
                 "JAMAIS le JavaScript de MapLibre. `maplibre-gl` est `external` dans le bundle : " +
                 "il n'est atteint que par `globalThis.maplibregl`, et la v6 (ESM-only) ne pose " +
                 'plus ce global. Ajouter le shim — `<script type="module">import * as maplibregl ' +
-                'from "…/maplibre-gl@6/dist/maplibre-gl.mjs"; globalThis.maplibregl = maplibregl;' +
+                'from "…/maplibre-gl@6.12/dist/maplibre-gl.mjs"; globalThis.maplibregl = maplibregl;' +
                 '</script>` — ou, en auto-hébergé, `<script type="module" src="…/global.mjs">`. ' +
                 "Si ce bloc est un fragment délibéré, le déclarer par " +
                 "`<!-- geoleaf:docs:fragment — motif -->`.",

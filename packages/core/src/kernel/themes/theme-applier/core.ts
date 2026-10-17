@@ -47,25 +47,11 @@ export interface ThemeConfig {
 /** Options accepted by `applyTheme`. */
 interface ApplyThemeOptions {
     /**
-     * Asks for the legacy fit on the union of the layers' bounds, one second after the theme is
-     * applied. The core's loader records no bounds on a layer, so it finds nothing to fit; no
-     * caller passes it.
-     */
-    fitBounds?: boolean;
-    /**
      * Applies the theme without moving the camera, even when it declares a view. Passed by the
      * boot, which starts the map on that view itself, and by whoever restores a view of its own
      * alongside the theme.
      */
     keepView?: boolean;
-}
-
-/** Bounds shape used by the fit-bounds path. */
-export interface ThemeBounds {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
 }
 
 /** Pending per-layer config queued while a layer is not yet registered. */
@@ -82,7 +68,6 @@ interface PendingLayerConfig {
 export interface ThemeApplierModule {
     // ── State ──
     _currentThemeId: string | null;
-    _isFirstLoad: boolean;
     _pendingLayerConfigs: Map<string, PendingLayerConfig>;
     _pendingCheckTimer: ReturnType<typeof setTimeout> | null;
 
@@ -118,7 +103,6 @@ export interface ThemeApplierModule {
     // ── ui-sync.ts ──
     _updateStyleSelector(layerId: string, styleId: string | undefined): void;
     _loadLegendForStyle(layerId: string, styleId: string | undefined): void;
-    _fitBoundsOnAllLayers(): void;
     _syncLegendVisibility(): void;
 }
 
@@ -280,9 +264,6 @@ const _ThemeApplier = {
     /** @type {string|null} Currently active theme */
     _currentThemeId: null as string | null,
 
-    /** @type {boolean} Flag saying whether this is the first load */
-    _isFirstLoad: true,
-
     /**
      * Initializes the ThemeApplier
      * @private
@@ -312,8 +293,6 @@ const _ThemeApplier = {
      *   receiver is part of the signature — and TSD-02 counts it as a parameter.
      * @param {Object} theme - Configuration of the theme
      * @param {Object} [options] - Application options
-     * @param {boolean} [options.fitBounds] - Asks for the legacy fit on the layers' bounds,
-     *   which finds nothing to fit: the core's loader records no bounds on a layer
      * @param {boolean} [options.keepView] - Leaves the camera where it is, even when the theme
      *   declares a view
      * @returns {Promise<void>}
@@ -355,7 +334,6 @@ const _ThemeApplier = {
         const layerConfigs = theme.layers || [];
         const profileConfig = _Config?.Profile?.getActiveProfileConfig();
         const perfConfig: { themeBatchSize?: number } = profileConfig?.performance || {};
-        const enableFitBounds = false;
         const visibleLayers = layerConfigs.filter((cfg: ThemeLayerConfig) => cfg.visible !== false);
         // 🔻 Default raised from 3 to 6 on 07/08/2026, to match the loader's Phase 1 cap
         // (`PHASE1_BATCH_SIZE`). ⚠️ This is the SECOND cap on the reveal path and the roadmap
@@ -385,14 +363,6 @@ const _ThemeApplier = {
                     totalLayersInTheme: layerConfigs.length,
                     timestamp: new Date().toISOString(),
                 });
-                const shouldFitBounds =
-                    options.fitBounds === true || (self._isFirstLoad && enableFitBounds);
-                if (shouldFitBounds) {
-                    setTimeout(() => {
-                        self._fitBoundsOnAllLayers();
-                    }, 1000);
-                    self._isFirstLoad = false;
-                }
             })
             .catch((err) => {
                 throw err;

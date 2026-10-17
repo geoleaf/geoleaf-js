@@ -64,13 +64,13 @@ npm install @geoleaf/core maplibre-gl
 Or from a CDN:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <link
     rel="stylesheet"
     href="https://cdn.jsdelivr.net/npm/@geoleaf/core@3/dist/geoleaf-main.min.css"
 />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 <script
@@ -101,7 +101,7 @@ from another origin — so parsing runs on the main thread and a console warning
         <title>Local businesses</title>
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
+            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css"
         />
         <link
             rel="stylesheet"
@@ -121,7 +121,7 @@ from another origin — so parsing runs on the main thread and a console warning
         <div id="geoleaf-map"></div>
 
         <script type="module">
-            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
             globalThis.maplibregl = maplibregl;
         </script>
         <script

@@ -29,7 +29,6 @@ describe("theme-applier/core", () => {
         ThemeApplierCore._hideAllLayers = vi.fn();
         ThemeApplierCore._applyLayerConfig = vi.fn(() => Promise.resolve());
         ThemeApplierCore._syncLegendVisibility = vi.fn();
-        ThemeApplierCore._fitBoundsOnAllLayers = vi.fn();
     });
 
     describe("ThemeApplierCore export", () => {

@@ -66,7 +66,6 @@ import { ThemeApplierCore } from "../src/kernel/themes/theme-applier/core.js";
 ThemeApplierCore._hideAllLayers = vi.fn();
 ThemeApplierCore._syncLegendVisibility = vi.fn();
 ThemeApplierCore._applyLayerConfig = vi.fn(() => Promise.resolve());
-ThemeApplierCore._fitBoundsOnAllLayers = vi.fn();
 
 describe("Coverage — ThemeApplierCore", () => {
     describe("_init() / _cleanup()", () => {
@@ -129,13 +128,6 @@ describe("Coverage — ThemeApplierCore", () => {
             ThemeApplierCore._currentThemeId = "nature";
             expect(ThemeApplierCore._currentThemeId).toBe("nature");
             ThemeApplierCore._currentThemeId = null;
-        });
-    });
-
-    describe("_isFirstLoad flag", () => {
-        it("starts as true by default", () => {
-            // Read the initial value — may have been changed by other tests
-            expect(typeof ThemeApplierCore._isFirstLoad).toBe("boolean");
         });
     });
 });

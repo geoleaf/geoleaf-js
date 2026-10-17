@@ -45,9 +45,9 @@ shim is a file.
 
 ```html
 <!-- MapLibre GL JS (peer dependency — must be loaded before GeoLeaf) -->
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://unpkg.com/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://unpkg.com/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -71,9 +71,9 @@ shim is a file.
 
 ```html
 <!-- MapLibre GL JS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -163,10 +163,10 @@ Core.init({
         <!-- MapLibre GL JS (peer dependency) — stylesheet AND engine -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
+            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css"
         />
         <script type="module">
-            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
             globalThis.maplibregl = maplibregl;
         </script>
 
@@ -361,6 +361,12 @@ browser **refuses to execute it** and nothing boots.
   is what you serve. The other pages of this documentation pin the **major** (`@3`) instead, so a
   copy-pasted tutorial cannot go stale — that is the right trade for a first map, and the wrong one
   for a deployment.
+- **MapLibre is pinned to a minor** (`maplibre-gl@6.12`) on every page, not to its major: it is the
+  version this project tests. From 6.13.0 MapLibre publishes its shared code twice — in
+  `maplibre-gl.mjs` and in its worker, `maplibre-gl-shared.mjs` shipping empty — which weighs about
+  half again as much over the network (measured gzipped on the published files: 297 KiB for 6.12.0,
+  418 KiB for 6.14.0). `@6` would silently hand that weight, and an engine nobody tested here, to a
+  copied recipe. Moving to a later minor is a decision, taken with that number.
 - Plan a local fallback in production.
 
 ---

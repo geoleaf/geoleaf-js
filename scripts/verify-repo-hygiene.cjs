@@ -1182,6 +1182,35 @@ for (const f of gitVisibleFiles) {
     strayCjsHits.push({ file: f, label: "unlisted module outside scripts/" });
 }
 
+// ─── Check 1d — declarations emitted beside the sources ──────────────────────
+//
+// A build run on an INCOHERENT workspace — a package renamed in its `package.json`, its
+// `node_modules/` link not yet refreshed by `npm install` — resolves differently, and
+// TypeScript emits its declarations wherever it can: next to the sources. It happened
+// twice in one afternoon (25/07/2026): 14, then 519 untracked `.d.ts` under `src/`. The
+// only tool that spoke was knip, as "unused files" — a symptom that names no cause. This
+// script stayed green, and ESLint reddened on one of them (`no-explicit-any` in a
+// generated declaration), which could send someone to "fix" an artifact.
+//
+// The discriminant is UNTRACKED, and it needs no allow-list: the declarations that belong
+// under a `src/` — `css.d.ts`, `global.d.ts` — are tracked, every one of them. Corpus is
+// what git sees, index plus untracked-not-ignored (the check 1b corpus), restricted to the
+// `src/` of every package of the registry — which throws on a package it cannot find, so a
+// move does not turn this into a check that scans nothing. Consequence, the repo's standing
+// trap: a hand-written declaration is flagged until it is `git add`-ed.
+const trackedFileSet = new Set(trackedFiles);
+const packageSourcePrefixes = REGISTRY.all().map((pkg) => `${pkg.dir.replace(/\\/g, "/")}/src/`);
+const strayDeclarationHits = [];
+
+for (const f of gitVisibleFiles) {
+    if (!f.endsWith(".d.ts") || trackedFileSet.has(f)) continue;
+    if (!packageSourcePrefixes.some((prefix) => f.startsWith(prefix))) continue;
+    strayDeclarationHits.push({
+        file: f,
+        label: "declaration emitted beside the sources — delete it, and run `npm install` before any build",
+    });
+}
+
 // ─── Check 4 — TypeScript files > 700 lines (warning only) ──────────────────
 
 const sourceFiles = [];
@@ -1296,6 +1325,11 @@ function reportCategory(label, hits, formatter) {
 reportCategory("Throwaway scripts tracked in git", throwawayHits, (h) => `${h.file}  [${h.label}]`);
 reportCategory("Unlisted modules outside scripts/", strayCjsHits, (h) => `${h.file}  [${h.label}]`);
 reportCategory(
+    "Untracked declarations under a package src/",
+    strayDeclarationHits,
+    (h) => `${h.file}  [${h.label}]`
+);
+reportCategory(
     "Stale SCRIPTS_ALLOWLIST entries",
     staleAllowlistHits,
     (h) => `${h.file}  [${h.label}]`
@@ -1336,6 +1370,7 @@ reportCategory(
 const errors =
     throwawayHits.length +
     strayCjsHits.length +
+    strayDeclarationHits.length +
     staleAllowlistHits.length +
     artifactHits.length +
     bytecodeHits.length +

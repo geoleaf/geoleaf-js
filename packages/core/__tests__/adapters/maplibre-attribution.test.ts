@@ -111,6 +111,32 @@ describe("attribution d'un fond vectoriel — transformation de style", () => {
     });
 });
 
+describe("le crédit d'un fond passe par le nettoyage", () => {
+    const hostile = '© <a href="https://example.org/">Fond</a><img src=x onerror="alert(1)">';
+
+    it("🔴 un fond raster pose sur sa source un crédit nettoyé", async () => {
+        const { _buildRasterSourceSpec } =
+            await import("../../src/kernel/basemaps/basemaps-apply.js");
+        const { sourceSpec } = _buildRasterSourceSpec({
+            id: "r",
+            url: "https://tiles.example.org/{z}/{x}/{y}.png",
+            attribution: hostile,
+        } as never);
+        expect(sourceSpec.attribution).toContain('href="https://example.org/"');
+        expect(sourceSpec.attribution).not.toMatch(/<img|onerror/);
+    });
+
+    it("🔴 la transformation de style d'un fond vectoriel pose un crédit nettoyé", () => {
+        const out = buildGeoLeafStyleTransform(() => NOTHING_OWNED, { attribution: hostile })(
+            undefined,
+            vectorStyle()
+        );
+        const sources = out.sources as Record<string, { attribution?: string }>;
+        expect(sources.base?.attribution).toContain('href="https://example.org/"');
+        expect(sources.base?.attribution).not.toMatch(/<img|onerror/);
+    });
+});
+
 describe("attribution d'un fond vectoriel — le registre la transmet", () => {
     const build = vi.fn(() => null);
 

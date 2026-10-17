@@ -17,17 +17,9 @@ vi.mock("../../src/kernel/shared/geojson-state.js", () => ({
         getLayers: mockGetLayers,
     },
 }));
-const mockGetMarkerLayer = vi.fn(() => null);
-vi.mock("../../src/kernel/shared/poi-state.js", () => ({
-    POIShared: { getMarkerLayer: (...args) => mockGetMarkerLayer(...args) },
-}));
 const mockGetVisibilityState = vi.fn(() => ({ current: true }));
 vi.mock("../../src/kernel/shared/layer-visibility-state.js", () => ({
     LayerVisibilityManager: { getVisibilityState: (...args) => mockGetVisibilityState(...args) },
-}));
-const mockGetMap = vi.fn(() => null);
-vi.mock("../../src/api/geoleaf.core.js", () => ({
-    Core: { getMap: (...args) => mockGetMap(...args) },
 }));
 import { ThemeApplierUISync as TA } from "../../src/kernel/themes/theme-applier/ui-sync.js";
 import { provideLegend } from "../../src/kernel/shared/legend-slot.js";
@@ -86,26 +78,6 @@ describe("theme-applier/ui-sync", () => {
         });
     });
 
-    describe("_fitBoundsOnAllLayers", () => {
-        it("returns early when Core.getMap() is null", () => {
-            mockGetMap.mockReturnValueOnce(null);
-            expect(() => TA._fitBoundsOnAllLayers()).not.toThrow();
-        });
-
-        it("does not throw when layers and map available (MapLibre mode)", () => {
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce([
-                ["layer-1", { layer: { id: "l1" } }],
-                ["layer-2", { layer: { id: "l2" } }],
-            ]);
-            const el = document.createElement("div");
-            el.id = "geoleaf-map";
-            document.body.appendChild(el);
-            expect(() => TA._fitBoundsOnAllLayers()).not.toThrow();
-        });
-    });
-
     describe("_syncLegendVisibility", () => {
         it("returns early when LegendContract is not available", () => {
             TA._syncLegendVisibility();
@@ -138,56 +110,6 @@ describe("theme-applier/ui-sync", () => {
             expect(mockLoadLayerLegend).not.toHaveBeenCalled();
             mockLayersMap.delete("no-config");
             legend.isAvailable = vi.fn(() => false);
-        });
-    });
-
-    describe("_fitBoundsOnAllLayers branches", () => {
-        it("calls loading screen updateProgress when present", () => {
-            const updateProgress = vi.fn();
-            window._glLoadingScreen = { updateProgress };
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce([["l1", { layer: {} }]]);
-            document.body.innerHTML = '<div id="geoleaf-map"></div>';
-            TA._fitBoundsOnAllLayers();
-            expect(updateProgress).toHaveBeenCalledWith(99);
-            delete window._glLoadingScreen;
-        });
-
-        it("does not throw when map container exists", () => {
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce(new Map([["l1", { layer: {} }]]));
-            const container = document.createElement("div");
-            container.id = "geoleaf-map";
-            document.body.appendChild(container);
-            expect(() => TA._fitBoundsOnAllLayers()).not.toThrow();
-        });
-
-        it("does not call fitBounds in MapLibre mode (no Leaflet bounds path)", () => {
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce(new Map([["l1", { layer: {} }]]));
-            TA._fitBoundsOnAllLayers();
-            expect(map.fitBounds).not.toHaveBeenCalled();
-        });
-
-        it("does not throw when POI marker layer present (MapLibre mode)", () => {
-            const poiLayer = {};
-            mockGetMarkerLayer.mockReturnValueOnce(poiLayer);
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce([]);
-            document.body.innerHTML = '<div id="geoleaf-map"></div>';
-            expect(() => TA._fitBoundsOnAllLayers()).not.toThrow();
-        });
-
-        it("does not throw while iterating layers (MapLibre mode)", () => {
-            const map = { fitBounds: vi.fn() };
-            mockGetMap.mockReturnValueOnce(map);
-            mockGetLayers.mockReturnValueOnce([["l1", { layer: {} }]]);
-            document.body.innerHTML = '<div id="geoleaf-map"></div>';
-            expect(() => TA._fitBoundsOnAllLayers()).not.toThrow();
         });
     });
 });

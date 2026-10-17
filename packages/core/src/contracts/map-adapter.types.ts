@@ -155,7 +155,11 @@ export interface GeoLeafLayerOptions {
     zIndex?: number;
     /** Whether the layer responds to pointer events. @default true */
     interactive?: boolean;
-    /** HTML string shown in the attribution control. */
+    /**
+     * The layer's credit, shown by the engine's attribution control — set on the layer's source
+     * by `addGeoJSONLayer`. HTML is cleaned first: inline formatting and links with a safe URL are
+     * kept, any other markup becomes text. Ignored when nothing is left to show.
+     */
     attribution?: string;
     /** Enable MapLibre native Supercluster on this GeoJSON source (Point layers only). */
     cluster?: boolean;

@@ -37,14 +37,17 @@ derives is a list nobody checks.
 
 `verify-plugin-scaffold.cjs` scaffolds two throwaway plugins and holds them to the repo's own
 gates: typecheck, Plugin Contract v1, module headers, README rendering, TSDoc, dead CSS,
-README ↔ config, façade purity, module graph, a discoverable `geoleaf` descriptor, and the
-package's own coverage threshold. A template change that breaks one of them reddens that gate.
+README ↔ config, façade purity, module graph, a discoverable `geoleaf` descriptor, the
+package's own coverage threshold — and the core's guards with the typecheck of the test suites
+(SCAF-14). A template change that breaks one of them reddens that gate.
 
-Four steps stay with the author, because they are entries in files the plugin does not own —
-`create-plugin.cjs` prints them: the package's entry in `knip.js`, its mounted API type in the
-orphan-export list, the bundle's import in the app's `init.js`, and the generated references
-(`npm run docs:tree`, `npm run gen:api-surface`). Naming `modules.<name>` in the profile schema
-and setting a size budget were already printed.
+The rest stays with the author, because each step is an entry in a file the plugin does not
+own; `create-plugin.cjs` prints them all, and SCAF-14 accepts a core-guard red only if one of
+them announces it. Among them: the package's entry in `knip.js`, its mounted API type in the
+orphan-export list AND its frozen key, the bundle's import in the app's `init.js`, the
+namespace's declaration in the core's `GeoLeafGlobal`, its consumption witness, its HOST-02
+exemption, the three documents of its configuration (sheet, README table, inventory), and the
+generated references. The printed list is the reference — this paragraph does not count it.
 
 ## Placeholders
 

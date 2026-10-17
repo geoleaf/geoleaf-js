@@ -33,6 +33,7 @@ import {
 } from "./maplibre-poi-builders.js";
 import { DEFAULT_CLUSTER_MAX_ZOOM, DEFAULT_CLUSTER_RADIUS } from "./maplibre-cluster.js";
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
+import { sanitizeAttribution } from "../../kernel/security/map-credit.js";
 
 /**
  * Builds the MapLibre GeoJSON source spec, applying clustering options when the
@@ -58,6 +59,10 @@ function buildSourceOptions(data: unknown, options?: GeoLeafLayerOptions): Recor
     // later write needs. The spec says "if there is an id, it is `properties.id`"; whether
     // the features actually carry unique ids today is decided per write, by the kernel.
     sourceOptions.promoteId = "id";
+    // The layer's credit, shown by the engine's attribution control — cleaned on the way, like a
+    // basemap's: it is HTML a caller wrote. An option with nothing left to show sets nothing.
+    const credit = sanitizeAttribution(options?.attribution ?? "");
+    if (credit) sourceOptions.attribution = credit;
     if (options?.cluster === true) {
         sourceOptions.cluster = true;
         sourceOptions.clusterRadius =

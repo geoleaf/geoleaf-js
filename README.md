@@ -111,15 +111,17 @@ either one breaks that guarantee.
 
 Usable, but add subresource integrity (`integrity` + `crossorigin`) where the tag accepts it.
 
-The URLs below pin the **major** (`@3`), like the `maplibre-gl@6` above them: jsDelivr resolves it to
-the latest 3.x, so the recipe stays copy-pasteable and cannot go stale. Pin a full version only if
+The URLs below pin GeoLeaf's **major** (`@3`): jsDelivr resolves it to the latest 3.x, so the
+recipe stays copy-pasteable and cannot go stale. MapLibre is pinned to the **minor** this
+repository tests (`maplibre-gl@6.12`): from 6.13 MapLibre publishes its code twice, in the entry and
+in the worker, about half again its weight — see `packages/core/docs/usage-cdn.md` §8. Pin a full version only if
 you need byte-for-byte reproducibility — and never write one into prose, which is how this page once
 advertised a version the registry had never seen.
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 
@@ -527,14 +529,15 @@ import "@geoleaf/core/style.css";
 
 ### CDN (jsDelivr)
 
-`@3` pins the major and resolves to the latest 3.x, exactly as `maplibre-gl@6` does beside it.
+`@3` pins the major and resolves to the latest 3.x; `maplibre-gl@6.12` beside it is the minor this
+repository tests.
 `npm view @geoleaf/core version` prints what the registry currently serves.
 
 ```html
 <!-- MapLibre GL JS — peer dependency, to load BEFORE GeoLeaf -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css" />
 <script type="module">
-    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+    import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
     globalThis.maplibregl = maplibregl;
 </script>
 

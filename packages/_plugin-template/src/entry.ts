@@ -10,6 +10,7 @@ import "./css/geoleaf-__PLUGIN_NAME__.css";
 /* </ui> */
 import { buildPublicApi } from "./public-api.js";
 /* <ui> */
+import { open__PLUGIN_NAMESPACE__ } from "./__PLUGIN_NAME__-api.js";
 // The toolbar seam is the canonical extension path, and it is TYPED — import the shape from
 // the core instead of re-declaring `{ action: string }` inline. Before API publique S3 this
 // type was reachable by no channel, so every plugin guessed it, and the guesses diverged
@@ -53,13 +54,17 @@ declare global {
     }
 }
 
-// 2 — Mount the GeoLeaf.__PLUGIN_NAMESPACE__ namespace. The façade is kept in a local:
-// reading it back off the namespace yields `unknown` (the trailing `[key: string]: unknown`
-// of `GeoLeafHost`), and asserting it back would trade the `as any` for an `as`.
-const _api = buildPublicApi();
+// 2 — Mount the GeoLeaf.__PLUGIN_NAMESPACE__ namespace.
+//
+// ⚠️ The assignment must read `.<Namespace> = buildPublicApi()` LITERALLY, on ONE statement.
+// Two guards of the core read this file as TEXT and match that shape —
+// `plugin-namespace-declared.guard.test.js` and `doc-plugin-manifest.guard.test.js`. Keeping the
+// façade in a local and assigning the local is matched by NEITHER: the plugin then reads as one
+// that mounts nothing. This template did exactly that until 16/10/2026, and three plugins born
+// from it had to say so in a comment. What needs the behaviour below reaches the domain module.
 const _host = getGeoLeaf();
 if (_host) {
-    _host.__PLUGIN_NAMESPACE__ = _api;
+    _host.__PLUGIN_NAMESPACE__ = buildPublicApi();
 }
 
 // 3 — Register in the plugin registry.
@@ -125,7 +130,7 @@ if (typeof document !== "undefined") {
     document.addEventListener("geoleaf:toolbar:action", (e: Event) => {
         const ce = e as CustomEvent<GeoLeafRawEventMap["geoleaf:toolbar:action"]>;
         if (ce.detail?.action === "__PLUGIN_NAME__") {
-            _api.open();
+            open__PLUGIN_NAMESPACE__();
         }
     });
 }

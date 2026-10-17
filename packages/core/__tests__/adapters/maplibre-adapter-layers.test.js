@@ -210,6 +210,31 @@ describe("MaplibreAdapter — Layers", () => {
             );
         });
 
+        // 🔴 Seen red on the adapter that read no `attribution` option: the contract declared it
+        // and its TSDoc promised it in the attribution control, and the source never carried it.
+        it("🔴 pose le crédit déclaré d'une couche sur sa source, nettoyé", () => {
+            const data = { type: "FeatureCollection", features: [{ geometry: { type: "Point" } }] };
+            adapter.addGeoJSONLayer("sites", data, {
+                attribution:
+                    '© <a href="https://example.org/">Source</a><img src=x onerror="alert(1)">',
+            });
+            const config = mockMapInstance.addSource.mock.calls.find(
+                ([id]) => id === "gl-src-sites"
+            )?.[1];
+            expect(config?.attribution).toContain('href="https://example.org/"');
+            expect(config?.attribution).not.toMatch(/<img|onerror/);
+        });
+
+        it("ne pose aucun crédit sur la source d'une couche qui n'en déclare pas", () => {
+            const data = { type: "FeatureCollection", features: [{ geometry: { type: "Point" } }] };
+            adapter.addGeoJSONLayer("plain", data, {});
+            const config = mockMapInstance.addSource.mock.calls.find(
+                ([id]) => id === "gl-src-plain"
+            )?.[1];
+            expect(config).toBeDefined();
+            expect("attribution" in config).toBe(false);
+        });
+
         // 🛑 The sub-layer set is frozen at creation. A layer served EMPTY and declaring
         // `geometry: "polyline"` — the spelling most profiles use — brought nothing to it:
         // only `geometryType` was read, so its lines had no sub-layer to be drawn by.

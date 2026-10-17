@@ -71,12 +71,23 @@ function pascalCase(kebab) {
 // ── flag-gated block stripping ─────────────────────────────────────────────
 // Removes /* <flag> */ … /* </flag> */ (and content) when the flag is OFF;
 // removes just the delimiters when ON.
+//
+// ⚠️ A delimiter can sit ALONE on its line, and that line can be a markdown table row —
+// `| /* <ui> */ |`, the form Prettier gives it in README.plugin.md. Such a line is removed WHOLE,
+// in both modes: until 16/10/2026 only the delimiter went, the pipes stayed, and every README
+// was born with two empty rows in its configuration table (ON) or a broken one (OFF).
 function applyGatedBlocks(text, flags) {
     const TAGS = ["ui", "i18n", "map"];
     for (const tag of TAGS) {
         const on = flags[tag];
         const open = `/* <${tag}> */`;
         const close = `/* </${tag}> */`;
+        const alone = (delimiter) => `^[ \\t|]*${escapeRe(delimiter)}[ \\t|]*(?:\\n|$)`;
+        text = on
+            ? text
+                  .replace(new RegExp(alone(open), "gm"), "")
+                  .replace(new RegExp(alone(close), "gm"), "")
+            : text.replace(new RegExp(`${alone(open)}[\\s\\S]*?${alone(close)}`, "gm"), "");
         const re = new RegExp(
             `[ \\t]*${escapeRe(open)}[\\s\\S]*?${escapeRe(close)}[ \\t]*\\n?`,
             "g"
@@ -282,13 +293,47 @@ function main() {
     // plugin until its author enrols it — measured by submitting two throwaway plugins to
     // every gate of `ci:local`. None can be done by the template: they are entries in files
     // the plugin does not own. Unannounced, each was rediscovered one red run at a time.
-    log.info(`  6. Give "${ctx.pkg}" its entry in BY_NAME (knip.js) — the dead-code`);
-    log.info(`     instrument reads one per package, and says so when it is missing.`);
-    log.info(`  7. List \`${ctx.namespace}Api\` (src/entry.ts) among the mounted API types of`);
-    log.info(`     scripts/check-orphan-exports.cjs — its consumer is the integrator.`);
+    // Steps 9 to 12 were missing until 16/10/2026, and the third plugin generated from this
+    // template paid them one red run at a time: each is a CORE guard that reddens on a new plugin,
+    // in a file the plugin does not own. The core's paths are derived from the package registry —
+    // a path written here would stop matching the day the core moves, silently.
+    const coreDir = require("./lib/packages.cjs").byName("@geoleaf/core").dir;
+    const knipShape = flags.ui ? "PLUGIN_WITH_API_IMPORTS_CORE" : "PLUGIN_WITH_API";
+    log.info(`  6. Give "${ctx.pkg}" its entry in BY_NAME (knip.js): ${knipShape} — the`);
+    log.info(`     dead-code instrument reads one per package, and says so when it is missing.`);
+    if (flags.ui)
+        log.info(
+            `     (--ui: the entry imports a type of the core, hence the _IMPORTS_CORE shape.)`
+        );
+    log.info(
+        `  7. Freeze \`${ctx.namespace}Api\` (src/entry.ts) in scripts/check-orphan-exports.cjs —`
+    );
+    log.info(
+        `     among the mounted API types — AND its key in scripts/check-orphan-exports.baseline.json,`
+    );
+    log.info(`     by hand and sorted (CLS-02 refuses a class without its frozen entry).`);
     log.info(`  8. Import the bundle from the app's init.js, or the app contract (APP-12)`);
     log.info(`     reports a shipped bundle no boot reaches.`);
-    log.info(`  9. npm run docs:tree && npm run gen:api-surface  (generated references)`);
+    log.info(
+        `  9. Declare the namespace in the core: \`${ctx.namespace}?: GeoLeafPluginApi<"${ctx.namespace}">\``
+    );
+    log.info(`     in GeoLeafGlobal (${coreDir}/src/global.d.ts) — a source change of the core.`);
+    log.info(
+        ` 10. Add its consumption witness to ${coreDir}/examples/consumer/published-types.ts,`
+    );
+    log.info(`     on the pattern of its neighbours — the same core guard asks for it.`);
+    log.info(
+        ` 11. Exempt "${ctx.namespace}" in scripts/verify-host-contract-sync.cjs (HOST-02), with its`
+    );
+    log.info(`     motive: mounted by a plugin, so absent from a core-only boot.`);
+    log.info(
+        ` 12. Document its configuration in three places the core guards confront to config.ts:`
+    );
+    log.info(
+        `     docs/specs/plugins/CDC_${name}.md (## Configuration, ## Manifeste d'enregistrement),`
+    );
+    log.info(`     the README table, and docs/reference/inventaire_config_parametres.md.`);
+    log.info(` 13. npm run docs:tree && npm run gen:api-surface  (generated references)`);
 }
 
 main();

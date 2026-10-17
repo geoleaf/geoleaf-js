@@ -60,7 +60,7 @@ import { ThemeLoader } from "../kernel/themes/theme-loader.js";
 // These three modules export nothing consumed here: they MONKEY-PATCH
 // `ThemeApplierCore` at import (`TA._hideAllLayers = function …`,
 // `TA._applyLayerConfig`, `TA._syncLegendVisibility`, `TA._scheduleLayerConfig`,
-// `TA._updateStyleSelector`, `TA._fitBoundsOnAllLayers` — 13 methods in total).
+// `TA._updateStyleSelector`, and the others each module grafts).
 // `core.ts` CALLS them in `applyTheme()` (`this._hideAllLayers()`,
 // `this._applyLayerConfig(cfg)`, `self._syncLegendVisibility()`), without defining
 // them.

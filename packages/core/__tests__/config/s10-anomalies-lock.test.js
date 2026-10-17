@@ -8,10 +8,11 @@
  *     with no reader; it is gone from the schemas, the type and the guides, and is
  *     not to be wired back (HTTPS is enforced at the deployment layer). What stays
  *     locked here is the option a caller passes itself.
- *   - ANO-028/029 (performance.maxConcurrentLayers / layerLoadDelay) and ANO-030
- *     (performance.fitBoundsOnThemeChange, hardcoded false in theme-applier) have
- *     NO runtime consumer to observe → no behavioural test is possible. They stay
- *     locked by the inventory + the coverage guard (consigned in the registre).
+ *   - ANO-028/029 (performance.maxConcurrentLayers / layerLoadDelay) have NO runtime
+ *     consumer to observe → no behavioural test is possible. They stay locked by the
+ *     inventory + the coverage guard. ANO-030 (performance.fitBoundsOnThemeChange) is
+ *     closed: the fit path it would have driven was removed from the theme applier in
+ *     3.16.3, and the profile schema refuses the key (profile-performance-schema.test.ts).
  *
  * Consumers: kernel/security/index.ts (validateUrl). Inventory B1/B2.
  */
@@ -38,13 +39,11 @@ describe("@anomaly ANO-023 — validateUrl httpsOnly (call-site option, no confi
     });
 });
 
-describe("performance.* orphans (ANO-028/029/030) — locked by inventory, not behaviour", () => {
+describe("performance.* orphans (ANO-028/029) — locked by inventory, not behaviour", () => {
     // Intentionally no behavioural assertions: these keys have no runtime consumer
-    // (maxConcurrentLayers / layerLoadDelay = 0 reader; fitBoundsOnThemeChange =
-    // hardcoded `false` in themes/theme-applier/core.ts, config never read).
+    // (maxConcurrentLayers / layerLoadDelay = 0 reader).
     // A no-effect test would assert nothing observable. The regression-lock is the
     // anomaly registry + check-config-coverage; see registre_anomalies_config.md.
     it.todo("ANO-028 performance.maxConcurrentLayers — wire a consumer, then test");
     it.todo("ANO-029 performance.layerLoadDelay — wire a consumer, then test");
-    it.todo("ANO-030 performance.fitBoundsOnThemeChange — read the config, then test");
 });

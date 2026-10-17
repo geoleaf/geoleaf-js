@@ -40,6 +40,8 @@
  * adapter puts back what is missing after the swap (`reregisterStyleImages`).
  */
 
+import { sanitizeAttribution } from "../../kernel/security/map-credit.js";
+
 /** Set of MapLibre source + layer ids that GeoLeaf owns and must preserve. */
 export interface OwnedStyleIds {
     /**
@@ -69,7 +71,8 @@ export interface StyleTransformOptions {
     /**
      * The incoming basemap's declared credit (`basemaps.{id}.attribution`). Set on every source of
      * the incoming style that carries none, so MapLibre's attribution control shows it; a source's
-     * own credit is never replaced.
+     * own credit is never replaced. Cleaned first (`sanitizeAttribution`): inline formatting and
+     * safe links are kept, any other markup becomes text.
      */
     readonly attribution?: string;
 }
@@ -117,7 +120,9 @@ export function buildGeoLeafStyleTransform(
     readOwned: () => OwnedStyleIds,
     options: StyleTransformOptions = {}
 ): StyleTransform {
-    const credit = typeof options.attribution === "string" ? options.attribution.trim() : "";
+    // Cleaned here too, not only by the basemap registry that calls this: the adapter's
+    // `buildStyleChangeTransform` is a member of the contract, and a caller reaches it directly.
+    const credit = sanitizeAttribution(options.attribution ?? "");
     return (previous, incoming) => {
         const next = credit ? _withCredit(incoming, credit) : incoming;
         // First style load (no previous) → apply next as-is.

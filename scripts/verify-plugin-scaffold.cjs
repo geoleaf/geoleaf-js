@@ -43,10 +43,19 @@
  *   SCAF-12  the generated package is DISCOVERABLE — its `package.json` carries the
  *            descriptor the deploy build reads
  *   SCAF-13  the generated package meets its OWN coverage threshold
+ *   SCAF-14  the core's GUARDS and the typecheck of the test SUITES (TTC), run once with both
+ *            throwaways present: every red naming one must be an ENROLMENT step that
+ *            `create-plugin.cjs` prints — anything else is the template's fault
  *
  * SCAF-05…11 are the repo's own gates, run against the output — see `REPO_GATES`.
  *
- * ## What the scaffold cannot be born passing, and is therefore NOT checked here
+ * ## What the scaffold cannot be born passing — and how SCAF-14 still holds it
+ *
+ * ⚠️ Until 16/10/2026 this file ran NEITHER the core's guards nor the typecheck of the suites,
+ * and both bit the third plugin generated from the template: its entry mounted the façade
+ * through a local, which the guards (reading the entry as TEXT) did not recognise as a mount,
+ * and its starter test read `globalThis.GeoLeaf` bare — TS7017 under TTC. Two throwaways had been
+ * submitted to "102 checks" the day before; these were not among them.
  *
  * Four gates redden on any new plugin until its author ENROLS it, and no template can do
  * that for them: the dead-code instrument reads a per-package entry in `knip.js`, the
@@ -74,7 +83,50 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..");
-const CORE_TYPES = path.join(ROOT, "packages", "core", "dist", "types");
+const os = require("os");
+// Derived from the package registry, which throws on a package it cannot find: a path written
+// here would stop matching the day the core moves, and the prerequisite check below with it.
+const CORE_DIR = require("./lib/packages.cjs").byName("@geoleaf/core").absDir;
+const CORE_TYPES = path.join(CORE_DIR, "dist", "types");
+
+/**
+ * The core-guard reds a scaffolded plugin is BORN with, because each asks for an entry in a
+ * file the plugin does not own — and the step of `create-plugin.cjs` that tells its author.
+ * SCAF-14 accepts these, and only these; `mustBite` marks the one whose red PROVES the guards
+ * saw the throwaway's mount — if it falls silent, the template's mount is no longer recognised.
+ *
+ * ⚠️ A TITLE is not enough, and `phrase` is why. The first version matched the guard's test
+ * title alone, and a template mounting through a local stayed GREEN: the guard reports "no
+ * mounted namespace detected" UNDER THE SAME TITLE as the enrolment red. Every line of a message
+ * that names a throwaway must carry the phrase of its enrolment step.
+ */
+const ENROLMENT_REDS = [
+    {
+        file: "plugin-namespace-declared.guard.test.js",
+        title: "chaque namespace monté est déclaré côté core",
+        phrase: "monte `GeoLeaf.",
+        step: 9,
+        mustBite: true,
+    },
+    {
+        file: "plugin-namespace-declared.guard.test.js",
+        title: "chaque namespace monté est typé par son greffon",
+        phrase: "la fixture consommateur",
+        step: 10,
+    },
+    {
+        file: "doc-capability-config.guard.test.js",
+        title: "chaque défaut de `DEFAULTS` a sa ligne d'inventaire",
+        phrase: "sans ligne d'inventaire",
+        step: 12,
+    },
+    {
+        file: "doc-capability-config.guard.test.js",
+        title: "la fiche du greffon annonce chaque défaut",
+        phrase: "aucune ligne de défaut lue dans",
+        step: 12,
+    },
+];
 
 /**
  * The two shapes under test. Names are prefixed `zz-` so they sort last and read as
@@ -332,8 +384,82 @@ try {
             }
         }
     }
+
+    // SCAF-14 — the core's guards and the suites' typecheck, ONCE, both throwaways present.
+    // Run here rather than per shape: each run costs a full guard suite and a full TTC (about
+    // 8 s and 17 s, measured on 16/10/2026), and both see every package of the registry.
+    const scaffolded = SHAPES.filter((shape) => created.some((d) => d.endsWith(shape.id)));
+    if (scaffolded.length > 0) checkCoreGuards(scaffolded);
 } finally {
     cleanup();
+}
+
+/**
+ * SCAF-14 — runs the core's guards and TTC, and attributes each red to a shape by name.
+ * @param {typeof SHAPES} shapes The shapes scaffolded by this run.
+ */
+function checkCoreGuards(shapes) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "scaffold-guards-"));
+    const report = path.join(tmp, "guards.json");
+    try {
+        run(
+            "npx",
+            ["vitest", "run", "guard.test", "--reporter=json", `--outputFile=${report}`],
+            CORE_DIR
+        );
+        if (!fs.existsSync(report)) {
+            errors.push(`SCAF-14 the core's guards wrote no report — nothing was judged.`);
+            return;
+        }
+        const failed = [];
+        for (const file of JSON.parse(fs.readFileSync(report, "utf8")).testResults) {
+            for (const t of file.assertionResults) {
+                if (t.status === "failed")
+                    failed.push({
+                        file: path.basename(file.name),
+                        title: t.title,
+                        message: (t.failureMessages || []).join("\n"),
+                    });
+            }
+        }
+        // Every line of the message that names the shape must carry the phrase of the step.
+        const announces = (e, f, shape) =>
+            e.file === f.file &&
+            f.title.startsWith(e.title) &&
+            f.message
+                .split("\n")
+                .filter((line) => line.includes(shape.id))
+                .every((line) => line.includes(e.phrase));
+        for (const shape of shapes) {
+            const naming = failed.filter((f) => f.message.includes(shape.id));
+            for (const f of naming) {
+                const known = ENROLMENT_REDS.find((e) => announces(e, f, shape));
+                if (!known)
+                    errors.push(
+                        `SCAF-14 "${shape.id}" fails a core guard no enrolment step announces — ` +
+                            `${f.file} :: ${f.title}\n${indent(f.message.split("\n").slice(0, 6).join("\n"))}\n` +
+                            `  Fix packages/_plugin-template/, or print the step in create-plugin.cjs.`
+                    );
+            }
+            for (const e of ENROLMENT_REDS.filter((r) => r.mustBite)) {
+                if (!naming.some((f) => announces(e, f, shape)))
+                    errors.push(
+                        `SCAF-14 "${shape.id}": ${e.file} did not name it — the guard no longer ` +
+                            `sees the template's mount. The entry must assign ` +
+                            `\`.<Namespace> = buildPublicApi()\` literally, on one statement.`
+                    );
+            }
+        }
+        const ttc = run("node", ["scripts/check-test-typecheck.cjs"]);
+        for (const shape of shapes) {
+            if (ttc.code !== 0 && ttc.out.includes(shape.id))
+                errors.push(
+                    `SCAF-14 "${shape.id}" fails the typecheck of the suites (TTC) —\n${indent(ttc.out)}`
+                );
+        }
+    } finally {
+        fs.rmSync(tmp, { recursive: true, force: true });
+    }
 }
 
 function indent(text) {
@@ -358,6 +484,7 @@ const CHECKS = [
     "sélection par drapeau",
     "descripteur découvrable",
     "seuil de couverture",
+    "gardes du cœur et typage des suites",
     ...REPO_GATES.map((g) => g.label),
 ];
 console.log(

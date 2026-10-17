@@ -66,6 +66,16 @@
  * the eight real defects under seventy-five false ones, and a gate nobody can read is a
  * gate nobody keeps.
  *
+ * ⚠️ **What that idiom costs, said rather than hidden.** `Cannot find name 'adapter'` is the
+ * same idiom — and it makes `adapter` an `any`: nothing the example asks of it is judged any
+ * more, neither a member that does not exist nor the arity. A gate announcing "arity, phantom
+ * exports" is therefore true of the examples that go through `GeoLeaf.*` or an import, and
+ * blind on the others. The run COUNTS them, by block and by missing name — the summary line
+ * "non jugé faute de nom déclaré". For `contracts/`, where each usage name has one meaning,
+ * {@link CONTRACT_USAGE_NAMES} declares them and closes the blind spot; seen red on
+ * 16/10/2026 — a member that does not exist and a wrong arity, written into the
+ * `setLayerZIndex` example, gave TS2339 and TS2554 where the gate had stayed green.
+ *
  * ## ⚠️ Three failure modes this script refuses to have
  *
  * 1. **Green having scanned nothing.** `tsc` suppresses ALL semantic diagnostics
@@ -430,6 +440,46 @@ function bootedPagePrelude(file) {
 }
 
 /**
+ * The USAGE names a contract's `@example` writes without declaring them, and the type each one
+ * designates. A contract documents an interface by showing it in use — `adapter.on(…)`,
+ * `registry.get(…)`, `config.get(…)` — and never declares the instance: undeclared, the name was
+ * `TS2304`, hence `any`, and nothing the example asked of it was checked. Declared here, an
+ * example that calls a member the interface lacks, or with the wrong arity, is a defect again.
+ *
+ * Limited to `contracts/`, deliberately: there each name has ONE meaning, the interface of the
+ * file. Elsewhere `config` or `map` mean different things from one page to the next, and a
+ * guessed type would judge an example against the wrong interface. A name absent from this
+ * table stays undeclared, and the summary line counts it.
+ * @type {ReadonlyMap<string, { type: string, from: string }>}
+ */
+const CONTRACT_USAGE_NAMES = new Map([
+    ["adapter", { type: "IMapAdapter", from: "@geoleaf/core/contracts/map-adapter.contract.js" }],
+    ["config", { type: "IGeoLeafConfig", from: "@geoleaf/core/contracts/config.contract.js" }],
+    [
+        "registry",
+        { type: "IModuleRegistry", from: "@geoleaf/core/contracts/core-module.contract.js" },
+    ],
+]);
+
+/**
+ * Declares, for an `@example` of a contract, the usage names it leaves free.
+ * @param {string} srcFile Absolute path of the source the example comes from.
+ * @param {Set<string>} free The example's free identifiers.
+ * @returns {string} The lines put before the example, or `""`.
+ */
+function contractUsagePrelude(srcFile, free) {
+    const rel = path.relative(CORE.absDir, srcFile).split(path.sep).join("/");
+    if (!rel.startsWith("src/contracts/")) return "";
+    let lines = "";
+    for (const [name, { type, from }] of CONTRACT_USAGE_NAMES) {
+        if (!free.has(name)) continue;
+        lines += `import type { ${type} as __${type} } from "${from}";\n`;
+        lines += `declare const ${name}: __${type};\n`;
+    }
+    return lines;
+}
+
+/**
  * Codes that, in a `js` block, speak of the block's missing annotations and not of the call.
  *
  * **The "may be undefined" family.** A script-tag example runs after the bundle: the global
@@ -642,6 +692,30 @@ function assertNoSyntaxNoise(output) {
  * would turn every unrelated doc edit into a false failure.
  * @param {{ file: string; code: string; message: string }} d
  */
+/**
+ * The summary line naming what a missing declaration leaves unjudged — blocks, how many are
+ * `@example`s, and the names most often missing. Empty when there are none.
+ * @param {{ blocks: Set<string>, names: Map<string, number> }} unjudged
+ * @param {{ file: string; name: string }[]} scoped
+ * @returns {string}
+ */
+function unjudgedFreeNameLine(unjudged, scoped) {
+    if (unjudged.blocks.size === 0) return "";
+    const tsdoc = scoped.filter(
+        (b) => unjudged.blocks.has(b.name) && !b.file.endsWith(".md")
+    ).length;
+    const top = [...unjudged.names.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 8)
+        .map(([name, n]) => `${name}×${n}`)
+        .join(", ");
+    return (
+        `\n    ↳ non jugé faute de nom déclaré : ${unjudged.blocks.size} bloc(s), dont ${tsdoc} ` +
+        `@example TSDoc — le nom devient \`any\` et rien de ce que l'exemple lui demande n'est ` +
+        `vérifié. Noms les plus absents : ${top}.`
+    );
+}
+
 function diagnosticKey(d) {
     const message = d.message.replace(/\s+/g, " ").trim().slice(0, 160);
     return `${d.file.split(path.sep).join("/")}::${d.code}::${message}`;
@@ -689,6 +763,7 @@ const stats = {
     total: 0,
     noParse: 0,
     withPrelude: 0,
+    withUsageNames: 0,
     tsdoc: 0,
     tsdocAmbient: 0,
     js: 0,
@@ -801,6 +876,11 @@ try {
                 prelude += `import { ${specifiers.join(", ")} } from "@geoleaf/core";\n`;
                 stats.withPrelude++;
             }
+            const usage = contractUsagePrelude(srcFile, free);
+            if (usage) {
+                prelude += usage;
+                stats.withUsageNames++;
+            }
             n++;
             const name = `b${String(n).padStart(3, "0")}.ts`;
             fs.writeFileSync(path.join(TMP_DIR, name), prelude + body);
@@ -879,6 +959,16 @@ try {
         ignoredIdioms++;
         ignoredByCode.set(code, (ignoredByCode.get(code) || 0) + 1);
     };
+    /**
+     * The blocks this gate does NOT judge for want of a declared name, and the names. An
+     * example that calls `adapter.setLayerZIndex(…)` without declaring `adapter` gets
+     * `TS2304`, ignored as an idiom — and `adapter` becomes `any`: nothing the example
+     * asks of it is checked any more, neither the member nor its arity. Measured on
+     * 10/10/2026: a member that does not exist and a wrong arity, written into such an
+     * example, left the gate green. Counted here so the summary says it at every run.
+     * @type {{ blocks: Set<string>, names: Map<string, number> }}
+     */
+    const unjudgedFreeName = { blocks: new Set(), names: new Map() };
     for (const line of tscOutput.split("\n")) {
         const m = line.match(/(b\d{3}\.ts)\((\d+),(\d+)\): error (TS\d+): (.*)$/);
         if (!m) continue;
@@ -887,6 +977,11 @@ try {
         const [, , atLine, atColumn, code, message] = m;
         if (!DEFECT_CODES.has(code)) {
             ignore(code);
+            if (code === "TS2304") {
+                unjudgedFreeName.blocks.add(block.name);
+                const name = /Cannot find name '([^']+)'/.exec(message)?.[1] ?? "?";
+                unjudgedFreeName.names.set(name, (unjudgedFreeName.names.get(name) || 0) + 1);
+            }
             continue;
         }
         if (block.js) {
@@ -982,13 +1077,15 @@ try {
     const scannedLine =
         `    Scanned ${mdFiles.length} .md + les sources, ${stats.total} bloc(s) ` +
         `(${stats.total - stats.tsdoc} .md + ${stats.tsdoc} @example TSDoc) → ` +
-        `${scoped.length} type-checked (${stats.withPrelude} with a rebuilt import), ` +
+        `${scoped.length} type-checked (${stats.withPrelude} with a rebuilt import, ` +
+        `${stats.withUsageNames} with the usage names of a contract declared), ` +
         `${stats.noParse} skipped as unparseable fragments; ` +
         `${ignoredIdioms} non-defect diagnostic(s) ignored` +
         // ⚠️ This counter is NOT decorative: it quantifies what the gate does NOT
         // see, and why. A gate that silences its blind spot reads "everything is
         // verified".
         (histogram ? `\n    ↳ ignorés par code : ${histogram}` : "") +
+        unjudgedFreeNameLine(unjudgedFreeName, scoped) +
         (stats.tsdocAmbient
             ? `\n    ℹ  ${stats.tsdocAmbient} @example passent par le namespace ambiant \`GeoLeaf.*\` — compilés ` +
               `depuis que le paquet le publie.`

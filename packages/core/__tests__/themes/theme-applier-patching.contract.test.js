@@ -12,8 +12,7 @@
  *   deferred.ts   → _scheduleLayerConfig, _schedulePendingCheck, _checkPendingLayerConfigs,
  *                   _setLayerVisibilityAndStyle, _resolveDataFilePath, _getProfilesBasePath,
  *                   _normalizeBasePath
- *   ui-sync.ts    → _updateStyleSelector, _loadLegendForStyle, _fitBoundsOnAllLayers,
- *                   _syncLegendVisibility
+ *   ui-sync.ts    → _updateStyleSelector, _loadLegendForStyle, _syncLegendVisibility
  *   visibility.ts → _hideAllLayers, _applyLayerConfig
  *
  * None of the three exports anything that is consumed: they are
@@ -52,7 +51,7 @@ import { describe, test, expect } from "vitest";
 import "../../src/globals/globals.js";
 import { ThemeApplierCore } from "../../src/kernel/themes/theme-applier/core.js";
 
-/** The 13 grafted methods, by module of origin. */
+/** The grafted methods, by module of origin. */
 const PATCHED = {
     "theme-applier/deferred.ts": [
         "_checkPendingLayerConfigs",
@@ -64,7 +63,6 @@ const PATCHED = {
         "_setLayerVisibilityAndStyle",
     ],
     "theme-applier/ui-sync.ts": [
-        "_fitBoundsOnAllLayers",
         "_loadLegendForStyle",
         "_syncLegendVisibility",
         "_updateStyleSelector",

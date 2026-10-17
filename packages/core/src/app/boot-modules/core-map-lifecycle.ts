@@ -99,8 +99,6 @@ interface StartView {
     maxZoom: number | null;
 }
 
-/** Default padding, in pixels, when the profile declares none. */
-const DEFAULT_PADDING_PX = 50;
 /** Default extra room around `map.bounds` when `positionFixed` is on. */
 const DEFAULT_BOUNDS_MARGIN = 0.3;
 /** Floor applied to `minZoom` under `positionFixed` when the profile sets none. */
@@ -166,7 +164,13 @@ function resolveProfileExtent(cfgMap: MapConfig, AppLog: AppLog): ProfileExtent 
     }
 
     const raw = cfgMap.bounds as [[number, number], [number, number]];
-    const rawPadding = cfgMap.padding || [DEFAULT_PADDING_PX, DEFAULT_PADDING_PX];
+    // ONE reader for `map.padding`, the one a theme view uses: an array reads
+    // `[horizontal, vertical]`, an object gives each edge it names and 0 for the others. Until
+    // 3.16.3 an object was handed through as declared, and the adapter reads four edges only when
+    // `top` or `bottom` is a number: `{ left, right }` started the map with no padding at all,
+    // while a theme view kept the two edges. The symmetric `x`/`y` it also returns is dropped —
+    // the reveal is handed the four edges, as before.
+    const { top, bottom, left, right } = resolveViewPadding(cfgMap.padding);
     return {
         profileBounds: {
             south: raw[0][0],
@@ -174,14 +178,7 @@ function resolveProfileExtent(cfgMap: MapConfig, AppLog: AppLog): ProfileExtent 
             north: raw[1][0],
             east: raw[1][1],
         },
-        profilePadding: Array.isArray(rawPadding)
-            ? {
-                  top: rawPadding[1] ?? DEFAULT_PADDING_PX,
-                  bottom: rawPadding[1] ?? DEFAULT_PADDING_PX,
-                  left: rawPadding[0] ?? DEFAULT_PADDING_PX,
-                  right: rawPadding[0] ?? DEFAULT_PADDING_PX,
-              }
-            : rawPadding,
+        profilePadding: { top, bottom, left, right },
         mapCenter: [(raw[0][0] + raw[1][0]) / 2, (raw[0][1] + raw[1][1]) / 2],
         profileMaxZoom: cfgMap.initialMaxZoom || cfgMap.maxZoom || 12,
     };

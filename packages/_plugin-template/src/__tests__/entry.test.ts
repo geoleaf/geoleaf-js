@@ -15,11 +15,16 @@ import langEn from "../lang/lang-en.js";
 import langFr from "../lang/lang-fr.js";
 /* </i18n> */
 
-const previous = globalThis.GeoLeaf;
+/**
+ * The page's namespace, reached without assuming the core's global declaration is loaded: the
+ * suites are typechecked on their own, and `globalThis.GeoLeaf` alone is TS7017 there.
+ */
+const host = globalThis as { GeoLeaf?: unknown };
+const previous = host.GeoLeaf;
 
 /** Installs a partial namespace: only `Config.get` is read by the code under test. */
 function withProfileBranch(branch: Record<string, unknown>): void {
-    (globalThis as { GeoLeaf?: unknown }).GeoLeaf = {
+    host.GeoLeaf = {
         Config: {
             get: (key: string, fallback: unknown) =>
                 key === "modules.__PLUGIN_NAME__" ? branch : fallback,
@@ -28,7 +33,7 @@ function withProfileBranch(branch: Record<string, unknown>): void {
 }
 
 afterEach(() => {
-    globalThis.GeoLeaf = previous;
+    host.GeoLeaf = previous;
     document.body.replaceChildren();
 });
 

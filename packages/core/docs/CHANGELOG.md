@@ -11,6 +11,50 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A layer's `attribution` option is shown.** `GeoLeafLayerOptions.attribution` was declared by
+  the adapter contract, documented as shown in the attribution control, and read by nothing: a
+  credit passed to `addGeoJSONLayer` never appeared. It is now set on the layer's source, and the
+  engine's attribution control shows it.
+- **A `map.padding` object naming only some edges frames the map at start-up as a theme view
+  does.** The start-up handed the object through as declared, and the adapter reads four edges
+  only when `top` or `bottom` is a number: `{ "left": 320 }` started the map with no padding at
+  all, while a theme framing its `view` kept the 320 pixels. Both now read `map.padding` through
+  one function — each edge it names applies, an edge it does not name is `0`; the array form
+  `[horizontal, vertical]` is read as before.
+- **The profile schema accepts `ui.showPrint`, `ui.showMeasure` and `ui.showGeocoding`.** The
+  toolbar has always read them, as fallbacks of `modules.print.showButton`,
+  `modules.measure.showButton` and `modules.geocoding.showButton` read only when the module key is
+  absent — but `ui.schema.json` refused them, so an editor validating a profile through its
+  `$schema` called a working profile invalid. They are declared as those aliases, and the profile
+  types generated from the schemas (`@geoleaf/core/schemas`) carry them. Nothing changes at run
+  time; a new profile should still write the module key.
+- **The side panel's theme toggle is not posted a second time into the mobile toolbar.** The guard
+  meant to find a toggle already there looked for a variant no button carries, and only the
+  panel's own reference kept the duplicate out. It now looks for the toggle itself — and not for
+  any mobile button: the language switcher and the palette post theirs into the same toolbar.
+
+### Removed
+
+- **The theme applier's fit on the layers' extent, which could no longer run.** It was armed by
+  an internal `fitBounds` option no caller passed and by a constant set to `false`, and even
+  re-enabled it would have found nothing to fit — the layer loader records no extent. Themes frame
+  the view they declare (`themes[].view`, 3.15.0). No public option changes; the profile key
+  `performance.fitBoundsOnThemeChange` was already refused by the schema.
+
+### Security
+
+- **Map credits are cleaned before they reach the attribution control.** A basemap's `attribution`
+  (profile) and a layer's `attribution` option go through one sanitizer: inline formatting (`a`,
+  `span`, `strong`, `em`, `b`, `i`, `br`) and links whose URL is accepted are kept — a kept link
+  opens in a new tab with `rel="noopener noreferrer"` —, any other markup becomes text. MapLibre
+  cleans too, but the peer range admits every 6.x, and up to 6.10 its attribution control cleaned
+  by blocklist then re-injected the result through `innerHTML`. A credit that relied on other
+  markup (an image, a paragraph) now shows as text.
+
 ## [3.16.2] - 2026-10-16
 
 ### Fixed

@@ -153,6 +153,32 @@ describe("CoreMapLifecycle — the start theme declares an extent", () => {
     });
 });
 
+// 🔴 Seen red on the boot that handed a padding OBJECT through as declared: the adapter reads the
+// four edges only when `top` or `bottom` is a number, so `{ left, right }` fell back on the
+// symmetric `{ x, y }` it did not carry — zero on every edge — while a theme view, read by
+// `resolveViewPadding`, kept the two edges. One reader now serves both.
+describe("CoreMapLifecycle — a padding object that names only some edges", () => {
+    const PARTIAL = { bounds: PROFILE_BOUNDS, padding: { left: 20, right: 30 } };
+
+    it("🔴 keeps the edges it names at start-up, and gives the others 0", () => {
+        const { app } = boot(PARTIAL);
+
+        expect(fakeMap.fitBounds.mock.calls[0]?.[1]).toMatchObject({
+            padding: { top: 0, bottom: 0, left: 20, right: 30 },
+        });
+        expect(app["_profilePadding"]).toEqual({ top: 0, bottom: 0, left: 20, right: 30 });
+    });
+
+    it("reads it as the view of a theme reads it", () => {
+        const { app } = boot(PARTIAL, {
+            defaultTheme: "sector",
+            themes: [{ id: "sector", view: { bounds: SECTOR_BOUNDS } }],
+        });
+
+        expect(app["_profilePadding"]).toEqual({ top: 0, bottom: 0, left: 20, right: 30 });
+    });
+});
+
 describe("CoreMapLifecycle — the start theme declares a centre and a zoom", () => {
     const themes = {
         defaultTheme: "spot",

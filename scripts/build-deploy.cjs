@@ -1682,7 +1682,15 @@ function main() {
             // removing it would have broken the build at the first fresh clone.
             const mlEntry = require.resolve("maplibre-gl/dist/maplibre-gl.mjs", { paths: [ROOT] });
             const mlDistDir = path.dirname(mlEntry);
+            // ⚠️ A module PUBLISHED EMPTY is not copied. From 6.13.0 the package still ships
+            // `maplibre-gl-shared.mjs`, at 0 bytes: its code now lives in the entry AND in the
+            // worker (measured on the tarballs of 6.12.0 and 6.13.0). Nothing imports it; copied,
+            // it is a vendored module no rule reaches, and the closure of `boot-assets.cjs`
+            // throws — rightly, it guards the opposite case. Up to 6.12 it carries code, and is
+            // copied like the others.
+            const publishedEmpty = (file) => fs.statSync(path.join(mlDistDir, file)).size === 0;
             for (const asset of ML_ASSETS) {
+                if (asset.endsWith(".mjs") && publishedEmpty(asset)) continue;
                 fs.copyFileSync(path.join(mlDistDir, asset), path.join(vendorDir, asset));
             }
 
@@ -1697,7 +1705,7 @@ function main() {
             const shippedMjs = fs
                 .readdirSync(mlDistDir)
                 .filter((f) => f.endsWith(".mjs") && !f.includes("-dev"));
-            const unlisted = shippedMjs.filter((f) => !ML_ASSETS.includes(f));
+            const unlisted = shippedMjs.filter((f) => !ML_ASSETS.includes(f) && !publishedEmpty(f));
             if (unlisted.length > 0) {
                 throw new Error(
                     `MapLibre vendoring incomplet : ${unlisted.length} module(s) de production ` +

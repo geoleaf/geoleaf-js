@@ -158,6 +158,14 @@ Here is the full structure, with every available parameter:
 
     "showEditor": boolean,
 
+    // Legacy aliases of modules.<plugin>.showButton (print, measure, geocoding),
+    // read only when the module key is absent — prefer the module key.
+    "showPrint": boolean,
+
+    "showMeasure": boolean,
+
+    "showGeocoding": boolean,
+
     "interactiveShapes": boolean
 
   },
@@ -421,6 +429,8 @@ This parameter replaces neither the `maxZoom` of the base maps (which governs ti
 #### `map.padding` (array, optional)
 
 Padding in pixels, `[horizontal, vertical]` — the first number is the left and right margin, the second the top and bottom one. Applied when the map is framed on `bounds` at start-up, and again each time a theme frames the map on the extent of its `view`. Keeps the extent off the container edges.
+
+An object `{ top, right, bottom, left }` is accepted too: each edge it names is applied, and an edge it does not name is `0` — `{ "left": 320 }` keeps room for a side panel and none elsewhere. Since 3.16.3 the start-up and a theme view read it the same way; before, an object naming neither `top` nor `bottom` started the map with no padding at all.
 
 - **Default:** `[50, 50]`
 
@@ -929,7 +939,7 @@ https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 #### `basemaps.{id}.attribution` (string, required)
 
-**Description:** Attribution/copyright text of the base map (HTML allowed).
+**Description:** Attribution/copyright text of the base map (HTML allowed). Since 3.16.3 it is cleaned before reaching the map's attribution control: inline formatting (`a`, `span`, `strong`, `em`, `b`, `i`, `br`) and links with a safe URL are kept — a link opens in a new tab —, any other markup becomes text.
 
 **Example:**
 

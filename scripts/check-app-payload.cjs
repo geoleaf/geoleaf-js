@@ -151,6 +151,25 @@ const DETAIL = process.argv.includes("--detail");
 //   08/08 — 1,199.9 / 1,231.2  (MapLibre 5.21.0 → 6.2.0: +4.9 KB gz) 🔺 climb, rationale below
 //   05/10 — 1,245.4 / 1,286.4  (two months of features: +45.5 / +55.2 KB gz) 🔺 CLIMB,
 //                              RE-ANCHORED — the only climb that spends margin, see below
+//   17/10 — 1,273.6 / 1,315.8  (+28.2 / +29.4 KB gz, of which MapLibre 6.7.0 → 6.12.0
+//                              ≈ +15) 🔺 climb — WARNING LINE ONLY re-anchored, see below
+//
+// 🔺 **FOURTH CLIMB — 17/10/2026, on the maintainer's decision: the WARNING line alone is
+// re-anchored, the FAIL line is not.** Both variants had crossed their warning (1,273.6 >
+// 1,271; 1,315.8 > 1,313), and a warning printed by every run is read as green — the trap
+// written below. Re-anchoring it gives the signal its meaning back: a warning again means
+// 2 % spent since this line. The fail line stays where 05/10 put it, so this re-anchoring
+// hands out NO fresh margin: 34.4 / 35.2 KB gz remain before the wall (2.7 % / 2.6 %), and
+// the next warning will fire about 8 KB before it.
+//
+// What the +28.2 / +29.4 KB are, as far as they can be told: about 15 KB gz is the engine —
+// MapLibre 6.7.0 → 6.12.0, measured on the published files (282 → 297 KB gz for its three
+// modules) — and the rest is product growth since 05/10 that no history line itemised, the
+// counter-example below repeating itself at a smaller scale. 6.13.0 and later were REFUSED
+// for weight: they ship the engine's shared code twice (418 KB gz), which crossed both fail
+// lines. The five `vendor/maplibre-gl/*` entries were checked present on this anchoring,
+// in the pre-cache list each variant's `sw-core.js` carries — `--detail` prints only the
+// heaviest assets, and shows two of them.
 //
 // 🔺 **THIRD CLIMB, AND THE FIRST RE-ANCHORING FOR GROWTH — 05/10/2026, on the
 // maintainer's decision.**
@@ -233,8 +252,8 @@ const DETAIL = process.argv.includes("--detail");
 // `build-deploy.cjs`, at the `GEOJSON_TOLERANCE_DEG` comment. Do not "reclaim" those
 // 25 KB without re-reading that record.
 const BUDGETS = {
-    "deploy-core": { warn: 1271, fail: 1308 },
-    "deploy-full": { warn: 1313, fail: 1351 },
+    "deploy-core": { warn: 1300, fail: 1308 },
+    "deploy-full": { warn: 1343, fail: 1351 },
 };
 
 // Variants deliberately out of budget, with their reason. ⚠️ The reason is not

@@ -84,16 +84,12 @@ export class ThemeEngineModule implements ILifecycleModule {
     }
 
     /**
-     * Resets the theme applier for the next application: its pending timer, the theme it applied
-     * and its first-load flag. The flag only arms the legacy fit on the layers' bounds at the
-     * first apply, and a constant keeps that fit off (`enableFitBounds`,
-     * `theme-applier/core.ts`): resetting it keeps a second mount identical to a first one. The
-     * layers themselves go with the GeoJSON state, torn down by the GeoJSON module and the
-     * lifecycle seam.
+     * Resets the theme applier for the next application: its pending timer and the theme it
+     * applied, so a second mount starts like a first one. The layers themselves go with the
+     * GeoJSON state, torn down by the GeoJSON module and the lifecycle seam.
      */
     destroy(): void {
         ThemeApplierCore._cleanup();
         ThemeApplierCore._currentThemeId = null;
-        ThemeApplierCore._isFirstLoad = true;
     }
 }

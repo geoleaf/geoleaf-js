@@ -275,6 +275,40 @@ describe("ui.showPanelThemeToggle — the gate", () => {
         else strip2.appendChild(late2);
         expect(indexOf(".gl-rp-late-btn")).toBeGreaterThan(indexOf(SEPARATOR));
     });
+
+    it("11 — a toolbar already holding a mobile theme toggle does not get a second one", () => {
+        // The guard against a duplicate reads the DOM, not the module's reference: a toggle
+        // this module instance did not post (another bundle, a lost reference) still counts.
+        const toolbar = document.createElement("div");
+        toolbar.className = "gl-map-toolbar__scroll";
+        const existing = document.createElement("button");
+        existing.className = "gl-rp-tab-btn gl-rp-theme-toggle gl-map-toolbar__btn";
+        existing.dataset.variant = "mobile";
+        toolbar.appendChild(existing);
+        document.body.appendChild(toolbar);
+
+        mountPanel();
+        activateDesktopPanel();
+
+        expect(toolbar.querySelectorAll(TOGGLE)).toHaveLength(1);
+    });
+
+    it("12 — another capability's mobile button in the toolbar does not stand for the toggle", () => {
+        // The language switcher and the palette post `data-variant="mobile"` buttons into the
+        // same toolbar. A guard on the variant alone would take one of them for the toggle.
+        const toolbar = document.createElement("div");
+        toolbar.className = "gl-map-toolbar__scroll";
+        const lang = document.createElement("button");
+        lang.className = "gl-rp-tab-btn gl-rp-lang-btn gl-map-toolbar__btn";
+        lang.dataset.variant = "mobile";
+        toolbar.appendChild(lang);
+        document.body.appendChild(toolbar);
+
+        mountPanel();
+        activateDesktopPanel();
+
+        expect(toolbar.querySelectorAll(TOGGLE)).toHaveLength(1);
+    });
 });
 
 describe("la bande rend des ICÔNES — et le repli texte reste ouvert", () => {

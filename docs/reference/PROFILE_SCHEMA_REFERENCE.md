@@ -435,7 +435,7 @@ profile.json — core profile metadata and configuration. UI, basemaps, search a
 | `map.maxPitch` | number | — | — | — | Maximum map pitch in degrees (0-85). MapLibre default: 60. |
 | `map.maxZoom` | number | — | — | — | — |
 | `map.minZoom` | number | — | — | — | — |
-| `map.padding` | oneOf | — | — | — | Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}. |
+| `map.padding` | oneOf | — | — | — | Map padding in pixels - array [horizontal, vertical] (left and right, then top and bottom; only the first two numbers are read) or object {top, right, bottom, left}, an edge it does not name being 0. |
 | `map.padding.bottom` | number | — | — | — | — |
 | `map.padding.left` | number | — | — | — | — |
 | `map.padding.right` | number | — | — | — | — |
@@ -635,8 +635,11 @@ ui.json — UI controls, search/filter panel, layer manager and scale configurat
 | `ui.showCacheButton` | boolean | — | — | — | — |
 | `ui.showCredentialButton` | boolean | — | — | — | — |
 | `ui.showEditor` | boolean | — | — | — | — |
+| `ui.showGeocoding` | boolean | — | — | — | Legacy alias of modules.geocoding.showButton (@geoleaf-plugins/geocoding): shows or hides the geocoding button. Read ONLY when modules.geocoding.showButton is absent — the module key wins whenever present. Prefer the module key in a new profile. |
 | `ui.showLayerManager` | boolean | — | — | — | — |
+| `ui.showMeasure` | boolean | — | — | — | Legacy alias of modules.measure.showButton (@geoleaf-plugins/measure): shows or hides the measure button. Read ONLY when modules.measure.showButton is absent — the module key wins whenever present. Prefer the module key in a new profile. |
 | `ui.showPanelThemeToggle` | boolean | — | — | — | Show the light/dark theme toggle owned by the desktop side panel. Default true (opt-out). Governs BOTH of its placements: the bottom of the tab strip, and the copy injected into the mobile toolbar. Does NOT govern the map control (modules.theme-toggle.enabled), an integrator-supplied [data-gl-role="theme-toggle"] button, or the initial theme (ui.theme). Hiding it does not reclaim a visitor who already toggled: the stored choice still wins. |
+| `ui.showPrint` | boolean | — | — | — | Legacy alias of modules.print.showButton (@geoleaf-plugins/print): shows or hides the print button. Read ONLY when modules.print.showButton is absent — the module key wins whenever present. Prefer the module key in a new profile. |
 | `ui.syncDocumentLang` | boolean | — | — | — | Publish the resolved language to the page's `<html lang>` attribute. Default true (opt-out). Set false when GeoLeaf is embedded in a host that owns `<html lang>` for its own session — a map mounted in such a host would otherwise rewrite the attribute for the whole page. Does NOT change which language the map itself uses: `ui.language`, `?lang=` and the stored preference resolve exactly as before, only the document attribute stops being written. |
 | `ui.theme` | string | — | — | "light" \| "dark" \| "auto" | — |
 

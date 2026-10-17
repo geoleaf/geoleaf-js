@@ -69,7 +69,7 @@ Core.init({
         <!-- MapLibre GL JS (peer dependency) -->
         <link
             rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.css"
+            href="https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.css"
         />
         <!-- GeoLeaf styles -->
         <link
@@ -90,7 +90,7 @@ Core.init({
              evaluated before any code, so setting the global between two imports would set it
              AFTER GeoLeaf has been evaluated. Two module tags, by contrast, run in order. -->
         <script type="module">
-            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6/dist/maplibre-gl.mjs";
+            import * as maplibregl from "https://cdn.jsdelivr.net/npm/maplibre-gl@6.12/dist/maplibre-gl.mjs";
             globalThis.maplibregl = maplibregl;
         </script>
         <script type="module">
