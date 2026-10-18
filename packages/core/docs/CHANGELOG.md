@@ -11,6 +11,83 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.17.0] - 2026-10-18
+
+### Added
+
+- **Exclusive mode on the adapter: `IMapAdapter.enterExclusiveMode`, `exitExclusiveMode` and
+  `isExclusiveMode`.** A tool that takes over the map's clicks — measuring, drawing, picking a
+  point — enters exclusive mode; until it exits, the core opens no feature popup on click and its
+  hover handlers leave the cursor alone. `enterExclusiveMode("crosshair")` also paints that cursor
+  on the map canvas and restores the previous one on exit; without an argument the cursor is left
+  as it is. There is no ownership token: tools exclude each other, the last entry wins and any
+  exit releases the mode. Until now the only way in was to set an undocumented flag on the engine
+  map. The three members are optional, so an adapter written outside the library stays valid
+  without them: call them as `adapter.enterExclusiveMode?.(…)`.
+
+### Changed
+
+- **`MapConfig.padding` accepts the object form.** The type was `[number, number]`; it is now
+  `[number, number] | { top?, right?, bottom?, left? }`, the two forms the core reads. An edge the
+  object omits is `0`. The profile schema still admits an array of three or four numbers, of which
+  only the first two are read: the type keeps refusing them.
+
+- **`UIConfig.showGeocoding` is declared**, next to `showPrint` and `showMeasure`. The three are
+  aliases of `modules.<plugin>.showButton`, read only when that key is absent — their
+  documentation now says so.
+
+- **`@geoleaf-plugins/measure` now requires `@geoleaf/core` 3.17.0 or later**
+  (`@geoleaf-plugins/measure` 1.0.12). ⚠️ The peer range moves from `^3.0.0` to `^3.17.0`: a host
+  still on 3.16 gets a peer-resolution refusal. Its tools now enter and exit exclusive mode through
+  the adapter (`IMapAdapter.enterExclusiveMode`, 3.17.0) instead of setting an undocumented flag on
+  the engine map. Nothing changes on screen: while a tool is armed, a click still opens no feature
+  popup and the tool keeps its own cursor. On an adapter without exclusive mode the tools still
+  work, without it.
+
+- **`@geoleaf-plugins/editor` now requires `@geoleaf/core` 3.17.0 or later**
+  (`@geoleaf-plugins/editor` 1.6.1). ⚠️ The peer range moves from `^3.0.0` to `^3.17.0`: a host
+  still on 3.16 gets a peer-resolution refusal. An armed editor tool enters exclusive mode through
+  the adapter instead of setting an undocumented flag on the engine map, and the layer picker
+  stands aside for another plugin's tool by asking the adapter (`IMapAdapter.isExclusiveMode`).
+  Nothing changes on screen. On an adapter without exclusive mode the editor still works, without
+  it.
+
+- **`@geoleaf-plugins/isochrone` now requires `@geoleaf/core` 3.17.0 or later**
+  (`@geoleaf-plugins/isochrone` 1.0.1). ⚠️ The peer range moves from `^3.15.0` to `^3.17.0`: a host
+  still on 3.15 or 3.16 gets a peer-resolution refusal. Picking a point on the map now holds the
+  crosshair and keeps a click from opening a feature's sheet through the adapter
+  (`IMapAdapter.enterExclusiveMode`), and the plugin no longer reaches the engine map at all.
+  Leaving the picking now always releases exclusive mode: it no longer hands it back to a tool
+  that held it before, since tools exclude each other. On an adapter without exclusive mode the
+  picking still works, without the crosshair and without that guard.
+
+### Fixed
+
+- **Three public subpaths of `@geoleaf/core/capabilities/*` can be imported.**
+  `capabilities/legend/public-api`, `capabilities/pwa/public-api` and
+  `capabilities/filter/engine/index` shipped their declarations but no module: since 3.0.0,
+  `import { Legend } from "@geoleaf/core/capabilities/legend/public-api.js"` type-checked, then
+  threw `ERR_MODULE_NOT_FOUND`. The three modules are now emitted, with the exports their
+  declarations announce (`Legend`, `PWA`, and the ten filter-engine functions). The packaging check
+  now refuses any published declaration that exports a value without its module. The type-only
+  modules under the same subpath (`*/types`) are unchanged: `import type` from them works, as
+  before.
+
+- **The documentation of `IMapAdapter.addGeoJSONLayer` names members the adapter has.** It sent
+  the reader to `setLayerVisibility()`, which the contract does not declare: a layer is shown and
+  hidden by `showLayer()` / `hideLayer()`. It also said the data was validated by the adapter; it
+  is handed to the engine's GeoJSON source as it is.
+
+### Removed
+
+- **`IMapAdapter.createClusterGroup`, without a deprecation period.** ⚠️ It was a REQUIRED member
+  of the adapter contract, so removing it in a minor release breaks semver for TypeScript code
+  that calls it. We accept this on purpose. An adapter written outside the library may keep the
+  method, which nothing in the library calls. No caller is known, and the group it created was
+  registered at rank 100 but drawn on top of the style as it stood, so its rank did not say where
+  it was drawn. To cluster a layer, pass the `cluster` option to `addGeoJSONLayer`; that path is
+  unchanged. The internal POI cluster renderer that only this member reached goes with it.
+
 ## [3.16.3] - 2026-10-17
 
 ### Fixed

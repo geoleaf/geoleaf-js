@@ -59,7 +59,14 @@ export {
     type IconOptions,
 } from "./core-utils-seam.js";
 export { downloadBlob } from "./download.js";
-export { declareOwnedStyleIds, getNativeMap, warnNoCore } from "./map-seam.js";
+export {
+    declareOwnedStyleIds,
+    enterExclusiveMode,
+    exitExclusiveMode,
+    getNativeMap,
+    isExclusiveMode,
+    warnNoCore,
+} from "./map-seam.js";
 export { registerPluginModule, type PluginModule } from "./lifecycle-seam.js";
 export { createEl, applyStyleText } from "./dom-seam.js";
 export { adoptStylesheet } from "./ui/css-adopt.js";

@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/isochrone",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf isochrone plugin — the zones reachable from a point within a given time, asked of a routing engine",
@@ -46,11 +46,11 @@
         "prepublishOnly": "npm run build"
     },
     "peerDependencies": {
-        "@geoleaf/core": "^3.15.0",
+        "@geoleaf/core": "^3.17.0",
         "maplibre-gl": "^6.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^3.15.0",
+        "@geoleaf/core": "^3.17.0",
         "@geoleaf/build-config": "*",
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",

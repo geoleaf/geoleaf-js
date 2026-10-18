@@ -10,8 +10,8 @@
  *
  * The badge marks an entity queued for offline sync with an orange stroke: a point's circle
  * stroke, a line's own stroke, a polygon's outline. It is shared by the generic sub-layer
- * builders (`maplibre-primitives`), the re-style path (`maplibre-style-applier`) and the POI
- * cluster renderer (`maplibre-poi-builders`) so the paint stays byte-identical across them.
+ * builders (`maplibre-primitives`) and the re-style path (`maplibre-style-applier`) so the
+ * paint stays byte-identical across them.
  */
 
 import { DEFAULT_FEATURE_COLOR } from "../../utils/constants/constants.js";
@@ -24,7 +24,7 @@ import { DEFAULT_FEATURE_COLOR } from "../../utils/constants/constants.js";
  * `coalesce` yields the (absent) property and the test is `false`, so a plain
  * feature renders unchanged.
  */
-export const SYNC_PENDING: unknown = [
+const SYNC_PENDING: unknown = [
     "==",
     ["coalesce", ["feature-state", "syncStatus"], ["get", "_syncStatus"]],
     "pending",

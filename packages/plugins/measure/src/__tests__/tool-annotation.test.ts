@@ -2,7 +2,12 @@
  * Tests for tool-annotation.ts — tooltip annotation tool.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { installMockGeoLeaf, uninstallMockGeoLeaf, makeMockMaplibreMap } from "./setup.js";
+import {
+    installMockGeoLeaf,
+    uninstallMockGeoLeaf,
+    makeMockMaplibreMap,
+    type MockGeoLeaf,
+} from "./setup.js";
 import { getMeasureConfig } from "../config.js";
 import { initLayers } from "../draw-layers.js";
 import * as drawLayers from "../draw-layers.js";
@@ -14,11 +19,12 @@ import { activateAnnotationTooltip, deactivateAnnotation } from "../tools/tool-a
 // ---------------------------------------------------------------------------
 
 let map: ReturnType<typeof makeMockMaplibreMap>;
+let gl: MockGeoLeaf;
 let container: HTMLElement;
 let canvas: HTMLCanvasElement;
 
 function setup() {
-    const gl = installMockGeoLeaf();
+    gl = installMockGeoLeaf();
     map = gl._nativeMap;
     container = map.getContainer();
     canvas = map.getCanvas();
@@ -45,9 +51,10 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("activateAnnotationTooltip", () => {
-    it("sets __geoleafExclusiveMode on the map", () => {
+    it("🔴 enters exclusive mode on the adapter, and leaves the native map unwritten", () => {
         activateAnnotationTooltip(map);
-        expect((map as any).__geoleafExclusiveMode).toBe(true);
+        expect(gl.exclusive.held).toBe(true);
+        expect((map as any).__geoleafExclusiveMode).toBeUndefined();
     });
 
     it("sets cursor to crosshair", () => {
@@ -61,15 +68,15 @@ describe("activateAnnotationTooltip", () => {
         const spy = vi.spyOn(drawLayers, "setCursor");
         activateAnnotationTooltip(map); // should deactivate first
         expect(spy).toHaveBeenCalledWith("grab"); // deactivation resets cursor
-        expect((map as any).__geoleafExclusiveMode).toBe(true);
+        expect(gl.exclusive.held).toBe(true);
     });
 });
 
 describe("deactivateAnnotation", () => {
-    it("clears __geoleafExclusiveMode", () => {
+    it("🔴 exits exclusive mode on the adapter", () => {
         activateAnnotationTooltip(map);
         deactivateAnnotation();
-        expect((map as any).__geoleafExclusiveMode).toBe(false);
+        expect(gl.exclusive.held).toBe(false);
     });
 
     it("resets cursor to grab", () => {

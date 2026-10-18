@@ -4,8 +4,8 @@ title: isochrone — les zones atteignables depuis un point, demandées à un mo
 plugin_id: isochrone
 package: "@geoleaf-plugins/isochrone"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 599050fcd
-date: 15 octobre 2026
+verifie_contre: 6d74bc82c
+date: 18 octobre 2026
 ---
 
 # isochrone — les zones atteignables depuis un point, demandées à un moteur de routage
@@ -503,20 +503,23 @@ quand aucune carte n'est montée. La carte reste visible et manipulable.
   contrôleur, interne au paquet — le plugin n'émet rien sur le bus de l'application. Un appel de
   l'API pendant qu'elle est ouverte se voit dans ses lignes.
 
-### Le pointage — le seul accès natif du paquet
+### Le pointage — par l'adaptateur, comme le reste (1.0.1)
 
 `src/pick-on-map.ts`. Le clic passe par **l'adaptateur** (`on`/`off("click")`, qui ajoute `latlng`
-à l'évènement). Le drapeau qui empêche un clic d'ouvrir la fiche d'un objet, lui, ne s'atteint
-pas par l'adaptateur : le cœur lit `__geoleafExclusiveMode` **sur la carte native**, et aucun
-membre de l'adaptateur ne le pose. Cette écriture est le **seul** appel à `getNativeMap()` du
-paquet — compté par `scripts/check-native-map-access.cjs`, gel relevé avec son motif.
+à l'évènement), et le mode aussi : `enterExclusiveMode("crosshair")` à l'armement,
+`exitExclusiveMode()` à la sortie (core 3.17.0, d'où la plage `^3.17.0`). Le premier peint la croix
+et garde le curseur trouvé ; tant que le mode tient, un clic n'ouvre la fiche d'aucun objet. Le
+paquet n'appelle plus `getNativeMap()` : il ne touche plus la carte native.
 
 - Un clic, un point : le mode se quitte **avant** de rendre l'origine. Un clic sans position finie
   est ignoré.
-- Le curseur et le drapeau sont rendus **à leur valeur d'avant**, jamais remis à zéro : un autre
-  mode peut les tenir.
+- **La sortie libère toujours le mode** : les outils s'excluent mutuellement, sans jeton, et quitter
+  le pointage ne rend pas le mode à un outil qu'il avait supplanté. Jusqu'en 1.0.0, le curseur et
+  le drapeau étaient rendus à leur valeur d'avant ; l'arbitrage du 16/10/2026 a retiré cette
+  restauration.
 - Sans carte cliquable, le mode est inerte (`active: false`), et la fenêtre le dit plutôt que de
-  se croire en pointage. Sans carte native, le pointage marche, sans le drapeau.
+  se croire en pointage. Sur un adaptateur sans les deux membres, le pointage marche, sans croix ni
+  garde, et rien n'est écrit à leur place.
 
 ### Les lignes
 

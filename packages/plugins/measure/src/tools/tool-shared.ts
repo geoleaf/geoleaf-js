@@ -16,6 +16,7 @@
  * without it, and they were the only ones that lost their crosshair for good.
  * https://geoleaf.dev
  */
+import { enterExclusiveMode, exitExclusiveMode } from "@geoleaf/host-runtime";
 import {
     clearPreview,
     disableDragPan,
@@ -68,11 +69,11 @@ interface CursorGuardOptions {
  * MapLibre drives the cursor entirely through CSS classes on `.maplibregl-canvas-container`,
  * and never touches an inline style. Only GeoLeaf's own handlers write here.
  *
- * Those handlers are now guarded by `__geoleafExclusiveMode` on all three core sites
- * (`feature-interaction`, `maplibre-poi-builders`, `maplibre-cluster-builders`), so this
- * observer is a second line of defence rather than the primary mechanism. It stays because
- * the flag is a convention no gate enforces on plugins — at least one editor handler
- * still ignores it.
+ * Those handlers stand aside while a tool holds exclusive mode, which every measure tool
+ * enters on the adapter (`enterExclusiveMode` of `@geoleaf/host-runtime`), so this observer is
+ * a second line of defence rather than the primary mechanism. It stays because the mode is not
+ * always there to rely on: an adapter without it (a core older than 3.17.0) leaves the tool
+ * working without exclusive mode, and a handler outside GeoLeaf never consults it.
  */
 export function startCursorGuard(canvas: HTMLCanvasElement, opts: CursorGuardOptions): CursorGuard {
     const observer = new MutationObserver(() => {
@@ -258,7 +259,7 @@ export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
             map = m;
             active = true;
             state = null;
-            m.__geoleafExclusiveMode = true;
+            enterExclusiveMode(m);
             setCursor("crosshair");
             // Same guard the click tools have had since S5, and whose absence here was the
             // whole difference: circle and rect lost their crosshair on the first POI
@@ -277,7 +278,7 @@ export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
             cursorGuard?.stop();
             cursorGuard = null;
             if (map) {
-                map.__geoleafExclusiveMode = false;
+                exitExclusiveMode(map);
                 map.off("mousedown", onMouseDown);
                 map.off("mousemove", onMouseMove);
                 map.off("touchstart", onTouchStart);

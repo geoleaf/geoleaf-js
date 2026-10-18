@@ -7,16 +7,22 @@
  * reason the envelope exists here rather than in the integrator's code.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { installMockGeoLeaf, uninstallMockGeoLeaf, makeMockMaplibreMap } from "./setup.js";
+import {
+    installMockGeoLeaf,
+    uninstallMockGeoLeaf,
+    makeMockMaplibreMap,
+    type MockGeoLeaf,
+} from "./setup.js";
 import { initLayers } from "../draw-layers.js";
 import { activateCustom, deactivateCustom, getActiveCustomId } from "../tools/tool-custom.js";
 import type { MeasureMap } from "../types.js";
 
 let map: ReturnType<typeof makeMockMaplibreMap>;
+let gl: MockGeoLeaf;
 
 beforeEach(() => {
-    installMockGeoLeaf();
     map = makeMockMaplibreMap();
+    gl = installMockGeoLeaf({ nativeMap: map }); // the adapter drives THIS map
     initLayers(map as unknown as MeasureMap); // wires setCursor() to this map
 });
 
@@ -31,9 +37,7 @@ const arm = (id: string, def: Record<string, unknown> = {}) =>
 describe("activateCustom — the envelope", () => {
     it("claims exclusive mode so the core's hover handlers stand down", () => {
         arm("denivele");
-        expect(
-            (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode
-        ).toBe(true);
+        expect(gl.exclusive.held).toBe(true);
     });
 
     it("paints the declared cursor", () => {
@@ -50,9 +54,7 @@ describe("activateCustom — the envelope", () => {
         const onActivate = vi.fn(() => {
             // Observed from inside the callback: the tool is already fully armed.
             expect(map.getCanvas().style.cursor).toBe("cell");
-            expect(
-                (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode
-            ).toBe(true);
+            expect(gl.exclusive.held).toBe(true);
         });
         arm("denivele", { cursor: "cell", onActivate });
         expect(onActivate).toHaveBeenCalledWith(map);
@@ -85,18 +87,14 @@ describe("deactivateCustom — the teardown", () => {
     it("releases exclusive mode and restores the pan cursor", () => {
         arm("denivele", { cursor: "cell" });
         deactivateCustom();
-        expect(
-            (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode
-        ).toBe(false);
+        expect(gl.exclusive.held).toBe(false);
         expect(map.getCanvas().style.cursor).toBe("grab");
     });
 
     it("calls onDeactivate BEFORE the envelope comes down", () => {
         const onDeactivate = vi.fn(() => {
             // The callback sees the same armed state on both edges.
-            expect(
-                (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode
-            ).toBe(true);
+            expect(gl.exclusive.held).toBe(true);
         });
         arm("denivele", { onDeactivate });
         deactivateCustom();

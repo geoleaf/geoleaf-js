@@ -8,18 +8,11 @@
 /**
  * MapLibre cluster constants.
  *
- * Shared clustering defaults consumed by both cluster-source builders:
- * `maplibre-poi-builders.ts` (`createClusteredSource`) and
- * `maplibre-layer-builders.ts` (`buildSourceOptions` / `buildClusterGroup`).
+ * The clustering defaults a clustered GeoJSON source falls back to when the
+ * caller gives none — `maplibre-layer-builders.ts` (`buildSourceOptions`).
  * Pure data — no engine calls, no side effects — so any module can import it
  * without risking a dependency cycle.
  */
-
-/**
- * Hard ceiling on a source's `clusterMaxZoom`, applied regardless of any caller
- * override, so clusters always break apart before the deepest zoom levels.
- */
-export const MAPLIBRE_MAX_CLUSTER_ZOOM = 17;
 
 /** Default `clusterMaxZoom` when the caller provides none. */
 export const DEFAULT_CLUSTER_MAX_ZOOM = 14;

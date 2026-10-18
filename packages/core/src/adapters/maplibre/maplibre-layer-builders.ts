@@ -5,10 +5,10 @@
  * https://geoleaf.dev
  */
 /**
- * MapLibre layer construction — GeoJSON sub-layers and POI cluster groups.
+ * MapLibre layer construction — GeoJSON sub-layers, clustered or not.
  * Extracted from `maplibre-adapter.ts` (keeps the adapter under the 700-line
  * budget); the adapter delegates to these free functions, passing its `map`,
- * layer registry and cluster-id map.
+ * and layer registry.
  */
 import type { GeoLeafLayerOptions } from "../../contracts/map-adapter.contract.ts";
 import type { MaplibreMap, MaplibreFilter, MaplibreSourceSpec } from "./maplibre-adapter-types.js";
@@ -25,12 +25,6 @@ import {
     type SubLayerType,
 } from "./maplibre-primitives.js";
 import { addClusterSubLayers, bindGeoJSONClusterEvents } from "./maplibre-cluster-builders.js";
-import {
-    createClusteredSource,
-    bindPoiEvents,
-    getClusterExpansionZoom,
-    type ClusterLayerIds,
-} from "./maplibre-poi-builders.js";
 import { DEFAULT_CLUSTER_MAX_ZOOM, DEFAULT_CLUSTER_RADIUS } from "./maplibre-cluster.js";
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
 import { sanitizeAttribution } from "../../kernel/security/map-credit.js";
@@ -240,8 +234,8 @@ function _drawsEveryFamily(types: ReadonlySet<SubLayerType>): boolean {
  * ⚠️ What this does NOT replay, and the caller owns: a style set since the creation, and the
  * filters the layer carries — both are per-adapter state (`MaplibreAdapter.updateLayerData`).
  *
- * ⚠️ Three layers are left as they are. A vector-tile layer and a cluster group, which are
- * not built here. And a CLUSTERED layer: its source indexes points alone, so a sub-layer for
+ * ⚠️ Two layers are left as they are. A vector-tile layer, which is not built here. And a
+ * CLUSTERED layer: its source indexes points alone, so a sub-layer for
  * lines or polygons would have nothing to draw.
  *
  * @param map - The underlying `maplibregl.Map`.
@@ -308,63 +302,4 @@ export function growGeoJSONLayer(
     );
     registry.extend(id, created, fresh, map.getLayersOrder());
     return created;
-}
-
-/**
- * Creates a clustered GeoJSON source with cluster circle/symbol layers and
- * wires the default click-to-expand interaction.
- *
- * @param map - The underlying `maplibregl.Map`.
- * @param registry - The adapter's layer registry.
- * @param clusterIds - The adapter's cluster-id map (mutated: id → layer ids).
- * @param id - GeoLeaf cluster group id.
- * @param options - Cluster options (`clusterRadius`, `clusterMaxZoom`).
- */
-export async function buildClusterGroup(
-    map: MaplibreMap,
-    registry: MaplibreLayerRegistry,
-    clusterIds: Map<string, ClusterLayerIds>,
-    id: string,
-    options?: Record<string, unknown>
-): Promise<void> {
-    if (clusterIds.has(id)) {
-        throw new Error(`MaplibreAdapter: cluster group "${id}" already exists.`);
-    }
-
-    const ids = await createClusteredSource(map, id, {
-        clusterRadius: (options?.clusterRadius as number) ?? DEFAULT_CLUSTER_RADIUS,
-        clusterMaxZoom: (options?.clusterMaxZoom as number) ?? DEFAULT_CLUSTER_MAX_ZOOM,
-    });
-
-    clusterIds.set(id, ids);
-
-    // Register in layer registry with custom IDs for unified layer management
-    registry.register(id, ["circle", "symbol"], 100, {
-        customSubLayerIds: ids.allLayerIds,
-        customSourceId: ids.sourceId,
-        geometryTypes: new Set(["Point"]),
-    });
-
-    // Wire default cluster interaction: click on cluster → expansion zoom
-    bindPoiEvents(map, id, {
-        onClusterClick: (feature, lngLat) => {
-            const clusterId = feature.properties?.cluster_id as number | undefined;
-            if (clusterId === undefined) return;
-            getClusterExpansionZoom(map, id, clusterId)
-                .then((zoom: number) => {
-                    map.flyTo({ center: [lngLat.lng, lngLat.lat], zoom });
-                })
-                .catch(() => {
-                    // Fallback: zoom in +2 levels on click if expansion zoom fails
-                    map.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: map.getZoom() + 2 });
-                });
-        },
-    });
-
-    // Signal capability plugins (taxonomy, …) that a point/cluster layer is ready.
-    dispatchGeoLeafEvent("geoleaf:layer:added", {
-        layerId: id,
-        sourceId: ids.sourceId,
-        geometryTypes: ["Point"],
-    });
 }

@@ -185,12 +185,12 @@ export interface IMapAdapter {
      * Creates a GeoJSON layer from raw GeoJSON data and adds it to the map.
      *
      * The adapter stores the layer internally keyed by `id`. Use `removeLayer()`,
-     * `setLayerVisibility()`, `updateLayerData()`, and `setLayerStyle()` to
-     * manage it afterwards.
+     * `showLayer()` / `hideLayer()`, `updateLayerData()`, and `setLayerStyle()` to
+     * manage it afterwards. The MapLibre adapter throws when `id` is already taken.
      *
      * @param id - Unique layer identifier.
-     * @param data - GeoJSON data (`FeatureCollection`, `Feature`, or `Geometry`).
-     *   Validated by the adapter at runtime.
+     * @param data - GeoJSON data (`FeatureCollection`, `Feature`, or `Geometry`). The adapter
+     *   does not validate it: it is handed to the engine's GeoJSON source as it is.
      * @param options - Optional layer display options.
      */
     addGeoJSONLayer(id: string, data: unknown, options?: GeoLeafLayerOptions): void;
@@ -334,7 +334,7 @@ export interface IMapAdapter {
      * `addGeoJSONLayer` at the rank it wants. It is the answer when:
      * - `id` names no layer of this adapter;
      * - `zIndex` is not a finite number;
-     * - the layer is a vector-tile layer, or a cluster group (`createClusterGroup`);
+     * - the layer is a vector-tile layer;
      * - none of its sub-layers is in the style;
      * - the layer it should go under is not in the style — the engine would then take the
      *   layer out of the drawing order instead of moving it.
@@ -424,17 +424,6 @@ export interface IMapAdapter {
      * @param id - The marker identifier used in `createMarker()`.
      */
     getMarkerHandle?(id: string): GeoLeafMarkerHandle | null;
-
-    /**
-     * Creates a cluster group for grouping markers at low zoom levels.
-     *
-     * The adapter stores the cluster group internally keyed by `id`.
-     *
-     * @param id - Unique cluster group identifier.
-     * @param options - Clustering options (engine-specific, typed `unknown`).
-     *   Each adapter validates the concrete options internally.
-     */
-    createClusterGroup(id: string, options?: Record<string, unknown>): Promise<void>;
 
     // ── Popups ────────────────────────────────────────────────────────────────
 
@@ -607,6 +596,53 @@ export interface IMapAdapter {
      * adapter.declareOwnedStyleIds?.("my-plugin", null);
      */
     declareOwnedStyleIds?(owner: string, ids: DeclaredStyleIds | null): void;
+
+    /**
+     * Enters exclusive mode: a tool now owns the map's clicks and cursor. While it holds, the
+     * core opens no feature popup on click and its hover handlers leave the cursor alone.
+     *
+     * With `cursor`, that CSS cursor is painted on the drawing canvas — the element that shows
+     * the pointer (see {@link IMapAdapter.getCanvas}) — and the one shown before is kept, to
+     * be restored by {@link IMapAdapter.exitExclusiveMode}. Without it, only the mode is
+     * entered and the cursor is left as it is, for a tool that manages its own or shows none.
+     *
+     * There is no ownership token: tools exclude each other. A tool exits the others before
+     * it enters; the last entry wins, and any exit releases the mode. Entering twice keeps the
+     * cursor shown before the first entry.
+     *
+     * Optional, like {@link IMapAdapter.declareOwnedStyleIds}: an adapter without it offers no
+     * exclusive mode, and nothing throws. Call it as `adapter.enterExclusiveMode?.(…)`.
+     *
+     * @param cursor - CSS cursor keyword, e.g. `"crosshair"`; omit it to leave the cursor alone.
+     * @example
+     * // A pick-on-map tool takes the next click for itself.
+     * adapter.enterExclusiveMode?.("crosshair");
+     * // Once the point is picked, or the tool is cancelled:
+     * adapter.exitExclusiveMode?.();
+     */
+    enterExclusiveMode?(cursor?: string): void;
+
+    /**
+     * Exits exclusive mode: the core's click and hover handlers resume. When
+     * {@link IMapAdapter.enterExclusiveMode} painted a cursor, the one shown before it comes
+     * back; otherwise the cursor is left untouched.
+     *
+     * Safe without a prior entry, and releases the mode whichever tool entered it — see
+     * {@link IMapAdapter.enterExclusiveMode} for why there is no token. Optional: call it as
+     * `adapter.exitExclusiveMode?.()`.
+     */
+    exitExclusiveMode?(): void;
+
+    /**
+     * Reports whether a tool currently holds exclusive mode — for a handler that must stand
+     * aside while another tool owns the map, e.g. one that writes the cursor on hover.
+     *
+     * Optional: call it as `adapter.isExclusiveMode?.() === true`, which reads `false` on an
+     * adapter that offers no exclusive mode.
+     *
+     * @returns `true` between an {@link IMapAdapter.enterExclusiveMode} and the next exit.
+     */
+    isExclusiveMode?(): boolean;
 
     /**
      * Puts back the runtime images (hatch patterns, POI sprite icons) a style change may

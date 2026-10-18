@@ -83,6 +83,56 @@ export function declareOwnedStyleIds(
     return true;
 }
 
+/**
+ * Enters exclusive mode on the GeoLeaf adapter that drives `nativeMap`: until
+ * {@link exitExclusiveMode}, the core opens no feature popup on click and its hover handlers leave
+ * the cursor alone. With `cursor`, the adapter paints it on the canvas and restores the previous one
+ * on exit; without it, the cursor is the caller's.
+ *
+ * There is no token: tools exclude each other, the last entry wins and any exit releases the mode.
+ * The adapter is found as {@link declareOwnedStyleIds} finds it.
+ *
+ * @param nativeMap - The engine map the tool operates on.
+ * @param cursor - CSS cursor keyword, or omit it to leave the cursor to the caller.
+ * @returns `true` when an adapter entered the mode. `false` without a core, when no GeoLeaf map
+ *   drives `nativeMap`, or with a core older than the member (3.17.0) — the tool then works
+ *   without exclusive mode, and nothing throws.
+ */
+export function enterExclusiveMode(nativeMap: unknown, cursor?: string): boolean {
+    const adapter = _adapterDriving(nativeMap);
+    if (typeof adapter?.enterExclusiveMode !== "function") return false;
+    adapter.enterExclusiveMode(cursor);
+    return true;
+}
+
+/**
+ * Exits exclusive mode on the GeoLeaf adapter that drives `nativeMap`, restoring a cursor the entry
+ * painted. Safe without a prior entry.
+ *
+ * @param nativeMap - The engine map the tool operated on.
+ * @returns `true` when an adapter exited the mode; `false` in the cases {@link enterExclusiveMode}
+ *   lists.
+ */
+export function exitExclusiveMode(nativeMap: unknown): boolean {
+    const adapter = _adapterDriving(nativeMap);
+    if (typeof adapter?.exitExclusiveMode !== "function") return false;
+    adapter.exitExclusiveMode();
+    return true;
+}
+
+/**
+ * Reports whether a tool holds exclusive mode on the GeoLeaf adapter that drives `nativeMap` — for
+ * a handler that must stand aside while another plugin's tool owns the map.
+ *
+ * @param nativeMap - The engine map the handler is wired on.
+ * @returns `true` while a tool holds the mode. `false` otherwise, and in the cases
+ *   {@link enterExclusiveMode} lists: no tool can hold a mode the adapter does not offer.
+ */
+export function isExclusiveMode(nativeMap: unknown): boolean {
+    const adapter = _adapterDriving(nativeMap);
+    return typeof adapter?.isExclusiveMode === "function" && adapter.isExclusiveMode() === true;
+}
+
 /** The adapter of the host's map whose engine is `nativeMap`, if any. */
 function _adapterDriving(nativeMap: unknown): HostMapAdapter | undefined {
     const core = getGeoLeaf()?.Core;

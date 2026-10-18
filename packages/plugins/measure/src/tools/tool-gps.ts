@@ -9,7 +9,7 @@
  * Stopping: Space key, re-click GPS button, or external geoloc deactivation.
  * https://geoleaf.dev
  */
-import { isGeolocationActive } from "@geoleaf/host-runtime";
+import { enterExclusiveMode, exitExclusiveMode, isGeolocationActive } from "@geoleaf/host-runtime";
 import type { MeasureConfig, MeasureMap, MeasureMapMouseEvent } from "../types.js";
 import { getMeasureConfig } from "../config.js";
 import { _el, _getLabel } from "../internal.js";
@@ -233,7 +233,7 @@ export function activateGps(map: MeasureMap, onStop?: () => void): void {
     _lastAccepted = null;
     _closeModalShown = false;
     _weActivatedGeoloc = false;
-    map.__geoleafExclusiveMode = true;
+    enterExclusiveMode(map);
 
     startSession("line");
 
@@ -285,7 +285,7 @@ export function deactivateGps(): void {
             _onGeolocStateChange
         );
         map.off("click", _onMapClick);
-        map.__geoleafExclusiveMode = false;
+        exitExclusiveMode(map);
     }
     document.removeEventListener("keydown", _onKeyDown);
 

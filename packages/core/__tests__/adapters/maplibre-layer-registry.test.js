@@ -124,13 +124,6 @@ describe("MaplibreLayerRegistry", () => {
             expect(entry.subLayerTypes).toEqual(new Set(["fill", "line"]));
         });
 
-        it("uses customSourceId when provided", () => {
-            const entry = registry.register("rivers", ["fill"], 5, {
-                customSourceId: "my-custom-source",
-            });
-            expect(entry.sourceId).toBe("my-custom-source");
-        });
-
         it("uses customSubLayerIds when provided", () => {
             const entry = registry.register("clusters", ["circle", "symbol"], 20, {
                 customSubLayerIds: ["cluster-circles", "cluster-labels"],

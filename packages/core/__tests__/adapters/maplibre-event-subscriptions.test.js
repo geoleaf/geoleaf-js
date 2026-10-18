@@ -3,7 +3,7 @@
  * that flushes MapLibre `on(type, layerId, handler)` delegated listeners on
  * style rebuild / destroy.
  *
- * RM-P1 fix (a): before this tracker, each basemap rebuild re-bound the POI /
+ * RM-P1 fix (a): before this tracker, each basemap rebuild re-bound the
  * cluster / feature-interaction listeners without removing the previous copies,
  * leaking listeners and double-dispatching events. These tests lock the fix:
  * flush detaches every tracked listener, and a re-bind after flush yields
@@ -15,7 +15,6 @@ import {
     flushMapCleanups,
     trackedCleanupCount,
 } from "../../src/adapters/maplibre/maplibre-event-subscriptions.js";
-import { bindPoiEvents } from "../../src/adapters/maplibre/maplibre-poi-builders.js";
 import { bindGeoJSONClusterEvents } from "../../src/adapters/maplibre/maplibre-cluster-builders.js";
 import { createRequire } from "node:module";
 
@@ -74,42 +73,6 @@ describe("maplibre-event-subscriptions", () => {
             const map = freshMap();
             expect(() => flushMapCleanups(map)).not.toThrow();
             expect(trackedCleanupCount(map)).toBe(0);
-        });
-    });
-
-    describe("bindPoiEvents cleanup", () => {
-        it("detaches every delegated listener on flush", () => {
-            const map = freshMap();
-            bindPoiEvents(map, "events", { onPointClick: vi.fn(), onClusterClick: vi.fn() });
-
-            expect(handlerCount(map, "click:gl-poi-events-unclustered")).toBe(1);
-            expect(handlerCount(map, "click:gl-poi-events-unclustered-icons")).toBe(1);
-            expect(handlerCount(map, "click:gl-poi-events-clusters")).toBe(1);
-            expect(handlerCount(map, "mouseenter:gl-poi-events-unclustered")).toBe(1);
-            expect(handlerCount(map, "mouseleave:gl-poi-events-clusters")).toBe(1);
-            expect(trackedCleanupCount(map)).toBeGreaterThan(0);
-
-            flushMapCleanups(map);
-
-            expect(handlerCount(map, "click:gl-poi-events-unclustered")).toBe(0);
-            expect(handlerCount(map, "click:gl-poi-events-unclustered-icons")).toBe(0);
-            expect(handlerCount(map, "click:gl-poi-events-clusters")).toBe(0);
-            expect(handlerCount(map, "mouseenter:gl-poi-events-unclustered")).toBe(0);
-            expect(handlerCount(map, "mouseenter:gl-poi-events-unclustered-icons")).toBe(0);
-            expect(handlerCount(map, "mouseleave:gl-poi-events-clusters")).toBe(0);
-            expect(trackedCleanupCount(map)).toBe(0);
-        });
-
-        it("re-binding after flush does NOT duplicate listeners (the leak fix)", () => {
-            const map = freshMap();
-            bindPoiEvents(map, "events", { onPointClick: vi.fn() });
-            flushMapCleanups(map);
-            bindPoiEvents(map, "events", { onPointClick: vi.fn() });
-
-            // Exactly one handler per layer — two would be the pre-fix leak.
-            expect(handlerCount(map, "click:gl-poi-events-unclustered")).toBe(1);
-            expect(handlerCount(map, "click:gl-poi-events-unclustered-icons")).toBe(1);
-            expect(handlerCount(map, "mouseenter:gl-poi-events-clusters")).toBe(1);
         });
     });
 

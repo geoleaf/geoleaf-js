@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51aa42851
-date: 15 octobre 2026
+verifie_contre: 83455288c
+date: 18 octobre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -78,7 +78,7 @@ Exportée par `src/index.ts`. Trois familles, plus les primitives HTTP.
 | **Seam journalisation**   | `Log`                                                                                                                                                                                                  |
 | **Seam i18n**             | `tLabel(...)` · `getActiveLang()`                                                                                                                                                                      |
 | **Seam utilitaires core** | `getNestedValue(...)` · `createSVGIcon(...)` · `clearElementFast(...)` · type `IconOptions`                                                                                                            |
-| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)` · `declareOwnedStyleIds(...)`                                                                                                                                     |
+| **Seam carte**            | `getNativeMap()` · `warnNoCore(...)` · `declareOwnedStyleIds(...)` · `enterExclusiveMode(...)` · `exitExclusiveMode(...)` · `isExclusiveMode(...)`                                                     |
 | **Seam cycle de vie**     | `registerPluginModule(...)` · type `PluginModule`                                                                                                                                                      |
 | **Seam DOM**              | `createEl(...)` · `applyStyleText(...)`                                                                                                                                                                |
 | **Téléchargement**        | `downloadBlob(...)`                                                                                                                                                                                    |
@@ -157,13 +157,29 @@ ligne de console en plus. Les greffons gardent leur pair `^3.0.0`.
 
 📌 **`HostMapAdapter` nomme ce qu'un plugin APPELLE sur l'adaptateur, et rien de plus** : la carte
 native (`getNativeMap`), la déclaration des couches posées hors de lui (`declareOwnedStyleIds`,
-core 3.10.0) et le changement de rang d'une couche (`setLayerZIndex`, core 3.15.0). Les trois sont
-optionnels — un cœur plus ancien ne les porte pas. `setLayerZIndex` est nommé, à la différence de
+core 3.10.0), le changement de rang d'une couche (`setLayerZIndex`, core 3.15.0) et le mode
+exclusif (`enterExclusiveMode`, `exitExclusiveMode`, `isExclusiveMode`, core 3.17.0). Tous sont
+optionnels — un cœur plus ancien ne les porte pas. Les trois membres du mode exclusif ont leur
+seam, décrit ci-dessous : `measure` et `editor` ne tiennent que la carte native. `setLayerZIndex` est nommé, à la différence de
 `mount`, parce qu'un plugin en lit la RÉPONSE : sous la traîne `[key: string]: unknown` le membre
 typait `unknown`, donc ni l'appel ni son booléen n'étaient typés. L'appel s'écrit
 `adapter.setLayerZIndex?.(id, zIndex) === true` : `false` et l'absence du membre se lisent pareil,
 « rien n'a bougé, reconstruis la couche ». Ce paquet n'ajoute aucune fonction pour lui — le plugin
 tient déjà l'adaptateur par `Core.getMap()`.
+
+### Le mode exclusif — par l'adaptateur trouvé, sans repli natif (18/10/2026)
+
+`enterExclusiveMode(nativeMap, cursor?)`, `exitExclusiveMode(nativeMap)` et
+`isExclusiveMode(nativeMap)` mènent aux trois membres du même nom (`IMapAdapter`, core 3.17.0) :
+tant qu'un outil tient le mode, le cœur n'ouvre aucune fiche au clic et ses gestionnaires de survol
+ne touchent pas au curseur. L'adaptateur se trouve comme pour `declareOwnedStyleIds`, ci-dessous.
+
+🛑 **Sans membre, rien n'est écrit à sa place.** Entrée et sortie rendent `false` sans cœur, sans
+carte pilotée ou avec un cœur plus ancien, et la lecture rend `false` : un drapeau resté sur le
+moteur n'est pas une réponse, le seam interroge l'adaptateur ou personne. Le repli d'un greffon est
+l'outil sans mode exclusif — tranché par Mattieu le 18/10/2026. Appelants : les outils de `measure`
+(entrée sans curseur, l'outil garde le sien), l'éditeur et son sélecteur de couche. `isochrone`
+n'en a pas besoin : il tient l'adaptateur et appelle ses membres directement.
 
 ### `declareOwnedStyleIds` — l'adaptateur se TROUVE, il ne se suppose pas (24/09/2026)
 

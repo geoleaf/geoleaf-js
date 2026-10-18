@@ -6,6 +6,7 @@
  * No measure-engine session is used — features are inserted directly via onCreated callback.
  * https://geoleaf.dev
  */
+import { enterExclusiveMode, exitExclusiveMode } from "@geoleaf/host-runtime";
 import { createOverlay } from "../annotation-overlays.js";
 import { setCursor } from "../draw-layers.js";
 import { containerCoord, startCursorGuard, type CursorGuard } from "./tool-shared.js";
@@ -56,7 +57,7 @@ export function activateAnnotationTooltip(map: MeasureMap): void {
     _active = true;
     _canvas = map.getCanvas();
     _container = map.getContainer();
-    map.__geoleafExclusiveMode = true;
+    enterExclusiveMode(map);
     setCursor("crosshair");
     _cursorGuard = startCursorGuard(_canvas, {
         isActive: () => _active,
@@ -73,7 +74,7 @@ export function deactivateAnnotation(): void {
     _cursorGuard = null;
     if (_container) _container.removeEventListener("click", _onContainerClick, true);
     if (_map) {
-        _map.__geoleafExclusiveMode = false;
+        exitExclusiveMode(_map);
         setCursor("grab");
     }
     _map = null;

@@ -4,7 +4,12 @@
  * https://geoleaf.dev
  */
 
-import { getGeoLeaf, getNativeMap } from "@geoleaf/host-runtime";
+import {
+    enterExclusiveMode,
+    exitExclusiveMode,
+    getGeoLeaf,
+    getNativeMap,
+} from "@geoleaf/host-runtime";
 import type { EditorMap } from "./types.js";
 
 /**
@@ -33,14 +38,18 @@ export function _getBaseLayers(): EditorBaseLayers | null {
 }
 
 /**
- * Suppresses (on=true) or restores (on=false) core layer popups and tooltips
- * while an editor tool is armed. Mirrors plugin-measure's `__geoleafExclusiveMode`
- * flag, which core `popup-tooltip.ts` checks before opening a click popup, a hover
- * tooltip, or changing the cursor. No-op if the native map is unavailable.
+ * Enters (on=true) or exits (on=false) exclusive mode while an editor tool is armed, on the GeoLeaf
+ * adapter that drives the map: while it holds, the core opens no feature popup on click and its
+ * hover handlers leave the cursor alone. Entered without a cursor — Terra Draw owns it.
+ *
+ * A no-op when the native map is unavailable, or when the adapter offers no exclusive mode (a core
+ * older than 3.17.0): the tool then works without it.
  */
 export function _setExclusiveMode(on: boolean): void {
     const map = _getNativeMap();
-    if (map) map.__geoleafExclusiveMode = on;
+    if (!map) return;
+    if (on) enterExclusiveMode(map);
+    else exitExclusiveMode(map);
 }
 
 // DOM helpers and i18n resolver live in field-renderer; re-exported here so

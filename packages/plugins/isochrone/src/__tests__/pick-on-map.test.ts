@@ -1,9 +1,10 @@
 /**
  * @geoleaf-plugins/isochrone — picking a point on the map
  *
- * One click, one point; the cursor and the flag that keeps a click from opening a feature's
- * sheet are given back as they WERE; leaving twice does nothing; and with no map to click the
- * mode says it is not armed.
+ * One click, one point; the crosshair and the guard that keeps a click from opening a feature's
+ * sheet are held through the adapter's exclusive mode, never by writing the native map; leaving
+ * twice does nothing; with no map to click the mode says it is not armed; and an adapter without
+ * exclusive mode still picks. Cases marked 🔴 were seen red with the native write put back.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -70,18 +71,21 @@ describe("pickOriginOnMap", () => {
         expect(canvas.style.cursor).toBe("help");
     });
 
-    it("keeps a click from opening a feature's sheet while armed, and gives the flag back", () => {
+    it("🔴 holds exclusive mode on the adapter while armed, and leaves the native map unwritten", () => {
         const mode = pickOriginOnMap(() => {});
-        expect(map.native.__geoleafExclusiveMode).toBe(true);
+        expect(map.exclusive.held).toBe(true);
+        expect(map.enterExclusiveMode).toHaveBeenCalledWith("crosshair");
         mode.stop();
-        expect(map.native.__geoleafExclusiveMode).toBe(false);
+        expect(map.exclusive.held).toBe(false);
+        expect(map.native.__geoleafExclusiveMode).toBeUndefined();
     });
 
-    it("leaves the flag raised when another mode had raised it", () => {
-        map.native.__geoleafExclusiveMode = true;
+    it("releases the mode on leaving, even when another tool had entered it before", () => {
+        // No token: the picking superseded that tool, and leaving does not hand the mode back.
+        map.enterExclusiveMode?.();
         const mode = pickOriginOnMap(() => {});
         mode.stop();
-        expect(map.native.__geoleafExclusiveMode).toBe(true);
+        expect(map.exclusive.held).toBe(false);
     });
 
     it("leaves once, however many times it is told to", () => {
@@ -106,13 +110,15 @@ describe("pickOriginOnMap", () => {
         expect(pickOriginOnMap(() => {}).active).toBe(false);
     });
 
-    it("still picks when the native map cannot be reached", () => {
-        const adapter = { ...map, getNativeMap: () => undefined };
-        host.GeoLeaf = { Core: { getMap: () => adapter } };
+    it("🔴 still picks on an adapter without exclusive mode, and writes nothing in its place", () => {
+        const bare = createFakeMap({ exclusive: "absent" });
+        host.GeoLeaf = { Core: { getMap: () => bare } };
         const onPick = vi.fn();
         const mode = pickOriginOnMap(onPick);
         expect(mode.active).toBe(true);
-        map.click(1, 2);
+        bare.click(1, 2);
         expect(onPick).toHaveBeenCalledWith([1, 2]);
+        expect(bare.native.__geoleafExclusiveMode).toBeUndefined();
+        expect(bare.getCanvas().style.cursor).toBe("");
     });
 });

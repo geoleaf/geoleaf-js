@@ -426,7 +426,7 @@ Ceiling on the zoom of the **initial framing**. When the map starts on an extent
 This parameter replaces neither the `maxZoom` of the base maps (which governs tile availability) nor `map.maxZoom`, the maximum zoom of the map itself.
 :::
 
-#### `map.padding` (array, optional)
+#### `map.padding` (array or object, optional)
 
 Padding in pixels, `[horizontal, vertical]` — the first number is the left and right margin, the second the top and bottom one. Applied when the map is framed on `bounds` at start-up, and again each time a theme frames the map on the extent of its `view`. Keeps the extent off the container edges.
 

@@ -62,25 +62,44 @@ describe("internal — _getBaseLayers", () => {
 });
 
 describe("internal — _setExclusiveMode", () => {
-    function _mockNativeMap(): Record<string, unknown> {
+    /** A host whose one adapter drives `native` and holds exclusive mode as the core's does. */
+    function _mockHost(withMembers = true) {
         const native: Record<string, unknown> = {};
-        (globalThis as any).GeoLeaf = {
-            Core: { getMap: vi.fn(() => ({ getNativeMap: vi.fn(() => native) })) },
-        };
-        return native;
+        const held = { value: false };
+        const adapter: Record<string, unknown> = { getNativeMap: vi.fn(() => native) };
+        if (withMembers) {
+            adapter.enterExclusiveMode = vi.fn((cursor?: string) => {
+                held.value = true;
+                adapter.lastCursor = cursor;
+            });
+            adapter.exitExclusiveMode = vi.fn(() => {
+                held.value = false;
+            });
+        }
+        (globalThis as any).GeoLeaf = { Core: { getMap: vi.fn(() => adapter) } };
+        return { native, held, adapter };
     }
 
-    it("sets __geoleafExclusiveMode = true on the native map", () => {
-        const native = _mockNativeMap();
+    it("🔴 enters exclusive mode on the adapter, without a cursor, and leaves the native map unwritten", () => {
+        const { native, held, adapter } = _mockHost();
         _setExclusiveMode(true);
-        expect(native["__geoleafExclusiveMode"]).toBe(true);
+        expect(held.value).toBe(true);
+        expect(adapter.lastCursor).toBeUndefined();
+        expect(native["__geoleafExclusiveMode"]).toBeUndefined();
     });
 
-    it("clears __geoleafExclusiveMode = false on the native map", () => {
-        const native = _mockNativeMap();
+    it("🔴 exits exclusive mode on the adapter", () => {
+        const { held } = _mockHost();
         _setExclusiveMode(true);
         _setExclusiveMode(false);
-        expect(native["__geoleafExclusiveMode"]).toBe(false);
+        expect(held.value).toBe(false);
+    });
+
+    it("an adapter without the members: nothing throws, nothing is written in their place", () => {
+        const { native } = _mockHost(false);
+        expect(() => _setExclusiveMode(true)).not.toThrow();
+        expect(() => _setExclusiveMode(false)).not.toThrow();
+        expect(native["__geoleafExclusiveMode"]).toBeUndefined();
     });
 
     it("is a no-op when the native map is unavailable", () => {

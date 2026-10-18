@@ -187,7 +187,6 @@ export interface EditorRenderedFeature {
 
 /**
  * Structural subset of the native MapLibre map used across the editor plugin.
- * `__geoleafExclusiveMode` is a custom GeoLeaf flag (not a MapLibre member).
  */
 export interface EditorMap {
     getContainer(): HTMLElement;
@@ -209,5 +208,4 @@ export interface EditorMap {
     getLayersOrder?(): string[];
     /** A layer's spec by id, read for the source it draws from. Optional, like `getLayersOrder`. */
     getLayer?(id: string): { source?: unknown } | undefined;
-    __geoleafExclusiveMode?: boolean;
 }

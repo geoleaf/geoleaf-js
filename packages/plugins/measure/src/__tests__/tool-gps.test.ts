@@ -15,6 +15,7 @@ import {
     installGeolocButtonMock,
     uninstallGeolocButtonMock,
     type GeolocationMock,
+    type MockGeoLeaf,
 } from "./setup.js";
 import { getMeasureConfig } from "../config.js";
 import { initLayers } from "../draw-layers.js";
@@ -61,9 +62,10 @@ function setup() {
 
 let map: ReturnType<typeof makeMockMaplibreMap>;
 let geo: GeolocationMock;
+let gl: MockGeoLeaf;
 
 beforeEach(() => {
-    ({ map, geo } = setup());
+    ({ map, geo, gl } = setup());
 });
 
 afterEach(() => {
@@ -96,9 +98,10 @@ describe("activateGps", () => {
         expect(map.getCanvas().style.cursor).not.toBe("crosshair");
     });
 
-    it("sets __geoleafExclusiveMode on the map", () => {
+    it("🔴 enters exclusive mode on the adapter, and leaves the native map unwritten", () => {
         activateGps(map);
-        expect((map as any).__geoleafExclusiveMode).toBe(true);
+        expect(gl.exclusive.held).toBe(true);
+        expect((map as any).__geoleafExclusiveMode).toBeUndefined();
     });
 
     it("installs a keydown listener on document", () => {
@@ -519,10 +522,10 @@ describe("deactivateGps", () => {
         expect(getEngineCollection().features).toHaveLength(0);
     });
 
-    it("clears __geoleafExclusiveMode on the map", () => {
+    it("🔴 exits exclusive mode on the adapter", () => {
         activateGps(map);
         deactivateGps();
-        expect((map as any).__geoleafExclusiveMode).toBe(false);
+        expect(gl.exclusive.held).toBe(false);
     });
 
     it("deactivates geoloc control if we activated it", () => {

@@ -6,7 +6,14 @@
  * `GeoLeaf` namespace off `globalThis`.
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { declareOwnedStyleIds, getNativeMap, warnNoCore } from "../map-seam.js";
+import {
+    declareOwnedStyleIds,
+    enterExclusiveMode,
+    exitExclusiveMode,
+    getNativeMap,
+    isExclusiveMode,
+    warnNoCore,
+} from "../map-seam.js";
 import type { GeoLeafHost } from "../host.js";
 
 const carrier = globalThis as { GeoLeaf?: GeoLeafHost };
@@ -176,5 +183,102 @@ describe("declareOwnedStyleIds", () => {
     it("rend false pour une carte absente", () => {
         mountMaps({ a: { getNativeMap: () => null, declareOwnedStyleIds: vi.fn() } });
         expect(declareOwnedStyleIds(null, "plugin", IDS)).toBe(false);
+    });
+});
+
+describe("enterExclusiveMode / exitExclusiveMode", () => {
+    /** Mounts maps keyed by id, as the host's `Core.listMaps()` / `getMap(id)` expose them. */
+    const mountMaps = (maps: Record<string, Record<string, unknown>>) => {
+        carrier.GeoLeaf = {
+            Core: {
+                listMaps: () => Object.keys(maps),
+                getMap: (id?: string) => maps[id ?? Object.keys(maps)[0] ?? ""],
+            },
+        } as unknown as GeoLeafHost;
+    };
+
+    it("🔴 enters and exits on the adapter that drives THIS engine, not the first", () => {
+        const native = {};
+        const first = {
+            getNativeMap: () => ({}),
+            enterExclusiveMode: vi.fn(),
+            exitExclusiveMode: vi.fn(),
+        };
+        const second = {
+            getNativeMap: () => native,
+            enterExclusiveMode: vi.fn(),
+            exitExclusiveMode: vi.fn(),
+        };
+        mountMaps({ a: first, b: second });
+
+        expect(enterExclusiveMode(native)).toBe(true);
+        expect(exitExclusiveMode(native)).toBe(true);
+
+        expect(second.enterExclusiveMode).toHaveBeenCalledTimes(1);
+        expect(second.exitExclusiveMode).toHaveBeenCalledTimes(1);
+        expect(first.enterExclusiveMode).not.toHaveBeenCalled();
+        expect(first.exitExclusiveMode).not.toHaveBeenCalled();
+    });
+
+    it("🔴 passes the cursor through, and none when the caller gives none", () => {
+        const native = {};
+        const only = { getNativeMap: () => native, enterExclusiveMode: vi.fn() };
+        mountMaps({ a: only });
+
+        enterExclusiveMode(native, "crosshair");
+        enterExclusiveMode(native);
+
+        expect(only.enterExclusiveMode).toHaveBeenNthCalledWith(1, "crosshair");
+        expect(only.enterExclusiveMode).toHaveBeenNthCalledWith(2, undefined);
+    });
+
+    it("🔴 an adapter without the members (core < 3.17.0): false, and the engine is not written", () => {
+        const native: Record<string, unknown> = {};
+        mountMaps({ a: { getNativeMap: () => native } });
+
+        expect(enterExclusiveMode(native, "crosshair")).toBe(false);
+        expect(exitExclusiveMode(native)).toBe(false);
+        // The fallback decided for plugins: the tool works without exclusive mode — the seam
+        // never falls back to writing the core's flag on the engine itself.
+        expect(Object.keys(native)).toEqual([]);
+    });
+
+    it("false, without throwing, with no core or no map driving the engine", () => {
+        expect(enterExclusiveMode({})).toBe(false);
+        expect(exitExclusiveMode({})).toBe(false);
+        mountMaps({ a: { getNativeMap: () => ({}), enterExclusiveMode: vi.fn() } });
+        expect(enterExclusiveMode({})).toBe(false);
+        expect(exitExclusiveMode(null)).toBe(false);
+    });
+});
+
+describe("isExclusiveMode", () => {
+    const mountOne = (adapter: Record<string, unknown>) => {
+        carrier.GeoLeaf = {
+            Core: { listMaps: () => ["a"], getMap: () => adapter },
+        } as unknown as GeoLeafHost;
+    };
+
+    it("🔴 answers what the adapter driving this engine says", () => {
+        const native = {};
+        let held = false;
+        mountOne({ getNativeMap: () => native, isExclusiveMode: () => held });
+
+        expect(isExclusiveMode(native)).toBe(false);
+        held = true;
+        expect(isExclusiveMode(native)).toBe(true);
+    });
+
+    it("false for an engine no GeoLeaf map drives, and for an adapter without the member", () => {
+        mountOne({ getNativeMap: () => ({}), isExclusiveMode: () => true });
+        expect(isExclusiveMode({})).toBe(false);
+        const native = { __geoleafExclusiveMode: true };
+        mountOne({ getNativeMap: () => native });
+        // A flag left on the engine is not an answer: the seam asks the adapter or no one.
+        expect(isExclusiveMode(native)).toBe(false);
+    });
+
+    it("false, without throwing, with no core", () => {
+        expect(isExclusiveMode({})).toBe(false);
     });
 });

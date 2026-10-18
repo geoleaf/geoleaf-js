@@ -1,14 +1,13 @@
 {
     "_comment": "JS-TEST-DEBT — suites de test encore en JavaScript (dette gelée au registre). Cette liste ne peut que RÉTRÉCIR (JTD-02) et aucune entrée ne peut y NAÎTRE (JTD-01) : un test neuf s'écrit en TypeScript. Elle ne contient PAS les fichiers de support (`__mocks__/`, helpers) — ils sont imprimés à part par la gate, pour que ce compteur reste comparable au registre de dette, qui compte les suites. ⚠️ Elle ne dit rien de JTD-04, qui n'a pas de baseline : convertir un fichier sans élargir le `include` de son vitest.config le rend INVISIBLE, et rétrécit cette liste en perdant un test. Régénérer avec --update-baseline UNIQUEMENT après conversion, jamais pour faire taire.",
     "_generated": "node scripts/check-js-test-debt.cjs --update-baseline",
-    "count": 477,
+    "count": 476,
     "entries": [
         "packages/core/__tests__/adapters/maplibre-adapter-layers.test.js",
         "packages/core/__tests__/adapters/maplibre-adapter.test.js",
         "packages/core/__tests__/adapters/maplibre-event-subscriptions.test.js",
         "packages/core/__tests__/adapters/maplibre-hatch-patterns.test.js",
         "packages/core/__tests__/adapters/maplibre-layer-registry.test.js",
-        "packages/core/__tests__/adapters/maplibre-poi-builders.test.js",
         "packages/core/__tests__/adapters/maplibre-poi-icons-tint.test.js",
         "packages/core/__tests__/adapters/maplibre-poi-icons.test.js",
         "packages/core/__tests__/adapters/maplibre-primitives.test.js",

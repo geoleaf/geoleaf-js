@@ -453,9 +453,9 @@ export function hasProfileSprite(): boolean {
 /**
  * Renders the profile's POI icons and registers them with the map as images.
  *
- * ⚠️ Awaits the style for the same reason as {@link createClusteredSource} — `addImage`
- * before the style has loaded is dropped. Individual icons that fail to render are logged and
- * skipped rather than aborting the batch: one broken icon must not cost every marker.
+ * ⚠️ Awaits the style: `addImage` before the style has loaded is dropped. Individual icons
+ * that fail to render are logged and skipped rather than aborting the batch: one broken icon
+ * must not cost every marker.
  *
  * @param mapArg - The native MapLibre map, accepted permissively because cross-module callers
  *   pass a structural view of it.

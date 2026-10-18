@@ -1,14 +1,9 @@
 {
     "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans le registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
     "_generated": "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
-    "count": 252,
+    "count": 247,
     "entries": [
         "packages/core/src/adapters/maplibre/maplibre-hatch-patterns.ts::ctx::!::canvas.getContext(\"2d\")",
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::applyPoiFilter::as-unknown::[ \"all\", [\"!\", [\"has\", \"point_count\"]], [\"has\", \"symbolId\"],",
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::applyPoiFilter::as-unknown::[ \"all\", [\"!\", [\"has\", \"point_count\"]], filter, ]",
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::onClusterClick::!::handlers.onClusterClick",
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::onPointClick::!::handlers.onPointClick",
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts::source::as-unknown::map.getSource(sourceId)",
         "packages/core/src/app/app-types.ts::asGeoLeafConfig::as-unknown::config",
         "packages/core/src/app/app-types.ts::buildFitBoundsOptions::as-unknown::padding",
         "packages/core/src/app/boot-core.ts::bootWithPreset::as-unknown::GeoLeaf",

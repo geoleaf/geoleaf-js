@@ -10,8 +10,8 @@
  * The editor starts on `geoleaf:map:ready`, which it listens to for the life of the page — an
  * application unmounted and mounted again (`GeoLeaf.mount()`) boots a second time on a second
  * map, and the editor must come back on it. That signal says « a map is ready », not « a NEW
- * map is ready »: the core emits it several times per boot, and again after a theme refits the
- * view. A wiring replayed on each of them built the form twice and registered the sync handler
+ * map is ready »: the core emits it more than once per boot — when the engine map loads, and
+ * again when the application reveals itself. A wiring replayed on each of them built the form twice and registered the sync handler
  * twice; a wiring done once for ever (`{ once: true }`) kept drawing on the map that had gone.
  *
  * The map's identity is what tells the cases apart:

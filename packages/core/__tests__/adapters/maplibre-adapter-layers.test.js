@@ -791,52 +791,6 @@ describe("MaplibreAdapter — Markers", () => {
     });
 });
 
-describe("MaplibreAdapter — Clusters", () => {
-    describe("createClusterGroup", () => {
-        let adapter;
-        beforeEach(() => {
-            adapter = createInitedAdapter();
-        });
-
-        it("creates clustered source and 3 render layers", () => {
-            adapter.createClusterGroup("pois");
-            expect(mockMapInstance.addSource).toHaveBeenCalledWith(
-                "gl-poi-src-pois",
-                expect.objectContaining({ type: "geojson", cluster: true })
-            );
-            expect(mockMapInstance.addLayer).toHaveBeenCalledWith(
-                expect.objectContaining({ id: "gl-poi-pois-clusters" })
-            );
-            expect(mockMapInstance.addLayer).toHaveBeenCalledWith(
-                expect.objectContaining({ id: "gl-poi-pois-cluster-count" })
-            );
-            expect(mockMapInstance.addLayer).toHaveBeenCalledWith(
-                expect.objectContaining({ id: "gl-poi-pois-unclustered" })
-            );
-        });
-
-        it("throws on duplicate cluster group id", async () => {
-            await adapter.createClusterGroup("dup-cluster");
-            await expect(adapter.createClusterGroup("dup-cluster")).rejects.toThrow(
-                'cluster group "dup-cluster" already exists'
-            );
-        });
-
-        it("passes clusterRadius and clusterMaxZoom options", () => {
-            adapter.createClusterGroup("custom", { clusterRadius: 80, clusterMaxZoom: 16 });
-            expect(mockMapInstance.addSource).toHaveBeenCalledWith(
-                "gl-poi-src-custom",
-                expect.objectContaining({ clusterRadius: 80, clusterMaxZoom: 16 })
-            );
-        });
-
-        it("registers cluster in layer registry", async () => {
-            await adapter.createClusterGroup("reg");
-            expect(adapter.hasLayer("reg")).toBe(true);
-        });
-    });
-});
-
 describe("MaplibreAdapter — Popups", () => {
     describe("createPopup", () => {
         it("creates popup with string content via setHTML", () => {
@@ -1014,17 +968,6 @@ describe("MaplibreAdapter — setLayerZIndex", () => {
         expect(mockMapInstance.moveLayer).not.toHaveBeenCalled();
     });
 
-    // Seen red with the refusal removed: the group, registered under rank 100, was moved under
-    // the layer ranked 10 and recorded at rank 5.
-    it("refuses a cluster group — its rank says nothing of where it is drawn", async () => {
-        await adapter.createClusterGroup("pois");
-
-        expect(adapter.setLayerZIndex("pois", 5)).toBe(false);
-
-        expect(mockMapInstance.moveLayer).not.toHaveBeenCalled();
-        expect(adapter.getLayerRegistry().get("pois").zIndex).toBe(100);
-    });
-
     it("throws before init(), like every other layer method", () => {
         expect(() => new MaplibreAdapter().setLayerZIndex("a", 30)).toThrow();
     });
@@ -1061,7 +1004,6 @@ describe("MaplibreAdapter — Contract", () => {
             "createMarker",
             "removeMarker",
             "updateMarkerPosition",
-            "createClusterGroup",
             "createPopup",
             "openPopup",
             "closePopup",
@@ -1299,26 +1241,6 @@ describe("MaplibreAdapter — reregisterStyleImages puts the hatch patterns back
         adapter.reregisterStyleImages();
 
         expect(images.size).toBe(0);
-    });
-});
-
-describe("MaplibreAdapter — setLayerFilter cluster branch", () => {
-    it("routes filter through applyPoiFilter for registered cluster groups", async () => {
-        const adapter = createInitedAdapter();
-        await adapter.createClusterGroup("poi-group");
-        mockMapInstance.setFilter.mockClear();
-        const filter = ["==", ["get", "category"], "restaurant"];
-        adapter.setLayerFilter("poi-group", filter);
-        // applyPoiFilter calls map.setFilter on the unclustered layer IDs
-        expect(mockMapInstance.setFilter).toHaveBeenCalled();
-    });
-
-    it("clears cluster filter when null is passed", async () => {
-        const adapter = createInitedAdapter();
-        await adapter.createClusterGroup("poi-group-2");
-        mockMapInstance.setFilter.mockClear();
-        adapter.setLayerFilter("poi-group-2", null);
-        expect(mockMapInstance.setFilter).toHaveBeenCalled();
     });
 });
 

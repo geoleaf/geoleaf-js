@@ -104,6 +104,12 @@ export interface MockGeoLeaf {
     };
     /** The live state `Geolocation.getState()` returns — tests switch the watch through it. */
     geoState: { active: boolean; userPosition: { lat: number; lng: number } | null };
+    /**
+     * Whether a tool holds exclusive mode on the adapter — set by its `enterExclusiveMode`,
+     * cleared by `exitExclusiveMode`, as the core's adapter does. The tools reach it through
+     * `@geoleaf/host-runtime`'s seam; the native map itself is never written.
+     */
+    exclusive: { held: boolean };
 }
 
 export function installMockGeoLeaf(overrides?: {
@@ -112,6 +118,16 @@ export function installMockGeoLeaf(overrides?: {
     geolocActive?: boolean;
 }): MockGeoLeaf {
     const nativeMap = overrides?.nativeMap ?? makeMockMaplibreMap();
+    const exclusive = { held: false };
+    const adapter = {
+        getNativeMap: vi.fn(() => nativeMap),
+        enterExclusiveMode: vi.fn(() => {
+            exclusive.held = true;
+        }),
+        exitExclusiveMode: vi.fn(() => {
+            exclusive.held = false;
+        }),
+    };
 
     const mockGL: MockGeoLeaf = {
         _nativeMap: nativeMap,
@@ -127,10 +143,9 @@ export function installMockGeoLeaf(overrides?: {
                 return def;
             }),
         },
+        // One adapter, kept: the seam finds it by the engine it drives (`getNativeMap()`).
         Core: {
-            getMap: vi.fn(() => ({
-                getNativeMap: vi.fn(() => nativeMap),
-            })),
+            getMap: vi.fn(() => adapter),
         },
         plugins: {
             isLoaded: vi.fn((_id: string) => false),
@@ -150,6 +165,7 @@ export function installMockGeoLeaf(overrides?: {
             isEnabled: () => true,
             getState: () => mockGL.geoState,
         },
+        exclusive,
     };
 
     (globalThis as any).GeoLeaf = mockGL;

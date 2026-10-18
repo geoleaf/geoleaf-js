@@ -23,7 +23,6 @@ import type {
     Popup as MaplibrePopup,
     Marker as MaplibreMarker,
     MapLayerMouseEvent,
-    MapGeoJSONFeature,
     LngLatBounds,
     ControlPosition,
     FlyToOptions,
@@ -40,20 +39,14 @@ export type { LngLatBounds };
 /**
  * Native MapLibre layer-scoped pointer event (the `(type, layerId, listener)`
  * overload of `map.on`). Carries the queried `features` and pointer `lngLat`
- * consumed by the POI / cluster click handlers.
+ * consumed by the cluster click handler.
  */
 export type { MapLayerMouseEvent };
 
 /**
- * Native MapLibre rendered GeoJSON feature (a GeoJSON `Feature` augmented with
- * the engine's `layer`/`source` metadata) handed to layer event callbacks.
- */
-export type { MapGeoJSONFeature };
-
-/**
  * Structural view of a MapLibre clustered GeoJSON source's expansion-zoom
- * method. `map.getSource()` returns a `Source` union; the POI renderer narrows
- * to this shape to query the zoom that explodes a cluster.
+ * method. `map.getSource()` returns a `Source` union; the cluster click handler
+ * narrows to this shape to query the zoom that explodes a cluster.
  */
 export interface ClusterSourceLike {
     getClusterExpansionZoom(clusterId: number): Promise<number>;

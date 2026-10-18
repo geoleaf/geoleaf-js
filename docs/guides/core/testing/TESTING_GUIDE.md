@@ -306,8 +306,8 @@ Located in `__tests__/__mocks__/maplibre-gl.cjs`. Provides comprehensive MapLibr
 
 ```javascript
 // Single source of truth for all maplibregl.* mocks.
-// Covers the full surface used by MaplibreAdapter, maplibre-poi-builders,
-// maplibre-helpers, and all MapLibre-dependent test files.
+// Covers the full surface used by MaplibreAdapter, the layer builders it
+// delegates to, and all MapLibre-dependent test files.
 
 global.maplibregl = require("./__mocks__/maplibre-gl.cjs");
 ```

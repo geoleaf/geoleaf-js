@@ -6,6 +6,7 @@
  * Finish: double-click OR Space key. Measurements are cumulative (prior ones stay visible).
  * https://geoleaf.dev
  */
+import { enterExclusiveMode, exitExclusiveMode } from "@geoleaf/host-runtime";
 import {
     startSession,
     addVertex,
@@ -159,7 +160,7 @@ export function activateDistance(map: MeasureMap): void {
     _map = map;
     _active = true;
     _justFinished = false;
-    map.__geoleafExclusiveMode = true;
+    enterExclusiveMode(map);
 
     startSession("line");
     setCursor("crosshair");
@@ -196,7 +197,7 @@ export function deactivateDistance(): void {
 
     const map = _map;
     if (map) {
-        map.__geoleafExclusiveMode = false;
+        exitExclusiveMode(map);
         map.doubleClickZoom?.enable?.();
         map.off("click", _onClick);
         map.off("mousemove", _onMouseMove);

@@ -2,8 +2,8 @@
  * Centralized MapLibre GL JS mock for GeoLeaf-JS tests.
  *
  * Single source of truth for all `maplibregl.*` mocks.
- * Covers the full surface used by MaplibreAdapter (652 lines),
- * maplibre-poi-builders (332 lines), maplibre-primitives (165 lines),
+ * Covers the full surface used by MaplibreAdapter, the layer builders it
+ * delegates to (`maplibre-layer-builders`, `maplibre-primitives`, …),
  * and all MapLibre-dependent test files.
  *
  * ── Structure ────────────────────────────────────────────────────────

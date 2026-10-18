@@ -12,9 +12,10 @@
  * invariants make a tool behave like a GeoLeaf tool, and none of the three is reachable from
  * `onActivate(map: unknown)`:
  *
- *   1. `map.__geoleafExclusiveMode` — the flag the core's hover handlers read
- *      (`feature-interaction`, `maplibre-{poi,cluster}-builders`) to keep their hands off the
- *      cursor and off feature popups. A third party would not know to set it.
+ *   1. Exclusive mode, entered on the GeoLeaf adapter that drives the map
+ *      (`enterExclusiveMode` of `@geoleaf/host-runtime`): while it holds, the core keeps its
+ *      hover handlers off the cursor and opens no feature popup on click. A third party would
+ *      not know to enter it.
  *   2. `setCursor(...)` — `draw-layers.ts`, not exported on `GeoLeaf.Measure`.
  *   3. `startCursorGuard(...)` — `tool-shared.ts`, not exported either. This is precisely what
  *      the `cursor` field of `MeasureTypeDef` was always meant to drive.
@@ -25,6 +26,7 @@
  *
  * @version 1.0.0
  */
+import { enterExclusiveMode, exitExclusiveMode } from "@geoleaf/host-runtime";
 import { setCursor } from "../draw-layers.js";
 import { startCursorGuard, type CursorGuard } from "./tool-shared.js";
 import type { MeasureMap, MeasureTypeDef } from "../types.js";
@@ -66,7 +68,7 @@ export function activateCustom(map: MeasureMap, id: string, def: MeasureTypeDef)
     _activeId = id;
 
     const cursor = def.cursor ?? "crosshair";
-    map.__geoleafExclusiveMode = true;
+    enterExclusiveMode(map);
     setCursor(cursor);
     _cursorGuard = startCursorGuard(map.getCanvas(), {
         isActive: () => _activeId === id,
@@ -96,7 +98,7 @@ export function deactivateCustom(): void {
     _cursorGuard?.stop();
     _cursorGuard = null;
     if (_map) {
-        _map.__geoleafExclusiveMode = false;
+        exitExclusiveMode(_map);
         setCursor("grab");
     }
     _map = null;

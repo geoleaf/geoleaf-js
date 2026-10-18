@@ -346,8 +346,6 @@ const CLASS_D = [
     "adapters/maplibre/maplibre-event-subscriptions.ts::trackedCleanupCount",
     "adapters/maplibre/maplibre-hatch-patterns.ts::generateHatchImage",
     "adapters/maplibre/maplibre-primitives.ts::detectGeometryTypes",
-    "adapters/maplibre/maplibre-poi-builders.ts::toClusterLayerIds",
-    "adapters/maplibre/maplibre-poi-builders.ts::toClusterSourceId",
     "adapters/maplibre/maplibre-style-converter.ts::conditionToExpression",
     "adapters/maplibre/maplibre-style-converter.ts::parseDashArray",
     "capabilities/feature-info/render/lightbox.ts::LightboxManager",
@@ -394,8 +392,6 @@ const CLASS_D = [
  */
 const CLASS_C = [
     "adapters/maplibre/maplibre-layer-registry.ts::LayerRegistryEntry",
-    "adapters/maplibre/maplibre-poi-builders.ts::ClusterSourceOptions",
-    "adapters/maplibre/maplibre-poi-builders.ts::PoiEventHandlers",
     "adapters/maplibre/maplibre-style-converter.ts::CirclePaint",
     "adapters/maplibre/maplibre-style-converter.ts::FillExtrusionPaint",
     "adapters/maplibre/maplibre-style-converter.ts::FillPaint",

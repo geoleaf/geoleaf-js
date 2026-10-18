@@ -175,14 +175,12 @@ export class MaplibreLayerRegistry {
             sourceLayer?: string;
             /** Override auto-generated sub-layer IDs (e.g. for cluster layers). */
             customSubLayerIds?: string[];
-            /** Override auto-generated source ID. */
-            customSourceId?: string;
             /** GeoJSON geometry-type vocabulary present on the layer. */
             geometryTypes?: Set<string>;
         }
     ): LayerRegistryEntry {
         const entry: LayerRegistryEntry = {
-            sourceId: options?.customSourceId ?? toSourceId(layerId),
+            sourceId: toSourceId(layerId),
             subLayerIds:
                 options?.customSubLayerIds ?? subLayerTypes.map((t) => toSubLayerId(layerId, t)),
             zIndex,

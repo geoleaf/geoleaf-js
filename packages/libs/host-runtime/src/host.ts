@@ -53,6 +53,16 @@ export interface HostMapAdapter {
      * call it as `adapter.setLayerZIndex?.(id, zIndex) === true`.
      */
     setLayerZIndex?(id: string, zIndex: number): boolean;
+    /**
+     * Enters exclusive mode (core ≥ 3.17.0): the core opens no popup on click and leaves the
+     * cursor alone until {@link HostMapAdapter.exitExclusiveMode}. `cursor` is painted on the
+     * canvas when given. No token: the last entry wins, any exit releases.
+     */
+    enterExclusiveMode?(cursor?: string): void;
+    /** Exits exclusive mode, restoring a cursor the entry painted (core ≥ 3.17.0). */
+    exitExclusiveMode?(): void;
+    /** Whether a tool holds exclusive mode (core ≥ 3.17.0). */
+    isExclusiveMode?(): boolean;
     [key: string]: unknown;
 }
 

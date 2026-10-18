@@ -288,7 +288,13 @@ const SEAMS = [
                 // `git diff` renders that member and its comment only; the three paired
                 // functions did not move, and the host stays narrower than the core.
                 // Targeted re-pin, this one hash.
-                hash: "502f55fe81726178373450df26666137def88036a3ec321475527257920dad12",
+                // ⚠️ 2026-10-18 — re-pinned for TYPE members: `HostMapAdapter` names
+                // `enterExclusiveMode?(cursor?)`, `exitExclusiveMode?()` and `isExclusiveMode?()`,
+                // which the core's `IMapAdapter` gains in 3.17.0 so a plugin stops writing the
+                // exclusive-mode flag on the engine map. `git diff` renders those three members
+                // and their comments only (10 lines added); the three paired functions did not
+                // move, and the host stays narrower than the core. Targeted re-pin, this one hash.
+                hash: "8fbcfba7d526a654cbc126cdab1c08e93601fc2610c01c803c087d104bbf7f9a",
             },
         ],
     },

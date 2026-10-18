@@ -332,11 +332,11 @@ describe("picking", () => {
         expect(pick.getAttribute("aria-pressed")).toBe("true");
         expect(body.hidden).toBe(true);
         expect(el("gl-isochrone__status").textContent).toBe("isochrone.status.picking");
-        expect(map?.native.__geoleafExclusiveMode).toBe(true);
+        expect(map?.exclusive.held).toBe(true);
         map?.click(55.45, -20.88);
         expect(pick.getAttribute("aria-pressed")).toBe("false");
         expect(body.hidden).toBe(false);
-        expect(map?.native.__geoleafExclusiveMode).toBe(false);
+        expect(map?.exclusive.held).toBe(false);
         expect(document.activeElement).toBe(pick);
         await settle();
         expect(asked).toHaveBeenCalledWith(expect.objectContaining({ origin: [55.45, -20.88] }));

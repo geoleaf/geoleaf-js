@@ -548,6 +548,12 @@ function publicSubpathEntries() {
         "src/api/geoleaf.permalink.ts", // "./facades/permalink.js"
         "src/api/geoleaf.share.ts", // "./facades/share.js"
         ...installers, // "./capabilities/<id>/install.js"
+        // Value re-export shells reachable through the `./capabilities/*` glob. Their `.d.ts`
+        // is published either way, so without entry status `import { Legend }` from them
+        // type-checks, then throws ERR_MODULE_NOT_FOUND. SUBPATH-RESOLVE refuses that shape.
+        "src/capabilities/legend/public-api.ts", // "./capabilities/legend/public-api.js"
+        "src/capabilities/pwa/public-api.ts", // "./capabilities/pwa/public-api.js"
+        "src/capabilities/filter/engine/index.ts", // "./capabilities/filter/engine/index.js"
     ];
 }
 

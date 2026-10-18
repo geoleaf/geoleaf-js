@@ -29,6 +29,9 @@
  *   2. **SYMMETRY** — for a given subpath, the `types` branch and the runtime branch must resolve
  *      the *same set* of files. Type-only subpaths (a `types` condition with no runtime
  *      condition) are exempt by construction: they declare types and promise no module.
+ *      A `.d.ts` without its `.js` may be frozen in the baseline below — **unless it exports a
+ *      VALUE**: that ghost is refused whether listed or not (`valueExportsOf`, read through the
+ *      compiler), since a value import is the one that type-checks then throws.
  *   3. **NON-VACUITY** — the gate fails if it scanned zero packages or zero targets.
  *
  * ## ⚠️ Why "the same SET" and not "the same COUNT"
@@ -40,16 +43,20 @@
  * There were **32**. The `./capabilities/*` glob carries TWO asymmetries of opposite
  * sign, which almost cancelled out:
  *
- *   • 16 **type-only** modules (`*-types.d.ts`, `types.d.ts`) — a `.d.ts` without a
- *     `.js`. EXACTLY the defect this gate exists to catch: a VALUE import
- *     type-checks then throws `ERR_MODULE_NOT_FOUND`.
+ *   • 16 modules with a `.d.ts` and no `.js` — EXACTLY the defect this gate exists
+ *     to catch: a VALUE import type-checks then throws `ERR_MODULE_NOT_FOUND`.
+ *     Thirteen were type-only (`types.d.ts`), harmless to `import type`. Three were
+ *     re-export shells of VALUES (`legend/public-api`, `pwa/public-api`,
+ *     `filter/engine/index`), frozen alongside them for months: the baseline could
+ *     not tell the two apart. They are now build entries, and rule 2 refuses to
+ *     freeze that shape again.
  *   • 17 **CSS** modules — a `.js` without a `.d.ts`, because a stylesheet turned
  *     module carries no declarations. Legitimate, and now recognized by a
  *     structural RULE (the stem ends in `.css`), not a nominative exemption.
  *
  * A counter cannot tell these two classes apart: it adds them with opposite signs.
  * The set comparison names them. The price is that the gate now tells the truth, and
- * the truth is bigger than what it announced — the 16 real ghosts are frozen in
+ * the truth is bigger than what it announced — the real ghosts are frozen in
  * `check-subpath-resolve.baseline.json`, a RATCHET that can only shrink.
  *
  * Rule 3 is not paranoia, it is this gate's own history: the prototype written during the audit
@@ -92,6 +99,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const ts = require("typescript");
 const packages = require("./lib/packages.cjs");
 
 const C = {
@@ -163,6 +171,67 @@ function matchStems(target, absDir, treeCache) {
  * and an exemption lengthened by routine stops being read.
  */
 const isStyleModule = (stem) => stem.endsWith(".css");
+
+/** The published declaration file a `types` glob target designates for `stem`. */
+function declarationFile(typesTarget, stem, absDir) {
+    return path.join(absDir, typesTarget.replace(/^\.\//, "").replace("*", stem));
+}
+
+const valueExportsCache = new Map();
+
+/**
+ * The names a published declaration file exports as VALUES — what a consumer may
+ * `import { X }` and use at run time.
+ *
+ * Read through the compiler, not a regex: `export { X } from "./y.js"` in a `.d.ts`
+ * may re-export a type without the `type` keyword, and `export {};` — the only
+ * "export" of a module of pure interfaces — exports nothing. An alias is resolved to
+ * its declaration; an `export type { … }` is type-only even when it names a class.
+ * Only the export's OWN declaration is read for `type`: a plain re-export of a name
+ * another module re-exported as type-only counts as a value — a false alarm on the
+ * safe side, never a ghost let through.
+ * An alias the compiler cannot resolve counts as a value, without a branch of its
+ * own: it lands on the checker's `unknown` symbol, whose flags include `Value`
+ * (measured 18/10/2026 on `export { X } from "./missing.js"`). The rule thus fails
+ * closed — the safe side, since a ghost of value is the shape that type-checks then
+ * throws.
+ *
+ * @param {string} file Absolute path of a `.d.ts`.
+ * @returns {string[]} Sorted value export names; empty for a type-only module.
+ */
+function valueExportsOf(file) {
+    if (valueExportsCache.has(file)) return valueExportsCache.get(file);
+    const program = ts.createProgram([file], {
+        moduleResolution: ts.ModuleResolutionKind.Bundler,
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2022,
+        skipLibCheck: true,
+        noEmit: true,
+        // Symbol flags need neither the default lib nor ambient `@types`: loading
+        // them per file is what made this rule cost seconds.
+        noLib: true,
+        types: [],
+    });
+    const checker = program.getTypeChecker();
+    const sf = program.getSourceFile(file);
+    const moduleSymbol = sf && checker.getSymbolAtLocation(sf);
+    const names = [];
+    if (moduleSymbol) {
+        for (const s of checker.getExportsOfModule(moduleSymbol)) {
+            // `export type { … }` (or a `type` specifier) re-exports a type, whatever it names.
+            if ((s.declarations ?? []).some((d) => ts.isTypeOnlyImportOrExportDeclaration(d)))
+                continue;
+            const isAlias = (s.getFlags() & ts.SymbolFlags.Alias) !== 0;
+            const resolved = isAlias ? checker.getAliasedSymbol(s) : s;
+            if ((resolved.getFlags() & ts.SymbolFlags.Value) !== 0) names.push(s.getName());
+        }
+    } else if (sf === undefined) {
+        throw new Error(`SUBPATH-RESOLVE : déclaration introuvable pour l'analyse — ${file}`);
+    }
+    names.sort();
+    valueExportsCache.set(file, names);
+    return names;
+}
 
 /**
  * The date of the newest file under `dir`, or `null` if the directory is absent or
@@ -301,11 +370,13 @@ function checkSubpathResolve() {
         for (const [subpath, value] of Object.entries(exportsMap)) {
             const pairs = flatten(value, "default");
             const stems = new Map();
+            let typesTarget = null;
 
             for (const { condition, target } of pairs) {
                 const set = matchStems(target, pkg.absDir, treeCache);
                 if (set === null) continue;
                 scannedTargets++;
+                if (condition === "types") typesTarget = target;
 
                 // 1. RESOLVE
                 if (set.size === 0)
@@ -336,6 +407,16 @@ function checkSubpathResolve() {
             //     throws ERR_MODULE_NOT_FOUND. The defect this gate was born from.
             for (const stem of [...T].filter((s) => !R.has(s)).sort()) {
                 const key = `${pkg.name}${subpath.slice(1)}${stem}`;
+                // (a') A declaration that exports a VALUE cannot be frozen: the
+                //      baseline tolerates type-only ghosts, never this one.
+                const valueNames = valueExportsOf(declarationFile(typesTarget, stem, pkg.absDir));
+                if (valueNames.length) {
+                    if (baseline.has(key)) seenBaseline.add(key);
+                    failures.push(
+                        `${pkg.name}  ${subpath}  ${C.dim}FANTÔME DE VALEUR — \`${stem}\` déclare ${valueNames.join(", ")}, aucun module ne les porte${C.reset}`
+                    );
+                    continue;
+                }
                 if (baseline.has(key)) {
                     seenBaseline.add(key);
                     continue;

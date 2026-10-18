@@ -223,7 +223,6 @@ interface IMapAdapter {
     updateMarkerPosition(id: string, position: GeoLeafLatLng): void;
     setMarkerRotation?(id: string, degrees: number): void;
     getMarkerHandle?(id: string): GeoLeafMarkerHandle | null;
-    createClusterGroup(id: string, options?: Record<string, unknown>): Promise<void>;
 
     // Popups (opaque handles)
     createPopup(content: string | HTMLElement, options?: GeoLeafPopupOptions): unknown;
@@ -241,6 +240,11 @@ interface IMapAdapter {
     getCanvas?(): HTMLCanvasElement;
     resize?(): void;
     getNativeMap?(): unknown;
+
+    // Exclusive mode (a tool owns clicks and cursor)
+    enterExclusiveMode?(cursor?: string): void;
+    exitExclusiveMode?(): void;
+    isExclusiveMode?(): boolean;
 
     // Basemap switch
     buildStyleChangeTransform?(options?: { attribution?: string }): unknown;

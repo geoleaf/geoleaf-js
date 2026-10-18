@@ -3,25 +3,26 @@
  *
  * One click on the map gives the origin of the zones. While the mode is armed the cursor is a
  * crosshair and a click opens no feature's sheet; leaving it — by the click, by the window, or
- * by its teardown — gives both back as they were.
+ * by its teardown — releases both.
  *
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
 
-import { getGeoLeaf, getNativeMap } from "@geoleaf/host-runtime";
+import { getGeoLeaf } from "@geoleaf/host-runtime";
 
 /**
- * Why the click goes through the adapter, and the flag through the native map
+ * Everything goes through the adapter
  *
- * The click is the adapter's: `on("click")` hands the handler the event with `latlng` added,
- * and `off()` takes the same function back. The flag that keeps a click from opening a
- * feature's sheet is not: the core reads `__geoleafExclusiveMode` on the native map, on its
- * three click and hover paths, and the adapter has no member that sets it. Reaching the native
- * map for that one write is the only native access of this package.
+ * The click: `on("click")` hands the handler the event with `latlng` added, and `off()` takes
+ * the same function back. The crosshair and the guard that keeps a click from opening a
+ * feature's sheet: `enterExclusiveMode("crosshair")` (core 3.17.0), which paints the cursor and
+ * puts back the one it found on `exitExclusiveMode()`. There is no token: tools exclude each
+ * other, the last entry wins and any exit releases the mode — so leaving the picking does not
+ * hand the mode back to a tool that held it before; that tool had been superseded.
  *
- * The cursor and the flag are restored to what they WERE, not reset: another mode may own them,
- * and blanking them would undo its signal without ending it.
+ * On an adapter without the two members (a core older than 3.17.0) the picking still works,
+ * without crosshair and without the guard: a click may then also open a feature's sheet.
  *
  * ⚠️ Escape is not listened to here. The window owns the one Escape handler, so that a single
  * press does a single thing — leave the picking, else cancel the computation, else close.
@@ -29,7 +30,7 @@ import { getGeoLeaf, getNativeMap } from "@geoleaf/host-runtime";
 
 /** A live picking mode. */
 export interface PickMode {
-    /** Leaves the mode and gives the cursor and the flag back. Idempotent. */
+    /** Leaves the mode and releases the crosshair and the guard. Idempotent. */
     stop(): void;
     /** Whether the mode is still armed. */
     readonly active: boolean;
@@ -39,13 +40,10 @@ export interface PickMode {
 interface ClickableMap {
     on(event: "click", handler: (e: unknown) => void): void;
     off(event: "click", handler: (e: unknown) => void): void;
-    getCanvas?(): HTMLElement;
-    getContainer?(): HTMLElement;
-}
-
-/** What the core reads, on the native map, before opening a feature's sheet. */
-interface ExclusiveHost {
-    __geoleafExclusiveMode?: boolean;
+    /** Optional on the adapter's contract (core 3.17.0). */
+    enterExclusiveMode?(cursor?: string): void;
+    /** Optional on the adapter's contract (core 3.17.0). */
+    exitExclusiveMode?(): void;
 }
 
 /** A position as the adapter's click event carries it. */
@@ -97,13 +95,7 @@ export function pickOriginOnMap(onPick: (origin: [lon: number, lat: number]) => 
     const map = clickableMap();
     if (!map) return { stop: () => {}, active: false };
 
-    const cursorTarget = map.getCanvas?.() ?? map.getContainer?.() ?? null;
-    const previousCursor = cursorTarget?.style.cursor ?? "";
-    if (cursorTarget) cursorTarget.style.cursor = "crosshair";
-
-    const native = getNativeMap<ExclusiveHost>();
-    const previousExclusive = native?.__geoleafExclusiveMode === true;
-    if (native) native.__geoleafExclusiveMode = true;
+    map.enterExclusiveMode?.("crosshair");
 
     let active = true;
 
@@ -120,8 +112,7 @@ export function pickOriginOnMap(onPick: (origin: [lon: number, lat: number]) => 
         if (!active) return;
         active = false;
         map?.off("click", onClick);
-        if (cursorTarget) cursorTarget.style.cursor = previousCursor;
-        if (native) native.__geoleafExclusiveMode = previousExclusive;
+        map?.exitExclusiveMode?.();
     }
 
     map.on("click", onClick);

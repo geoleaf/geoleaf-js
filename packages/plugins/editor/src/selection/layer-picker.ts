@@ -17,7 +17,7 @@ import { setSelection } from "./selection-state.js";
 import { MODE_POINT, MODE_POLYLINE, MODE_POLYGON } from "../drawing/mode-names.js";
 import { getEditableLayers } from "../config.js";
 import { resolveFeatureId } from "../feature-id.js";
-import { getGeoLeaf, Log } from "@geoleaf/host-runtime";
+import { getGeoLeaf, isExclusiveMode, Log } from "@geoleaf/host-runtime";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -224,11 +224,11 @@ function _handleMove(e: EditorMapMouseEvent): void {
     // Terra Draw owns the cursor when a drawing tool is armed — only pointer-hint in static/select.
     const activeTool = _adapter?.getActiveTool() ?? null;
     if (activeTool !== null && activeTool !== "select") return;
-    // …and so does ANY other plugin's armed tool (measure, proximity search): they announce it
-    // with `__geoleafExclusiveMode`. The check above only ever saw the editor's OWN tools, so a
-    // crosshair armed elsewhere was overwritten on every mousemove — this handler fires on move,
-    // not on enter/leave, so it wins any race a MutationObserver could put up.
-    if (map.__geoleafExclusiveMode) return;
+    // …and so does ANY other plugin's armed tool (measure, proximity search): it holds exclusive
+    // mode on the adapter. The check above only ever saw the editor's OWN tools, so a crosshair
+    // armed elsewhere was overwritten on every mousemove — this handler fires on move, not on
+    // enter/leave, so it wins any race a MutationObserver could put up.
+    if (isExclusiveMode(map)) return;
 
     const features = map.queryRenderedFeatures(e.point);
     const editable = _getEditableLayerIds();

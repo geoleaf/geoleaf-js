@@ -31,8 +31,10 @@ export interface FakeMap extends IsochroneMap {
     readonly calls: string[];
     /** Ids top first — what the stack's order must equal. */
     topFirst(): string[];
-    /** The native map behind the adapter — what the picking flags. */
+    /** The native map behind the adapter — which the plugin must never write. */
     readonly native: { __geoleafExclusiveMode?: boolean };
+    /** Whether a tool holds exclusive mode, as the core's adapter tracks it. */
+    readonly exclusive: { held: boolean };
     /** Who listens to a click, through the adapter. */
     readonly clickHandlers: Set<(e: unknown) => void>;
     /** Clicks the map: the adapter hands its subscribers the event, `latlng` added. */
@@ -41,6 +43,8 @@ export interface FakeMap extends IsochroneMap {
     off(event: string, handler: (e: unknown) => void): void;
     getCanvas(): HTMLElement;
     getNativeMap(): { __geoleafExclusiveMode?: boolean };
+    enterExclusiveMode?(cursor?: string): void;
+    exitExclusiveMode?(): void;
 }
 
 /**
@@ -58,10 +62,12 @@ function place(layers: FakeLayer[], layer: FakeLayer): void {
  * Builds the fake.
  *
  * @param options `rerank: "absent"` for a core without `setLayerZIndex`, `"refuses"` for one
- *   that answers `false`.
+ *   that answers `false`; `exclusive: "absent"` for a core without exclusive mode (< 3.17.0).
  * @returns The fake adapter.
  */
-export function createFakeMap(options: { rerank?: "works" | "absent" | "refuses" } = {}): FakeMap {
+export function createFakeMap(
+    options: { rerank?: "works" | "absent" | "refuses"; exclusive?: "works" | "absent" } = {}
+): FakeMap {
     const layers: FakeLayer[] = [];
     const markers = new Map<string, { lat: number; lng: number; options: object }>();
     const container = document.createElement("div");
@@ -70,6 +76,7 @@ export function createFakeMap(options: { rerank?: "works" | "absent" | "refuses"
     const canvas = document.createElement("canvas");
     const native: { __geoleafExclusiveMode?: boolean } = {};
     const clickHandlers = new Set<(e: unknown) => void>();
+    const exclusive = { held: false };
     const find = (id: string): FakeLayer | undefined => layers.find((l) => l.id === id);
 
     const map: FakeMap = {
@@ -79,6 +86,7 @@ export function createFakeMap(options: { rerank?: "works" | "absent" | "refuses"
         calls,
         topFirst: () => layers.map((l) => l.id).reverse(),
         native,
+        exclusive,
         clickHandlers,
         click: (lng: number, lat: number) => {
             for (const handler of [...clickHandlers])
@@ -137,6 +145,23 @@ export function createFakeMap(options: { rerank?: "works" | "absent" | "refuses"
         }),
         getContainer: vi.fn(() => container),
     };
+    if (options.exclusive !== "absent") {
+        // As the core's adapter: the cursor found at the first entry is kept, a given cursor is
+        // painted, and an exit puts back only what an entry painted.
+        let saved: string | undefined;
+        map.enterExclusiveMode = vi.fn((cursor?: string) => {
+            if (cursor !== undefined) {
+                if (saved === undefined) saved = canvas.style.cursor;
+                canvas.style.cursor = cursor;
+            }
+            exclusive.held = true;
+        });
+        map.exitExclusiveMode = vi.fn(() => {
+            if (saved !== undefined) canvas.style.cursor = saved;
+            saved = undefined;
+            exclusive.held = false;
+        });
+    }
     if (options.rerank !== "absent") {
         map.setLayerZIndex = vi.fn((id: string, zIndex: number) => {
             calls.push("setLayerZIndex");

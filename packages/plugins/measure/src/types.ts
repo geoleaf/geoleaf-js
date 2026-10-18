@@ -180,9 +180,8 @@ export interface MeasureGeoJSONSource {
 
 /**
  * Structural subset of the native MapLibre map used across the measure plugin.
- * `__geoleafExclusiveMode` is a custom GeoLeaf flag set on the map instance by the
- * tools (not a MapLibre member). Interaction handlers (`dragPan`, `doubleClickZoom`)
- * are optional-chained at call sites, hence optional here.
+ * Interaction handlers (`dragPan`, `doubleClickZoom`) are optional-chained at call sites,
+ * hence optional here.
  */
 export interface MeasureMap {
     project(lngLat: [number, number] | { lng: number; lat: number }): MeasurePoint;
@@ -202,5 +201,4 @@ export interface MeasureMap {
     addLayer(layer: Record<string, unknown>): void;
     dragPan?: { enable?(): void; disable?(): void };
     doubleClickZoom?: { enable?(): void; disable?(): void };
-    __geoleafExclusiveMode?: boolean;
 }

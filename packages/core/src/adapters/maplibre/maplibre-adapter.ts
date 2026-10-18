@@ -32,8 +32,12 @@ import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
 import { MaplibreLayerRegistry, SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
 import { applyLayerZIndex } from "./maplibre-layer-order.js";
+import {
+    armToolCursor,
+    disarmToolCursor,
+    isExclusiveMode as readExclusiveMode,
+} from "../../kernel/shared/map-cursor.js";
 import { reregisterHatchPatterns, removeHatchPatterns } from "./maplibre-hatch-patterns.js";
-import { applyPoiFilter, type ClusterLayerIds } from "./maplibre-poi-builders.js";
 import {
     registerSpriteIcons,
     hasProfileSprite,
@@ -61,11 +65,7 @@ import {
     POSITION_MAP,
     applyLayerZoomRange,
 } from "./maplibre-primitives.js";
-import {
-    buildGeoJSONLayer,
-    buildClusterGroup,
-    growGeoJSONLayer,
-} from "./maplibre-layer-builders.js";
+import { buildGeoJSONLayer, growGeoJSONLayer } from "./maplibre-layer-builders.js";
 import { isDiffableSource, toSourceDiff } from "./maplibre-source-diff.js";
 import { buildMarker, dropMarker, moveMarker, turnMarker } from "./maplibre-markers.js";
 import {
@@ -109,7 +109,6 @@ export class MaplibreAdapter implements IMapAdapter {
     private readonly _layerRegistry = new MaplibreLayerRegistry();
     private readonly _openPopups: Set<MaplibrePopup> = new Set();
     private readonly _markers: Map<string, MaplibreMarker> = new Map();
-    private readonly _clusterIds: Map<string, ClusterLayerIds> = new Map();
     /** Each layer's filters, by owner — see {@link MaplibreAdapter._composeFilterSlots}. */
     private readonly _filterSlots: Map<string, Map<string, unknown>> = new Map();
     /** The filter each sub-layer was built with — see {@link MaplibreAdapter._builtFilter}. */
@@ -292,7 +291,6 @@ export class MaplibreAdapter implements IMapAdapter {
             marker.remove();
         }
         this._markers.clear();
-        this._clusterIds.clear();
         this._filterSlots.clear();
         this._builtFilters.clear();
         this._declaredStyleIds.clear();
@@ -619,8 +617,7 @@ export class MaplibreAdapter implements IMapAdapter {
      * `point_count` and `point_count_abbreviated`. A filter that REQUIRES a property value
      * therefore hides every bubble; one that passes a feature lacking the property — such as
      * `hideFeatures`' exclusion — keeps them. The core's own filter re-feeds a clustered layer
-     * instead (`geojson-filter.ts`). A cluster group (`createClusterGroup`) filters its
-     * unclustered points only, and never hides a bubble.
+     * instead (`geojson-filter.ts`).
      *
      * @param id - The layer.
      * @param filter - A MapLibre filter expression, or `null` to clear `owner`'s.
@@ -630,12 +627,6 @@ export class MaplibreAdapter implements IMapAdapter {
     setLayerFilter(id: string, filter: unknown, owner = "filter"): void {
         const map = this._requireMap();
         filter = this._composeFilterSlots(id, owner, filter);
-
-        // Check if this is a cluster group first
-        if (this._clusterIds.has(id)) {
-            applyPoiFilter(map, id, filter);
-            return;
-        }
 
         // Every sub-layer, whatever built it — a vector-tile one included, built with no
         // filter: the caller's is then drawn as it is.
@@ -699,15 +690,9 @@ export class MaplibreAdapter implements IMapAdapter {
      * Re-ranks a GeoJSON layer in place, and reports whether it did. The contract says where
      * the layer lands, what is kept and when the answer is `false`; the move itself is
      * `applyLayerZIndex`.
-     *
-     * A cluster group is refused HERE: it is registered under a rank, but its layers are added
-     * on top of the style as it stands when the group is created — that rank says nothing of
-     * where the group is drawn, so there is no place a new one could command.
      */
     setLayerZIndex(id: string, zIndex: number): boolean {
-        const map = this._requireMap();
-        if (this._clusterIds.has(id)) return false;
-        return applyLayerZIndex(map, this._layerRegistry, id, zIndex);
+        return applyLayerZIndex(this._requireMap(), this._layerRegistry, id, zIndex);
     }
 
     // ── Markers ──────────────────────────────────────────────────────────────
@@ -739,17 +724,6 @@ export class MaplibreAdapter implements IMapAdapter {
      */
     getMarkerHandle(id: string): GeoLeafMarkerHandle | null {
         return this._markers.get(id) ?? null;
-    }
-
-    /** Creates a clustered GeoJSON source with cluster circle/symbol layers. */
-    async createClusterGroup(id: string, options?: Record<string, unknown>): Promise<void> {
-        await buildClusterGroup(
-            this._requireMap(),
-            this._layerRegistry,
-            this._clusterIds,
-            id,
-            options
-        );
     }
 
     // ── Popups ───────────────────────────────────────────────────────────────
@@ -870,6 +844,29 @@ export class MaplibreAdapter implements IMapAdapter {
         return this._map;
     }
 
+    // ── Exclusive mode ───────────────────────────────────────────────────────
+
+    /**
+     * Enters exclusive mode, painting `cursor` on the canvas when given. The contract says
+     * what the mode stops and why there is no token; the bookkeeping is `armToolCursor`'s.
+     */
+    enterExclusiveMode(cursor?: string): void {
+        armToolCursor(this._requireMap(), cursor);
+    }
+
+    /**
+     * Exits exclusive mode, restoring a cursor the entry painted. A no-op on a map not yet
+     * created or already destroyed: a tool's teardown must not throw for that.
+     */
+    exitExclusiveMode(): void {
+        if (this._map) disarmToolCursor(this._map);
+    }
+
+    /** Whether a tool holds exclusive mode; `false` while there is no map. */
+    isExclusiveMode(): boolean {
+        return this._map ? readExclusiveMode(this._map) : false;
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private _assertReady(): void {
@@ -972,7 +969,7 @@ export class MaplibreAdapter implements IMapAdapter {
 
     /**
      * The MapLibre ids GeoLeaf owns at this moment: every registered layer's sub-layers and
-     * source, the POI clusters', the sentinel, and what code outside the adapter declared.
+     * source, the sentinel, and what code outside the adapter declared.
      */
     private _ownedStyleIds() {
         const layerIds = new Set<string>();
@@ -982,10 +979,6 @@ export class MaplibreAdapter implements IMapAdapter {
             if (!entry) continue;
             for (const subId of entry.subLayerIds) layerIds.add(subId);
             sourceIds.add(entry.sourceId);
-        }
-        for (const ids of this._clusterIds.values()) {
-            for (const lid of ids.allLayerIds) layerIds.add(lid);
-            sourceIds.add(ids.sourceId);
         }
         // The sentinel is added directly (not via the registry) but must be carried
         // over so its z-order boundary between GeoJSON and POI layers is preserved.

@@ -107,7 +107,6 @@ export interface LayerRegistryLike {
             isVectorTile?: boolean;
             sourceLayer?: string;
             customSubLayerIds?: string[];
-            customSourceId?: string;
         }
     ): unknown;
 }

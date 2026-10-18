@@ -32,8 +32,13 @@ const _host = vi.hoisted(
         }
 );
 
+// Whether another plugin's tool holds exclusive mode, as the host-runtime seam reports it from
+// the adapter driving the map.
+const _exclusive = vi.hoisted(() => ({ held: false }));
+
 vi.mock("@geoleaf/host-runtime", () => ({
     getGeoLeaf: () => _host,
+    isExclusiveMode: () => _exclusive.held,
     coreConfigGet: () => undefined,
     Log: { debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -369,16 +374,20 @@ describe("_handleMove — le curseur", () => {
     });
 
     // The guard above only saw the editor's OWN Terra Draw tools. A tool from
-    // another plugin (measure, proximity search) announces its takeover via
-    // `__geoleafExclusiveMode`, and had its crosshair overwritten on every mousemove.
-    it("ne touche pas au curseur quand un AUTRE plugin a pris la main (mode exclusif)", () => {
+    // another plugin (measure, proximity search) holds exclusive mode on the adapter,
+    // and had its crosshair overwritten on every mousemove.
+    it("🔴 ne touche pas au curseur quand un AUTRE plugin a pris la main (mode exclusif)", () => {
         const a = adapter({ getActiveTool: vi.fn((): EditorTool | null => null) });
         const map = mapCapture([feat()]);
         initLayerPicker(a, map as never);
-        (map as unknown as { __geoleafExclusiveMode?: boolean }).__geoleafExclusiveMode = true;
-        map._canvas.style.cursor = "crosshair";
-        map.move();
-        expect(map._canvas.style.cursor).toBe("crosshair");
+        _exclusive.held = true;
+        try {
+            map._canvas.style.cursor = "crosshair";
+            map.move();
+            expect(map._canvas.style.cursor).toBe("crosshair");
+        } finally {
+            _exclusive.held = false;
+        }
     });
 
     it("une feature Terra Draw ne compte pas comme survol éditable", () => {

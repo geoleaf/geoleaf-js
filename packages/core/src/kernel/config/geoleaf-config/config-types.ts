@@ -30,8 +30,17 @@ export interface MapConfig {
      * created at, a moment before that framing (absent: `maxZoom`, then 12).
      */
     initialMaxZoom?: number;
-    /** Padding in pixels applied to fitBounds: `[horizontal, vertical]` — left and right, then top and bottom. */
-    padding?: [number, number];
+    /**
+     * Room in pixels kept around an extent the map frames — at start and for a theme's view.
+     *
+     * - An array reads `[horizontal, vertical]`: left and right, then top and bottom; an entry
+     *   that is not a number gives 50.
+     * - An object gives each edge it names, and `0` to the edges it omits.
+     *
+     * Absent, every edge gets 50. The profile schema also admits an array of three or four
+     * numbers, but only the first two are read — this type refuses the longer forms.
+     */
+    padding?: [number, number] | { top?: number; right?: number; bottom?: number; left?: number };
     /** When true, restricts panning/zooming to bounds. */
     positionFixed?: boolean;
     /** Degree by which bounds are padded when positionFixed is true. Default 0.3. */
@@ -154,10 +163,26 @@ export interface UIConfig {
     showLayerManager?: boolean;
     /** Show the credential/login button (injected by @geoleaf-plugins/connector plugin). Default false. */
     showCredentialButton?: boolean;
-    /** Show the print/export button (requires @geoleaf-plugins/print). Default true. */
+    /**
+     * Show the print/export button (requires @geoleaf-plugins/print). Default true.
+     *
+     * Alias of `modules.print.showButton`, the canonical key: read only when that key is absent.
+     */
     showPrint?: boolean;
-    /** Show the measure & annotation button (requires @geoleaf-plugins/measure). Default true. */
+    /**
+     * Show the measure & annotation button (requires @geoleaf-plugins/measure). Default true.
+     *
+     * Alias of `modules.measure.showButton`, the canonical key: read only when that key is absent.
+     */
     showMeasure?: boolean;
+    /**
+     * Show the geocoding button of the mobile toolbar (requires @geoleaf-plugins/geocoding).
+     * Default true.
+     *
+     * Alias of `modules.geocoding.showButton`, the canonical key: read only when that key is
+     * absent.
+     */
+    showGeocoding?: boolean;
     /** Show the geometry editor button (requires @geoleaf-plugins/editor). Default false. */
     showEditor?: boolean;
     /**

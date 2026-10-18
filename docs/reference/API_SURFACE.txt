@@ -206,7 +206,7 @@ CallSignature | @geoleaf-plugins/editor.internal._getLabel._getLabel | doc:3a6b2
 CallSignature | @geoleaf-plugins/editor.internal._getMapFacade._getMapFacade | doc:830296f1b267
 CallSignature | @geoleaf-plugins/editor.internal._getNativeMap._getNativeMap | doc:0da65d000f37
 CallSignature | @geoleaf-plugins/editor.internal._notify._notify | doc:eef17e3ff4cb
-CallSignature | @geoleaf-plugins/editor.internal._setExclusiveMode._setExclusiveMode | doc:c568d11f9d2d
+CallSignature | @geoleaf-plugins/editor.internal._setExclusiveMode._setExclusiveMode | doc:8912bf295c56
 CallSignature | @geoleaf-plugins/editor.map-wiring.wireOncePerMap.wireOncePerMap | doc:b8dfc928bb1e
 CallSignature | @geoleaf-plugins/editor.map-wiring.wireOncePerMap.wireOncePerMap.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.modal/attributes-to-form.attributesToFormSchema.attributesToFormSchema | doc:feaf8c9ba6bc
@@ -434,7 +434,7 @@ CallSignature | @geoleaf-plugins/isochrone.model.IsochroneProviderFactory.__type
 CallSignature | @geoleaf-plugins/isochrone.normalize-valhalla.normalizeValhalla.normalizeValhalla | doc:0d30837ccfa1
 CallSignature | @geoleaf-plugins/isochrone.origin-markers.OriginMarkers.clear.clear | doc:cca37a3fe84d
 CallSignature | @geoleaf-plugins/isochrone.origin-markers.OriginMarkers.sync.sync | doc:ddf458b39d18
-CallSignature | @geoleaf-plugins/isochrone.pick-on-map.PickMode.stop.stop | doc:25ce9b1ad048
+CallSignature | @geoleaf-plugins/isochrone.pick-on-map.PickMode.stop.stop | doc:bd9038e45070
 CallSignature | @geoleaf-plugins/isochrone.pick-on-map.pickOriginOnMap.pickOriginOnMap | doc:c24b2f5a4679
 CallSignature | @geoleaf-plugins/isochrone.pick-on-map.pickOriginOnMap.pickOriginOnMap.onPick.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/isochrone.provider.createProvider.createProvider | doc:e9bbb95fccd2
@@ -587,7 +587,7 @@ CallSignature | @geoleaf-plugins/measure.tools/tool-rect.deactivateRect.deactiva
 CallSignature | @geoleaf-plugins/measure.tools/tool-shared.CursorGuard.stop.stop | doc:545b24774871
 CallSignature | @geoleaf-plugins/measure.tools/tool-shared.containerCoord.containerCoord | doc:02be76b81cd3
 CallSignature | @geoleaf-plugins/measure.tools/tool-shared.createDragTool.createDragTool | doc:e8211ce238ae
-CallSignature | @geoleaf-plugins/measure.tools/tool-shared.startCursorGuard.startCursorGuard | doc:80331942d319
+CallSignature | @geoleaf-plugins/measure.tools/tool-shared.startCursorGuard.startCursorGuard | doc:99cc9a616b07
 CallSignature | @geoleaf-plugins/measure.types.MeasureGeoJSONSource.setData.setData | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureLngLat.toArray.toArray | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.addLayer.addLayer | doc:-
@@ -1375,11 +1375,12 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdap
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.applyDataDiff.applyDataDiff | doc:8a50519e547e
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.buildStyleChangeTransform.buildStyleChangeTransform | doc:21e5a85803f9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.closePopup.closePopup | doc:8a7af11846af
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createClusterGroup.createClusterGroup | doc:f88a99a91be9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createMarker.createMarker | doc:686d235466d9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createPopup.createPopup | doc:af73de6faac2
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.declareOwnedStyleIds.declareOwnedStyleIds | doc:1a3fa9088813
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.destroy.destroy | doc:2976efa15997
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.enterExclusiveMode.enterExclusiveMode | doc:2f127fedcfa7
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.exitExclusiveMode.exitExclusiveMode | doc:b6b55066b0aa
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.fitBounds.fitBounds | doc:be334ceaf7fe
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.flyTo.flyTo | doc:a9eceff3d5aa
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.getBounds.getBounds | doc:1a243d7ef7bb
@@ -1395,6 +1396,7 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdap
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.hideLayer.hideLayer | doc:c18f67bfdb93
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.init.init | doc:b6aa7ba2bd72
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isEngineMissingError.isEngineMissingError | doc:9ba507e096f6
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isExclusiveMode.isExclusiveMode | doc:830125dfc423
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isGpuInitializationError.isGpuInitializationError | doc:40055740dce7
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isReady.isReady | doc:b8ee5009c248
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.latLngToPoint.latLngToPoint | doc:6d560c62c3d2
@@ -1413,9 +1415,9 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdap
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.reregisterStyleImages.reregisterStyleImages | doc:15bd2d990065
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.resize.resize | doc:f858ad6986cd
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setFeatureState.setFeatureState | doc:65803cc302e1
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerFilter.setLayerFilter | doc:e748f4c17c0a
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerFilter.setLayerFilter | doc:f278ab72bd32
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerStyle.setLayerStyle | doc:eec561c408a6
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerZIndex.setLayerZIndex | doc:6c1b238a3e40
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerZIndex.setLayerZIndex | doc:5774b1a063a3
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setLayerZoomRange.setLayerZoomRange | doc:695c434cd5e8
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setMarkerRotation.setMarkerRotation | doc:e2c30fbd3012
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.setView.setView | doc:f36d1f721a50
@@ -1440,10 +1442,9 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.gener
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern.registerHatchPattern | doc:26c9a11ee276
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns | doc:8fde4981e30a
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns.reregisterHatchPatterns | doc:071fc37ed342
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup | doc:54a1c866ffd9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer | doc:3ba9f647a41c
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.ensureSentinel.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer | doc:f7dc70beffba
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer.growGeoJSONLayer | doc:c1ee4a936702
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex.applyLayerZIndex | doc:ab2a1055d62a
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.clear.clear | doc:27edd4c5ebd8
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.extend.extend | doc:d9bc95431e37
@@ -1466,18 +1467,10 @@ CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-markers.moveMarker.m
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-markers.turnMarker.turnMarker | doc:e11c6ef328cc
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-pmtiles._resetPmtilesProtocolForTests._resetPmtilesProtocolForTests | doc:a674b1238198
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-pmtiles.registerPmtilesProtocol.registerPmtilesProtocol | doc:c1f7fdaa4810
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type | doc:-
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.applyPoiFilter.applyPoiFilter | doc:c7402c447755
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.bindPoiEvents.bindPoiEvents | doc:2e268758a467
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.createClusteredSource.createClusteredSource | doc:a9925e8ab8f2
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.getClusterExpansionZoom.getClusterExpansionZoom | doc:fa7baf91bbd9
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterLayerIds.toClusterLayerIds | doc:e6e0cae97270
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterSourceId.toClusterSourceId | doc:1a0d474b9c21
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.ensureLayerSpriteIcons.ensureLayerSpriteIcons | doc:ca94c7632810
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.hasProfileSprite.hasProfileSprite | doc:0a3c52b63bee
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.installSpriteImageResolver.installSpriteImageResolver | doc:eb0a013de732
-CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.registerSpriteIcons.registerSpriteIcons | doc:ae72b2357ecb
+CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.registerSpriteIcons.registerSpriteIcons | doc:9a15be3ab3c1
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.addSubLayers.addSubLayers | doc:0a0ae63aaf86
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.applyLayerZoomRange.applyLayerZoomRange | doc:96a8931211d9
 CallSignature | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.buildZoomProps.buildZoomProps | doc:1fa61e2b119e
@@ -2444,16 +2437,17 @@ CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setV
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.setVisibleSubset.setVisibleSubset.predicate.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.contracts/layer-data.contract.LayerDataApi.updateFeatureId.updateFeatureId | doc:24516ecb7380
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addControl.addControl | doc:09074ca77f5c
-CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer | doc:a56e9a1c97ad
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer | doc:1cdbc97388c5
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addVectorTileLayer.addVectorTileLayer | doc:a7310a7ce382
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.applyDataDiff.applyDataDiff | doc:7a723e57855f
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.buildStyleChangeTransform.buildStyleChangeTransform | doc:4b1eb99c7ad0
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.closePopup.closePopup | doc:8a7af11846af
-CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createClusterGroup.createClusterGroup | doc:a06246503e8a
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createMarker.createMarker | doc:cebb5e8f33f2
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createPopup.createPopup | doc:0afbaa5c32fe
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.declareOwnedStyleIds.declareOwnedStyleIds | doc:958695355b6c
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.destroy.destroy | doc:c77a1e2310a3
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.enterExclusiveMode.enterExclusiveMode | doc:c4927ea30c3c
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.exitExclusiveMode.exitExclusiveMode | doc:6ffcc048be15
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.fitBounds.fitBounds | doc:be334ceaf7fe
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.flyTo.flyTo | doc:a9eceff3d5aa
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.getBounds.getBounds | doc:1a243d7ef7bb
@@ -2466,6 +2460,7 @@ CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.getZ
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.hasLayer.hasLayer | doc:f4f661db5cd7
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.hideLayer.hideLayer | doc:24dc7cf2f77e
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.init.init | doc:b6aa7ba2bd72
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.isExclusiveMode.isExclusiveMode | doc:fd3380b9c665
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.isReady.isReady | doc:b8ee5009c248
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.latLngToPoint.latLngToPoint | doc:6d560c62c3d2
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.off.off | doc:b15649f06399
@@ -2485,7 +2480,7 @@ CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.resi
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setFeatureState.setFeatureState | doc:0f6d29361f7d
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerFilter.setLayerFilter | doc:90f621057278
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerStyle.setLayerStyle | doc:7e40e61340aa
-CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerZIndex.setLayerZIndex | doc:51a5ae409a65
+CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerZIndex.setLayerZIndex | doc:900f3bbab7ac
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setLayerZoomRange.setLayerZoomRange | doc:58359166034f
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setMarkerRotation.setMarkerRotation | doc:728f8dfe7db0
 CallSignature | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.setView.setView | doc:f36d1f721a50
@@ -3412,8 +3407,8 @@ CallSignature | GeoLeaf Core API.kernel/shared/legend-slot.availableLegend.avail
 CallSignature | GeoLeaf Core API.kernel/shared/legend-slot.provideLegend.provideLegend | doc:d97a3be51005
 CallSignature | GeoLeaf Core API.kernel/shared/lifecycle.registerLifecycleTeardown.registerLifecycleTeardown | doc:010fddfe109c
 CallSignature | GeoLeaf Core API.kernel/shared/lifecycle.runLifecycleTeardowns.runLifecycleTeardowns | doc:6f844e4ed08d
-CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor | doc:2d091c1885a6
-CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.disarmToolCursor.disarmToolCursor | doc:987d2ca03cac
+CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor | doc:e4834ec9a6b9
+CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.disarmToolCursor.disarmToolCursor | doc:0e681848bc05
 CallSignature | GeoLeaf Core API.kernel/shared/map-cursor.isExclusiveMode.isExclusiveMode | doc:16db182af480
 CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReader.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/shared/session-reader-seam.SessionReaderContract.__type._get._get | doc:bee9bdead76c
@@ -4827,7 +4822,6 @@ Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.generateHa
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerHatchPattern | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.growGeoJSONLayer | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order.applyLayerZIndex | doc:-
@@ -4839,12 +4833,6 @@ Function | GeoLeaf Core API.adapters/maplibre/maplibre-markers.moveMarker | doc:
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-markers.turnMarker | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-pmtiles._resetPmtilesProtocolForTests | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-pmtiles.registerPmtilesProtocol | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.applyPoiFilter | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.bindPoiEvents | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.createClusteredSource | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.getClusterExpansionZoom | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterLayerIds | doc:-
-Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterSourceId | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.ensureLayerSpriteIcons | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.hasProfileSprite | doc:-
 Function | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.installSpriteImageResolver | doc:-
@@ -5771,7 +5759,7 @@ Interface | @geoleaf-plugins/editor.selection/host-reconcile.HostMapFacade | doc
 Interface | @geoleaf-plugins/editor.selection/host-reconcile.HostReconcileDeps | doc:5b80a35b21c1
 Interface | @geoleaf-plugins/editor.selection/selection-state.SelectionSnapshot | doc:64e2dd59f61a
 Interface | @geoleaf-plugins/editor.types.EditorConfig | doc:b9f1d570fd4a
-Interface | @geoleaf-plugins/editor.types.EditorMap | doc:41213eee53ac
+Interface | @geoleaf-plugins/editor.types.EditorMap | doc:51d945c3764b
 Interface | @geoleaf-plugins/editor.types.EditorMapMouseEvent | doc:92a306b15ea2
 Interface | @geoleaf-plugins/editor.types.EditorPoint | doc:07e8ad128fa2
 Interface | @geoleaf-plugins/editor.types.EditorRenderedFeature | doc:e443c0fa08be
@@ -5810,7 +5798,7 @@ Interface | @geoleaf-plugins/measure.types.MeasureConfig | doc:3b956a162b0a
 Interface | @geoleaf-plugins/measure.types.MeasureFeature | doc:85d010998e5a
 Interface | @geoleaf-plugins/measure.types.MeasureGeoJSONSource | doc:cb3e4dc66c16
 Interface | @geoleaf-plugins/measure.types.MeasureLngLat | doc:c4517101c187
-Interface | @geoleaf-plugins/measure.types.MeasureMap | doc:2275e7367745
+Interface | @geoleaf-plugins/measure.types.MeasureMap | doc:6e5cf551be3c
 Interface | @geoleaf-plugins/measure.types.MeasureMapMouseEvent | doc:50f7f90e6133
 Interface | @geoleaf-plugins/measure.types.MeasureMapTouchEvent | doc:a3539abf8030
 Interface | @geoleaf-plugins/measure.types.MeasurePoint | doc:1f7069fea5bb
@@ -5974,15 +5962,12 @@ Interface | @geoleaf/field-renderer.ui/responsive-modal.HeaderSlot | doc:125b8c1
 Interface | @geoleaf/field-renderer.ui/responsive-modal.ModalOpenOptions | doc:c4fdaef43dc1
 Interface | @geoleaf/field-renderer.ui/responsive-modal.ResponsiveModal | doc:ff7e1db4b57e
 Interface | @geoleaf/field-renderer.ui/responsive-modal.ResponsiveModalOptions | doc:f29927bf8784
-Interface | GeoLeaf Core API.adapters/maplibre/maplibre-adapter-types.ClusterSourceLike | doc:35ede979de25
+Interface | GeoLeaf Core API.adapters/maplibre/maplibre-adapter-types.ClusterSourceLike | doc:0eb2a1772504
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-adapter-types.GeoJSONSourceLike | doc:4f3aec58a7f7
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-adapter-types.GeoLeafNormalizedMapEvent | doc:aac26554e434
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-adapter-types.MaplibreSourceDiff | doc:d860c851829b
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.HatchConfig | doc:add11028a8a9
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LayerRegistryEntry | doc:6c5a86de1b5a
-Interface | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds | doc:1c4d95c22f47
-Interface | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions | doc:1f35d8fe20f5
-Interface | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers | doc:d08a9f2ff6d4
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-style-converter.CasingConfig | doc:9db618640baf
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-style-converter.CirclePaint | doc:402705d398fa
 Interface | GeoLeaf Core API.adapters/maplibre/maplibre-style-converter.FillExtrusionPaint | doc:7d5ae25a62da
@@ -6877,11 +6862,12 @@ Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.add
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.applyDataDiff | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.buildStyleChangeTransform | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.closePopup | doc:-
-Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createClusterGroup | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createMarker | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createPopup | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.declareOwnedStyleIds | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.destroy | doc:-
+Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.enterExclusiveMode | doc:-
+Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.exitExclusiveMode | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.fitBounds | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.flyTo | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.getBounds | doc:-
@@ -6897,6 +6883,7 @@ Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.has
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.hideLayer | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.init | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isEngineMissingError | doc:-
+Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isExclusiveMode | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isGpuInitializationError | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.isReady | doc:-
 Method | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.latLngToPoint | doc:-
@@ -7434,11 +7421,12 @@ Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addVectorTi
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.applyDataDiff | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.buildStyleChangeTransform | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.closePopup | doc:-
-Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createClusterGroup | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createMarker | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createPopup | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.declareOwnedStyleIds | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.destroy | doc:-
+Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.enterExclusiveMode | doc:-
+Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.exitExclusiveMode | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.fitBounds | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.flyTo | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.getBounds | doc:-
@@ -7451,6 +7439,7 @@ Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.getZoom | d
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.hasLayer | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.hideLayer | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.init | doc:-
+Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.isExclusiveMode | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.isReady | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.latLngToPoint | doc:-
 Method | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.off | doc:-
@@ -8485,7 +8474,6 @@ Module | GeoLeaf Core API.adapters/maplibre/maplibre-layer-order | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-markers | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-pmtiles | doc:-
-Module | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-primitives | doc:-
 Module | GeoLeaf Core API.adapters/maplibre/maplibre-selection-paint | doc:-
@@ -10537,8 +10525,6 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.applyDataDiff.applyDataDiff.id | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.buildStyleChangeTransform.buildStyleChangeTransform.options | doc:87e47e8ebece
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.closePopup.closePopup.popup | doc:59303bc79c0a
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createClusterGroup.createClusterGroup.id | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createClusterGroup.createClusterGroup.options | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createMarker.createMarker.id | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createMarker.createMarker.options | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createMarker.createMarker.position | doc:-
@@ -10546,6 +10532,7 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.createPopup.createPopup.options | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.declareOwnedStyleIds.declareOwnedStyleIds.ids | doc:67c2c058dbc3
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.declareOwnedStyleIds.declareOwnedStyleIds.owner | doc:9dc45a2e55e9
+Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.enterExclusiveMode.enterExclusiveMode.cursor | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.fitBounds.fitBounds.bounds | doc:07c6f918308d
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.fitBounds.fitBounds.options | doc:66123c8c048f
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-adapter.MaplibreAdapter.flyTo.flyTo.center | doc:87ff3cd95455
@@ -10638,11 +10625,6 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.registerH
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns.layerId | doc:c1a803bb7c6e
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.removeHatchPatterns.removeHatchPatterns.mapArg | doc:d38e6d35ee55
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.reregisterHatchPatterns.reregisterHatchPatterns.mapArg | doc:d38e6d35ee55
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.clusterIds | doc:d82e6ebe3e8d
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.id | doc:06c11cc1e4c8
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.map | doc:986881a4aece
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.options | doc:fde451906430
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildClusterGroup.buildClusterGroup.registry | doc:3979808c95c7
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.data | doc:2182ea153509
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.ensureSentinel | doc:64f2575079f0
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.id | doc:139fd52c490b
@@ -10694,24 +10676,6 @@ Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-markers.moveMarker.moveM
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-markers.turnMarker.turnMarker.degrees | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-markers.turnMarker.turnMarker.id | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-markers.turnMarker.turnMarker.markers | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type.feature | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type.lngLat | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type.feature | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type.lngLat | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.applyPoiFilter.applyPoiFilter.filter | doc:fd04515402f8
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.applyPoiFilter.applyPoiFilter.id | doc:6e1d2850b454
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.applyPoiFilter.applyPoiFilter.map | doc:c50c0262bd56
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.bindPoiEvents.bindPoiEvents.handlers | doc:4dc7c12c0a30
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.bindPoiEvents.bindPoiEvents.id | doc:6e1d2850b454
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.bindPoiEvents.bindPoiEvents.map | doc:c50c0262bd56
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.createClusteredSource.createClusteredSource.id | doc:52c3c6cbef22
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.createClusteredSource.createClusteredSource.map | doc:0b170004a389
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.createClusteredSource.createClusteredSource.options | doc:5cdb392b6f81
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.getClusterExpansionZoom.getClusterExpansionZoom.clusterId | doc:f3add1556a8a
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.getClusterExpansionZoom.getClusterExpansionZoom.id | doc:6e1d2850b454
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.getClusterExpansionZoom.getClusterExpansionZoom.map | doc:c50c0262bd56
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterLayerIds.toClusterLayerIds.id | doc:-
-Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.toClusterSourceId.toClusterSourceId.id | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.ensureLayerSpriteIcons.ensureLayerSpriteIcons.data | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.ensureLayerSpriteIcons.ensureLayerSpriteIcons.map | doc:-
 Parameter | GeoLeaf Core API.adapters/maplibre/maplibre-poi-icons.installSpriteImageResolver.installSpriteImageResolver.map | doc:987895c81283
@@ -11855,7 +11819,7 @@ Parameter | GeoLeaf Core API.contracts/layer-data.contract.LayerFeatureState.__i
 Parameter | GeoLeaf Core API.contracts/legend.contract.LegendLayerConfig.__index.key | doc:-
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addControl.addControl.control | doc:5f29a4398986
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addControl.addControl.position | doc:9275fec7bc84
-Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer.data | doc:d9b89f8c0aca
+Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer.data | doc:19a01388b175
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer.id | doc:27a3bc17417a
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addGeoJSONLayer.addGeoJSONLayer.options | doc:afb84ce705d4
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.addVectorTileLayer.addVectorTileLayer.layerId | doc:-
@@ -11864,8 +11828,6 @@ Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.applyDat
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.applyDataDiff.applyDataDiff.id | doc:e5dd6c6ac374
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.buildStyleChangeTransform.buildStyleChangeTransform.options | doc:5e0b26e1355d
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.closePopup.closePopup.popup | doc:59303bc79c0a
-Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createClusterGroup.createClusterGroup.id | doc:3860636217e3
-Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createClusterGroup.createClusterGroup.options | doc:f150bd67cba1
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createMarker.createMarker.id | doc:266a9324b5c9
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createMarker.createMarker.options | doc:2033a92d866e
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createMarker.createMarker.position | doc:18e1ae9bb854
@@ -11873,6 +11835,7 @@ Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createPo
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.createPopup.createPopup.options | doc:-
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.declareOwnedStyleIds.declareOwnedStyleIds.ids | doc:cb54588c43d8
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.declareOwnedStyleIds.declareOwnedStyleIds.owner | doc:8aedcb4a5dbc
+Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.enterExclusiveMode.enterExclusiveMode.cursor | doc:b36cd84b625a
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.fitBounds.fitBounds.bounds | doc:07c6f918308d
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.fitBounds.fitBounds.options | doc:66123c8c048f
 Parameter | GeoLeaf Core API.contracts/map-adapter.contract.IMapAdapter.flyTo.flyTo.center | doc:87ff3cd95455
@@ -13124,7 +13087,7 @@ Parameter | GeoLeaf Core API.kernel/shared/legend-slot.LegendSink.setLayerVisibi
 Parameter | GeoLeaf Core API.kernel/shared/legend-slot.LegendSink.setLayerVisibility.setLayerVisibility.visible | doc:-
 Parameter | GeoLeaf Core API.kernel/shared/legend-slot.provideLegend.provideLegend.sink | doc:1925db6e1066
 Parameter | GeoLeaf Core API.kernel/shared/lifecycle.registerLifecycleTeardown.registerLifecycleTeardown.fn | doc:5046370f358e
-Parameter | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor.cursor | doc:baad5a39d9c6
+Parameter | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor.cursor | doc:b36cd84b625a
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.armToolCursor.armToolCursor.map | doc:fbbb3e557b8c
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.disarmToolCursor.disarmToolCursor.map | doc:fcec13364374
 Parameter | GeoLeaf Core API.kernel/shared/map-cursor.isExclusiveMode.isExclusiveMode.map | doc:3889c6bf7e40
@@ -14179,7 +14142,6 @@ Property | @geoleaf-plugins/editor.types.EditorConfig.showExport | doc:d6bce6d4e
 Property | @geoleaf-plugins/editor.types.EditorConfig.snapPx | doc:2a389c64d191
 Property | @geoleaf-plugins/editor.types.EditorConfig.undoStackSize | doc:376753b2d223
 Property | @geoleaf-plugins/editor.types.EditorConfig.vertexHandleSize | doc:96631daad0ed
-Property | @geoleaf-plugins/editor.types.EditorMap.__geoleafExclusiveMode | doc:-
 Property | @geoleaf-plugins/editor.types.EditorMap.dragPan | doc:149a7cf7597a
 Property | @geoleaf-plugins/editor.types.EditorMapMouseEvent.lngLat | doc:e8d59517583e
 Property | @geoleaf-plugins/editor.types.EditorMapMouseEvent.lngLat.__type.lat | doc:-
@@ -14682,7 +14644,6 @@ Property | @geoleaf-plugins/measure.types.MeasureFeature.properties.__type.width
 Property | @geoleaf-plugins/measure.types.MeasureFeature.type | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureLngLat.lat | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureLngLat.lng | doc:-
-Property | @geoleaf-plugins/measure.types.MeasureMap.__geoleafExclusiveMode | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source.__type.data | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source.__type.type | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom | doc:-
@@ -15932,30 +15893,10 @@ Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LayerRegis
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LayerRegistryEntry.subLayerTypes | doc:512d4ad5b80e
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LayerRegistryEntry.visible | doc:a2b184fb29e6
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LayerRegistryEntry.zIndex | doc:c3b36d3cd64d
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type.customSourceId | doc:4a8369cb85f1
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type.customSubLayerIds | doc:44a685b7b29d
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type.geometryTypes | doc:259748cef6ce
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type.isVectorTile | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type.sourceLayer | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.allLayerIds | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.clusterCountLayerId | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.clustersLayerId | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.sourceId | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.unclusteredIconsLayerId | doc:1e0c0c6db0ea
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterLayerIds.unclusteredLayerId | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterMaxZoom | doc:d81d07f6d5a0
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterPaint | doc:537bcc164ae1
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterPaint.__type.colorStops | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterPaint.__type.radiusStops | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterRadius | doc:3efdbe4756ab
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.data | doc:425bc0475a4a
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.unclusteredPaint | doc:e69b126b46fe
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick | doc:4351888dbced
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type.lngLat.__type.lat | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type.lngLat.__type.lng | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick | doc:ad94f4962fe8
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type.lngLat.__type.lat | doc:-
-Property | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type.lngLat.__type.lng | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.buildZoomProps.buildZoomProps.options.__type.maxZoom | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.buildZoomProps.buildZoomProps.options.__type.minZoom | doc:-
 Property | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreLngLat.fromMapLibreLngLat.ll.__type.lat | doc:-
@@ -18111,7 +18052,7 @@ Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.mapOptions | doc:112f5922821d
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.maxZoom | doc:f54bcfc3e986
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.minZoom | doc:1f1cc9d2b8c0
-Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.padding | doc:9dd2b32127ce
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.padding | doc:d50dd51e002e
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.positionFixed | doc:c4aa2203d063
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.target | doc:9dee04d9ebbc
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.MapConfig.zoom | doc:945b5f451d9b
@@ -18139,10 +18080,11 @@ Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.l
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showBaseLayerControls | doc:bc0037c2bef4
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showCredentialButton | doc:fbc99a1689d5
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showEditor | doc:8389dbd01805
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showGeocoding | doc:9086e1a2d2f1
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showLayerManager | doc:4a3b264e2512
-Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showMeasure | doc:415186debf9a
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showMeasure | doc:f8d1360fe6b2
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showPanelThemeToggle | doc:b01b26a91129
-Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showPrint | doc:73dcb6baddbc
+Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.showPrint | doc:0eae572056f0
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.syncDocumentLang | doc:22fe6724f362
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.UIConfig.theme | doc:1f91dd5f45af
 Property | GeoLeaf Core API.kernel/config/geoleaf-config/config-types.WmsConfig.crs | doc:0375b577c5f8
@@ -18262,7 +18204,6 @@ Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONSharedState.map | d
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONSharedState.options | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONStyleLabelConfig.enabled | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.GeoJSONStyleLabelConfig.visibleByDefault | doc:-
-Property | GeoLeaf Core API.kernel/geojson/core-types.LayerRegistryLike.register.register.options.__type.customSourceId | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.LayerRegistryLike.register.register.options.__type.customSubLayerIds | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.LayerRegistryLike.register.register.options.__type.isVectorTile | doc:-
 Property | GeoLeaf Core API.kernel/geojson/core-types.LayerRegistryLike.register.register.options.__type.sourceLayer | doc:-
@@ -20064,11 +20005,6 @@ TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.HatchCo
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-hatch-patterns.generateHatchImage.generateHatchImage.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-layer-builders.buildGeoJSONLayer.buildGeoJSONLayer.ensureSentinel.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.MaplibreLayerRegistry.register.register.options.__type | doc:-
-TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.ClusterSourceOptions.clusterPaint.__type | doc:-
-TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type | doc:-
-TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onClusterClick.__type.__type.lngLat.__type | doc:-
-TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type | doc:-
-TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-poi-builders.PoiEventHandlers.onPointClick.__type.__type.lngLat.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.buildZoomProps.buildZoomProps.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.fromMapLibreLngLat.fromMapLibreLngLat.ll.__type | doc:-
 TypeLiteral | GeoLeaf Core API.adapters/maplibre/maplibre-style-converter.toClusterCirclePaint.toClusterCirclePaint.config.__type | doc:-
@@ -21280,13 +21216,11 @@ Variable | @geoleaf/field-renderer.types/text.textComponent | doc:47e250a8e9c1
 Variable | @geoleaf/field-renderer.types/url.urlComponent | doc:4132c32c53c1
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-cluster.DEFAULT_CLUSTER_MAX_ZOOM | doc:c9740f64cf5a
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-cluster.DEFAULT_CLUSTER_RADIUS | doc:fa31131e8884
-Variable | GeoLeaf Core API.adapters/maplibre/maplibre-cluster.MAPLIBRE_MAX_CLUSTER_ZOOM | doc:42d6b6a5503a
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.LAYER_PREFIX | doc:3ad8b2424fc9
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.SENTINEL_POI | doc:e34c1ad2fd01
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-layer-registry.SOURCE_PREFIX | doc:8ef15057841e
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.POSITION_MAP | doc:ba7984a15da1
 Variable | GeoLeaf Core API.adapters/maplibre/maplibre-primitives.SVG_ALLOWED_TAGS | doc:3c5212fc8835
-Variable | GeoLeaf Core API.adapters/maplibre/maplibre-sync-badge.SYNC_PENDING | doc:08037949d776
 Variable | GeoLeaf Core API.api/geoleaf.branding.Branding | doc:f8754a4ec315
 Variable | GeoLeaf Core API.api/geoleaf.cluster.Cluster | doc:b0f1c51f9773
 Variable | GeoLeaf Core API.api/geoleaf.coordinates.Coordinates | doc:89bd56fa884f

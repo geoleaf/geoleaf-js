@@ -7,6 +7,7 @@
  * Cumulative: prior measurements stay visible after each finish.
  * https://geoleaf.dev
  */
+import { enterExclusiveMode, exitExclusiveMode } from "@geoleaf/host-runtime";
 import {
     startSession,
     addVertex,
@@ -189,7 +190,7 @@ export function activatePolygon(map: MeasureMap): void {
     _active = true;
     _justFinished = false;
     _snapping = false;
-    map.__geoleafExclusiveMode = true;
+    enterExclusiveMode(map);
 
     startSession("polygon");
     setCursor("crosshair");
@@ -225,7 +226,7 @@ export function deactivatePolygon(): void {
 
     const map = _map;
     if (map) {
-        map.__geoleafExclusiveMode = false;
+        exitExclusiveMode(map);
         map.doubleClickZoom?.enable?.();
         map.off("click", _onClick);
         map.off("mousemove", _onMouseMove);

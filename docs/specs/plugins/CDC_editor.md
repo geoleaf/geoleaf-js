@@ -4,8 +4,8 @@ title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, pe
 plugin_id: editor
 package: "@geoleaf-plugins/editor"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 83f3efeb7
-date: 11 octobre 2026
+verifie_contre: 83455288c
+date: 18 octobre 2026
 ---
 
 # editor — le plugin d'édition UNIQUE
@@ -703,6 +703,13 @@ pour un code écrit comme unique. `rollup.config.mjs` le dit par l'option `fromS
 partagée ; le chunk d'entrée y a perdu 5,4 Ko. Les **types** restent ceux du `.d.ts` de la
 bibliothèque, et la dépendance de production reste déclarée pour eux. La gate de taille des greffons
 refuse le retour d'un module embarqué deux fois (`checkTwiceBundled`).
+
+**Frontière avec le cœur pour le mode exclusif : par l'adaptateur (1.6.1).** Un outil armé entre
+dans le mode exclusif par `enterExclusiveMode` de `host-runtime`, sans curseur — Terra Draw tient
+le sien —, et le sélecteur de couche s'efface devant l'outil d'un autre greffon en lisant
+`isExclusiveMode`. Les deux mènent aux membres de l'adaptateur (core 3.17.0, d'où la plage
+`^3.17.0`) ; sur un adaptateur sans eux, l'éditeur marche sans mode exclusif et n'écrit rien sur la
+carte native.
 
 **Frontière avec le moteur hors ligne : par le core.** Le plugin écrit dans la file au travers d'un
 seam de stockage, sans importer la capacité.

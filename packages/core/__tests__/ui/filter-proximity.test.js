@@ -489,9 +489,12 @@ describe("ui/filter-panel/proximity", () => {
 
     it("resetProximity clears click handler, circle and marker when set", () => {
         const containerStyle = {};
+        // One element, as the engine returns: the saved cursor is keyed by element identity,
+        // and a disarm that finds nothing saved leaves the cursor as it is.
+        const mapContainer = { style: containerStyle };
         let clickHandler;
         const map = withAdapterMethods({
-            getContainer: () => ({ style: containerStyle }),
+            getContainer: () => mapContainer,
             on: vi.fn((ev, fn) => {
                 clickHandler = fn;
             }),

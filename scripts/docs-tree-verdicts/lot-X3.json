@@ -97,9 +97,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Trois constantes de clustering partagées : plafond et valeur par défaut de `clusterMaxZoom`, rayon de cluster par défaut",
+            "description": "Deux constantes de clustering : `clusterMaxZoom` et rayon par défaut, repli d'une source GeoJSON regroupée quand l'appelant n'en donne pas",
             "confidence": "moyenne",
-            "rationale": "31 LOC, 3 constantes, ZÉRO import — X2a ne se déclenche pas (ce ne sont pas des ré-exports, et il a 2 consommateurs : `maplibre-poi-builders.ts` et `maplibre-layer-builders.ts`). Son en-tête justifie l'isolement : « Pure data — no engine calls, no side effects — so any module can import it without risking a dependency cycle ». Réserve pesée : à côté de `maplibre-cluster-builders.ts`, le nom sous-spécifie son contenu ; se tromper coûte l'ouverture d'un fichier de 31 lignes, et l'en-tête du voisin nomme déjà la paire"
+            "rationale": "2 constantes, ZÉRO import, 1 consommateur (`maplibre-layer-builders.ts`) ; `capabilities/cluster/constants.ts` le cite comme le lieu des défauts de l'adaptateur. X2a ne se déclenche pas : ce ne sont pas des ré-exports. Son en-tête justifie l'isolement : « Pure data — no engine calls, no side effects — so any module can import it without risking a dependency cycle ». Le plafond de `clusterMaxZoom` est sorti avec son seul lecteur, le constructeur de sources POI supprimé. Réserve pesée : à côté de `maplibre-cluster-builders.ts`, le nom sous-spécifie son contenu ; se tromper coûte l'ouverture d'un fichier court, et l'en-tête du voisin nomme déjà la paire"
         },
         "packages/core/src/adapters/maplibre/maplibre-event-subscriptions.ts": {
             "kind": "file",
@@ -167,9 +167,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Construction des couches GeoJSON et des groupes de clusters POI : source, sous-couches et liaison d'événements, appelée par l'adaptateur qui lui passe carte et registre",
+            "description": "Construction des couches GeoJSON, regroupées ou non : source, sous-couches et liaison d'événements, appelée par l'adaptateur qui lui passe carte et registre",
             "confidence": "haute",
-            "rationale": "237 LOC, 2 exports (`buildGeoJSONLayer`, `buildClusterGroup`), 1 importeur (`maplibre-adapter.ts`). L'en-tête documente l'extraction (« keeps the adapter under the 700-line budget ; the adapter delegates to these free functions ») ; la limite INV-700 est un motif d'extraction valide et le résultat est mono-responsabilité"
+            "rationale": "2 exports (`buildGeoJSONLayer`, `growGeoJSONLayer`), 1 importeur (`maplibre-adapter.ts`). L'en-tête documente l'extraction (« keeps the adapter under the 700-line budget ; the adapter delegates to these free functions ») ; la limite INV-700 est un motif d'extraction valide et le résultat est mono-responsabilité. Le constructeur de groupe de grappes en est sorti avec le membre de contrat qu'il servait"
         },
         "packages/core/src/adapters/maplibre/maplibre-layer-registry.ts": {
             "kind": "file",
@@ -212,20 +212,6 @@
             "description": "Conversion de chaque `<symbol>` du sprite de profil en `ImageData` rendu au Canvas, puis enregistrement auprès de MapLibre via `map.addImage()`",
             "confidence": "haute",
             "rationale": "516 LOC (sous INV-700), 3 exports, 1 importeur. Son unique lien vers `capabilities/taxonomy/types.js` est `import type` et l'en-tête explique pourquoi : « Type-only — erased at build time, so it opens no import cycle with the taxonomy capability (which imports this module for ensureSprite) ». Le sens adapters → capabilities n'est donc pas franchi au runtime"
-        },
-        "packages/core/src/adapters/maplibre/maplibre-poi-builders.ts": {
-            "kind": "file",
-            "name": "ok",
-            "nameTarget": null,
-            "location": "ok",
-            "locationTarget": null,
-            "existence": "justifie",
-            "existenceTarget": null,
-            "rule": "N/A",
-            "severity": null,
-            "description": "Sources POI en cluster natif : identifiants de source et de couches, création de la source, filtre POI, liaison des événements et zoom d'éclatement",
-            "confidence": "haute",
-            "rationale": "Renommé au STRUCT S4 depuis `maplibre-poi-renderer.ts`. 360 LOC, 2 importeurs, 6 fonctions exportées et 3 interfaces — AUCUN objet ni classe `PoiRenderer`, motif N7 re-vérifié. L’ancien nom promettait une classe voisine de `MaplibreAdapter` et `MaplibreLayerRegistry` et rendait des fonctions libres. La cible `-builders` aligne le fichier sur son voisin `maplibre-layer-builders.ts`, qui l’importe. Quatre clés de `check-orphan-exports` re-clées à la main (2 `CLASS_D` + 2 `CLASS_C`), dans le script ET dans sa baseline — la gate jette dans les deux sens."
         },
         "packages/core/src/adapters/maplibre/maplibre-style-applier.ts": {
             "kind": "file",
@@ -279,9 +265,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Expression de test « synchronisation en attente » et peinture du liseré orange correspondant, partagée par les deux pipelines de rendu de points",
+            "description": "Peinture du liseré orange « synchronisation en attente », partagée par le constructeur de sous-couches et le chemin de re-style",
             "confidence": "haute",
-            "rationale": "57 LOC, 2 exports, 3 importeurs internes (`maplibre-helpers.ts`, `maplibre-poi-builders.ts`, `maplibre-style-applier.ts`). L'en-tête énonce la raison d'être exacte du fichier séparé : « so the paint stays byte-identical across both render pipelines » — extraire est ici la garantie, pas un émiettement"
+            "rationale": "2 exports, 2 importeurs internes (`maplibre-primitives.ts`, `maplibre-style-applier.ts`) ; l'expression de test reste privée au module. L'en-tête énonce la raison d'être du fichier séparé : « so the paint stays byte-identical across them » — extraire est ici la garantie, pas un émiettement"
         },
         "packages/core/src/adapters/maplibre/maplibre-taxonomy-paint.ts": {
             "kind": "file",

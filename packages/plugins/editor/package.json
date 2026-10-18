@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/editor",
-    "version": "1.6.0",
+    "version": "1.6.1",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf Editor Plugin — Geometry creation & editing (Point/Line/Polyline/Polygon) with Terra Draw, responsive form catalog, and online/offline persistence",
@@ -55,11 +55,11 @@
         "terra-draw-maplibre-gl-adapter": "^1.4.1"
     },
     "peerDependencies": {
-        "@geoleaf/core": "^3.0.0",
+        "@geoleaf/core": "^3.17.0",
         "maplibre-gl": "^6.0.0"
     },
     "devDependencies": {
-        "@geoleaf/core": "^3.0.0",
+        "@geoleaf/core": "^3.17.0",
         "@geoleaf/build-config": "*",
         "@geoleaf/host-runtime": "*",
         "@vitest/coverage-istanbul": "^4.1.11",

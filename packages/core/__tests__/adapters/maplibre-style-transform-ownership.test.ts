@@ -155,15 +155,18 @@ describe("transformation de style — ce que GeoLeaf possède se lit quand MapLi
         expect(out.sources["gl-src-late"]).toMatchObject({ type: "geojson", data: POINTS });
     });
 
-    it("🔴 un groupe de grappes créé après la construction est porté", async () => {
+    // Its bubbles and their count are registered under ids the builders pick, not under the
+    // sub-layer families: the transform has to read them off the registry entry.
+    it("🔴 une couche REGROUPÉE créée après la construction est portée, bulles comprises", () => {
         const adapter = new MaplibreAdapter();
         adapter.init({ container: document.createElement("div") } as never);
         const transform = asTransform(adapter.buildStyleChangeTransform({ attribution: "© Fond" }));
-        await adapter.createClusterGroup("poi");
+        adapter.addGeoJSONLayer("poi", POINTS, { cluster: true });
 
         const live = serializeMock(mockMap);
         const clusterSources = Object.keys(live.sources);
-        expect(clusterSources, "le groupe n'a créé aucune source").toHaveLength(1);
+        expect(clusterSources, "la couche n'a créé aucune source").toHaveLength(1);
+        expect(live.layers.map((l) => l.id)).toContain("gl-poi-clusters");
 
         const out = transform(live, incomingStyle());
 

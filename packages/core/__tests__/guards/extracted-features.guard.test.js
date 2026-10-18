@@ -192,12 +192,11 @@ const EXTRACTED_FEATURES = [
         // orphan public API with zero production callers that hard-coded
         // `properties.categoryId`.
         //
-        // ⚠ Two names are deliberately NOT tokens, because they have LIVE homonyms and
-        // would fail this guard on a healthy tree:
-        //   - `applyToLayer` → `capabilities/route/apply.ts` exports one.
-        //   - `colorStroke`  → the dormant `gl-poi-*` renderer reads it off features
-        //     (`maplibre-poi-builders.ts`), which has nothing to do with the taxonomy
-        //     category table this guard is about.
+        // ⚠ `applyToLayer` is deliberately NOT a token: it has a LIVE homonym
+        // (`capabilities/route/apply.ts` exports one) and would fail this guard on a
+        // healthy tree. `colorStroke` was left out for the same reason, while the dormant
+        // `gl-poi-*` renderer read it off features; that renderer is gone, so nothing in
+        // the sources holds the name any more.
         // A token has to be unique to the dead surface, or the guard is just noise.
         feature: "taxonomy-painter",
         paths: [
