@@ -89,7 +89,7 @@ Variantes de déploiement **prêtes à servir**, générées en une fois par **`
 | **deploy/deploy-core** | Core seul (minifié + profil tourism)       |
 | **deploy/deploy-full** | + Storage + Cog + Editor (édition unifiée) |
 
-Chaque variante contient index.html, dist/, css/, icons/, profiles/. Utilisé pour tests manuels, E2E Playwright et validation avant release. Servir avec `npx serve deploy -p 8765` ou `node scripts/serve-test.cjs` (ports 3001–3003).
+Chaque variante contient index.html, dist/, css/, icons/, profiles/. Utilisé pour tests manuels, E2E Playwright et validation avant release. Servir par n'importe quel serveur statique qui connaît le type MIME de `.mjs` — le contrat serveur voyage dans chaque variante livrable, écrit par `scripts/build-deploy.cjs`. La suite E2E sert elle-même `deploy-core` et `deploy-full` par `http-server` (`playwright.config.js`).
 
 ---
 

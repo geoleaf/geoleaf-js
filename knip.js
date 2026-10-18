@@ -292,7 +292,9 @@ const workspaces = {
             "gtfs-realtime-bindings",
             "axe-core",
             "minimatch",
-            "ajv",
+            // `ajv` removed on 2026-10-17: it is now declared at the root. The exemption had
+            // hidden that two root scripts required it undeclared, resolving the copy `serve`
+            // happened to hoist — removing `serve` made `require("ajv")` throw.
             "ajv-formats",
             "flatbuffers",
             "flatgeobuf",
@@ -303,7 +305,6 @@ const workspaces = {
             "http-server",
             // `lint-staged` removed at the knip 6 bump: the exemption no longer matched anything.
             "madge",
-            "serve",
             // ⚠️ `typedoc` is `unlisted` like `sharp` below, for the inverse
             // reason: it IS declared, but at the right owner — a devDependency of
             // `packages/core`, which `gen-api-surface.cjs` resolves explicitly

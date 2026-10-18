@@ -31,11 +31,27 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.16.2 <Badge type="tip" text="2026-10-16" />
+## Release v3.16.3 <Badge type="tip" text="2026-10-17" />
 
-A patch release of `@geoleaf/core` alone, on switching basemaps: four fixes, no API change.
+A patch release of `@geoleaf/core` alone: map credits are cleaned and shown, and three profile
+readings are made consistent.
 
 **Highlights:**
+
+- **Security** — map credits are cleaned before they reach the attribution control: a basemap's
+  `attribution` and a layer's `attribution` option go through one sanitizer, which keeps inline
+  formatting and safe links and turns any other markup into text.
+- **Fixed** — a layer's `attribution` option is shown: it is set on the layer's source.
+- **Fixed** — a `map.padding` object naming only some edges frames the map at start-up as a
+  theme view does: each edge it names applies, an edge it does not name is `0`.
+- **Fixed** — the profile schema accepts `ui.showPrint`, `ui.showMeasure` and `ui.showGeocoding`,
+  legacy aliases of `modules.<plugin>.showButton` the toolbar has always read.
+- **Removed** — the theme applier's fit on the layers' extent, which could no longer run.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.16.2 (2026-10-16) — a patch release of `@geoleaf/core` alone, on switching basemaps:
+four fixes, no API change.
 
 - **Fixed** — a basemap asked while the map's style updates no longer makes MapLibre throw
   `Cannot read properties of undefined (reading 'used')` out of its render loop — a theme that
@@ -47,8 +63,6 @@ A patch release of `@geoleaf/core` alone, on switching basemaps: four fixes, no 
 - **Fixed** — a basemap that displays is no longer reported as missing something when the
   profile loads: `tiles` alone, `type: "maplibre"`, `image`, `hillshade`, `wmts` and `wms` are
   all drawable.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.16.1 (2026-10-15) — a patch release of `@geoleaf/core`, published with two fixed
 plugins and a new one: `@geoleaf-plugins/isochrone` 1.0.0 shows the zones reachable from a point
