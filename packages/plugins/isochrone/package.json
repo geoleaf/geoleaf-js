@@ -1,6 +1,6 @@
 {
     "name": "@geoleaf-plugins/isochrone",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf isochrone plugin — the zones reachable from a point within a given time, asked of a routing engine",

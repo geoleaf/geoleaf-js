@@ -11,6 +11,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## `@geoleaf-plugins/isochrone` 1.0.2 - 2026-10-19
+
+Published without a core release: `@geoleaf/core` stays at 3.17.0.
+
+### Changed
+
+- **`@geoleaf-plugins/isochrone` is published with a provenance attestation.** 1.0.0 and 1.0.1
+  were published by hand, without one. 1.0.2 goes through the release workflow like the other
+  plugins, and the registry carries its signed SLSA provenance. The code is the same as 1.0.1's.
+
 ## [3.17.0] - 2026-10-18
 
 ### Added

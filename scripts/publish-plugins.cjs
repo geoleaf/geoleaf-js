@@ -145,6 +145,7 @@ for (const name of PUBLISHED_PLUGINS) {
 
 let published = 0;
 let skipped = 0;
+const failed = [];
 
 for (const workspace of PUBLISHED_PLUGINS) {
     // 🛑 `.manifest.version`, and it is a FIX — this line read `.version`, which
@@ -185,31 +186,13 @@ for (const workspace of PUBLISHED_PLUGINS) {
         console.log(`✓ ${workspace} published.`);
         published++;
     } catch (err) {
+        // 🛑 Recorded, NOT fatal. Until 19/10/2026 this branch exited on the spot: on 18/10 the
+        // registry refused `isochrone` (a stale trusted-publisher link) and `measure`, next in
+        // alphabetical order, was never attempted. The order among plugins is indifferent
+        // (measured above), so one refusal has no reason to hold back the others. The run
+        // still exits 1 below, naming every failure — a partial wave is never a green.
         console.error(`✗ Failed to publish ${workspace}:`, err.message);
-        console.error(
-            `\n  ${published} publié(s), ${skipped} sauté(s) avant cet échec, ` +
-                `${PUBLISHED_PLUGINS.length - published - skipped - 1} non tenté(s).`
-        );
-        console.error(
-            `  Le script est REJOUABLE : les paquets déjà au registre seront sautés.\n` +
-                `  ⚠️ Si l'échec est \`EOTP\`, npm exige une confirmation 2FA. LE REMÈDE EST UNE\n` +
-                `     VARIABLE, PAS UN CODE — relancer avec un navigateur nommé :\n` +
-                `         BROWSER=wslview node scripts/publish-plugins.cjs\n` +
-                `     npm ouvre alors un onglet de confirmation PAR PAQUET, on clique, il continue.\n` +
-                `     \`BROWSER=echo\` marche aussi : npm imprime l'URL et attend, on la colle à la main.\n` +
-                `     Sans variable, npm meurt sur « Set the BROWSER environment variable » — un\n` +
-                `     message qui ne nomme ni EOTP ni 2FA, d'où la confusion.\n` +
-                `     🛑 CE MESSAGE A ENVOYÉ CHERCHER UN AUTHENTICATOR JUSQU'AU 01/09/2026, et c'est\n` +
-                `     sa TROISIÈME version fausse sur ce même sujet. Il disait « npm hérite du tty et\n` +
-                `     pose la question — un code par paquet » : npm ne pose pas cette question, il\n` +
-                `     propose un flux WEB. Mesuré ce jour-là, depuis un vrai terminal, en publiant 5\n` +
-                `     paquets sans taper un seul code. La version d'avant le 12/08 disait l'inverse\n` +
-                `     symétrique (« sans tty, ne peut pas y répondre »).\n` +
-                `     📌 Ce qui RESTE vrai des versions précédentes : aucun type de jeton ne lève\n` +
-                `     l'exigence de 2FA, et \`auth-only\` n'y change rien. Ce qui était faux, c'est la\n` +
-                `     FORME que prend cette exigence.`
-        );
-        process.exit(1);
+        failed.push(workspace);
     }
 }
 
@@ -217,5 +200,29 @@ for (const workspace of PUBLISHED_PLUGINS) {
 // run would suggest twelve publications where there may have been only five.
 console.log(
     `\n${dryRun ? "[dry-run] " : ""}${published} publié(s), ${skipped} déjà au registre ` +
-        `(sauté), sur ${PUBLISHED_PLUGINS.length} plugin(s).`
+        `(sauté), ${failed.length} échec(s), sur ${PUBLISHED_PLUGINS.length} plugin(s).`
 );
+
+if (failed.length > 0) {
+    console.error(`\n✗ ${failed.length} échec(s) : ${failed.join(", ")}.`);
+    console.error(
+        `  Le script est REJOUABLE : les paquets déjà au registre seront sautés.\n` +
+            `  ⚠️ Si l'échec est \`EOTP\`, npm exige une confirmation 2FA. LE REMÈDE EST UNE\n` +
+            `     VARIABLE, PAS UN CODE — relancer avec un navigateur nommé :\n` +
+            `         BROWSER=wslview node scripts/publish-plugins.cjs\n` +
+            `     npm ouvre alors un onglet de confirmation PAR PAQUET, on clique, il continue.\n` +
+            `     \`BROWSER=echo\` marche aussi : npm imprime l'URL et attend, on la colle à la main.\n` +
+            `     Sans variable, npm meurt sur « Set the BROWSER environment variable » — un\n` +
+            `     message qui ne nomme ni EOTP ni 2FA, d'où la confusion.\n` +
+            `     🛑 CE MESSAGE A ENVOYÉ CHERCHER UN AUTHENTICATOR JUSQU'AU 01/09/2026, et c'est\n` +
+            `     sa TROISIÈME version fausse sur ce même sujet. Il disait « npm hérite du tty et\n` +
+            `     pose la question — un code par paquet » : npm ne pose pas cette question, il\n` +
+            `     propose un flux WEB. Mesuré ce jour-là, depuis un vrai terminal, en publiant 5\n` +
+            `     paquets sans taper un seul code. La version d'avant le 12/08 disait l'inverse\n` +
+            `     symétrique (« sans tty, ne peut pas y répondre »).\n` +
+            `     📌 Ce qui RESTE vrai des versions précédentes : aucun type de jeton ne lève\n` +
+            `     l'exigence de 2FA, et \`auth-only\` n'y change rien. Ce qui était faux, c'est la\n` +
+            `     FORME que prend cette exigence.`
+    );
+    process.exit(1);
+}
