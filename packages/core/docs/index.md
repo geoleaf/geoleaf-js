@@ -31,12 +31,31 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.16.3 <Badge type="tip" text="2026-10-17" />
+## Release v3.17.0 <Badge type="tip" text="2026-10-18" />
 
-A patch release of `@geoleaf/core` alone: map credits are cleaned and shown, and three profile
-readings are made consistent.
+A minor release of `@geoleaf/core`, published with three plugins that now rely on it: a tool that
+takes over the map's clicks goes through the adapter, and three public subpaths can be imported.
 
 **Highlights:**
+
+- **Added** — exclusive mode on the adapter: `IMapAdapter.enterExclusiveMode`,
+  `exitExclusiveMode` and `isExclusiveMode`. While a tool holds it, a click opens no feature popup
+  and the hover handlers leave the cursor alone. The three members are optional.
+- **Changed** — `MapConfig.padding` accepts the object form, and `UIConfig.showGeocoding` is
+  declared next to the two other toolbar aliases.
+- **Changed** — `@geoleaf-plugins/measure` 1.0.12, `@geoleaf-plugins/editor` 1.6.1 and
+  `@geoleaf-plugins/isochrone` 1.0.1 enter exclusive mode through the adapter, and require
+  `@geoleaf/core` 3.17.0 or later.
+- **Fixed** — `capabilities/legend/public-api`, `capabilities/pwa/public-api` and
+  `capabilities/filter/engine/index` ship their modules: importing a value from them no longer
+  throws `ERR_MODULE_NOT_FOUND`.
+- **Removed** — `IMapAdapter.createClusterGroup`, without a deprecation period. To cluster a
+  layer, pass the `cluster` option to `addGeoJSONLayer`.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.16.3 (2026-10-17) — a patch release of `@geoleaf/core` alone: map credits are cleaned
+and shown, and three profile readings are made consistent.
 
 - **Security** — map credits are cleaned before they reach the attribution control: a basemap's
   `attribution` and a layer's `attribution` option go through one sanitizer, which keeps inline
@@ -47,8 +66,6 @@ readings are made consistent.
 - **Fixed** — the profile schema accepts `ui.showPrint`, `ui.showMeasure` and `ui.showGeocoding`,
   legacy aliases of `modules.<plugin>.showButton` the toolbar has always read.
 - **Removed** — the theme applier's fit on the layers' extent, which could no longer run.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.16.2 (2026-10-16) — a patch release of `@geoleaf/core` alone, on switching basemaps:
 four fixes, no API change.
