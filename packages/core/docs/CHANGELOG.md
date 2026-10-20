@@ -11,7 +11,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## [3.18.0] - Unreleased
+## [3.18.0] - 2026-10-20
 
 ### Fixed
 
