@@ -4,7 +4,7 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 808e99a00
+verifie_contre: 1079187cb
 date: 20 octobre 2026
 ---
 

@@ -65,6 +65,7 @@ import { maxWorkers, vmMemoryLimit } from "./worker-budget.mjs";
 // (aliases, forks pool, setup) and import the plugin directly from
 // `@geoleaf/build-config/vitest/resolve-js-to-ts.mjs`. No re-export here.
 import { resolveJsToTs } from "./resolve-js-to-ts.mjs";
+import { testReporters } from "./test-report.mjs";
 
 /** Default coverage thresholds — the project target (≥ 75 %). */
 const DEFAULT_THRESHOLDS = { branches: 75, functions: 75, lines: 75, statements: 75 };
@@ -143,7 +144,7 @@ export function packageConfig({
             },
 
             testTimeout: 10_000,
-            reporters: ["verbose"],
+            ...testReporters(),
 
             ...test,
         },

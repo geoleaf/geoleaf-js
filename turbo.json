@@ -156,6 +156,10 @@
             // et que `check-test-failures.cjs` exige pour chaque paquet. Sans lui ici, une tâche
             // rejouée par le cache ne le restaurerait pas.
             "outputs": ["coverage/**", "test-results.json"],
+            // `env` et non `passThroughEnv` : la variable décide si le rapport est écrit, donc
+            // ce que la tâche produit — elle entre dans SA clé, et dans celle d'aucune autre
+            // (`packages/build-config/vitest/test-report.mjs`).
+            "env": ["GEOLEAF_TEST_REPORT"],
             "passThroughEnv": ["GEOLEAF_TEST_FANOUT"],
             "inputs": [
                 "src/**",

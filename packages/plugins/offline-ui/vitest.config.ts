@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { resolveJsToTs } from "@geoleaf/build-config/vitest/resolve-js-to-ts.mjs";
 import { maxWorkers, vmMemoryLimit } from "@geoleaf/build-config/vitest/worker-budget.mjs";
+import { testReporters } from "@geoleaf/build-config/vitest/test-report.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -184,7 +185,7 @@ export default defineConfig({
         },
 
         testTimeout: 10000,
-        reporters: ["verbose"],
+        ...testReporters(),
     },
 
     resolve: {

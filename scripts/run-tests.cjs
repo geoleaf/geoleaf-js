@@ -44,7 +44,8 @@
  * superset of the first — every package of `unitScope()`, with the same per-package
  * configs — and a red test turns it red as well. The bare run is gone; the coverage run
  * now writes `test-results.json` in each package, which `check-test-failures.cjs` reads
- * and requires for every package of the scope.
+ * and requires for every package of the scope — asked through an environment variable
+ * (`@geoleaf/build-config/vitest/test-report.mjs` says why not through arguments).
  *
  * ⚠️ Those reports are deleted BEFORE turbo starts. A task turbo replays from its cache
  * restores its own (`outputs` of `test:coverage`); a task that never ran — turbo stopped
@@ -127,18 +128,6 @@ if (packages.length === 0) {
 
 const task = WITH_COVERAGE ? "test:coverage" : "test";
 
-// Vitest arguments passed to the `test:coverage` tasks only (turbo does not forward them
-// to the `build` dependencies). The config's `verbose` reporter is restated: a CLI
-// `--reporter` replaces the configured ones instead of adding to them.
-const REPORT_ARGS = WITH_COVERAGE
-    ? [
-          "--",
-          "--reporter=verbose",
-          "--reporter=json",
-          `--outputFile.json=${testScope.UNIT_REPORT_FILE}`,
-      ]
-    : [];
-
 if (WITH_COVERAGE) {
     for (const p of packages)
         fs.rmSync(path.join(p.absDir, testScope.UNIT_REPORT_FILE), { force: true });
@@ -161,6 +150,13 @@ async function main() {
     // budget shown below is thus computed by the same code, and from the same value,
     // as the one the children will apply. No description able to lie about the run.
     process.env[budget.FANOUT_ENV] = String(TEST_FANOUT);
+    // The JSON report, through the environment and not through arguments after `--`: turbo
+    // hands those to the `build` dependencies too and hashes them into their keys
+    // (`test-report.mjs`). Only `test:coverage` declares the variable in `turbo.json`.
+    if (WITH_COVERAGE) {
+        const report = await import("@geoleaf/build-config/vitest/test-report.mjs");
+        process.env[report.REPORT_ENV] = testScope.UNIT_REPORT_FILE;
+    }
     const described = budget.describeBudget();
 
     console.log(
@@ -191,7 +187,6 @@ async function main() {
             `--concurrency=${TEST_FANOUT}`,
             ...(FORCE ? ["--force"] : []),
             ...packages.map((p) => `--filter=${p.name}`),
-            ...REPORT_ARGS,
         ],
         { cwd: ROOT, stdio: "inherit", shell: NPM_SHELL, env: process.env }
     );

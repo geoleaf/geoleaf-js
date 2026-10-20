@@ -22,6 +22,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { resolveJsToTs } from "@geoleaf/build-config/vitest/resolve-js-to-ts.mjs";
 import { maxWorkers, vmMemoryLimit } from "@geoleaf/build-config/vitest/worker-budget.mjs";
+import { testReporters } from "@geoleaf/build-config/vitest/test-report.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -173,7 +174,7 @@ export default defineConfig({
         // default 10 s when the full `npm test` (turbo) runs all workspaces in parallel
         // (CPU contention). Give setup hooks headroom to avoid flaky timeouts.
         hookTimeout: 30000,
-        reporters: ["verbose"],
+        ...testReporters(),
     },
 
     resolve: {

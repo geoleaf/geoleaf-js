@@ -856,6 +856,7 @@ const OUTSIDE_SCRIPTS_ALLOWLIST = new Set([
     "packages/build-config/vitest/base.mjs",
     "packages/build-config/vitest/ensure-tsx-node-options.mjs",
     "packages/build-config/vitest/resolve-js-to-ts.mjs",
+    "packages/build-config/vitest/test-report.mjs",
     "packages/build-config/vitest/worker-budget.mjs",
 ]);
 
