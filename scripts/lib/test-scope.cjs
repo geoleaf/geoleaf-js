@@ -2,12 +2,15 @@
 /**
  * Which packages belong to which test scope — and the invariant binding them.
  *
- * This repo runs its unit tests in **two** ways, and both are needed:
+ * This repo runs its unit tests in **two** ways:
  *
- *   1. **The turbo fan-out** — `npm test` → `turbo run test`, one `vitest run` process
- *      per package, each reading ITS config. This is `ci:local`'s gate.
- *   2. **`projects` mode** — `npx vitest run` from the root, ONE process loading the
- *      package configs as so many projects. This is `ci.yml`'s gate.
+ *   1. **The turbo fan-out** — `scripts/run-tests.cjs` → `turbo run test` or
+ *      `test:coverage`, one `vitest run` process per package, each reading ITS config.
+ *      This is the gate, of `ci:local` AND of `ci.yml` (`npm run test:coverage:all`).
+ *   2. **`projects` mode** — `npm run test:vitest` from the root, ONE process loading the
+ *      package configs as so many projects. A developer's run: `ci.yml` used it as its
+ *      unit gate until 20/10/2026, and dropped it because the coverage run tests a
+ *      superset of it.
  *
  * Each had its own hand-written list, and they had diverged. The `packages.cjs` header
  * already noted it: "the root `test` script and `vitest.config.ts#projects` diverged on
@@ -19,9 +22,9 @@
  *
  * ## The invariant: `unitScope() ⊇ rootProjectScope()`
  *
- * It is the only property that makes the push protocol's sentence true — "local green →
- * safe push". If `ci:local` tests less than `ci.yml`, a local green says nothing about
- * the remote run, and the GitHub Actions quota gets spent on an unknown.
+ * It used to be the property that made the push protocol's sentence true — "local green
+ * → safe push" — while `ci.yml` tested in `projects` mode. Both now go through the gate's
+ * perimeter; the invariant keeps the root run from testing a package the gate skips.
  *
  * It is therefore **verified, not conventioned**: {@link assertUnitScopeCoversRoot}
  * throws.
@@ -193,12 +196,10 @@ function assertExclusionKeysAlive() {
 }
 
 /**
- * Verifies `unitScope() ⊇ rootProjectScope()` — the property that makes "`ci:local`
- * green → safe push" true. Throws naming the offending packages.
+ * Verifies `unitScope() ⊇ rootProjectScope()`. Throws naming the offending packages.
  *
- * A package cannot be in the root run AND parked: it would have been removed from the
- * local gate while left in the remote one — precisely the case where a local green says
- * nothing about the red to come.
+ * A package cannot be in the root run AND parked: the developer's `projects` run would
+ * keep testing what the gate has stopped reading, and its green would say nothing of it.
  *
  * @returns {void}
  */
@@ -212,8 +213,8 @@ function assertUnitScopeCoversRoot() {
 
     if (missing.length) {
         throw new Error(
-            "test-scope.cjs : `ci:local` testerait MOINS que `ci.yml` — un vert local ne " +
-                "dirait plus rien du run distant, et le quota se dépenserait sur une inconnue.\n" +
+            "test-scope.cjs : le run racine (`npm run test:vitest`) testerait un paquet que " +
+                "la gate saute — son vert ne dirait rien de ce qu'elle a cessé de lire.\n" +
                 missing
                     .map((n) => `  - ${n} : dans le run racine, mais au parc (PARKED)`)
                     .join("\n") +
@@ -223,8 +224,15 @@ function assertUnitScopeCoversRoot() {
     }
 }
 
-// Surface deliberately reduced to what is consumed: `run-tests.cjs` (the first three)
-// and `vitest.config.ts` (the last). `EXCLUDED_FROM_ROOT_RUN` and `testablePackages`
+/**
+ * Name of the JSON report the coverage run writes in each package — written by
+ * `run-tests.cjs --coverage`, read by `check-test-failures.cjs`.
+ */
+const UNIT_REPORT_FILE = "test-results.json";
+
+// Surface deliberately reduced to what is consumed: `run-tests.cjs` (the first three and
+// the report's name), `check-test-failures.cjs` (scope and report's name) and
+// `vitest.config.ts` (`rootProjectScope`). `EXCLUDED_FROM_ROOT_RUN` and `testablePackages`
 // stay internal — exposing them without a consumer would make this module a source of
 // orphan exports, which `dead-code` (knip) and `check-orphan-exports` gate.
 module.exports = {
@@ -232,4 +240,5 @@ module.exports = {
     unitScope,
     assertUnitScopeCoversRoot,
     rootProjectScope,
+    UNIT_REPORT_FILE,
 };

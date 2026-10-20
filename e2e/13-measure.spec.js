@@ -243,6 +243,49 @@ test.describe("[measure] tools (real pointer)", () => {
         expect(errors.filter((e) => !/favicon|chrome-extension/.test(e))).toHaveLength(0);
     });
 
+    // A tool used to leave `cursor: grab` inline on the canvas when it stopped. At rest that is
+    // indistinguishable from the engine's own `grab`, but it overrides the engine's `:active`
+    // rule, so dragging the map no longer showed `grabbing`. The first drag, before any measure,
+    // is the witness that this probe can see `grabbing` at all.
+    test("after a measure stops, dragging the map shows grabbing again", async ({ page }) => {
+        const errors = await boot(page);
+        const box = await canvasBox(page);
+        const spot = at(box, 0.7, 0.75);
+
+        /** Computed canvas cursor while the left button is held on `spot`. */
+        async function cursorWhileDragging() {
+            await page.mouse.move(spot.x, spot.y);
+            await page.mouse.down();
+            const cursor = await page.evaluate(
+                () =>
+                    getComputedStyle(
+                        /** @type {HTMLElement} */ (
+                            document.querySelector("#geoleaf-map canvas.maplibregl-canvas")
+                        )
+                    ).cursor
+            );
+            await page.mouse.up();
+            return cursor;
+        }
+
+        expect(await cursorWhileDragging()).toBe("grabbing");
+
+        await armMeasure(page);
+        await activateTool(page, "distance");
+        await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Measure.stopMeasure());
+
+        const inline = await page.evaluate(
+            () =>
+                /** @type {HTMLElement} */ (
+                    document.querySelector("#geoleaf-map canvas.maplibregl-canvas")
+                ).style.cursor
+        );
+        expect(await cursorWhileDragging()).toBe("grabbing");
+        expect(inline).toBe("");
+
+        expect(errors.filter((e) => !/favicon|chrome-extension/.test(e))).toHaveLength(0);
+    });
+
     test("polygon: canvas clicks + dblclick commit a Polygon surface measure", async ({ page }) => {
         await boot(page);
         await armMeasure(page);

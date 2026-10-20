@@ -84,11 +84,11 @@ describe("activateCustom — the envelope", () => {
 });
 
 describe("deactivateCustom — the teardown", () => {
-    it("releases exclusive mode and restores the pan cursor", () => {
+    it("releases exclusive mode and leaves no inline cursor (the engine CSS paints grab/grabbing)", () => {
         arm("denivele", { cursor: "cell" });
         deactivateCustom();
         expect(gl.exclusive.held).toBe(false);
-        expect(map.getCanvas().style.cursor).toBe("grab");
+        expect(map.getCanvas().style.cursor).toBe("");
     });
 
     it("calls onDeactivate BEFORE the envelope comes down", () => {

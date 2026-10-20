@@ -45,7 +45,11 @@ import { StorageContract } from "../../../kernel/shared/index.js";
 import { DrainHooksContract } from "../../../kernel/shared/drain-hooks-seam.js";
 import { SessionReaderContract } from "../../../kernel/shared/session-reader-seam.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
-import { coreProfileLayerConfig } from "../config-seam.js";
+import {
+    belongsToActiveProfile,
+    coreActiveProfileId,
+    coreProfileLayerConfig,
+} from "../config-seam.js";
 import { markerOf, readServerVersion, recordConflict } from "./conflict-store.js";
 import { clearRestoredStatus } from "../poi-restore/poi-restore.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
@@ -1216,6 +1220,56 @@ function _announceDrained(report: PushReport): void {
 let _draining: Promise<PushReport> | null = null;
 
 /**
+ * Name of the Web Lock that serialises drains across the tabs of one origin.
+ *
+ * ⚠️ No `geoleaf:` prefix: that prefix names an event in this codebase, and the event map
+ * reads every such literal as one.
+ */
+const DRAIN_LOCK = "geoleaf-outbox-drain";
+
+/**
+ * Runs one drain under the cross-tab lock, when the browser provides one.
+ *
+ * 🛑 **`_draining` guards ONE JavaScript context.** Two tabs share the database, not that
+ * variable: both read the queue before either writes `inFlight`, so the same capture left
+ * twice — resolved by the 409 on `local_id`, but spending its replay budget twice. The Web
+ * Lock makes the second tab WAIT for the first, then read a queue the first has settled;
+ * waiting rather than `ifAvailable`, so that no pass is lost.
+ *
+ * ⚠️ Without `navigator.locks` (Node, older engines) the drain runs as before: the age of
+ * `inFlightAt` remains the only guard between contexts.
+ *
+ * @param run - The drain.
+ * @returns What the drain returned.
+ */
+async function _underDrainLock(run: () => Promise<PushReport>): Promise<PushReport> {
+    const locks = (globalThis as { navigator?: { locks?: LockManager } }).navigator?.locks;
+    if (typeof locks?.request !== "function") return run();
+    return await locks.request(DRAIN_LOCK, run);
+}
+
+/** Whether the entries of another profile were already reported in this page. */
+let _otherProfilesReported = false;
+
+/**
+ * Says ONCE per page that entries of another profile are waiting.
+ *
+ * `warn` and once: the operator who switched profile with writes still queued must be able
+ * to learn why they do not leave, and the periodic tick would otherwise repeat it.
+ *
+ * @param count - Entries of another profile walked past by this pass.
+ */
+function _reportOtherProfiles(count: number): void {
+    if (count === 0 || _otherProfilesReported) return;
+    _otherProfilesReported = true;
+    Log.warn(
+        `[Offline.Push] ${count} écriture(s) en file appartiennent à un autre profil que ` +
+            `« ${coreActiveProfileId() ?? "aucun"} » : elles attendent, et partiront ` +
+            `quand leur profil sera de nouveau actif.`
+    );
+}
+
+/**
  * Drains the `outbox`: pushes each pending operation and reconciles identities.
  *
  * Does not throw — each entry gets its outcome, and a failing entry stays in the queue
@@ -1234,7 +1288,7 @@ export async function pushOutbox(): Promise<PushReport> {
     // Widening the type to say "refused, a drain is already running" would force every
     // consumer to learn a case none of them has asked to tell apart.
     if (_draining) return _draining;
-    _draining = _drainOnce();
+    _draining = _underDrainLock(_drainOnce);
     try {
         return await _draining;
     } finally {
@@ -1366,9 +1420,14 @@ async function _drainOnce(): Promise<PushReport> {
     // Reclaim FIRST, so an entry a dead session left on the wire is replayed by THIS
     // drain rather than waiting for the next one.
     const reclaimed = await reclaimStaleInFlight(outbox, queue, now);
-    const replayable = queue.filter(
-        (entry) => REPLAYABLE.has(entry.state) || reclaimed.has(entry.id)
-    );
+    const due = queue.filter((entry) => REPLAYABLE.has(entry.state) || reclaimed.has(entry.id));
+    // 🛑 ONLY THE ACTIVE PROFILE'S ENTRIES LEAVE. The target is resolved from the active
+    // profile (`resolveWriteTarget`): an entry captured under another one would reach the
+    // endpoint of a layer that merely shares its id, or be set aside because its layer is
+    // not declared here. It is walked past untouched — not sent, not marked, not counted,
+    // budget intact — and leaves once its profile is active again.
+    const replayable = due.filter(belongsToActiveProfile);
+    _reportOtherProfiles(due.length - replayable.length);
     // 🛑 The deferral is READ here and nowhere else — the drain walks past, it never
     // waits. An entry whose delay has not elapsed is not a failure and must not be
     // counted as one; it is reported apart so a silent drain stays distinguishable

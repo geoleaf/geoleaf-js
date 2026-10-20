@@ -348,7 +348,9 @@ const ExportLogic = {
         // entity.
         if (!(await ensureEngineReady())) return [];
         try {
-            const pending = await StorageContract.DB.listPendingEdits();
+            // 🛑 EVERY profile's work: an export exists to get everything out, and a capture
+            // left by another profile has no other way out from this one.
+            const pending = await StorageContract.DB.listPendingEdits({ allProfiles: true });
             return pending.map((edit) => ({
                 ...(edit.feature && typeof edit.feature === "object"
                     ? ((edit.feature as { properties?: Record<string, unknown> }).properties ?? {})
@@ -359,6 +361,9 @@ const ExportLogic = {
                 _syncTimestamp: edit.createdAt,
                 _layerId: edit.layerId,
                 _localId: edit.localId,
+                // Whose capture it is: the export holds every profile's, and a layer id
+                // alone does not say which one it was captured under.
+                _profileId: edit.profileId ?? null,
                 // The geometry goes along: an export of field captures rendering
                 // them position-less would not be a backup — already fixed once for
                 // the attribute payload.

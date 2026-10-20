@@ -39,22 +39,19 @@
  * manual gesture where the file announced a guard. Fixing that was the real
  * object of 30/07/2026 — not that day's red.
  *
- * ⚠️ Owned SHAPE divergence, on the unit gate: `ci.yml` runs
- * `npx vitest run` (`projects` mode, one process, 11 packages), this script
- * runs `npm test` (turbo fan-out, 17 packages). Same test files, different
- * schedulers. The inclusion's direction is what counts, and it points the
- * right way. This divergence is now an `EXEMPTIONS` entry of the parity
- * gate, with a witness that turns red if `test-scope.cjs` stopped carrying
- * the inclusion.
+ * The unit gate has the same shape on both sides since 20/10/2026: `ci.yml`
+ * and this script both run `npm run test:coverage:all` (turbo fan-out, every
+ * package of the unit scope), then `check-test-failures.cjs` over the JSON
+ * report each package writes. `ci.yml` used to run the suite a first time in
+ * `projects` mode (`npx vitest run`), a subset of the coverage run — that
+ * owned divergence, and its parity exemption, are gone with it.
  *
  * ## What this script STILL does not cover, and SAYS
  *
- * Three things stay out of reach, and the end-of-run summary now names them
- * rather than silencing them: the 4 `E2E_STEPS` (opt-in, real cost),
- * `check-test-failures.cjs` (it parses a `test-results.json` only `ci.yml`'s
- * JSON reporter produces), and gitleaks' `pull_request` path (no PR event
- * exists on a workstation). Gitleaks' `push` path is replayed by
- * `npm run gitleaks:local`.
+ * Two things stay out of reach, and the end-of-run summary names them rather
+ * than silencing them: the 4 `E2E_STEPS` (opt-in, real cost), and gitleaks'
+ * `pull_request` path (no PR event exists on a workstation). Gitleaks' `push`
+ * path is replayed by `npm run gitleaks:local`.
  */
 
 const { spawnSync } = require("node:child_process");
@@ -309,19 +306,19 @@ const STEPS = [
     // It also refuses to conclude on an empty range, where gitleaks would
     // print "no leaks found" over zero bytes — f15b0575's exact defect.
     { name: "Secret scan (gitleaks, local)", run: ["node", "scripts/gitleaks-local.cjs"] },
-    // ⚠️ These two steps are distinct and must stay so — same package
-    // perimeter now, but not the same role, and confusing them has already cost:
+    // ⚠️ The unit tests run ONCE, under coverage — and it must be the coverage
+    // run that stays, never `npm test`, whatever its name says:
     //   - `npm test`                  → `test` task          → no coverage, no thresholds
     //   - `npm run test:coverage:all` → `test:coverage` task → coverage AND thresholds
-    // Both go through `scripts/run-tests.cjs` and cover the 17 packages (34
-    // turbo tasks each, build included). Until 19/07/2026 `ci:local` only
-    // launched the first, under the misleading name "Unit tests + coverage
-    // gate" — while it measures no coverage. `ci.yml`'s coverage gate
-    // ("Coverage gate", HARD gate, no continue-on-error) thus had no local
-    // equivalent, and it stayed RED on `main` with nothing flagging it:
-    // `plugin-runtime` (branches 61.11%) and `field-renderer` (59.68%)
-    // failed while `ci:local` displayed 100% green. A push would have
-    // burned quota on a red the CI already knew and local could not see.
+    // Until 19/07/2026 `ci:local` only launched the first, under the misleading
+    // name "Unit tests + coverage gate" — while it measures no coverage.
+    // `ci.yml`'s coverage gate ("Coverage gate", HARD gate, no
+    // continue-on-error) thus had no local equivalent, and it stayed RED on
+    // `main` with nothing flagging it: `plugin-runtime` (branches 61.11%) and
+    // `field-renderer` (59.68%) failed while `ci:local` displayed 100% green.
+    // Both then ran, one after the other, until 20/10/2026: the coverage run
+    // tests the same packages with the same configs, so on a fresh clone
+    // (`ci:push`, the runner) the first one was the suite paid twice.
     // 🛑 THE GUARDS, OUTSIDE THE CACHE — and this step exists because the
     // other one lied three times.
     //
@@ -353,7 +350,6 @@ const STEPS = [
         name: "Gardes réveillées par leur sujet (GUARD-CACHE)",
         run: ["node", "scripts/verify-guards-uncached.cjs"],
     },
-    { name: "Unit tests (npm test)", run: ["npm", "test"] },
     // The `--concurrency=4` that lived HERE, hardcoded, and only for this
     // gate, moved into `scripts/run-tests.cjs` with the second factor it lacked.
     //
@@ -361,18 +357,23 @@ const STEPS = [
     // pools oversubscribe the machine, and the time-constrained tests are
     // what gives, a different package each run — but the remedy only
     // covered half the product, and only this gate. The "Unit tests" step
-    // just above never carried anything: `npm test` launched 12 packages at
+    // that ran before it carried nothing: `npm test` launched 12 packages at
     // once, each opening ~23 workers. Measured on 22/07/2026: **81 Node
     // processes, 11.3 GB RSS** for ~11 GB available. Hence a ci:local red
     // every other run — always on timeout, never on assertion, on untouched
     // packages green in isolation.
     //
-    // Both gates now go through the same runner, which sets together the
-    // turbo concurrency AND each vitest's worker cap.
+    // The runner sets together the turbo concurrency AND each vitest's
+    // worker cap.
     {
         name: "Coverage gate (turbo test:coverage)",
         run: ["npm", "run", "test:coverage:all"],
     },
+    // Reads the JSON report each package's coverage task wrote, and turns red
+    // on a package that left none or ran no test — two cases the coverage
+    // run's exit code lets through. Was `ci.yml`-only while its report came
+    // from the `projects` run, which no local step reproduced.
+    { name: "Check zero test failures", run: ["node", "scripts/check-test-failures.cjs"] },
     { name: "Smoke test", run: ["node", "scripts/smoke-test.cjs"] },
     // Replaces `benchmark.cjs --ci`, whose 3 assertions were inert
     // (baseline from 27/02, Leaflet era; the other 2 named an artefact

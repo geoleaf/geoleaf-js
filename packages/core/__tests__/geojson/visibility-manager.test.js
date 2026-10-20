@@ -182,20 +182,7 @@ describe("geojson/visibility-manager", () => {
         getState().adapter = { showLayer, hideLayer };
         const layer = {};
         const clusterGroup = {};
-        getState().layers.set("lyr1", { id: "lyr1", layer, clusterGroup, useSharedCluster: false });
-        const layerData = getState().layers.get("lyr1");
-        const result = VisibilityManager._applyVisibilityChange("lyr1", layerData, true);
-        expect(result).toBe(true);
-        expect(showLayer).toHaveBeenCalledWith("lyr1");
-    });
-
-    it("_applyVisibilityChange shows layer via adapter (useSharedCluster)", () => {
-        const showLayer = vi.fn();
-        const hideLayer = vi.fn();
-        getState().adapter = { showLayer, hideLayer };
-        const layer = {};
-        const clusterGroup = { addLayer: vi.fn() };
-        getState().layers.set("lyr1", { id: "lyr1", layer, clusterGroup, useSharedCluster: true });
+        getState().layers.set("lyr1", { id: "lyr1", layer, clusterGroup });
         const layerData = getState().layers.get("lyr1");
         const result = VisibilityManager._applyVisibilityChange("lyr1", layerData, true);
         expect(result).toBe(true);
@@ -208,7 +195,7 @@ describe("geojson/visibility-manager", () => {
         getState().adapter = { showLayer, hideLayer };
         const layer = {};
         const clusterGroup = {};
-        getState().layers.set("lyr1", { id: "lyr1", layer, clusterGroup, useSharedCluster: false });
+        getState().layers.set("lyr1", { id: "lyr1", layer, clusterGroup });
         const layerData = getState().layers.get("lyr1");
         const result = VisibilityManager._applyVisibilityChange("lyr1", layerData, false);
         expect(result).toBe(true);
@@ -376,24 +363,6 @@ describe("geojson/visibility-manager — T22 branch coverage", () => {
 
     it("_fireVisibilityEvent returns early when no map (branch 59.0)", () => {
         expect(() => VisibilityManager._fireVisibilityEvent("lyr1", true, "user")).not.toThrow();
-    });
-
-    // ── _applyVisibilityChange: useSharedCluster + clusterGroup via adapter (branch 32.0) ──
-
-    it("_applyVisibilityChange hides via adapter when useSharedCluster=true (branch 32.0)", () => {
-        getState().adapter = { showLayer: vi.fn(), hideLayer: vi.fn() };
-        const layer = {};
-        const clusterGroup = { removeLayer: vi.fn() };
-        getState().layers.set("lyr1", {
-            id: "lyr1",
-            layer,
-            clusterGroup,
-            useSharedCluster: true,
-        });
-        const layerData = getState().layers.get("lyr1");
-        const result = VisibilityManager._applyVisibilityChange("lyr1", layerData, false);
-        expect(result).toBe(true);
-        expect(getState().adapter.hideLayer).toHaveBeenCalledWith("lyr1");
     });
 
     // ── _reFilterChildLayers: inner callback branches (22-27) ────────────────

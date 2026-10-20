@@ -290,7 +290,7 @@ export function createDragTool<S>(spec: DragToolSpec<S>): DragTool {
             enableDragPan();
             clearPreview();
             updateVertices([]);
-            setCursor("grab");
+            setCursor("");
             state = null;
             map = null;
         },

@@ -70,7 +70,7 @@ function makeDeps(shouldCluster) {
         }),
         getVectorTiles: () => null,
         getCluster: () => ({
-            getClusteringStrategy: () => ({ shouldCluster, useSharedCluster: false }),
+            getClusteringStrategy: () => ({ shouldCluster }),
             applyGeoJSONClusterOptions: vi.fn(),
         }),
         getUtils: () => undefined,

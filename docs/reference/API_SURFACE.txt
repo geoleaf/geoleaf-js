@@ -142,8 +142,8 @@ CallSignature | @geoleaf-plugins/editor.drawing/styles.buildLineStyles.buildLine
 CallSignature | @geoleaf-plugins/editor.drawing/styles.buildPointStyles.buildPointStyles | doc:eb33d5d00d90
 CallSignature | @geoleaf-plugins/editor.drawing/styles.buildPolygonStyles.buildPolygonStyles | doc:16a8a7fb0a37
 CallSignature | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSelectStyles | doc:a2f1df9a2577
-CallSignature | @geoleaf-plugins/editor.drawing/styles.readThemeColors.readThemeColors | doc:bb60232ff1d7
-CallSignature | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges | doc:6c303128ed67
+CallSignature | @geoleaf-plugins/editor.drawing/styles.readThemeColors.readThemeColors | doc:4f4fa728ca2f
+CallSignature | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges | doc:810385e7d146
 CallSignature | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/editor.drawing/terra-draw-adapter.TerraDrawAdapterCallbacks.onChange.onChange | doc:-
@@ -506,7 +506,7 @@ CallSignature | @geoleaf-plugins/measure.draw-layers.disableDragPan.disableDragP
 CallSignature | @geoleaf-plugins/measure.draw-layers.enableDragPan.enableDragPan | doc:57972256eae9
 CallSignature | @geoleaf-plugins/measure.draw-layers.initLayers.initLayers | doc:26a41a874e3e
 CallSignature | @geoleaf-plugins/measure.draw-layers.releaseLayers.releaseLayers | doc:e4582e6cf081
-CallSignature | @geoleaf-plugins/measure.draw-layers.setCursor.setCursor | doc:4d0e7f944588
+CallSignature | @geoleaf-plugins/measure.draw-layers.setCursor.setCursor | doc:7ccc3c1a2c12
 CallSignature | @geoleaf-plugins/measure.draw-layers.updateLabels.updateLabels | doc:7a65c59303e1
 CallSignature | @geoleaf-plugins/measure.draw-layers.updateLines.updateLines | doc:0e99e8dfe9ea
 CallSignature | @geoleaf-plugins/measure.draw-layers.updatePolygons.updatePolygons | doc:772bd53e849f
@@ -786,7 +786,7 @@ CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContr
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheStorage.loadLayerSelection.loadLayerSelection | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheStorage.saveLayerSelection.saveLayerSelection | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB._ensureModule._ensureModule | doc:d18ad97d47d0
-CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits | doc:9ab675b7cd55
+CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits | doc:31f89613f429
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.purgeCachedFeatures.purgeCachedFeatures | doc:24dc78b4ac58
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.refreshCacheIcons.refreshCacheIcons | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.saveSelection.saveSelection | doc:-
@@ -1626,7 +1626,7 @@ CallSignature | GeoLeaf Core API.capabilities/cluster/options.applyGeoJSONCluste
 CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.getConfig.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.ClusterPublicApi.isEnabled.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.capabilities/cluster/public-api.buildPublicApi.buildPublicApi | doc:ce0f4c220736
-CallSignature | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy | doc:62203e2707ff
+CallSignature | GeoLeaf Core API.capabilities/cluster/strategy.getClusteringStrategy.getClusteringStrategy | doc:4f7bfc3c7f44
 CallSignature | GeoLeaf Core API.capabilities/coordinates/config.getCoordinatesConfig.getCoordinatesConfig | doc:6ad3949ae484
 CallSignature | GeoLeaf Core API.capabilities/coordinates/lifecycle.CoordinatesLifecycle.__type._reset._reset | doc:573823b58192
 CallSignature | GeoLeaf Core API.capabilities/coordinates/lifecycle.CoordinatesLifecycle.__type.init.init | doc:-
@@ -1963,6 +1963,8 @@ CallSignature | GeoLeaf Core API.capabilities/offline/cache/style-resolver.Style
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type.enumerate.enumerate | doc:b02fcd7b6ebc
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile.latLngToTile | doc:76b2f76612a6
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/url-guard.validateFetchUrl.validateFetchUrl | doc:da27bfc1ae3e
+CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile.belongsToActiveProfile | doc:1cde3e58aecf
+CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreActiveProfileId.coreActiveProfileId | doc:3280eea2a5d7
 CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreConfigGet.coreConfigGet | doc:4150160cdbca
 CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayerConfig.__type.__type | doc:1c8236f87f58
 CallSignature | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayers.__type.__type | doc:f37313d6b4a6
@@ -1990,9 +1992,9 @@ CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInst
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.listByLayer.listByLayer | doc:1529185c1201
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.listByState.listByState | doc:2ed5de5f1b41
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.put.put | doc:-
-CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.putManyPreservingLocal.putManyPreservingLocal | doc:c9f68d980df8
+CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.putManyPreservingLocal.putManyPreservingLocal | doc:dac1cf51aede
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.remove.remove | doc:-
-CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced | doc:a5da8a2c4447
+CallSignature | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced | doc:4013f5dc8bdb
 CallSignature | GeoLeaf Core API.capabilities/offline/db/features.presentRecordFeature.presentRecordFeature | doc:3064c85557aa
 CallSignature | GeoLeaf Core API.capabilities/offline/db/identity-twins.mergeIdentityTwins.mergeIdentityTwins | doc:0feb36dae76f
 CallSignature | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance._ensureInitialized._ensureInitialized | doc:-
@@ -2013,15 +2015,15 @@ CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__t
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.close.close | doc:075d75cf1c98
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.deleteLocalImage.deleteLocalImage | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayer.getLayer | doc:-
-CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayerFeatureCollection.getLayerFeatureCollection | doc:cb4ea4e8785a
+CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayerFeatureCollection.getLayerFeatureCollection | doc:a37d05053a4b
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLayersByProfile.getLayersByProfile | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getLocalImage.getLocalImage | doc:33ce1bb532ee
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getPendingImages.getPendingImages | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getPreference.getPreference | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getStorageStats.getStorageStats | doc:be15dbec4573
-CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getSyncCounts.getSyncCounts | doc:d49d020fa582
+CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getSyncCounts.getSyncCounts | doc:ab3243e20c08
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.init.init | doc:c7d1d6c2a70c
-CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.listPendingEdits.listPendingEdits | doc:eabee4ad2f88
+CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.listPendingEdits.listPendingEdits | doc:e88699a8edc1
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.purgeCachedFeatures.purgeCachedFeatures | doc:b5761f2134ae
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.putLayerFeatures.putLayerFeatures | doc:9e612326ca1c
 CallSignature | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.removeLayer.removeLayer | doc:-
@@ -2043,7 +2045,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance
 CallSignature | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.removeLayer.removeLayer | doc:-
 CallSignature | GeoLeaf Core API.capabilities/offline/db/local-edit.DBLocalEdit.__type.init.__type.__type | doc:330af1384a8b
 CallSignature | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.applyLocalEdit.applyLocalEdit | doc:02c2138cd482
-CallSignature | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.pendingDeletions.pendingDeletions | doc:53d31b87b9db
+CallSignature | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.layerQueueView.layerQueueView | doc:0ab70192e01b
 CallSignature | GeoLeaf Core API.capabilities/offline/db/local-images-v3.reflagLocalImages.reflagLocalImages | doc:1b85de58c656
 CallSignature | GeoLeaf Core API.capabilities/offline/db/outbox.DBOutbox.__type.init.__type.__type | doc:0fe0dd423c97
 CallSignature | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.append.append | doc:de5c5d9b0c62
@@ -2092,20 +2094,23 @@ CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.cl
 CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.layerIdentityOf.layerIdentityOf | doc:e6680c5fdba6
 CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.markPendingStatus.markPendingStatus | doc:3bcff26798d3
 CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature.removeAbandonedFeature | doc:bcd32c03d794
-CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.restorePendingPois.restorePendingPois | doc:2487f9070544
+CallSignature | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.restorePendingPois.restorePendingPois | doc:f68f39ec0618
 CallSignature | GeoLeaf Core API.capabilities/offline/pull/layer-pull.pullLayer.pullLayer | doc:ff034c22612b
+CallSignature | GeoLeaf Core API.capabilities/offline/pull/source-key.activeSourceKey.activeSourceKey | doc:ef39220a02d8
+CallSignature | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource.fromActiveSource | doc:cb9b19e3105e
+CallSignature | GeoLeaf Core API.capabilities/offline/pull/source-key.sourceKeyOf.sourceKeyOf | doc:6d7d264b4217
 CallSignature | GeoLeaf Core API.capabilities/offline/report/preflight.buildPreflight.buildPreflight | doc:e0bba8bd4941
 CallSignature | GeoLeaf Core API.capabilities/offline/report/pull-state.clearPullMarks.clearPullMarks | doc:6d25ff67a324
-CallSignature | GeoLeaf Core API.capabilities/offline/report/pull-state.readPullState.readPullState | doc:485c541f0492
-CallSignature | GeoLeaf Core API.capabilities/offline/report/pull-state.writePullState.writePullState | doc:77fec5e615e0
+CallSignature | GeoLeaf Core API.capabilities/offline/report/pull-state.readPullState.readPullState | doc:46511972f368
+CallSignature | GeoLeaf Core API.capabilities/offline/report/pull-state.writePullState.writePullState | doc:02f5e42d62d5
 CallSignature | GeoLeaf Core API.capabilities/offline/report/sync-report.buildSyncReport.buildSyncReport | doc:45112a497a06
 CallSignature | GeoLeaf Core API.capabilities/offline/report/sync-report.deriveStatus.deriveStatus | doc:18d3b65b5b22
 CallSignature | GeoLeaf Core API.capabilities/offline/tile-budget.parseTileCacheBudget.parseTileCacheBudget | doc:920cfceda1bf
 CallSignature | GeoLeaf Core API.capabilities/offline/tile-budget.publishTileCacheBudget.publishTileCacheBudget | doc:71b49e2acd01
 CallSignature | GeoLeaf Core API.capabilities/offline/ui/sync-banner.mountSyncBanner.mountSyncBanner | doc:a51672f4f6b5
 CallSignature | GeoLeaf Core API.capabilities/offline/ui/sync-banner.unmountSyncBanner.unmountSyncBanner | doc:aaa18a7928c5
-CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts | doc:aab78ee4de81
-CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts | doc:c087e9569069
+CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts | doc:f1e39859bb97
+CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts | doc:13132a2e7488
 CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.markerOf.markerOf | doc:5ef49c9b697c
 CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.readServerVersion.readServerVersion | doc:cbe480ceb353
 CallSignature | GeoLeaf Core API.capabilities/offline/write/conflict-store.recordConflict.recordConflict | doc:3f4b819cba9b
@@ -2182,7 +2187,7 @@ CallSignature | GeoLeaf Core API.capabilities/pwa/install-prompt.InstallPrompt._
 CallSignature | GeoLeaf Core API.capabilities/pwa/install-prompt.InstallPrompt.__type.isInstallable.isInstallable | doc:8cb7f49baec5
 CallSignature | GeoLeaf Core API.capabilities/pwa/ios-banner.IosBanner.__type._reset._reset | doc:5a6b89522657
 CallSignature | GeoLeaf Core API.capabilities/pwa/ios-banner.IosBanner.__type.init.init | doc:dd51d915fc16
-CallSignature | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type._reset._reset | doc:787b5ce38ae8
+CallSignature | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type._reset._reset | doc:6d0fa193bcb2
 CallSignature | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type.init.init | doc:-
 CallSignature | GeoLeaf Core API.capabilities/pwa/platform.isIOS.isIOS | doc:a760aebb2a77
 CallSignature | GeoLeaf Core API.capabilities/pwa/platform.isIOSInstallable.isIOSInstallable | doc:c07d2cdb6596
@@ -2643,7 +2648,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Security.__type.escapeHtml
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.applyEdit.__type.__type | doc:1747f50fdb2a
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.canQueueWrites.__type.__type | doc:e729c83e0085
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearAll.__type.__type | doc:83647824d892
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type | doc:4a1aa8f735b8
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type | doc:12b6e649b418
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.close.__type.__type | doc:26c74e1b2060
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.discardQuarantined.__type.__type | doc:f4520b773986
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.getOfflineProfiles.__type.__type | doc:b2191b205d97
@@ -2655,7 +2660,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isAvailable
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isOffline.__type.__type | doc:b729f0172aa8
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isPluginLoaded.__type.__type | doc:d6f10e92f536
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isProfileAvailableOffline.__type.__type | doc:35828c8ded5c
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type | doc:20647bbef304
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type | doc:db8414857f91
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.mayEdit.__type.__type | doc:00c033e3d6d5
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.prefetchVerdict.__type.__type | doc:046421f889a4
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.preflight.preflight | doc:9d7062a62e8b
@@ -2709,7 +2714,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validate
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validateUrl.__type.__type | doc:43c2e0f5d798
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validateZoom.__type.__type | doc:8e19590b63bd
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONClusterOptions.__type.__type | doc:fbc93d1478d0
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type | doc:62203e2707ff
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy.__type.__type | doc:4f7bfc3c7f44
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._LayerVisibilityManager.__type.getVisibilityState.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._LegendControl.__type.create.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal._LegendGenerator.__type.generateLegendFromStyle.__type.__type | doc:-
@@ -2783,7 +2788,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.getLayersByProfile.__ty
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.getLocalImage.__type.__type | doc:33ce1bb532ee
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.getPendingImages.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.getStorageStats.__type.__type | doc:be15dbec4573
-CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.listPendingEdits.listPendingEdits | doc:efe8d5cea1fb
+CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.listPendingEdits.listPendingEdits | doc:59152fbb88c3
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.removeLayer.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.storeImageLocally.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafStorageDB.updateImageUploadStatus.__type.__type | doc:501686f1d4c2
@@ -3431,7 +3436,7 @@ CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type._unmountSy
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit | doc:1747f50fdb2a
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.canQueueWrites.canQueueWrites | doc:e729c83e0085
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearAll.clearAll | doc:83647824d892
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts | doc:4a1aa8f735b8
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts | doc:12b6e649b418
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.close.close | doc:26c74e1b2060
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.discardQuarantined.discardQuarantined | doc:f4520b773986
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.getOfflineProfiles.getOfflineProfiles | doc:b2191b205d97
@@ -3443,7 +3448,7 @@ CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isAvailabl
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isOffline.isOffline | doc:b729f0172aa8
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isPluginLoaded.isPluginLoaded | doc:d6f10e92f536
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isProfileAvailableOffline.isProfileAvailableOffline | doc:35828c8ded5c
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts | doc:20647bbef304
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts | doc:db8414857f91
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.mayEdit.mayEdit | doc:00c033e3d6d5
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.prefetchVerdict.prefetchVerdict | doc:046421f889a4
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.preflight.preflight | doc:4887257a74bb
@@ -5035,6 +5040,8 @@ Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandle
 Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandler.retry | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/url-guard.validateFetchUrl | doc:-
+Function | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile | doc:-
+Function | GeoLeaf Core API.capabilities/offline/config-seam.coreActiveProfileId | doc:-
 Function | GeoLeaf Core API.capabilities/offline/config-seam.coreConfigGet | doc:-
 Function | GeoLeaf Core API.capabilities/offline/data-origins.parseDataOrigins | doc:-
 Function | GeoLeaf Core API.capabilities/offline/data-origins.prefetchVerdict | doc:-
@@ -5056,6 +5063,9 @@ Function | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.markPen
 Function | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature | doc:-
 Function | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.restorePendingPois | doc:-
 Function | GeoLeaf Core API.capabilities/offline/pull/layer-pull.pullLayer | doc:-
+Function | GeoLeaf Core API.capabilities/offline/pull/source-key.activeSourceKey | doc:-
+Function | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource | doc:-
+Function | GeoLeaf Core API.capabilities/offline/pull/source-key.sourceKeyOf | doc:-
 Function | GeoLeaf Core API.capabilities/offline/report/preflight.buildPreflight | doc:-
 Function | GeoLeaf Core API.capabilities/offline/report/pull-state.clearPullMarks | doc:-
 Function | GeoLeaf Core API.capabilities/offline/report/pull-state.readPullState | doc:-
@@ -6003,7 +6013,7 @@ Interface | GeoLeaf Core API.capabilities/branding/types.BrandingOptions | doc:3
 Interface | GeoLeaf Core API.capabilities/cluster/types.ClusterConfig | doc:cbe174f676d9
 Interface | GeoLeaf Core API.capabilities/cluster/types.ClusterGeoJSONData | doc:c4427e0c6847
 Interface | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef | doc:24ea9c40a5fb
-Interface | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult | doc:f0cea685804d
+Interface | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult | doc:d7194fe5d0a1
 Interface | GeoLeaf Core API.capabilities/cluster/types.LayerClusteringConfig | doc:d3a3a1270166
 Interface | GeoLeaf Core API.capabilities/coordinates/config.CoordinatesCapabilityConfig | doc:7a0e2be6b47d
 Interface | GeoLeaf Core API.capabilities/coordinates/public-api.CoordinatesReadApi | doc:46dcde2d42d9
@@ -6083,6 +6093,7 @@ Interface | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance
 Interface | GeoLeaf Core API.capabilities/offline/db/features.PreservingPutTally | doc:3badad5ca903
 Interface | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance | doc:7395728c44b2
 Interface | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance | doc:3434274c14e6
+Interface | GeoLeaf Core API.capabilities/offline/db/local-edit.LayerQueueView | doc:af1c9127112a
 Interface | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance | doc:7519b0ca2cd7
 Interface | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditInput | doc:f119db95036e
 Interface | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditTally | doc:523ae22bc4d2
@@ -7201,7 +7212,7 @@ Method | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.getLay
 Method | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.init | doc:-
 Method | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.removeLayer | doc:-
 Method | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.applyLocalEdit | doc:-
-Method | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.pendingDeletions | doc:-
+Method | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.layerQueueView | doc:-
 Method | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.append | doc:-
 Method | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.count | doc:-
 Method | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.countDue | doc:-
@@ -8691,6 +8702,7 @@ Module | GeoLeaf Core API.capabilities/offline/options/option-lists | doc:-
 Module | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore | doc:-
 Module | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore-boot | doc:-
 Module | GeoLeaf Core API.capabilities/offline/pull/layer-pull | doc:-
+Module | GeoLeaf Core API.capabilities/offline/pull/source-key | doc:-
 Module | GeoLeaf Core API.capabilities/offline/report/preflight | doc:-
 Module | GeoLeaf Core API.capabilities/offline/report/pull-state | doc:-
 Module | GeoLeaf Core API.capabilities/offline/report/sync-report | doc:-
@@ -9174,7 +9186,7 @@ Parameter | @geoleaf-plugins/editor.drawing/styles.buildLineStyles.buildLineStyl
 Parameter | @geoleaf-plugins/editor.drawing/styles.buildPointStyles.buildPointStyles.c | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/styles.buildPolygonStyles.buildPolygonStyles.c | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/styles.buildSelectStyles.buildSelectStyles.c | doc:-
-Parameter | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate | doc:-
+Parameter | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate | doc:f01bf9ddc15b
 Parameter | @geoleaf-plugins/editor.drawing/styles.watchThemeChanges.watchThemeChanges.onUpdate.__type.__type.colors | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/terra-draw-adapter.TerraDrawAdapterCallbacks.onChange.onChange.changeType | doc:-
 Parameter | @geoleaf-plugins/editor.drawing/terra-draw-adapter.TerraDrawAdapterCallbacks.onChange.onChange.ids | doc:-
@@ -9586,7 +9598,7 @@ Parameter | @geoleaf-plugins/measure.compute.perimeter.perimeter.coords | doc:d3
 Parameter | @geoleaf-plugins/measure.compute.segmentLengths.segmentLengths.coords | doc:-
 Parameter | @geoleaf-plugins/measure.compute.withClosingVertex.withClosingVertex.ring | doc:4e5cc81a60fe
 Parameter | @geoleaf-plugins/measure.draw-layers.initLayers.initLayers.map | doc:-
-Parameter | @geoleaf-plugins/measure.draw-layers.setCursor.setCursor.cursor | doc:-
+Parameter | @geoleaf-plugins/measure.draw-layers.setCursor.setCursor.cursor | doc:9f51e87bdede
 Parameter | @geoleaf-plugins/measure.draw-layers.updateLabels.updateLabels.labels | doc:-
 Parameter | @geoleaf-plugins/measure.draw-layers.updateLines.updateLines.features | doc:-
 Parameter | @geoleaf-plugins/measure.draw-layers.updatePolygons.updatePolygons.features | doc:-
@@ -9841,6 +9853,7 @@ Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractC
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheStorage.saveLayerSelection.saveLayerSelection.profileId | doc:-
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheStorage.saveLayerSelection.saveLayerSelection.selection | doc:-
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB._ensureModule._ensureModule.name | doc:684ea9a9f04b
+Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits.options | doc:-
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.init.init.storage | doc:-
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.prefetchVerdict.prefetchVerdict.url | doc:-
 Parameter | @geoleaf-plugins/offline-ui.sync/corridor-tiles.corridorTiles.corridorTiles.bufferM | doc:8a9228d6ab12
@@ -11295,6 +11308,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile.l
 Parameter | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile.latLngToTile.maxLat | doc:8eb9ad0a39f3
 Parameter | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile.latLngToTile.zoom | doc:1761f51c5fc7
 Parameter | GeoLeaf Core API.capabilities/offline/cache/url-guard.validateFetchUrl.validateFetchUrl.url | doc:956d2fddf9f9
+Parameter | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile.belongsToActiveProfile.entry | doc:15927d1371dd
 Parameter | GeoLeaf Core API.capabilities/offline/config-seam.coreConfigGet.coreConfigGet.defaultValue | doc:7128961ab371
 Parameter | GeoLeaf Core API.capabilities/offline/config-seam.coreConfigGet.coreConfigGet.key | doc:44d1b9b49d1e
 Parameter | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayerConfig.__type.__type.layerId | doc:e5dd6c6ac374
@@ -11336,6 +11350,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.remove.remove.localId | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced.keep | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced.layerId | doc:-
+Parameter | GeoLeaf Core API.capabilities/offline/db/features.FeaturesDBInstance.sweepSynced.sweepSynced.sourceKey | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/features.presentRecordFeature.presentRecordFeature.record | doc:ad4a4742473b
 Parameter | GeoLeaf Core API.capabilities/offline/db/identity-twins.mergeIdentityTwins.mergeIdentityTwins.tx | doc:08d3367b20d2
 Parameter | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance.bindLocalImage.bindLocalImage.id | doc:-
@@ -11362,6 +11377,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getPreference.getPreference.defaultValue | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getPreference.getPreference.key | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.getSyncCounts.getSyncCounts.layerIds | doc:93e49668e7d2
+Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.listPendingEdits.listPendingEdits.options | doc:19d4433bab2f
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.putLayerFeatures.putLayerFeatures.records | doc:b25190dc90d3
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.putLayerFeatures.putLayerFeatures.tombstones | doc:3e8ae7daa351
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.removeLayer.removeLayer.id | doc:-
@@ -11370,6 +11386,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.storeImageLocally.storeImageLocally.imageData | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.sweepLayerFeatures.sweepLayerFeatures.keep | doc:78fd60799295
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.sweepLayerFeatures.sweepLayerFeatures.layerId | doc:66b5c33b4258
+Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.sweepLayerFeatures.sweepLayerFeatures.sourceKey | doc:1c2ed1a665bd
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.updateImageUploadStatus.updateImageUploadStatus.id | doc:7decae7b9cb7
 Parameter | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.updateImageUploadStatus.updateImageUploadStatus.status | doc:970cd83ac9ab
 Parameter | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance._estimateDataSize._estimateDataSize.data | doc:-
@@ -11391,7 +11408,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.ini
 Parameter | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance.removeLayer.removeLayer.id | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/local-edit.DBLocalEdit.__type.init.__type.__type.db | doc:150911f5d574
 Parameter | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.applyLocalEdit.applyLocalEdit.input | doc:-
-Parameter | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.pendingDeletions.pendingDeletions.layerId | doc:-
+Parameter | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditDBInstance.layerQueueView.layerQueueView.layerId | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/db/local-images-v3.reflagLocalImages.reflagLocalImages.tx | doc:08d3367b20d2
 Parameter | GeoLeaf Core API.capabilities/offline/db/outbox.DBOutbox.__type.init.__type.__type.db | doc:150911f5d574
 Parameter | GeoLeaf Core API.capabilities/offline/db/outbox.OutboxDBInstance.append.append.entry | doc:-
@@ -11460,6 +11477,11 @@ Parameter | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.remove
 Parameter | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.restorePendingPois.restorePendingPois.deps | doc:73d0b0740863
 Parameter | GeoLeaf Core API.capabilities/offline/pull/layer-pull.pullLayer.pullLayer.layerId | doc:b4d339f32f26
 Parameter | GeoLeaf Core API.capabilities/offline/pull/layer-pull.pullLayer.pullLayer.options | doc:9641167b0c01
+Parameter | GeoLeaf Core API.capabilities/offline/pull/source-key.activeSourceKey.activeSourceKey.layerId | doc:534fcbd6b6a6
+Parameter | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource.fromActiveSource.active | doc:d7775f2757e1
+Parameter | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource.fromActiveSource.tagged | doc:193a48cfb86a
+Parameter | GeoLeaf Core API.capabilities/offline/pull/source-key.sourceKeyOf.sourceKeyOf.collectionId | doc:55a92c97dca3
+Parameter | GeoLeaf Core API.capabilities/offline/pull/source-key.sourceKeyOf.sourceKeyOf.url | doc:dfde28f5b403
 Parameter | GeoLeaf Core API.capabilities/offline/report/preflight.buildPreflight.buildPreflight.sources | doc:aef2b679dcf3
 Parameter | GeoLeaf Core API.capabilities/offline/report/pull-state.clearPullMarks.clearPullMarks.db | doc:b910a1e0b61f
 Parameter | GeoLeaf Core API.capabilities/offline/report/pull-state.readPullState.readPullState.db | doc:b910a1e0b61f
@@ -11476,7 +11498,9 @@ Parameter | GeoLeaf Core API.capabilities/offline/tile-budget.publishTileCacheBu
 Parameter | GeoLeaf Core API.capabilities/offline/tile-budget.publishTileCacheBudget.publishTileCacheBudget.maxEntries | doc:7045b47dd000
 Parameter | GeoLeaf Core API.capabilities/offline/ui/sync-banner.mountSyncBanner.mountSyncBanner.options | doc:65a63ce4b6df
 Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts.scope | doc:682ae281d995
 Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts.scope | doc:b4d34aede40f
 Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.markerOf.markerOf.row | doc:e5d0adcae757
 Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.markerOf.markerOf.versionProperty | doc:4517918e2e6b
 Parameter | GeoLeaf Core API.capabilities/offline/write/conflict-store.readServerVersion.readServerVersion.record | doc:dd22e3921b46
@@ -11529,7 +11553,8 @@ Parameter | GeoLeaf Core API.capabilities/profile-switcher/profile-switch.switch
 Parameter | GeoLeaf Core API.capabilities/profile-switcher/public-api.ProfileSwitcherPublicApi.switchTo.switchTo.id | doc:-
 Parameter | GeoLeaf Core API.capabilities/pwa/install-prompt.InstallPrompt.__type.init.init.appName | doc:-
 Parameter | GeoLeaf Core API.capabilities/pwa/ios-banner.IosBanner.__type.init.init.appName | doc:-
-Parameter | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type.init.init.pwaConfig | doc:-
+Parameter | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type.init.init.profileId | doc:855b99defffc
+Parameter | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type.init.init.pwaConfig | doc:a946b673b2df
 Parameter | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.init.init.config | doc:7bf588c052f3
 Parameter | GeoLeaf Core API.capabilities/route/apply.applyToLayer.applyToLayer.adapter | doc:78811486d6f4
 Parameter | GeoLeaf Core API.capabilities/route/apply.applyToLayer.applyToLayer.config | doc:28330c97850d
@@ -12056,11 +12081,13 @@ Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Security.__type.escapeHtml.__t
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.applyEdit.__type.__type.input | doc:cb923074abdc
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.canQueueWrites.__type.__type.layerId | doc:1e1aabcc2f09
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type.scope | doc:682ae281d995
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.discardQuarantined.__type.__type.confirmedLocalId | doc:3963498fe237
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.discardQuarantined.__type.__type.id | doc:befdb26a2cdd
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.init.__type.__type.options | doc:4f944fc827ed
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isProfileAvailableOffline.__type.__type.profileId | doc:57291dbc3d9c
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type.scope | doc:e8b4a39959fb
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.mayEdit.__type.__type.kind | doc:678df92ae310
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.mayEdit.__type.__type.layerId | doc:f1fb7494b207
 Parameter | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.prefetchVerdict.__type.__type.url | doc:2e7122c1d01d
@@ -12249,6 +12276,7 @@ Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.cacheLayer.__type.__type.pr
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.getLayer.__type.__type.id | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.getLayersByProfile.__type.__type.profileId | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.getLocalImage.__type.__type.id | doc:7decae7b9cb7
+Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.listPendingEdits.listPendingEdits.options | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.removeLayer.__type.__type.id | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.storeImageLocally.__type.__type.imageData | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafStorageDB.updateImageUploadStatus.__type.__type.id | doc:7decae7b9cb7
@@ -13102,11 +13130,13 @@ Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type._requestOutbox
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit.input | doc:cb923074abdc
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.canQueueWrites.canQueueWrites.layerId | doc:1e1aabcc2f09
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts.scope | doc:682ae281d995
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.discardQuarantined.discardQuarantined.confirmedLocalId | doc:3963498fe237
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.discardQuarantined.discardQuarantined.id | doc:befdb26a2cdd
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.init.init.options | doc:4f944fc827ed
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isProfileAvailableOffline.isProfileAvailableOffline.profileId | doc:57291dbc3d9c
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts.layerId | doc:e31b53158145
+Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts.scope | doc:e8b4a39959fb
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.mayEdit.mayEdit.kind | doc:678df92ae310
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.mayEdit.mayEdit.layerId | doc:f1fb7494b207
 Parameter | GeoLeaf Core API.kernel/storage/facade.Storage.__type.prefetchVerdict.prefetchVerdict.url | doc:2e7122c1d01d
@@ -15085,9 +15115,11 @@ Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.featu
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.kind | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.layerId | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.localId | doc:-
+Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.profileId | doc:bb629e34e0ea
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.state | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache.LayerSelector | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache.Storage | doc:-
+Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits.options.__type.allProfiles | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.Cache | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.CacheManager | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.DB | doc:-
@@ -15969,7 +16001,7 @@ Property | GeoLeaf Core API.app/app-types.AppNamespace.showNotification | doc:30
 Property | GeoLeaf Core API.app/app-types.AppNamespace.startApp | doc:d0ee93a92c9c
 Property | GeoLeaf Core API.app/app-types.BootOptions.beforeBoot | doc:bb43b0532b00
 Property | GeoLeaf Core API.app/app-types.BootOptions.beforeBoot.__type.__type.context.__type.config | doc:-
-Property | GeoLeaf Core API.app/app-types.BootOptions.config | doc:8cd0aad49a4d
+Property | GeoLeaf Core API.app/app-types.BootOptions.config | doc:6cfb9c107b70
 Property | GeoLeaf Core API.app/app-types.BootOptions.configUrl | doc:783b4335dd0b
 Property | GeoLeaf Core API.app/app-types.BootOptions.maplibregl | doc:2e07d85871f7
 Property | GeoLeaf Core API.app/app-types.BootOptions.onPerformanceMetrics | doc:32903ea73705
@@ -15977,6 +16009,7 @@ Property | GeoLeaf Core API.app/app-types.BootOptions.onPerformanceMetrics.__typ
 Property | GeoLeaf Core API.app/app-types.BootOptions.onPerformanceMetrics.__type.__type.metrics.__type.startupTotalMs | doc:-
 Property | GeoLeaf Core API.app/app-types.BootOptions.onPerformanceMetrics.__type.__type.metrics.__type.timeToAppReadyMs | doc:-
 Property | GeoLeaf Core API.app/app-types.BootOptions.onPerformanceMetrics.__type.__type.metrics.__type.timeToMapReadyMs | doc:-
+Property | GeoLeaf Core API.app/app-types.BootOptions.profile | doc:e88da406c2c9
 Property | GeoLeaf Core API.app/app-types.BootOptions.watchdogMs | doc:5696f3189b7c
 Property | GeoLeaf Core API.app/app-types.DeferredUIDeps.AppLog | doc:-
 Property | GeoLeaf Core API.app/app-types.DeferredUIDeps.GeoLeaf | doc:-
@@ -16079,8 +16112,7 @@ Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.clusterin
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.disableClusteringAtZoom | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.geometry | doc:f35c3edc763d
 Property | GeoLeaf Core API.capabilities/cluster/types.ClusterLayerDef.geometryType | doc:-
-Property | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult.shouldCluster | doc:-
-Property | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult.useSharedCluster | doc:-
+Property | GeoLeaf Core API.capabilities/cluster/types.ClusterStrategyResult.shouldCluster | doc:9ceb3eca1bcd
 Property | GeoLeaf Core API.capabilities/cluster/types.LayerClusteringConfig.disableClusteringAtZoom | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.LayerClusteringConfig.enabled | doc:-
 Property | GeoLeaf Core API.capabilities/cluster/types.LayerClusteringConfig.maxClusterRadius | doc:-
@@ -16492,6 +16524,7 @@ Property | GeoLeaf Core API.capabilities/offline/cache/tile-math.TileCoord.y | d
 Property | GeoLeaf Core API.capabilities/offline/cache/tile-math.VectorZone.bounds | doc:-
 Property | GeoLeaf Core API.capabilities/offline/cache/tile-math.VectorZone.cacheMaxZoom | doc:-
 Property | GeoLeaf Core API.capabilities/offline/cache/tile-math.VectorZone.cacheMinZoom | doc:-
+Property | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile.belongsToActiveProfile.entry.__type.profileId | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/conflicts.DBConflicts.__type.init | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/db-modules-registry.DBModulesRegistry.__type.Conflicts | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/db-modules-registry.DBModulesRegistry.__type.Conflicts.__type.init | doc:-
@@ -16516,10 +16549,13 @@ Property | GeoLeaf Core API.capabilities/offline/db/features.PreservingPutTally.
 Property | GeoLeaf Core API.capabilities/offline/db/images.ImagesDBInstance._db | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.bindLocalImage.bindLocalImage.owner.__type.layerId | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.bindLocalImage.bindLocalImage.owner.__type.localId | doc:-
+Property | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.listPendingEdits.listPendingEdits.options.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.updateImageUploadStatus.updateImageUploadStatus.status.__type.uploaded | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.updateImageUploadStatus.updateImageUploadStatus.status.__type.url | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/layers.LayersDBInstance._db | doc:-
 Property | GeoLeaf Core API.capabilities/offline/db/local-edit.DBLocalEdit.__type.init | doc:-
+Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LayerQueueView.deleted | doc:d85185e0be1b
+Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LayerQueueView.foreign | doc:ef4b5f3a300d
 Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditInput.baseVersion | doc:0aa797a24ccb
 Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditInput.feature | doc:dca8ac682513
 Property | GeoLeaf Core API.capabilities/offline/db/local-edit.LocalEditInput.kind | doc:-
@@ -16549,12 +16585,16 @@ Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.clearRe
 Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature.removeAbandonedFeature.abandoned.__type.feature | doc:-
 Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature.removeAbandonedFeature.abandoned.__type.localId | doc:-
 Property | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature.removeAbandonedFeature.abandoned.__type.serverId | doc:-
+Property | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource.fromActiveSource.tagged.__type.sourceKey | doc:-
 Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.at | doc:8d8d73cb5ea0
 Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.mark | doc:ff85d51d6184
 Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.outcome | doc:a173a522f4f7
 Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.scope | doc:a47d4699d1f1
+Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.sourceKey | doc:74920bb10c3f
 Property | GeoLeaf Core API.capabilities/offline/report/pull-state.LayerPullState.written | doc:aa5dc9d22f5e
 Property | GeoLeaf Core API.capabilities/offline/ui/sync-banner.mountSyncBanner.mountSyncBanner.options.__type.enabled | doc:-
+Property | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts.scope.__type.allProfiles | doc:-
+Property | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts.scope.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.capabilities/permalink/permalink-field-filters.decodeFieldFilter.decodeFieldFilter.descriptor.__type.id | doc:-
 Property | GeoLeaf Core API.capabilities/permalink/permalink-field-filters.decodeFieldFilter.decodeFieldFilter.descriptor.__type.kind | doc:-
 Property | GeoLeaf Core API.capabilities/permalink/share/config.ShareCapabilityConfig.enabled | doc:fd63b831bc44
@@ -17321,6 +17361,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.entryId | doc
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.kind | doc:39c3cb386ef6
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.layerId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.localId | doc:-
+Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.profileId | doc:e7df364787d1
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.readOutcome | doc:0d0a0eee8592
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.serverFeature | doc:0d7255679643
 Property | GeoLeaf Core API.contracts/sync.contract.ConflictRecord.serverId | doc:221473294f81
@@ -17337,6 +17378,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.localId | doc:
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.quarantine | doc:961119081dba
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.quarantineStatus | doc:cffcce6dc5a2
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.serverId | doc:d00cc000c4fa
+Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.sourceKey | doc:f187a31e9487
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.syncState | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.updatedAt | doc:c58b02dd52fb
 Property | GeoLeaf Core API.contracts/sync.contract.FeatureRecord.version | doc:bf4efe1c1538
@@ -17368,6 +17410,7 @@ Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.kind | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.layerId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.localId | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.nextAttemptAt | doc:46b5b4dd46c5
+Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.profileId | doc:7e9046d1608b
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.quarantine | doc:-
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.quarantineStatus | doc:8f81035fb204
 Property | GeoLeaf Core API.contracts/sync.contract.OutboxEntry.state | doc:-
@@ -17579,6 +17622,7 @@ Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.cacheManager | d
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.canQueueWrites | doc:215d9f903c4d
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearAll | doc:ca3a2715a795
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts | doc:d6e53418e4ea
+Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type.scope.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.close | doc:1c95588f43be
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.db | doc:4a4e91a7fd72
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.discardQuarantined | doc:a5a8bbca052d
@@ -17590,6 +17634,7 @@ Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isOffline | doc:
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isPluginLoaded | doc:89387407e2ed
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isProfileAvailableOffline | doc:2e70bf5165ce
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts | doc:fd0b9a1b134d
+Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type.scope.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.mayEdit | doc:decd6c175140
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.prefetchVerdict | doc:095766409087
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.pullLayer.pullLayer.options.__type.bbox | doc:-
@@ -17667,7 +17712,7 @@ Property | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validateZoom 
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validateZoom.__type.__type.__type.error | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Validators.__type.validateZoom.__type.__type.__type.valid | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal.Ws | doc:9452ef96caf9
-Property | GeoLeaf Core API.global.GeoLeafGlobal._Cluster | doc:b0e5c2036bb8
+Property | GeoLeaf Core API.global.GeoLeafGlobal._Cluster | doc:43ada60e3669
 Property | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.applyGeoJSONClusterOptions | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal._Cluster.__type.getClusteringStrategy | doc:-
 Property | GeoLeaf Core API.global.GeoLeafGlobal._LayerVisibilityManager | doc:fc478c6af9e9
@@ -17739,6 +17784,7 @@ Property | GeoLeaf Core API.global.GeoLeafStorageDB.getLayersByProfile | doc:308
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.getLocalImage | doc:421f8e6336b9
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.getPendingImages | doc:c933526ebd2c
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.getStorageStats | doc:571d91e26cec
+Property | GeoLeaf Core API.global.GeoLeafStorageDB.listPendingEdits.listPendingEdits.options.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.removeLayer | doc:dead123dcee7
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.storeImageLocally | doc:f67be78c5492
 Property | GeoLeaf Core API.global.GeoLeafStorageDB.updateImageUploadStatus | doc:51181c65e79f
@@ -18327,7 +18373,6 @@ Property | GeoLeaf Core API.kernel/geojson/layer-labels.LabelSourceEntry.current
 Property | GeoLeaf Core API.kernel/geojson/layer-labels.LayerLabelConfig.enabled | doc:-
 Property | GeoLeaf Core API.kernel/geojson/layer-labels.LayerLabelConfig.visibleByDefault | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/adapter-options.buildSingleLayerAdapterOptions.buildSingleLayerAdapterOptions.clusterResult.__type.shouldCluster | doc:-
-Property | GeoLeaf Core API.kernel/geojson/loader/adapter-options.buildSingleLayerAdapterOptions.buildSingleLayerAdapterOptions.clusterResult.__type.useSharedCluster | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/clustering-normalize.ClusteringNormalizationPatch.clusterRadius | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/clustering-normalize.ClusteringNormalizationPatch.clustering | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/clustering-normalize.ClusteringNormalizationPatch.disableClusteringAtZoom | doc:-
@@ -18335,7 +18380,6 @@ Property | GeoLeaf Core API.kernel/geojson/loader/clustering-normalize.Clusterin
 Property | GeoLeaf Core API.kernel/geojson/loader/data-converter.GeoJSONFeatureCollection.features | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/data-converter.GeoJSONFeatureCollection.type | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/loader-types.ClusterResolversLike.getClusteringStrategy.getClusteringStrategy.__type.shouldCluster | doc:-
-Property | GeoLeaf Core API.kernel/geojson/loader/loader-types.ClusterResolversLike.getClusteringStrategy.getClusteringStrategy.__type.useSharedCluster | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/loader-types.ClusteringConfig.disableClusteringAtZoom | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/loader-types.ClusteringConfig.enabled | doc:-
 Property | GeoLeaf Core API.kernel/geojson/loader/loader-types.ClusteringConfig.maxClusterRadius | doc:-
@@ -18593,6 +18637,8 @@ Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.apply
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit.input.__type.kind | doc:-
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit.input.__type.layerId | doc:-
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit.input.__type.localId | doc:-
+Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts.scope.__type.allProfiles | doc:-
+Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts.scope.__type.allProfiles | doc:-
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pullLayer.pullLayer.options.__type.bbox | doc:-
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pullLayer.pullLayer.options.__type.signal | doc:-
 Property | GeoLeaf Core API.kernel/storage/facade.Storage.__type.wireModules.wireModules.modules.__type.cache | doc:-
@@ -19877,6 +19923,7 @@ TypeLiteral | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-ty
 TypeLiteral | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-types.LayerSelectorAPI.latLngToTile.latLngToTile.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection.mutate.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type | doc:-
+TypeLiteral | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits.options.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type.onSynced.__type | doc:-
@@ -20154,6 +20201,7 @@ TypeLiteral | GeoLeaf Core API.capabilities/offline/cache/resource-enumerator.Re
 TypeLiteral | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandler.retry.retry.operation.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile.belongsToActiveProfile.entry.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayerConfig.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/config-seam.coreProfileLayers.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/conflicts.DBConflicts.__type | doc:-
@@ -20175,6 +20223,7 @@ TypeLiteral | GeoLeaf Core API.capabilities/offline/db/features.DBFeatures.__typ
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/features.DBFeatures.__type.init.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.bindLocalImage.bindLocalImage.owner.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.listPendingEdits.listPendingEdits.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/indexeddb.IndexedDB.__type.updateImageUploadStatus.updateImageUploadStatus.status.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/local-edit.DBLocalEdit.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/db/local-edit.DBLocalEdit.__type.init.__type | doc:-
@@ -20197,7 +20246,10 @@ TypeLiteral | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.PoiR
 TypeLiteral | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.PoiRestoreDeps.readFeature.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.clearRestoredStatus.clearRestoredStatus.sent.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/poi-restore/poi-restore.removeAbandonedFeature.removeAbandonedFeature.abandoned.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/offline/pull/source-key.fromActiveSource.fromActiveSource.tagged.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/offline/ui/sync-banner.mountSyncBanner.mountSyncBanner.options.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/offline/write/conflict-store.clearConflicts.clearConflicts.scope.__type | doc:-
+TypeLiteral | GeoLeaf Core API.capabilities/offline/write/conflict-store.listConflicts.listConflicts.scope.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/permalink/permalink-field-filters.decodeFieldFilter.decodeFieldFilter.descriptor.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/permalink/permalink-sync.startSync.startSync.__type | doc:-
 TypeLiteral | GeoLeaf Core API.capabilities/permalink/public-api.Permalink.__type | doc:-
@@ -20416,6 +20468,7 @@ TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.applyEdit.__t
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.canQueueWrites.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearAll.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type | doc:-
+TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.clearConflicts.__type.__type.scope.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.close.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.discardQuarantined.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.getOfflineProfiles.__type | doc:-
@@ -20426,6 +20479,7 @@ TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isOffline.__t
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isPluginLoaded.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.isProfileAvailableOffline.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type | doc:-
+TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.listConflicts.__type.__type.scope.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.mayEdit.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.prefetchVerdict.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafGlobal.Storage.__type.pullLayer.pullLayer.options.__type | doc:-
@@ -20548,6 +20602,7 @@ TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.getLayersByProfile.__type
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.getLocalImage.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.getPendingImages.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.getStorageStats.__type | doc:-
+TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.listPendingEdits.listPendingEdits.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.removeLayer.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.storeImageLocally.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafStorageDB.updateImageUploadStatus.__type | doc:-
@@ -20819,6 +20874,8 @@ TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type._armOutboxDr
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type._modules.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type._mountSyncBanner._mountSyncBanner.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type.applyEdit.applyEdit.input.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type.clearConflicts.clearConflicts.scope.__type | doc:-
+TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts.scope.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pullLayer.pullLayer.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/facade.Storage.__type.wireModules.wireModules.modules.__type | doc:-
 TypeLiteral | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector.__type | doc:-
@@ -21245,8 +21302,8 @@ Variable | GeoLeaf Core API.capabilities/branding/constants.DEFAULT_BRANDING_POS
 Variable | GeoLeaf Core API.capabilities/branding/install.BRANDING_INSTALLER | doc:84c792488bf0
 Variable | GeoLeaf Core API.capabilities/branding/lifecycle.BrandingLifecycle | doc:117b429d7f23
 Variable | GeoLeaf Core API.capabilities/cluster/cluster-capability.CLUSTER_CAPABILITY | doc:b82db1a0bafa
-Variable | GeoLeaf Core API.capabilities/cluster/constants.DEFAULT_CLUSTER_MAX_ZOOM | doc:bd60f567ddce
-Variable | GeoLeaf Core API.capabilities/cluster/constants.DEFAULT_CLUSTER_RADIUS | doc:84792d86d484
+Variable | GeoLeaf Core API.capabilities/cluster/constants.DEFAULT_CLUSTER_MAX_ZOOM | doc:d3e465d5bd95
+Variable | GeoLeaf Core API.capabilities/cluster/constants.DEFAULT_CLUSTER_RADIUS | doc:ddf1563050f9
 Variable | GeoLeaf Core API.capabilities/cluster/constants.DEFAULT_CLUSTER_STRATEGY | doc:2b2b55d73277
 Variable | GeoLeaf Core API.capabilities/cluster/install.CLUSTER_INSTALLER | doc:f2597f168b41
 Variable | GeoLeaf Core API.capabilities/coordinates/constants.DEFAULT_COORDINATES_DECIMALS | doc:569de5037ea1

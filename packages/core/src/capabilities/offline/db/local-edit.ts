@@ -45,6 +45,7 @@
  */
 
 import { Log } from "../../../utils/log/index.js";
+import { belongsToActiveProfile, coreActiveProfileId } from "../config-seam.js";
 import type {
     FeatureRecord,
     OutboxEntry,
@@ -95,8 +96,25 @@ export interface LocalEditTally {
 export interface LocalEditDBInstance {
     /** Applies an edit locally AND enqueues it, in ONE transaction. */
     applyLocalEdit(input: LocalEditInput): Promise<LocalEditTally>;
-    /** Identifiers of entities carrying a pending deletion, for one layer. */
-    pendingDeletions(layerId: string): Promise<Set<string>>;
+    /** What the queue says of one layer's entities, for the active profile ({@link LayerQueueView}). */
+    layerQueueView(layerId: string): Promise<LayerQueueView>;
+}
+
+/**
+ * What the queue says of one layer's entities, read for the ACTIVE profile.
+ *
+ * 🛑 The `features` store is shared by every profile of the origin; the queue is what knows whose
+ * work an entity carries (`OutboxEntry.profileId`). An entry without a profile — written before
+ * 3.18.0 — belongs to every profile, as it does for the drain.
+ */
+export interface LayerQueueView {
+    /** Entities this profile deleted and has not yet pushed — hidden from the layer. */
+    readonly deleted: ReadonlySet<string>;
+    /**
+     * Entities carrying ANOTHER profile's queued work and none of this one's — their stored
+     * state is that other profile's edit, not something this profile may draw.
+     */
+    readonly foreign: ReadonlySet<string>;
 }
 
 /**
@@ -344,7 +362,9 @@ function landEdit(
         coalescedInto: null,
         annulled: false,
     };
-    const mergeable = entries.filter((e) => COALESCIBLE.has(e.state));
+    // ⚠️ Only an entry of the ACTIVE profile absorbs this edit: merged into another
+    // profile's entry, the edit would leave under that profile, towards its target.
+    const mergeable = entries.filter((e) => COALESCIBLE.has(e.state) && belongsToActiveProfile(e));
     const pendingCreate = mergeable.find((e) => e.kind === "create");
 
     // CANCELLATION — created then deleted offline: the server never saw it.
@@ -393,6 +413,7 @@ function landEdit(
         for (const entry of mergeable) outbox.delete(entry.seq);
     }
 
+    const profileId = coreActiveProfileId();
     const entry: OutboxEntry = {
         id: mintEntryId(input, now),
         kind: input.kind,
@@ -402,6 +423,9 @@ function landEdit(
         state: "pending",
         attempts: 0,
         createdAt: now,
+        // The profile is stamped at capture: the drain resolves the target from the
+        // active profile, so it must know whose edit this is (`OutboxEntry.profileId`).
+        ...(profileId !== null ? { profileId } : {}),
     };
     outbox.add(entry);
     return { ...tally, entryId: entry.id, queued: true };
@@ -458,29 +482,46 @@ function init(db: IDBDatabase): LocalEditDBInstance {
             });
         },
 
-        pendingDeletions(layerId) {
-            return new Promise<Set<string>>((resolve, reject) => {
+        layerQueueView(layerId) {
+            return new Promise<LayerQueueView>((resolve, reject) => {
                 const tx = db.transaction([OUTBOX], "readonly");
                 const req = tx.objectStore(OUTBOX).getAll();
                 req.onerror = () => reject(new Error(`[DB.LocalEdit] read failed: ${req.error}`));
                 req.onsuccess = () => {
-                    const entries = (req.result as OutboxEntry[]) ?? [];
-                    resolve(
-                        new Set(
-                            entries
-                                .filter(
-                                    (e) =>
-                                        e.layerId === layerId &&
-                                        e.kind === "delete" &&
-                                        e.state !== "quarantined"
-                                )
-                                .map((e) => e.localId)
-                        )
+                    const entries = ((req.result as OutboxEntry[]) ?? []).filter(
+                        (e) => e.layerId === layerId
                     );
+                    resolve(queueViewOf(entries));
                 };
             });
         },
     };
+}
+
+/**
+ * Splits one layer's queued entries into what the active profile hides and what it must not draw.
+ *
+ * A deletion set aside (`quarantined`) is not hidden: the contract keeps a set-aside entry
+ * visible. An entity is `foreign` only when no entry of the active profile claims it — an entity
+ * both profiles edited is this profile's too, and stays drawn.
+ *
+ * @param entries - The layer's queued entries, every state and every profile.
+ * @returns The two sets, by `localId`.
+ */
+function queueViewOf(entries: readonly OutboxEntry[]): LayerQueueView {
+    const deleted = new Set<string>();
+    const own = new Set<string>();
+    const other = new Set<string>();
+    for (const e of entries) {
+        if (!belongsToActiveProfile(e)) {
+            other.add(e.localId);
+            continue;
+        }
+        own.add(e.localId);
+        if (e.kind === "delete" && e.state !== "quarantined") deleted.add(e.localId);
+    }
+    const foreign = new Set([...other].filter((id) => !own.has(id)));
+    return { deleted, foreign };
 }
 
 Log.debug("[DB.LocalEdit] Module loaded");

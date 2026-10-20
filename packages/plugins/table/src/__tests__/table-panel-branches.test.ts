@@ -1,5 +1,5 @@
 /**
- * Deep branch-coverage tests for table/panel.ts
+ * Deep branch-coverage tests for src/panel.ts
  * Covers: create, parseHeight, createToolbar, createLayerSelector,
  * populateLayerSelector, filterTableRows, updateToolbarButtons,
  * refreshLayerSelector, destroy, _isLayerVisible, _isTableLayer.

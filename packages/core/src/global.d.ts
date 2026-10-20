@@ -111,9 +111,11 @@ declare global {
         /**
          * The edits still owed or set aside, oldest first — `state` says which. An entry
          * set aside (`state: "quarantined"`) also says why: `quarantine` is the motive,
-         * `quarantineStatus` the HTTP status of the refusal when a server caused it.
+         * `quarantineStatus` the HTTP status of the refusal when a server caused it. Only the
+         * active profile's edits, unless `allProfiles: true` — then each says whose it is
+         * (`profileId`, absent on an edit captured before core 3.18.0).
          */
-        listPendingEdits?(): Promise<
+        listPendingEdits?(options?: { readonly allProfiles?: boolean }): Promise<
             Array<{
                 entryId: string;
                 kind: string;
@@ -124,6 +126,7 @@ declare global {
                 feature: unknown;
                 quarantine?: import("./contracts/sync.contract.js").QuarantineReason;
                 quarantineStatus?: number;
+                profileId?: string;
             }>
         >;
         /*
@@ -827,8 +830,8 @@ declare global {
          *
          * 📌 The reader's local view, `ClusterResolversLike` (`loader/loader-types.ts`),
          * widens `def`/`geojsonData` to `unknown` and COPIES the return shape. It agrees
-         * with the source as of 23/08/2026 — `ClusterStrategyResult` is indeed
-         * `{ shouldCluster, useSharedCluster }` — but nothing holds it there: the
+         * with the source as of 20/10/2026 — `ClusterStrategyResult` is indeed
+         * `{ shouldCluster }` — but nothing holds it there: the
          * local-views guard compares NAMES, not SHAPES, and says so.
          */
         _Cluster?: {

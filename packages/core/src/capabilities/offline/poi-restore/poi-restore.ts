@@ -47,6 +47,7 @@ import { StorageContract } from "../../../kernel/shared/index.js";
 // the store's INSTANCES behind the contract (a deep import would reach a copy the engine never
 // wired). This is a pure function with no state — how a record presents itself to a layer.
 import { presentRecordFeature } from "../db/features.js";
+import { belongsToActiveProfile } from "../config-seam.js";
 
 /**
  * Entry states that stay on screen.
@@ -80,6 +81,8 @@ interface QueueRow {
     localId?: unknown;
     state?: unknown;
     createdAt?: unknown;
+    /** The profile the edit was captured under; absent on an entry written before 3.18.0. */
+    profileId?: string;
 }
 
 /** The two sub-modules read here, reduced to their use. */
@@ -448,8 +451,10 @@ async function _applyNetOps(
 /**
  * Runs one idempotent restore pass: sync-queue → host layers via `GeoLeaf.Layers`.
  *
- * Reads every pending/failed entity op, resolves its host layer, drops rows without
- * a host layer (logged, never silent), collapses multiple ops per id to their net
+ * Reads the entity ops still on screen (`pending`, `inFlight`, `failed`, `quarantined`) of the
+ * ACTIVE profile only — an entry captured before 3.18.0 carries no profile and is read under
+ * every one —, resolves its host layer, drops rows without a layer or entity id
+ * (logged, never silent), collapses multiple ops per id to their net
  * state, then upserts (`mergeFeatures`) or removes (`removeFeature`). Safe to call
  * repeatedly — dedup by id makes replays no-ops for already-present features.
  *
@@ -470,7 +475,13 @@ export async function restorePendingPois(deps: PoiRestoreDeps = {}): Promise<Poi
         Log.error("[PoiRestore] Failed to read the outbox:", err);
         return result;
     }
-    if (!Array.isArray(entries) || entries.length === 0) return result;
+    if (!Array.isArray(entries)) return result;
+    // 🛑 ONLY THE ACTIVE PROFILE'S EDITS ARE DRAWN. The queue holds every profile's work, and a
+    // layer of another profile may share the id: its creations were merged here, its deletions
+    // removed this profile's entity of the same key. Filtered after reading, so an injected
+    // reader is held to the same rule.
+    entries = entries.filter((entry) => belongsToActiveProfile(entry));
+    if (entries.length === 0) return result;
 
     const readFeature =
         deps.readFeature ??

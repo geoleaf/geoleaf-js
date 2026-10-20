@@ -8,7 +8,7 @@
  * MapLibre cluster sub-layer builders for GeoJSON sources with native
  * Supercluster. Split out of `maplibre-helpers.ts` (socle B.2) so cluster
  * construction lives in one focused module next to `maplibre-cluster.ts`
- * (the shared cluster constants) — and keeps `maplibre-primitives.ts` comfortably
+ * (the clustered-source fallbacks) — and keeps `maplibre-primitives.ts` comfortably
  * under the 700-line budget as it keeps absorbing helpers.
  */
 import { trackMapCleanup } from "./maplibre-event-subscriptions.js";

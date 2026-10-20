@@ -189,7 +189,7 @@ VisibilityManager.setVisibility = function (
     const changed = this._applyVisibilityChange(layerId, layerData, visible, source);
 
     // A USER action may change the logical intent without causing a physical map change
-    // (e.g. re-showing a layer already on the map, or acting on a shared cluster).
+    // (e.g. re-showing a layer already on the map).
     // We must still fire the event so permalink / other listeners can sync.
     const logicalChanged =
         source === VisibilitySource.USER &&

@@ -17,14 +17,13 @@
  * and a layer explicitly set to the real applied max-zoom (14) was wrongly classed as a
  * custom override.
  *
- * Centralising the two numbers here — imported by the schema (advertised value), the applied
- * defaults (`options.applyGeoJSONClusterOptions`) and the override comparison
- * (`strategy._resolveCustomClusterCheck`) — makes the advertised value and the enforced value
- * the same *by construction*: the 50 / 80 / 18 drift can no longer reopen.
+ * Centralising the two numbers here — imported by the schema (advertised value) and the
+ * applied defaults (`options.applyGeoJSONClusterOptions`) — makes the advertised value and the
+ * enforced value the same *by construction*: the 50 / 80 / 18 drift can no longer reopen.
  *
- * POI shared-cluster defaults are deliberately NOT here: they live adapter-side
- * (`adapters/maplibre/maplibre-cluster.ts`, radius 50) because the MapLibre adapter must not
- * import `capabilities/`. This module owns only the GeoJSON per-layer policy.
+ * Every clustered layer has its own clustered source; there is no cluster shared between
+ * layers, so these are the only cluster defaults. ⚠️ Nothing caps `clusterMaxZoom`: a profile
+ * may ask for clusters down to the deepest zoom.
  *
  * B.24 widened the same idea from two literals to the WHOLE default set: the schema used to
  * advertise five defaults (`clustering` / `clusterRadius` / `disableClusteringAtZoom` /
@@ -38,16 +37,14 @@ import type { ClusterConfig } from "./types.js";
 
 /**
  * Default cluster radius (px) for a GeoJSON point layer when neither the layer def nor
- * `modules.cluster.clusterRadius` sets one. Also the baseline `strategy.ts` compares a
- * per-layer radius against to decide whether a layer needs its own (non-shared) cluster.
+ * `modules.cluster.clusterRadius` sets one.
  */
 export const DEFAULT_CLUSTER_RADIUS = 80;
 
 /**
  * Default `clusterMaxZoom` for a GeoJSON point layer when neither the layer def nor
  * `modules.cluster.disableClusteringAtZoom` sets one — `applyGeoJSONClusterOptions` clamps
- * it to `sourceMaxZoom - 1`. Also the strategy's override-comparison baseline (was `18`
- * there, which never matched this applied value — the S6 alignment).
+ * it to `sourceMaxZoom - 1`.
  */
 export const DEFAULT_CLUSTER_MAX_ZOOM = 14;
 

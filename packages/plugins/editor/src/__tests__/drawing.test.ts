@@ -292,6 +292,14 @@ describe("styles", () => {
         expect(c.white).toBe("#ffffff");
     });
 
+    // On <html>, where the palette puts the brand accent — not under the light/dark classes,
+    // whose accent is an interface token (a pale surface tone in light).
+    it("readThemeColors reads the accent on <html>, where the palette sets it", () => {
+        const spy = vi.mocked(globalThis.getComputedStyle);
+        readThemeColors();
+        expect(spy).toHaveBeenCalledWith(document.documentElement);
+    });
+
     it("readThemeColors falls back to #2563eb on invalid color", () => {
         vi.spyOn(globalThis, "getComputedStyle").mockReturnValue({
             getPropertyValue: () => "not-a-hex",
@@ -330,14 +338,38 @@ describe("styles", () => {
         stop(); // should not throw
     });
 
-    it("watchThemeChanges calls onUpdate on class change", async () => {
+    // A palette switch changes `data-gl-palette`, never <html>'s classes: the former observer
+    // never saw one. The core announces it instead.
+    it("watchThemeChanges follows a palette switch", () => {
         const cb = vi.fn();
         const stop = watchThemeChanges(cb);
-        document.documentElement.classList.add("gl-theme-dark");
-        await new Promise((r) => setTimeout(r, 10));
-        document.documentElement.classList.remove("gl-theme-dark");
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:palette-changed", { detail: { palette: "green" } })
+        );
         stop();
-        expect(cb).toHaveBeenCalled();
+        expect(cb).toHaveBeenCalledTimes(1);
+    });
+
+    it("watchThemeChanges leaves a light/dark switch alone — the stroke keeps its colour", () => {
+        const cb = vi.fn();
+        const stop = watchThemeChanges(cb);
+        globalThis.dispatchEvent(
+            new CustomEvent("geoleaf:ui-theme-changed", { detail: { theme: "dark" } })
+        );
+        stop();
+        expect(cb).not.toHaveBeenCalled();
+    });
+
+    it("watchThemeChanges stops listening once cleaned up", () => {
+        const cb = vi.fn();
+        watchThemeChanges(cb)();
+        globalThis.dispatchEvent(
+            new CustomEvent("geoleaf:ui-theme-changed", { detail: { theme: "dark" } })
+        );
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:palette-changed", { detail: { palette: "green" } })
+        );
+        expect(cb).not.toHaveBeenCalled();
     });
 });
 

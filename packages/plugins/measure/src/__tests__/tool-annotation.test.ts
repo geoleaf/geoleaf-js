@@ -67,7 +67,7 @@ describe("activateAnnotationTooltip", () => {
         activateAnnotationTooltip(map);
         const spy = vi.spyOn(drawLayers, "setCursor");
         activateAnnotationTooltip(map); // should deactivate first
-        expect(spy).toHaveBeenCalledWith("grab"); // deactivation resets cursor
+        expect(spy).toHaveBeenCalledWith(""); // deactivation clears the inline cursor
         expect(gl.exclusive.held).toBe(true);
     });
 });
@@ -79,11 +79,11 @@ describe("deactivateAnnotation", () => {
         expect(gl.exclusive.held).toBe(false);
     });
 
-    it("resets cursor to grab", () => {
+    it("clears the inline cursor, so the engine CSS paints grab/grabbing again", () => {
         activateAnnotationTooltip(map);
         const spy = vi.spyOn(drawLayers, "setCursor");
         deactivateAnnotation();
-        expect(spy).toHaveBeenCalledWith("grab");
+        expect(spy).toHaveBeenCalledWith("");
     });
 
     it("is safe to call when not active (no-op)", () => {

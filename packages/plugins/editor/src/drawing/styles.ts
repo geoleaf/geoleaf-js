@@ -31,7 +31,17 @@ function _hex(s: string, fallback: HexColor): HexColor {
     return /^#[0-9a-fA-F]{3}$/.test(t) || /^#[0-9a-fA-F]{6}$/.test(t) ? (t as HexColor) : fallback;
 }
 
-/** Reads GeoLeaf CSS custom properties from :root to build theme colors. */
+/**
+ * Reads the palette's accent on `<html>`, to build the drawing colours.
+ *
+ * ⚠️ On `<html>` ON PURPOSE, and not where the light/dark theme resolves it. Under
+ * `gl-theme-light` / `gl-theme-dark` the accent is an INTERFACE token — the light theme makes it a
+ * pale surface tone (`#f4cfb4`), and a stroke in it all but vanishes on the map. Like the route
+ * and the POI, the drawing keeps one colour across light and dark, for legibility. The palette is
+ * different: it sets the brand accent on `<html>`, so reading there follows it.
+ *
+ * @returns The accent, or `#2563eb` when the palette yields no hex colour; and white.
+ */
 export function readThemeColors(): ThemeColors {
     if (typeof document === "undefined") {
         return { accent: _FALLBACK_ACCENT, white: _FALLBACK_WHITE };
@@ -141,18 +151,23 @@ export function buildSelectStyles(c: ThemeColors) {
 // Theme change watcher
 // ---------------------------------------------------------------------------
 
+/** Emitted by the core on `document` once a palette switch has reached `<html>`. */
+const PALETTE_CHANGED = "geoleaf:palette-changed";
+
 /**
- * Observes class changes on <html> to detect GeoLeaf theme switches (light/dark).
- * Returns a cleanup function — call it to stop observing.
+ * Calls `onUpdate` with fresh colours after every palette switch.
+ *
+ * Follows the event the core emits once the palette is on `<html>`. It used to observe
+ * `<html>`'s classes, which nothing changes, while the palette switch changes `data-gl-palette`:
+ * a switch was never seen. A light/dark switch is not followed, on purpose
+ * (see {@link readThemeColors}).
+ *
+ * @param onUpdate - Receives the colours read after the switch.
+ * @returns A cleanup function that stops listening.
  */
 export function watchThemeChanges(onUpdate: (colors: ThemeColors) => void): () => void {
-    if (typeof MutationObserver === "undefined" || typeof document === "undefined") {
-        return () => {};
-    }
-    const observer = new MutationObserver(() => onUpdate(readThemeColors()));
-    observer.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ["class"],
-    });
-    return () => observer.disconnect();
+    if (typeof document === "undefined") return () => {};
+    const refresh = (): void => onUpdate(readThemeColors());
+    document.addEventListener(PALETTE_CHANGED, refresh);
+    return () => document.removeEventListener(PALETTE_CHANGED, refresh);
 }

@@ -322,10 +322,7 @@ export interface LabelsLike {
 
 /** Cluster capability's pure per-layer clustering resolvers (policy, no lifecycle). */
 export interface ClusterResolversLike {
-    getClusteringStrategy(
-        def: unknown,
-        geojsonData: unknown
-    ): { shouldCluster: boolean; useSharedCluster: boolean };
+    getClusteringStrategy(def: unknown, geojsonData: unknown): { shouldCluster: boolean };
     applyGeoJSONClusterOptions(
         adapterOptions: Record<string, unknown>,
         def: unknown,

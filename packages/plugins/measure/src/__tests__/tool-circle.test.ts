@@ -158,10 +158,12 @@ describe("deactivateCircle", () => {
         expect(offCalls).toContain("mousedown");
     });
 
-    it("restores default cursor", () => {
+    // No inline cursor at rest: the engine's CSS paints `grab`, and `grabbing` while panning,
+    // only when nothing is written inline — an inline `grab` froze the pan cursor.
+    it("hands the cursor back to the engine's CSS (no inline cursor left)", () => {
         activateCircle(map);
         deactivateCircle();
-        expect(map.getCanvas().style.cursor).toBe("grab");
+        expect(map.getCanvas().style.cursor).toBe("");
     });
 
     it("re-enables dragPan", () => {

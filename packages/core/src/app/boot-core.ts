@@ -103,8 +103,13 @@ interface ProfileResolutionLog {
 const PROFILE_ID_RE = /^[a-zA-Z0-9_-]{1,50}$/;
 
 /**
- * Resolves which profile to boot, in three ranks:
+ * Resolves which profile to boot, in four ranks:
  *
+ *   0. `options.profile` — the integrator's word, handed to `boot()` or `mount()`. It wins over
+ *      both stores: the stored choice belongs to the standalone application's profile switcher,
+ *      and an integrator passing a configuration must not see a choice made one day on the same
+ *      origin override it. The one-shot store below is still consumed, so that it does not
+ *      decide the NEXT load either.
  *   1. `sessionStorage['gl-selected-profile']` — **one-shot** (read then removed).
  *      The pre-existing contract: `e2e/08-realtime` and `e2e/16-flatgeobuf` write it to
  *      force a profile for a single load without leaving a durable preference behind.
@@ -113,30 +118,52 @@ const PROFILE_ID_RE = /^[a-zA-Z0-9_-]{1,50}$/;
  *      persistence. Not consumed: it is the user's standing choice.
  *   3. `null` → `data.activeProfile` from the JSON, applied downstream by `loadConfig`.
  *
- * Both stores are user-writable, hence the same format guard on each.
+ * The option and both stores take the same format guard: the stores are user-writable, and the
+ * option reaches a fetch path just the same.
  *
  * NB — this is a self-contained lookup, not a boot STEP: unlike the B1→B11 sequence
  * (whose value is its ordering, and whose extraction was reverted twice), it carries no
  * position constraint. Its result is a value, assigned where it is needed.
  *
+ * @param AppLog - Where a refused value is named.
+ * @param options - The boot options, when the caller passed any — `profile` is read here.
  * @returns The profile id to load, or `null` to fall back to the configured default.
  */
-function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
+function _resolveSelectedProfile(
+    AppLog: ProfileResolutionLog,
+    options?: BootOptions
+): string | null {
     const isValid = (v: string | null): boolean => !!v && PROFILE_ID_RE.test(v);
+    const requested: unknown = options?.profile;
+
+    let chosen: string | null = null;
+    if (requested !== undefined) {
+        if (typeof requested === "string" && isValid(requested)) {
+            AppLog.log("Profile requested by the boot options:", requested);
+            chosen = requested;
+        } else {
+            AppLog.warn(
+                "Boot option `profile` rejected (invalid format):",
+                String(requested).substring(0, 20)
+            );
+        }
+    }
 
     try {
         const raw = sessionStorage.getItem(SELECTED_PROFILE_STORAGE_KEY);
         sessionStorage.removeItem(SELECTED_PROFILE_STORAGE_KEY);
-        if (isValid(raw)) {
+        if (!chosen && isValid(raw)) {
             AppLog.log("Profile selected from sessionStorage:", raw);
             return raw;
         }
-        if (raw) {
+        if (!chosen && raw) {
             AppLog.warn("sessionStorage profile rejected (invalid format):", raw.substring(0, 20));
         }
     } catch (e) {
         AppLog.warn("Unable to read sessionStorage:", e);
     }
+    // Out of the `try`: a store that throws must not cost the integrator its choice.
+    if (chosen) return chosen;
 
     try {
         const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
@@ -159,7 +186,7 @@ function _resolveSelectedProfile(AppLog: ProfileResolutionLog): string | null {
 /**
  * Resolves WHERE the configuration comes from — three ranks.
  *
- * ⚠️ NOT to be confused with {@link _resolveSelectedProfile}, which also has three ranks.
+ * ⚠️ NOT to be confused with {@link _resolveSelectedProfile}, which has four ranks.
  * That one answers WHICH profile is selected; this one answers WHERE the configuration is.
  * Two questions, two resolutions, and the shared wording has already caused one confusion —
  * hence this note.
@@ -544,7 +571,7 @@ export async function bootWithPreset(
         { once: true }
     );
 
-    const selectedProfile = _resolveSelectedProfile(AppLog);
+    const selectedProfile = _resolveSelectedProfile(AppLog, options);
 
     const profilesPath = _app.getProfilesBasePath();
 

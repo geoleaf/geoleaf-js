@@ -50,7 +50,7 @@
 
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
-import { coreProfileLayerConfig } from "../config-seam.js";
+import { belongsToActiveProfile, coreProfileLayerConfig } from "../config-seam.js";
 import { clearRestoredStatus, removeAbandonedFeature } from "../poi-restore/poi-restore.js";
 import type { FeatureRecord, QuarantineReason } from "../../../contracts/sync.contract.js";
 
@@ -62,6 +62,7 @@ interface QuarantinedEntry {
     state?: string;
     quarantine?: QuarantineReason;
     attempts?: number;
+    profileId?: string;
 }
 
 /** The queue module, reduced to what this module reads and writes. */
@@ -235,6 +236,9 @@ function _causeIsLifted(entry: QuarantinedEntry): boolean {
     const verifiable =
         entry.quarantine === "layerNoLongerWritable" || entry.quarantine === "dialectNotSupported";
     if (!verifiable) return true;
+    // ⚠️ Read in the ACTIVE profile's declaration, a lifting says nothing of an entry
+    // captured under another one: a layer of the same id here would "lift" it by homonymy.
+    if (!belongsToActiveProfile(entry)) return false;
     const write = (
         coreProfileLayerConfig(entry.layerId ?? "") as {
             write?: { enabled?: boolean; dialect?: string };

@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "cache-par-source",
+    "scope": ["packages/core/src/capabilities/offline/pull/source-key.ts"],
+    "verdicts": {
+        "packages/core/src/capabilities/offline/pull/source-key.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La clé de la source d'un enregistrement rapatrié (URL + collection), et celle de la couche du profil actif : ce qu'un rapatriement étiquette et ce qu'une lecture compare sont la même chaîne",
+            "confidence": "haute",
+            "rationale": "Le magasin `features` et l'état de rapatriement sont partagés par tous les profils de l'origine, clés par identifiant de couche ; deux profils déclarant une couche homonyme sur deux sources s'y balayaient et s'y lisaient. Le module dit à quelle source un enregistrement appartient, d'une seule façon pour ses trois lecteurs : `pull/layer-pull.ts` (étiquette et balayage), `db/indexeddb.ts` (lecture locale) et `report/pull-state.ts` (état par source). Sous `pull/`, à côté du rapatriement dont il reprend la résolution de la source. Tenu par `__tests__/capabilities/offline/pull-source-scope.test.ts`, vu rouge avant le correctif et sur sept mutations"
+        }
+    }
+}

@@ -37,7 +37,7 @@ import {
 import { tableState, _g } from "../table-state.js";
 import { TablePanel } from "../panel.js";
 
-describe("table/table-layer.ts — branch coverage", () => {
+describe("src/table-layer.ts — branch coverage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         _g.GeoLeaf = {};

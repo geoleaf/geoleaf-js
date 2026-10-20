@@ -19,11 +19,13 @@ import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
 import { StorageHelperModule as StorageHelper } from "./storage-helper.js";
 import { DBModulesRegistry } from "./db-modules-registry.js";
 import { clearPullMarks, readPullState } from "../report/pull-state.js";
+import { activeSourceKey, fromActiveSource } from "../pull/source-key.js";
 import { presentRecordFeature, type PreservingPutTally } from "./features.js";
 import { mergeIdentityTwins } from "./identity-twins.js";
 import { reflagLocalImages } from "./local-images-v3.js";
-import type { LocalEditInput, LocalEditTally } from "./local-edit.js";
+import type { LayerQueueView, LocalEditInput, LocalEditTally } from "./local-edit.js";
 import type { FeatureRecord, QuarantineReason } from "../../../contracts/sync.contract.js";
+import { belongsToActiveProfile } from "../config-seam.js";
 
 type StorageDBInstance = IDBDatabase | { _isStub: boolean };
 
@@ -100,6 +102,64 @@ async function concludedPull(
 ): Promise<boolean> {
     const state = await readPullState(db);
     return state[layerId]?.outcome === "ok";
+}
+
+/** An outbox row as `listPendingEdits` reads it — every field unvalidated. */
+interface PendingEntryRow {
+    id?: string;
+    kind?: string;
+    layerId?: string;
+    localId?: string;
+    createdAt?: number;
+    quarantine?: QuarantineReason;
+    quarantineStatus?: number;
+    profileId?: string;
+}
+
+/** One pending edit, as `listPendingEdits` returns it. */
+interface PendingEditItem {
+    entryId: string;
+    kind: string;
+    layerId: string;
+    localId: string;
+    state: string;
+    createdAt: number;
+    feature: unknown;
+    quarantine?: QuarantineReason;
+    quarantineStatus?: number;
+    profileId?: string;
+}
+
+/**
+ * Builds one item of `listPendingEdits` from its outbox row and the entity it edits.
+ *
+ * The optional members appear only when the row carries them: an entry the drain still holds
+ * has no `quarantine`, and one queued before core 3.18.0 has no `profileId`.
+ *
+ * @param entry - The outbox row, its key members checked by the caller.
+ * @param state - The state it was listed under.
+ * @param feature - The edited entity, or `null` when the store no longer carries it.
+ * @returns The item.
+ */
+function pendingEditOf(
+    entry: PendingEntryRow & { layerId: string; localId: string },
+    state: string,
+    feature: unknown
+): PendingEditItem {
+    return {
+        entryId: String(entry.id ?? ""),
+        kind: String(entry.kind ?? ""),
+        layerId: entry.layerId,
+        localId: entry.localId,
+        state,
+        createdAt: Number(entry.createdAt ?? 0),
+        feature,
+        ...(entry.quarantine ? { quarantine: entry.quarantine } : {}),
+        ...(typeof entry.quarantineStatus === "number"
+            ? { quarantineStatus: entry.quarantineStatus }
+            : {}),
+        ...(entry.profileId !== undefined ? { profileId: entry.profileId } : {}),
+    };
 }
 
 const StorageDB = {
@@ -516,9 +576,24 @@ const StorageDB = {
      * run (`outcome: "ok"`) speaks for the layer's content, empty included. A run that failed or
      * was cut does not — its store is empty because it stopped — and the fallback stays.
      *
+     * 🛑 **Only the active profile's work is drawn.** The store is shared by every profile of the
+     * origin and keyed by layer id; the queue says whose capture an entity holds. An entity
+     * holding only another profile's queued work is left out — and a layer that work alone fills
+     * reads as never pulled —, and only this profile's deletions are hidden. An entry captured
+     * before 3.18.0 carries no profile and counts for every one. ⚠️ Known limit: an entity the
+     * other profile edited, and that this profile's own pull also serves under the same key,
+     * stays out of this layer until that edit leaves the queue.
+     *
+     * 🛑 **Only the cache of this layer's own source is drawn.** A `synced` record carries the
+     * source that served it (`FeatureRecord.sourceKey`): what another profile's layer of the same
+     * id pulled from another source is left out, and a pull concluded from that other source does
+     * not make this layer read as pulled (`offline.pullState` carries its source too). A record
+     * written before 3.18.0 carries none and is drawn, as before.
+     *
      * @param layerId - Layer identifier.
-     * @returns The collection — empty when a complete pull returned nothing — or `null` when no
-     *   pull ever concluded for this layer.
+     * @returns The collection — empty when a complete pull of this layer's source returned
+     *   nothing — or `null` when no pull of it ever concluded, or when only another profile's
+     *   work or another source's cache fills it.
      */
     async getLayerFeatureCollection(
         layerId: string
@@ -526,12 +601,7 @@ const StorageDB = {
         if (!this._db) await this.init();
         const module = this._ensureModule("Features");
         if (!module?.listByLayer) return null;
-        const records = (await module.listByLayer(layerId)) as FeatureRecord[] | null;
-        if (!Array.isArray(records) || records.length === 0) {
-            return (await concludedPull(this, layerId))
-                ? { type: "FeatureCollection", features: [] }
-                : null;
-        }
+        const stored = (await module.listByLayer(layerId)) as FeatureRecord[] | null;
 
         // 🛑 A LOCAL DELETION MUST DISAPPEAR FROM THE MAP.
         //
@@ -541,13 +611,40 @@ const StorageDB = {
         // must not be RENDERED either: a user deleting off-network would see their
         // entity stay on screen, and "the edit applies locally" would be half false.
         // The only place that knows the difference is the queue, hence this join.
+        // An empty layer pays no read of the queue: there is nothing for it to hide.
         const edits = this._ensureModule("LocalEdit");
-        const deleted = edits?.pendingDeletions
-            ? ((await edits.pendingDeletions(layerId)) as Set<string>)
-            : new Set<string>();
+        const view: LayerQueueView =
+            Array.isArray(stored) && stored.length > 0 && edits?.layerQueueView
+                ? await edits.layerQueueView(layerId)
+                : { deleted: new Set<string>(), foreign: new Set<string>() };
+
+        // 🛑 ANOTHER PROFILE'S WORK IS NOT THIS LAYER'S. The store is shared by every profile of
+        // the origin, keyed by layer id: an entity holding a capture queued under another
+        // profile — whose layer merely shares the id — would be drawn here as this profile's
+        // own. Its record is dropped BEFORE the emptiness test below, so a layer that only that
+        // work fills still reads as never pulled and falls back to the network. A `synced` record
+        // is never dropped for that: it is the cache, and holds no one's unsent work.
+        //
+        // 🛑 …BUT THE CACHE IS A SOURCE'S, and another source's is not this layer's either. A
+        // `synced` record carries the source that served it; one served by a source this
+        // profile's layer does not pull from is dropped here, before the emptiness test, for
+        // the same reason (`../pull/source-key.ts`).
+        const source = activeSourceKey(layerId);
+        const records = Array.isArray(stored)
+            ? stored.filter((r) =>
+                  r.syncState === "synced"
+                      ? fromActiveSource(r, source)
+                      : !view.foreign.has(String(r.localId))
+              )
+            : null;
+        if (!records || records.length === 0) {
+            return (await concludedPull(this, layerId))
+                ? { type: "FeatureCollection", features: [] }
+                : null;
+        }
 
         const visible = records.filter(
-            (r) => r.feature !== undefined && !deleted.has(String(r.localId))
+            (r) => r.feature !== undefined && !view.deleted.has(String(r.localId))
         );
         // Every entity of the layer is locally deleted: that is an EMPTY layer, not an
         // unstored one. Returning `null` here would re-trigger the network and make
@@ -618,13 +715,19 @@ const StorageDB = {
      *
      * @param layerId - The layer the pull covered.
      * @param keep - The keys every page of the pull named.
+     * @param sourceKey - The source pulled: only its records, and those written before records
+     *   carried one, are candidates. Omitted, every record of the layer is.
      * @returns How many records were removed, or `null` when the module is absent.
      */
-    async sweepLayerFeatures(layerId: string, keep: ReadonlySet<string>): Promise<number | null> {
+    async sweepLayerFeatures(
+        layerId: string,
+        keep: ReadonlySet<string>,
+        sourceKey?: string
+    ): Promise<number | null> {
         if (!this._db) await this.init();
         const module = this._ensureModule("Features");
         if (!module?.sweepSynced) return null;
-        return (await module.sweepSynced(layerId, keep)) as number;
+        return (await module.sweepSynced(layerId, keep, sourceKey)) as number;
     },
 
     /**
@@ -635,6 +738,9 @@ const StorageDB = {
      * facade by four members for a single consumer, and move knowledge of the stores
      * out of the layer that owns them. The facade delegates, it does not arbitrate —
      * but what it delegates is the tally, not the stores.
+     *
+     * ⚠️ **Only the active profile's entries are counted**: an entry captured under another
+     * profile cannot leave from here, and a layer of the same id would otherwise count it.
      *
      * ⚠️ **`pendingCount` aggregates `pending` + `inFlight` + `failed`.** It is "what is
      * still owed to the server", and `failed` belongs there: it was explicitly put back
@@ -686,8 +792,12 @@ const StorageDB = {
             for (const state of states) {
                 const entries = ((await listByState.call(outbox, state)) ?? []) as ReadonlyArray<{
                     layerId?: string;
+                    profileId?: string;
                 }>;
                 for (const entry of entries) {
+                    // Another profile's entry is not counted under a layer that merely
+                    // shares its id: it cannot leave from here (`OutboxEntry.profileId`).
+                    if (!belongsToActiveProfile(entry)) continue;
                     const bucket = entry.layerId ? out[entry.layerId] : undefined;
                     if (!bucket) continue;
                     if (field === "pending") bucket.pendingCount += 1;
@@ -717,6 +827,13 @@ const StorageDB = {
      * HTTP status of the refusal when a server answer caused it. Both are absent from an entry
      * the drain still holds — an interface can tell "stuck, and for this reason" from "waiting".
      *
+     * 🛑 **By default, only the ACTIVE profile's edits.** Its readers count and act —
+     * a pending tally, a quarantine panel —, and an edit captured under another profile can
+     * neither leave nor be judged from here. An EXPORT, whose role is to get everything out,
+     * passes `allProfiles: true`; each edit then says whose it is (`profileId`, absent on an
+     * edit captured before the field existed, which every profile lists).
+     *
+     * @param options - `allProfiles: true` lists the edits of every profile.
      * @returns One entry per pending edit, oldest first; `[]` without the module.
      * @example
      * const pending = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.()) ?? [];
@@ -724,20 +841,12 @@ const StorageDB = {
      * for (const edit of pending) {
      *     if (edit.state === "quarantined") console.warn(edit.localId, edit.quarantine);
      * }
+     * const everything = (await GeoLeaf?.Storage?.DB?.listPendingEdits?.({ allProfiles: true })) ?? [];
+     * console.info(`${everything.length - pending.length} edit(s) of another profile`);
      */
-    async listPendingEdits(): Promise<
-        Array<{
-            entryId: string;
-            kind: string;
-            layerId: string;
-            localId: string;
-            state: string;
-            createdAt: number;
-            feature: unknown;
-            quarantine?: QuarantineReason;
-            quarantineStatus?: number;
-        }>
-    > {
+    async listPendingEdits(options?: {
+        readonly allProfiles?: boolean;
+    }): Promise<PendingEditItem[]> {
         if (!this._db) await this.init();
         const features = this._ensureModule("Features");
         const outbox = this._ensureModule("Outbox");
@@ -747,33 +856,18 @@ const StorageDB = {
 
         const out = [];
         for (const state of ["pending", "inFlight", "failed", "quarantined"]) {
-            const entries = ((await listByState.call(outbox, state)) ?? []) as ReadonlyArray<{
-                id?: string;
-                kind?: string;
-                layerId?: string;
-                localId?: string;
-                createdAt?: number;
-                quarantine?: QuarantineReason;
-                quarantineStatus?: number;
-            }>;
+            const entries = ((await listByState.call(outbox, state)) ??
+                []) as ReadonlyArray<PendingEntryRow>;
             for (const entry of entries) {
-                if (!entry.layerId || !entry.localId) continue;
-                const record = (await get.call(features, entry.layerId, entry.localId)) as {
+                const { layerId, localId } = entry;
+                if (!layerId || !localId) continue;
+                if (options?.allProfiles !== true && !belongsToActiveProfile(entry)) continue;
+                const record = (await get.call(features, layerId, localId)) as {
                     feature?: unknown;
                 } | null;
-                out.push({
-                    entryId: String(entry.id ?? ""),
-                    kind: String(entry.kind ?? ""),
-                    layerId: entry.layerId,
-                    localId: entry.localId,
-                    state,
-                    createdAt: Number(entry.createdAt ?? 0),
-                    feature: record?.feature ?? null,
-                    ...(entry.quarantine ? { quarantine: entry.quarantine } : {}),
-                    ...(typeof entry.quarantineStatus === "number"
-                        ? { quarantineStatus: entry.quarantineStatus }
-                        : {}),
-                });
+                out.push(
+                    pendingEditOf({ ...entry, layerId, localId }, state, record?.feature ?? null)
+                );
             }
         }
         return out.sort((a, b) => a.createdAt - b.createdAt);

@@ -8,8 +8,8 @@
 /**
  * Cluster capability — per-layer clustering strategy decision.
  *
- * Decides whether a GeoJSON layer should be clustered (and whether it joins the
- * shared POI cluster) from the layer def + `modules.cluster` config. Ported
+ * Decides whether a GeoJSON layer should be clustered, from the layer def and the
+ * `modules.cluster` config. A clustered layer always gets its own clustered source. Ported
  * behaviour-preserving from the former `geojson/clustering.ts`; the only changes
  * are the config source (`modules.cluster` via `getClusterConfig()` instead of
  * `poiConfig`) and the capability enable gate.
@@ -18,11 +18,7 @@
 import { getLog } from "../../utils/general/di-accessors.js";
 import { getClusterConfig } from "./config.js";
 import { geometryFamily } from "../../kernel/config/index.js";
-import {
-    DEFAULT_CLUSTER_RADIUS,
-    DEFAULT_CLUSTER_MAX_ZOOM,
-    DEFAULT_CLUSTER_STRATEGY,
-} from "./constants.js";
+import { DEFAULT_CLUSTER_STRATEGY } from "./constants.js";
 import type {
     ClusterConfig,
     ClusterLayerDef,
@@ -31,32 +27,12 @@ import type {
     ClusterStrategyResult,
 } from "./types.js";
 
-const _CLUSTER_NONE: ClusterStrategyResult = { shouldCluster: false, useSharedCluster: false };
-const _CLUSTER_UNIFIED: ClusterStrategyResult = { shouldCluster: true, useSharedCluster: true };
+const _CLUSTER_NONE: ClusterStrategyResult = { shouldCluster: false };
+const _CLUSTER_ALL: ClusterStrategyResult = { shouldCluster: true };
 
 function _resolveClusteringConfig(def: ClusterLayerDef): LayerClusteringConfig {
     if (typeof def.clustering === "object") return def.clustering;
     return { enabled: def.clustering as boolean };
-}
-
-function _resolveCustomClusterCheck(
-    clusteringConfig: LayerClusteringConfig,
-    def: ClusterLayerDef,
-    config: ClusterConfig
-): boolean {
-    const clusterRadius =
-        clusteringConfig.maxClusterRadius ??
-        (typeof def.clusterRadius === "number" ? def.clusterRadius : null);
-    const disableAtZoom =
-        clusteringConfig.disableClusteringAtZoom ??
-        (typeof def.disableClusteringAtZoom === "number" ? def.disableClusteringAtZoom : null);
-    if (
-        clusterRadius !== null &&
-        clusterRadius !== (config.clusterRadius ?? DEFAULT_CLUSTER_RADIUS)
-    )
-        return true;
-    if (disableAtZoom === null) return false;
-    return disableAtZoom !== (config.disableClusteringAtZoom ?? DEFAULT_CLUSTER_MAX_ZOOM);
 }
 
 function _resolveStrategyResult(
@@ -67,19 +43,16 @@ function _resolveStrategyResult(
     const Log = getLog();
     switch (strategy) {
         case "unified":
-            return _CLUSTER_UNIFIED;
+            return _CLUSTER_ALL;
         case "by-layer":
-            return { shouldCluster: isClusteringEnabled, useSharedCluster: false };
+            return { shouldCluster: isClusteringEnabled };
         case "by-source": {
             const sourceConfig = config.clusterStrategies?.["by-source"]?.sources ?? {};
-            return { shouldCluster: sourceConfig.geojson !== false, useSharedCluster: false };
+            return { shouldCluster: sourceConfig.geojson !== false };
         }
         case "json-only": {
             const jsonOnlyConfig = config.clusterStrategies?.["json-only"] ?? {};
-            return {
-                shouldCluster: jsonOnlyConfig.geojsonClustering === true,
-                useSharedCluster: false,
-            };
+            return { shouldCluster: jsonOnlyConfig.geojsonClustering === true };
         }
         default:
             Log.warn?.(
@@ -87,7 +60,7 @@ function _resolveStrategyResult(
                     strategy +
                     ". Defaulting to 'unified'."
             );
-            return _CLUSTER_UNIFIED;
+            return _CLUSTER_ALL;
     }
 }
 
@@ -113,7 +86,7 @@ function _mayHoldPoints(def: ClusterLayerDef, geojsonData: ClusterGeoJSONData): 
 
 /**
  * Decides the clustering strategy for a single GeoJSON layer, returning
- * `{ shouldCluster, useSharedCluster }`. Reads the capability config
+ * `{ shouldCluster }`. Reads the capability config
  * (`modules.cluster`); returns `_CLUSTER_NONE` when the capability is disabled.
  *
  * @param def - The GeoJSON layer definition (per-layer `clustering` override, and the
@@ -133,12 +106,9 @@ export function getClusteringStrategy(
     if (isClusteringDisabled) return _CLUSTER_NONE;
     if (!config.clustering && !isClusteringEnabled) return _CLUSTER_NONE;
     if (!_mayHoldPoints(def, geojsonData)) return _CLUSTER_NONE;
-    if (isClusteringEnabled) {
-        if (_resolveCustomClusterCheck(clusteringConfig, def, config))
-            return { shouldCluster: true, useSharedCluster: false };
-        const strategy = config.clusterStrategy ?? DEFAULT_CLUSTER_STRATEGY;
-        return { shouldCluster: true, useSharedCluster: strategy === DEFAULT_CLUSTER_STRATEGY };
-    }
+    // A layer that asks for clustering gets it, whatever the strategy: the strategy only
+    // decides for the layers that say nothing.
+    if (isClusteringEnabled) return _CLUSTER_ALL;
     const strategy = config.clusterStrategy ?? DEFAULT_CLUSTER_STRATEGY;
     return _resolveStrategyResult(strategy, isClusteringEnabled, config);
 }

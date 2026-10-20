@@ -100,8 +100,14 @@ interface EditLike {
      * existed wires a bag without them, and this interface describes what the deferred chunk
      * INJECTS, which is a runtime fact.
      */
-    listConflicts?: (layerId?: string) => Promise<StorageConflictRecord[]>;
-    clearConflicts?: (layerId?: string) => Promise<boolean>;
+    listConflicts?: (
+        layerId?: string,
+        scope?: { readonly allProfiles?: boolean }
+    ) => Promise<StorageConflictRecord[]>;
+    clearConflicts?: (
+        layerId?: string,
+        scope?: { readonly allProfiles?: boolean }
+    ) => Promise<boolean>;
 }
 
 /**
@@ -123,6 +129,8 @@ interface StorageConflictRecord {
     serverFeature: Record<string, unknown> | null;
     readOutcome: "read" | "absent" | "unreadable";
     settledBy: "lastWriteWins";
+    /** The profile the conflicting write was queued under; absent before 3.18.0. */
+    profileId?: string;
 }
 
 /**
@@ -926,19 +934,29 @@ const Storage = {
      * invented, because making the write depend on a read the server may not grant would
      * repeal the policy in silence.
      *
+     * ⚠️ **Only the active profile's conflicts, unless asked otherwise.** The archive is shared
+     * by every profile of the origin; a conflict belongs to the profile its write was queued
+     * under (`profileId`). One archived before 3.18.0 has none, and is listed under every
+     * profile.
+     *
      * @param layerId - Restrict to this layer; omitted, every layer.
+     * @param scope - `allProfiles: true` lists every profile's conflicts, each with its
+     *   `profileId`.
      * @returns The archived conflicts — empty when the offline engine is not wired.
      * @example
      * const crushed = await GeoLeaf?.Storage?.listConflicts?.("sites");
      * console.info(`${crushed?.length ?? 0} version(s) écrasée(s) conservée(s)`);
      */
-    async listConflicts(layerId?: string): Promise<StorageConflictRecord[]> {
+    async listConflicts(
+        layerId?: string,
+        scope?: { readonly allProfiles?: boolean }
+    ): Promise<StorageConflictRecord[]> {
         const edit = this._modules.edit;
         if (!edit?.listConflicts) {
             Log.warn("[GeoLeaf.Storage] listConflicts — moteur hors-ligne non câblé.");
             return [];
         }
-        return edit.listConflicts(layerId);
+        return edit.listConflicts(layerId, scope);
     },
 
     /**
@@ -948,18 +966,26 @@ const Storage = {
      * names one store (`layers`), so nothing reclaims this one on its own — the same
      * property that keeps unsynchronised work out of eviction's reach.
      *
+     * ⚠️ **Only the active profile's conflicts, unless asked otherwise** — the scope
+     * {@link Storage.listConflicts} reads: a purge under one profile must not erase what
+     * another profile's operator has not looked at yet.
+     *
      * @param layerId - Restrict to this layer; omitted, every layer.
+     * @param scope - `allProfiles: true` purges every profile's conflicts.
      * @returns `true` when the purge ran, `false` when the engine is not wired.
      * @example
      * await GeoLeaf?.Storage?.clearConflicts?.("sites");
      */
-    async clearConflicts(layerId?: string): Promise<boolean> {
+    async clearConflicts(
+        layerId?: string,
+        scope?: { readonly allProfiles?: boolean }
+    ): Promise<boolean> {
         const edit = this._modules.edit;
         if (!edit?.clearConflicts) {
             Log.warn("[GeoLeaf.Storage] clearConflicts — moteur hors-ligne non câblé.");
             return false;
         }
-        return edit.clearConflicts(layerId);
+        return edit.clearConflicts(layerId, scope);
     },
 
     /**

@@ -97,6 +97,74 @@ function _unregisterOwn(): void {
 }
 
 /**
+ * `localStorage` key of the contexts that hold GeoLeaf's worker: a JSON array of holder ids.
+ *
+ * The worker is registered for the whole origin, and two configurations can live on one origin —
+ * two pages of an integrator, a configuration handed over in memory — of which only one enables
+ * the PWA. The one without it used to unregister the worker at boot, and the other lost its
+ * offline mode: its next load without network found no worker. A context cannot tell, from one
+ * load to the next, whether it registered the worker itself; this registry is that memory.
+ */
+const PWA_HOLDERS_STORAGE_KEY = "gl-pwa-holders";
+
+/** Holder id of a context booted without a profile. */
+const NO_PROFILE_HOLDER = "_none";
+
+/** Same format as a profile id. The registry is user-writable: anything else is dropped. */
+const HOLDER_ID_RE = /^[a-zA-Z0-9_-]{1,50}$/;
+
+/** Bound on the registry: a holder that never comes back must not grow it without end. */
+const MAX_HOLDERS = 32;
+
+/** The holders on record. Unreadable or corrupt counts as none — the former behaviour. */
+function _readHolders(): string[] {
+    try {
+        const parsed: unknown = JSON.parse(localStorage.getItem(PWA_HOLDERS_STORAGE_KEY) ?? "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((v): v is string => typeof v === "string" && HOLDER_ID_RE.test(v));
+    } catch {
+        return [];
+    }
+}
+
+/** Best-effort write: a storage that refuses leaves the registry as it was. */
+function _writeHolders(holders: string[]): void {
+    try {
+        if (holders.length === 0) localStorage.removeItem(PWA_HOLDERS_STORAGE_KEY);
+        else localStorage.setItem(PWA_HOLDERS_STORAGE_KEY, JSON.stringify(holders));
+    } catch {
+        /* best-effort — private browsing, quota */
+    }
+}
+
+/** Records `id` as holding the worker; the most recent holders are kept. */
+function _addHolder(id: string): void {
+    const holders = _readHolders().filter((h) => h !== id);
+    holders.push(id);
+    _writeHolders(holders.slice(-MAX_HOLDERS));
+}
+
+/**
+ * Withdraws `id` and says whether another context still holds the worker.
+ *
+ * ⚠️ When the registry cannot be read, nobody holds it: the worker goes, as it always did. That
+ * is the safe direction for the single-profile case, whose motive stands — a profile that turns
+ * the PWA off must not stay controlled by a residual GeoLeaf worker.
+ */
+function _withdrawHolder(id: string): boolean {
+    const others = _readHolders().filter((h) => h !== id);
+    _writeHolders(others);
+    return others.length > 0;
+}
+
+/** Holder id of this context: its profile, or a shared id without one. */
+function _holderId(profileId: string | null | undefined): string {
+    return typeof profileId === "string" && HOLDER_ID_RE.test(profileId)
+        ? profileId
+        : NO_PROFILE_HOLDER;
+}
+
+/**
  * Requests origin-level persistent storage and logs the verdict.
  *
  * Browsers evict **per origin, not per store**: under disk pressure a "best-effort"
@@ -159,13 +227,20 @@ const SW_REGISTER_IDLE_CEILING_MS = 3000;
 
 /** Lifecycle for the PWA capability (SW registration + persistent storage + install prompt). */
 export const PwaLifecycle = {
-    init(pwaConfig?: PwaLifecycleConfig): void {
+    /**
+     * @param pwaConfig - `modules.pwa`, merged.
+     * @param profileId - The active profile: the id under which this context holds the worker.
+     */
+    init(pwaConfig?: PwaLifecycleConfig, profileId?: string | null): void {
+        const holder = _holderId(profileId);
         if (!pwaConfig || pwaConfig.enabled !== true) {
-            // Opt-in gate off: ensure no residual GeoLeaf SW keeps controlling the page.
+            // Opt-in gate off: ensure no residual GeoLeaf SW keeps controlling the page — unless
+            // another context of this origin still holds it (see `PWA_HOLDERS_STORAGE_KEY`).
             // Ours only — the host's workers are not ours to revoke.
-            _unregisterOwn();
+            if (!_withdrawHolder(holder)) _unregisterOwn();
             return;
         }
+        _addHolder(holder);
 
         // Register the unified service worker (scope "./" supports sub-path deploys), OFF the
         // critical path — but never conditionally on it.
@@ -216,9 +291,13 @@ export const PwaLifecycle = {
      *
      * ⚠️ Same narrowing as `init()`'s closed gate: a teardown must not revoke a worker the
      * host application installed.
+     *
+     * ⚠️ A teardown is not a withdrawal: the holders on record stay, and while there is one the
+     * worker stays too. Unregistering it here would cost the next offline load of this very
+     * context — and of any other that holds it — its worker.
      */
     _reset(): void {
         PWAManager._reset();
-        _unregisterOwn();
+        if (_readHolders().length === 0) _unregisterOwn();
     },
 };

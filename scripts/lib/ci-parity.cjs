@@ -529,31 +529,6 @@ const EXEMPTIONS = {
         // Without a local E2E suite, installing browsers no longer excuses anything.
         temoin: (ctx) => ctx.e2eLeaves.has("playwright test"),
     },
-    "vitest run --reporter=json --outputFile=test-results.json --reporter=verbose": {
-        classe: "FORME",
-        gateReelle: false,
-        motif:
-            "même corpus, ordonnanceur différent — `ci.yml` lance vitest en mode `projects`, " +
-            "`ci:local` essaime par turbo. L'INCLUSION des périmètres est vérifiée par " +
-            "test-scope.cjs, pas conventionnée.",
-        temoin: () => {
-            const ts = require("./test-scope.cjs");
-            ts.assertUnitScopeCoversRoot(); // throws if the inclusion falls
-            // ⚠️ …and the inclusion is true ON EMPTY if both perimeters
-            // shrink in concert. A witness must verify what it delegates to
-            // is not empty, otherwise the doctrine stops one level too early.
-            return ts.rootProjectScope().length >= 8;
-        },
-    },
-    "node scripts/check-test-failures.cjs": {
-        classe: "CI-SEULE",
-        gateReelle: true,
-        motif:
-            "parse `test-results.json`, que seul le reporter JSON de `ci.yml` produit. " +
-            "`ci:local` se fie aux codes de sortie de turbo/vitest.",
-        temoin: (ctx) =>
-            [...ctx.ciLeaves].some((l) => l.includes("--outputFile=test-results.json")),
-    },
     "node scripts/build-deploy.cjs": {
         classe: "ÉQUIVALENCE",
         gateReelle: false,
@@ -923,9 +898,7 @@ const COVERED_REMOTELY = {
     // (= `npm run test:coverage:all`, `ci.yml`), whose perimeter is
     // `unitScope()` — **18 packages**, the three included — and whose
     // per-package task is `vitest run --coverage`, a superset of
-    // `vitest run guard.test`. The same leaf as the one covering
-    // `run-tests.cjs` below; the two entries thus stand or fall together,
-    // which is correct.
+    // `vitest run guard.test`.
     "turbo run test:guards": {
         couvertePar: "node scripts/run-tests.cjs --coverage",
         motif:
@@ -934,14 +907,6 @@ const COVERED_REMOTELY = {
             "dans les 18 paquets d'`unitScope()` — elle exécute donc les mêmes suites de garde " +
             "et davantage. ⚠️ Ce n'est PAS `npx vitest run` qui la couvre : son périmètre " +
             "racine exclut `editor` et `offline-ui`, soit 3 des fichiers de garde.",
-    },
-    "node scripts/run-tests.cjs": {
-        couvertePar: "node scripts/run-tests.cjs --coverage",
-        motif:
-            "même script, même corpus de paquets, un drapeau de plus : la feuille distante " +
-            "exécute les suites ET les instrumente. Elle fait donc strictement plus que la " +
-            "locale, jamais moins. Les deux ne diffèrent que par le coût, qui est précisément " +
-            "la raison pour laquelle le local ne l'instrumente pas à chaque passe.",
     },
 };
 

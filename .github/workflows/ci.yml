@@ -588,8 +588,22 @@ jobs:
                       '0000000000000000000000000000000000000000' && format('{0}..{1}',
                       github.event.before, github.sha) || '' }}
 
-            - name: Unit tests — all packages (workspace mode, JSON reporter)
-              run: npx vitest run --reporter=json --outputFile=test-results.json --reporter=verbose
+            # Miroir local obligatoire : `ci:local` porte la même étape (« Coverage gate »).
+            # 34 tâches (17 paquets). Un seul provider : **istanbul partout**. 4 paquets ont un
+            # seuil calibré au lieu de 75 (core, addpoi, storage, field-renderer — seuils à
+            # cliqueter vers le haut).
+            # Passe par `scripts/run-tests.cjs`, comme `ci:local`. Le `--concurrency=4` était
+            # écrit en dur ICI et dans `ci-local.cjs` : deux copies d'un même réglage, dont une
+            # seule des deux bornait la moitié du produit (concurrence turbo × workers vitest).
+            # Le runner pose les deux facteurs.
+            #
+            # C'est aussi la SEULE exécution de la suite unitaire. Jusqu'au 20/10/2026 une étape
+            # « Unit tests » la jouait d'abord nue (`npx vitest run`, mode `projects`) : un
+            # sous-ensemble de ce run-ci (mêmes configs de paquet, moins les paquets exclus du
+            # mode `projects`), donc des tests payés deux fois. Le run sous couverture écrit un
+            # `test-results.json` par paquet, que l'étape suivante lit.
+            - name: Coverage gate — turbo test:coverage (34 tâches, seuils par package)
+              run: npm run test:coverage:all
 
             - name: Check zero test failures
               run: node scripts/check-test-failures.cjs
@@ -599,19 +613,11 @@ jobs:
               if: always()
               with:
                   name: test-results
-                  path: test-results.json
+                  path: |
+                      packages/*/test-results.json
+                      packages/plugins/*/test-results.json
+                      packages/libs/*/test-results.json
                   if-no-files-found: warn
-
-            # Miroir local obligatoire : `ci:local` porte la même étape (« Coverage gate »).
-            # 34 tâches (17 paquets). Un seul provider : **istanbul partout**. 4 paquets ont un
-            # seuil calibré au lieu de 75 (core, addpoi, storage, field-renderer — seuils à
-            # cliqueter vers le haut).
-            # Passe par `scripts/run-tests.cjs`, comme `ci:local`. Le `--concurrency=4` était
-            # écrit en dur ICI et dans `ci-local.cjs` : deux copies d'un même réglage, dont une
-            # seule des deux bornait la moitié du produit (concurrence turbo × workers vitest).
-            # Le runner pose les deux facteurs.
-            - name: Coverage gate — turbo test:coverage (34 tâches, seuils par package)
-              run: npm run test:coverage:all
 
             - name: Upload coverage report (HTML Istanbul — core)
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

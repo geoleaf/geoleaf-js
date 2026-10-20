@@ -224,6 +224,13 @@ function recordBasemapChanges(page) {
  * evaluation failed on "Resulting promise was garbage collected" — why is not established. The
  * failure named this helper instead of the rebuild.
  *
+ * The budget is `WAIT_MS`, like every other wait of this file, and not a shorter one of its own.
+ * Under software rendering, the first frames of a vector style with the relief on hold the page
+ * for seconds — no request, no log, no frame — and that hold grows as CPU shrinks: 3.5 s on the
+ * workstation, 8 to 11 s on two cores, 12 to 18 s on one. The nightly runner held it 16 s, and a
+ * 15 s budget failed there three attempts out of three — though the switch had logged its end
+ * before the hold began.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {string} key
  * @returns {Promise<boolean>} Whether the switch FINISHED within the budget.
@@ -239,7 +246,7 @@ async function switchTo(page, key) {
             ({ from, key }) =>
                 /** @type {any} */ (window).__basemapChanges.slice(from).includes(key),
             { from, key },
-            { timeout: 15_000 }
+            { timeout: WAIT_MS }
         )
         .then(
             () => true,

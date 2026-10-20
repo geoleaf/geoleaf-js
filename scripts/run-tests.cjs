@@ -5,7 +5,8 @@
  *
  * Usage:
  *   node scripts/run-tests.cjs              # `turbo run test`          (unit gate)
- *   node scripts/run-tests.cjs --coverage   # `turbo run test:coverage` (coverage gate)
+ *   node scripts/run-tests.cjs --coverage   # `turbo run test:coverage` (coverage gate,
+ *                                           #  one JSON report per package)
  *   node scripts/run-tests.cjs --force      # bypasses the turbo cache (measurements)
  *   node scripts/run-tests.cjs --fanout=2   # forced swarm, to re-measure the budget
  *
@@ -35,11 +36,26 @@
  * arbitration but by accretion — each package had been added the day it received
  * tests, and five never were. It is the described failure mode: a hard list does not
  * break, it silently stops matching.
+ *
+ * ## The coverage run is also the CI's only unit run — hence its reports
+ *
+ * `ci.yml` used to run the whole suite twice: bare (`npx vitest run`, `projects` mode, a
+ * JSON reporter read by `check-test-failures.cjs`), then under coverage. The second runs a
+ * superset of the first — every package of `unitScope()`, with the same per-package
+ * configs — and a red test turns it red as well. The bare run is gone; the coverage run
+ * now writes `test-results.json` in each package, which `check-test-failures.cjs` reads
+ * and requires for every package of the scope.
+ *
+ * ⚠️ Those reports are deleted BEFORE turbo starts. A task turbo replays from its cache
+ * restores its own (`outputs` of `test:coverage`); a task that never ran — turbo stopped
+ * early — must leave NO report behind, or the next check would read the green of an
+ * earlier run.
  */
 
 "use strict";
 
 const { spawnSync } = require("node:child_process");
+const fs = require("node:fs");
 const path = require("node:path");
 
 const testScope = require("./lib/test-scope.cjs");
@@ -86,12 +102,12 @@ const TEST_FANOUT = fanoutArg ? parsedFanout : DEFAULT_FANOUT;
 const NPM_SHELL = process.platform === "win32";
 
 /**
- * The invariant that makes "`ci:local` green → safe push" true.
+ * The root `projects` run (`npm run test:vitest`) must not test a package this gate skips.
  *
- * Throws if the local gate tested less than `ci.yml`. Checked at EVERY run, not in a
- * separate gate one would forget to wire: the push protocol makes `ci:local` the only
- * criterion before spending GitHub Actions quota, and a narrower local perimeter
- * would empty that guarantee while displaying nothing.
+ * This invariant used to carry "`ci:local` green → safe push": `ci.yml` ran the suite in
+ * `projects` mode, so a narrower local perimeter emptied that guarantee. `ci.yml` now runs
+ * THIS script (`--coverage`), so both sides read the same perimeter by construction; what
+ * remains is the developer's root run, kept from drifting away from the gate.
  */
 try {
     testScope.assertUnitScopeCoversRoot();
@@ -110,6 +126,23 @@ if (packages.length === 0) {
 }
 
 const task = WITH_COVERAGE ? "test:coverage" : "test";
+
+// Vitest arguments passed to the `test:coverage` tasks only (turbo does not forward them
+// to the `build` dependencies). The config's `verbose` reporter is restated: a CLI
+// `--reporter` replaces the configured ones instead of adding to them.
+const REPORT_ARGS = WITH_COVERAGE
+    ? [
+          "--",
+          "--reporter=verbose",
+          "--reporter=json",
+          `--outputFile.json=${testScope.UNIT_REPORT_FILE}`,
+      ]
+    : [];
+
+if (WITH_COVERAGE) {
+    for (const p of packages)
+        fs.rmSync(path.join(p.absDir, testScope.UNIT_REPORT_FILE), { force: true });
+}
 
 /**
  * Launches turbo with both budget factors set together.
@@ -158,6 +191,7 @@ async function main() {
             `--concurrency=${TEST_FANOUT}`,
             ...(FORCE ? ["--force"] : []),
             ...packages.map((p) => `--filter=${p.name}`),
+            ...REPORT_ARGS,
         ],
         { cwd: ROOT, stdio: "inherit", shell: NPM_SHELL, env: process.env }
     );

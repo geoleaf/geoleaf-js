@@ -75,7 +75,7 @@ export function deactivateAnnotation(): void {
     if (_container) _container.removeEventListener("click", _onContainerClick, true);
     if (_map) {
         exitExclusiveMode(_map);
-        setCursor("grab");
+        setCursor("");
     }
     _map = null;
     _canvas = null;

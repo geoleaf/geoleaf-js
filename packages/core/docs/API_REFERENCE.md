@@ -268,10 +268,15 @@ container `el` — an element or its id — and returns a handle that takes it d
 | `on(event, handler)` | `(event, handler) => () => void` | Subscribes to a GeoLeaf event — the page's bus, the types of `Events.on()`. Removed at `unmount()`. A subscription made before the boot hears its first event.                                                                 |
 | `getMap()`           | `() => IMapAdapter \| null`      | The map of this application, or `null` before it is built and once it is unmounted.                                                                                                                                            |
 
-Both take the same options: `config` / `configUrl`, `beforeBoot`, `onPerformanceMetrics`,
-`watchdogMs`, and **`maplibregl`** — the engine. MapLibre 6 no longer sets `globalThis.maplibregl`;
-the core puts the option there. Without it, the global is read as before; with neither, the boot
-fails with `reason: "engine"`.
+Both take the same options: `config` / `configUrl`, `profile`, `beforeBoot`,
+`onPerformanceMetrics`, `watchdogMs`, and **`maplibregl`** — the engine. MapLibre 6 no longer sets
+`globalThis.maplibregl`; the core puts the option there. Without it, the global is read as before;
+with neither, the boot fails with `reason: "engine"`.
+
+**`profile`** (core ≥ 3.18.0) decides which profile boots. Without it, a profile the user picked
+with the profile switcher — stored in the browser, for the whole origin — wins over the
+configuration's `data.activeProfile`. An application that passes its own configuration and must
+not inherit that choice passes `profile`. A value other than letters, digits, `_` and `-` (at most 50) is refused with a console warning, and ignored.
 
 **One application per page.** A `mount()` while an application is alive — mounted by `mount()` or
 by `boot()` — unmounts it first, and the previous handle goes inert: a view that mounts before the
@@ -1457,7 +1462,7 @@ of [SECURITY](SECURITY.md). Three of its methods **erase** something, and none e
 | Method                                             | Erases                                                                                                                                                                                             | Leaves alone                                                   | Resolves with                                             |
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
 | `Storage.clearAll()`                               | Every profile prepared for offline use — its cached files, and the cached basemap tiles — plus the engine's `preferences` and `metadata` stores. Emits `geoleaf:storage:cleared`                   | Entities, edits waiting to be sent, photos, archived conflicts | Nothing. Rejects if the database transaction fails        |
-| `Storage.clearConflicts(layerId?)`                 | The archived conflicts of one layer, or of every layer when `layerId` is omitted. Nothing else ever purges that store                                                                              | Everything else                                                | `true` once purged, `false` when the engine is not loaded |
+| `Storage.clearConflicts(layerId?)`                 | The active profile's archived conflicts, of one layer or of every layer when `layerId` is omitted — every profile's with `{ allProfiles: true }`. Nothing else ever purges that store              | Everything else                                                | `true` once purged, `false` when the engine is not loaded |
 | `Storage.discardQuarantined(id, confirmedLocalId)` | ONE entry set aside, on explicit confirmation: `confirmedLocalId` must be that entry's `localId`, read from `Storage.DB.listPendingEdits()`. Its local record then returns to the server's version | Every other entry                                              | `{ ok }`, with the motive of a refusal                    |
 
 An edit otherwise leaves the device only when the server accepts it. Nothing is evicted to make

@@ -28,6 +28,7 @@
 
 import { Log } from "../../../utils/log/index.js";
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
+import { activeSourceKey, fromActiveSource } from "../pull/source-key.js";
 
 /** Single `preferences`-store key carrying the pull state of every layer. */
 export const PULL_STATE_KEY = "offline.pullState";
@@ -67,6 +68,13 @@ export interface LayerPullState {
     readonly mark?: string;
     /** What `mark` was taken against — source, marker property and extent, serialised. */
     readonly scope?: string;
+    /**
+     * The source the run pulled from (`../pull/source-key.ts`). The entry is one per layer id
+     * and shared by every profile of the origin: it speaks only for a layer pulling from this
+     * same source, and a pull from another source replaces it. Absent on an entry written before
+     * 3.18.0, which speaks for every layer of that id, as before.
+     */
+    readonly sourceKey?: string;
 }
 
 /** The state of every layer, as persisted. */
@@ -110,14 +118,37 @@ function isLayerPullState(value: unknown): value is LayerPullState {
 function sanitise(v: LayerPullState): LayerPullState {
     // The type says `string | undefined`, the store may hold anything: the guard vouched for
     // the three required fields only, so these two are tested here, at run time.
-    const { mark, scope } = v;
+    const { mark, scope, sourceKey } = v;
     const scoped = typeof mark === "string" && typeof scope === "string";
     return {
         at: v.at,
         outcome: v.outcome,
         written: v.written,
         ...(scoped ? { mark, scope } : {}),
+        ...(typeof sourceKey === "string" ? { sourceKey } : {}),
     };
+}
+
+/**
+ * Every entry stored, whatever its source — what a write must preserve.
+ *
+ * @param db - The storage facade.
+ * @returns The validated entries; `{}` when nothing was written. Throws on a failed read.
+ */
+async function readAllEntries(db: PreferenceStore | null | undefined): Promise<PullStateMap> {
+    const raw = await db?.getPreference?.(PULL_STATE_KEY, null);
+    if (!raw || typeof raw !== "object") return {};
+    const out: Record<string, LayerPullState> = {};
+    for (const [layerId, value] of Object.entries(raw as Record<string, unknown>)) {
+        // 🛑 The re-read value comes from IndexedDB, hence from a deserialiser:
+        // `__proto__` comes out as an OWN property, enumerated by
+        // `Object.entries`, and `out[k] = …` would send it to the prototype
+        // setter. The store is not a trusted source just because it is local — it
+        // is written by code of several versions, and it survives deployments.
+        if (isUnsafeKey(layerId)) continue;
+        if (isLayerPullState(value)) out[layerId] = sanitise(value);
+    }
+    return out;
 }
 
 /**
@@ -125,6 +156,10 @@ function sanitise(v: LayerPullState): LayerPullState {
  *
  * Never throws: unavailable persistence yields an empty state, and the report will
  * say `declaredNeverPulled` — which is true from the observer's point of view.
+ *
+ * ⚠️ **Only the entries speaking for the active profile's layers.** An entry left by a pull
+ * from another source — a layer of the same id, declared elsewhere — is not this layer's
+ * state, and reads as absent (`LayerPullState.sourceKey`).
  *
  * @param db - The storage facade (`GeoLeaf.Storage.DB`).
  * @returns The per-layer state; `{}` when nothing was ever written or the read fails.
@@ -134,19 +169,13 @@ function sanitise(v: LayerPullState): LayerPullState {
  */
 export async function readPullState(db: PreferenceStore | null | undefined): Promise<PullStateMap> {
     try {
-        const raw = await db?.getPreference?.(PULL_STATE_KEY, null);
-        if (!raw || typeof raw !== "object") return {};
-        const out: Record<string, LayerPullState> = {};
-        for (const [layerId, value] of Object.entries(raw as Record<string, unknown>)) {
-            // 🛑 The re-read value comes from IndexedDB, hence from a deserialiser:
-            // `__proto__` comes out as an OWN property, enumerated by
-            // `Object.entries`, and `out[k] = …` would send it to the prototype
-            // setter. The store is not a trusted source just because it is local — it
-            // is written by code of several versions, and it survives deployments.
-            if (isUnsafeKey(layerId)) continue;
-            if (isLayerPullState(value)) out[layerId] = sanitise(value);
-        }
-        return out;
+        const all = await readAllEntries(db);
+        // `Object.fromEntries` defines own properties — and `readAllEntries` dropped the unsafe keys.
+        return Object.fromEntries(
+            Object.entries(all).filter(([layerId, state]) =>
+                fromActiveSource(state, activeSourceKey(layerId))
+            )
+        );
     } catch (err) {
         Log.warn("[Offline.PullState] Lecture impossible :", (err as Error).message);
         return {};
@@ -165,6 +194,9 @@ export async function readPullState(db: PreferenceStore | null | undefined): Pro
  * Never throws: a successful pull must not be reported as failed because its marker
  * could not be written.
  *
+ * The entry is tagged with the source the active profile's layer pulls from, and replaces
+ * whatever another source left under the same layer id.
+ *
  * @param db - The storage facade (`GeoLeaf.Storage.DB`).
  * @param layerId - Layer concerned.
  * @param state - The outcome to record.
@@ -182,8 +214,10 @@ export async function writePullState(
     state: LayerPullState
 ): Promise<void> {
     try {
-        const current = await readPullState(db);
-        await db?.setPreference?.(PULL_STATE_KEY, { ...current, [layerId]: state });
+        const current = await readAllEntries(db);
+        const source = activeSourceKey(layerId);
+        const tagged: LayerPullState = source === null ? state : { ...state, sourceKey: source };
+        await db?.setPreference?.(PULL_STATE_KEY, { ...current, [layerId]: tagged });
         Log.debug(
             `[Offline.PullState] "${layerId}" — ${state.outcome}, ${state.written} écrite(s)`
         );
@@ -212,13 +246,19 @@ export async function writePullState(
  */
 export async function clearPullMarks(db: PreferenceStore | null | undefined): Promise<void> {
     try {
-        const current = await readPullState(db);
+        // Every entry, whatever its source: a purge empties the whole store.
+        const current = await readAllEntries(db);
         // `Object.fromEntries` defines own properties: a key read back from IndexedDB never
-        // reaches a prototype setter — and `readPullState` already dropped the unsafe ones.
+        // reaches a prototype setter — and `readAllEntries` already dropped the unsafe ones.
         const unmarked = Object.fromEntries(
             Object.entries(current).map(([layerId, state]) => [
                 layerId,
-                { at: state.at, outcome: state.outcome, written: state.written },
+                {
+                    at: state.at,
+                    outcome: state.outcome,
+                    written: state.written,
+                    ...(state.sourceKey === undefined ? {} : { sourceKey: state.sourceKey }),
+                },
             ])
         );
         await db?.setPreference?.(PULL_STATE_KEY, unmarked);

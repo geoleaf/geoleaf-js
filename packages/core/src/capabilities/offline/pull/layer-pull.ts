@@ -72,6 +72,7 @@ import { StorageContract } from "../../../kernel/shared/index.js";
 import { coreConfigGet, coreProfileLayerConfig } from "../config-seam.js";
 import { parseDataOrigins, pullVerdict } from "../data-origins.js";
 import { readPullState, writePullState, type LayerPullState } from "../report/pull-state.js";
+import { sourceKeyOf } from "./source-key.js";
 import type { FeatureRecord } from "../../../contracts/sync.contract.js";
 import type { GeoLeafOfflinePullProgressDetail } from "../../../contracts/event-bus.contract.js";
 
@@ -187,7 +188,11 @@ interface FeatureWriter {
         removed?: number;
         seen?: readonly string[];
     } | null>;
-    sweepLayerFeatures?: (layerId: string, keep: ReadonlySet<string>) => Promise<number | null>;
+    sweepLayerFeatures?: (
+        layerId: string,
+        keep: ReadonlySet<string>,
+        sourceKey?: string
+    ) => Promise<number | null>;
     getPreference?: (key: string, defaultValue?: unknown) => Promise<unknown>;
     setPreference?: (key: string, value: unknown) => Promise<unknown>;
 }
@@ -208,17 +213,23 @@ interface FeatureWriter {
  *   depending on the writer. The server marker goes into `version`, and nowhere else —
  *   it is what the conflict filter will compare.
  *
+ * The record also carries the source that served it (`sourceKey`): the store is shared by every
+ * profile of the origin, and a layer of the same id may pull from another source elsewhere
+ * (`./source-key.ts`).
+ *
  * @param layerId - Destination layer.
  * @param feature - The GeoJSON feature as the source returned it.
  * @param versionProperty - Property carrying the freshness timestamp.
  * @param now - Local timestamp applied to the whole batch.
+ * @param sourceKey - The source pulled — `sourceKeyOf` of the plan.
  * @returns The record, or `null` when the feature has no server identity.
  */
 function toFeatureRecord(
     layerId: string,
     feature: unknown,
     versionProperty: string,
-    now: number
+    now: number,
+    sourceKey: string
 ): FeatureRecord | null {
     if (!feature || typeof feature !== "object") return null;
     const shape = feature as { id?: unknown; properties?: unknown };
@@ -248,6 +259,7 @@ function toFeatureRecord(
                 ? null
                 : { kind: "timestamp", value: String(marker) },
         feature,
+        sourceKey,
     };
 }
 
@@ -399,18 +411,23 @@ function emitPullProgress(layerId: string, written: number, matched: number | un
  * ⚠️ **Never fails the pull.** The entities were written; a sweep that cannot run leaves the
  * store as it was before this function, and says so.
  *
+ * Only this source's records are candidates: what another source served on a layer of the same
+ * id is not this answer's to judge (`./source-key.ts`).
+ *
  * @param db - The storage seam.
  * @param layerId - The layer pulled.
  * @param seen - Every key the run's pages named.
+ * @param sourceKey - The source pulled.
  * @returns How many records were removed; 0 when the sweep could not run.
  */
 async function sweepAbsent(
     db: FeatureWriter,
     layerId: string,
-    seen: ReadonlySet<string>
+    seen: ReadonlySet<string>,
+    sourceKey: string
 ): Promise<number> {
     try {
-        return (await db.sweepLayerFeatures?.(layerId, seen)) ?? 0;
+        return (await db.sweepLayerFeatures?.(layerId, seen, sourceKey)) ?? 0;
     } catch (error) {
         Log.warn(
             `[Offline.Pull] "${layerId}" — retrait des entités absentes impossible :`,
@@ -513,8 +530,9 @@ async function consumePage(
 
     const records: FeatureRecord[] = [];
     const tombstones: FeatureRecord[] = [];
+    const source = sourceKeyOf(plan.ogcConfig.url, plan.ogcConfig.collectionId);
     for (const feature of page.features) {
-        const record = toFeatureRecord(layerId, feature, plan.versionProperty, now);
+        const record = toFeatureRecord(layerId, feature, plan.versionProperty, now, source);
         if (!record) continue;
         trackMarker(run, record);
         (isTombstone(feature, plan.deletedProperty) ? tombstones : records).push(record);
@@ -832,7 +850,12 @@ export async function pullLayer(
     // refusal, and reading it as the whole collection would remove everything after them.
     const cursorRefused = outcome.cursorRefused === true;
     if (mode === "full" && !capped && !outcome.aborted && !cursorRefused) {
-        run.removed += await sweepAbsent(db, layerId, run.seen);
+        run.removed += await sweepAbsent(
+            db,
+            layerId,
+            run.seen,
+            sourceKeyOf(ogcConfig.url, ogcConfig.collectionId)
+        );
     }
     if (run.markUnreadable) {
         Log.warn(

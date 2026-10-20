@@ -1267,10 +1267,10 @@ test.describe("6.2.9 — Scale through the real loader", () => {
 // WHAT THIS BLOCK MEASURES THAT §6.2.9 DOES NOT. An offline layer is not fetched: the loader
 // asks the engine for it (`kernel/geojson/loader/single-layer.ts` →
 // `Storage.DB.getLayerFeatureCollection`), and that read has no cursor and no extent. It reads
-// the WHOLE layer (`getAll` on the layer index), then the WHOLE outbox (`pendingDeletions`, to
-// hide what was deleted on the device), then filters. Its cost grows with the parc, and it is
-// paid before the first pixel — which is the question that decides whether a spatial key is
-// worth a schema migration.
+// the WHOLE layer (`getAll` on the layer index), then the WHOLE outbox (`layerQueueView`, to
+// hide what was deleted on the device and another profile's work), then filters. Its cost grows
+// with the parc, and it is paid before the first pixel — which is the question that decides
+// whether a spatial key is worth a schema migration.
 //
 // 🛑 THE DATABASE IS ON DISK, AND THAT IS WHY THIS BLOCK OPENS ITS OWN CONTEXT. Playwright's
 // default context is incognito-like, and Chromium keeps an off-the-record profile's IndexedDB
@@ -1378,7 +1378,7 @@ test.describe("6.2.10 — Local read at scale", () => {
                         const writeMs = performance.now() - t0;
                         // ⚠️ QUARANTINED, so the drain the page arms at boot leaves them alone:
                         // a pass writing to the outbox while the read is timed would measure
-                        // contention. `pendingDeletions` still reads every one of them.
+                        // contention. `layerQueueView` still reads every one of them.
                         await new Promise((resolve, reject) => {
                             const tx = db._db.transaction(["outbox"], "readwrite");
                             const store = tx.objectStore("outbox");
@@ -1427,7 +1427,7 @@ test.describe("6.2.10 — Local read at scale", () => {
                         const scans = [];
                         for (let i = 0; i < 5; i++) {
                             const t = performance.now();
-                            await edits.pendingDeletions(id);
+                            await edits.layerQueueView(id);
                             scans.push(performance.now() - t);
                         }
                         return {

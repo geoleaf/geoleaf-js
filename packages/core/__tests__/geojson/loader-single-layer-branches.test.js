@@ -119,8 +119,7 @@ function baseGeoLeaf(overrides = {}) {
             setLayerStyle: vi.fn(),
         },
         _GeoJSONClustering: {
-            getClusteringStrategy: () => ({ shouldCluster: false, useSharedCluster: false }),
-            getSharedPOICluster: () => null,
+            getClusteringStrategy: () => ({ shouldCluster: false }),
         },
         ThemeCache: { store: vi.fn() },
         ThemeSelector: null,
@@ -444,7 +443,7 @@ describe("geojson/loader/single-layer — branch coverage", () => {
     it("no clusterGroup when shouldCluster=false", async () => {
         globalThis.GeoLeaf = baseGeoLeaf({
             _GeoJSONClustering: {
-                getClusteringStrategy: () => ({ shouldCluster: false, useSharedCluster: false }),
+                getClusteringStrategy: () => ({ shouldCluster: false }),
             },
         });
         await LoaderSingleLayer._loadSingleLayer(
@@ -486,13 +485,14 @@ describe("geojson/loader/single-layer — branch coverage", () => {
             {}
         );
         expect(state.adapter.addGeoJSONLayer).toHaveBeenCalled();
-        expect(state.layers.get("lyrIndep").useSharedCluster).toBe(false);
+        // No cluster is shared between layers: the layer data carries no such flag.
+        expect(state.layers.get("lyrIndep")).not.toHaveProperty("useSharedCluster");
     });
 
     it("registers layer with clusterGroup null (MapLibre native clustering)", async () => {
         await LoaderSingleLayer._loadSingleLayer(
             "lyrSC",
-            "Shared Cluster",
+            "Clustered",
             {
                 _cachedData: { type: "FeatureCollection", features: [] },
                 zIndex: 10,
@@ -501,36 +501,6 @@ describe("geojson/loader/single-layer — branch coverage", () => {
         );
         expect(state.adapter.addGeoJSONLayer).toHaveBeenCalled();
         expect(state.layers.get("lyrSC").clusterGroup).toBeNull();
-    });
-
-    // ── _setupPendingSharedCluster — cluster not yet available ────────────
-    it("triggers earlyReturn with pendingSharedCluster when POI cluster is null (first call)", async () => {
-        vi.useFakeTimers();
-        const mockPoiCluster = { addLayer: vi.fn(), on: vi.fn() };
-        const getSharedPOICluster = vi
-            .fn()
-            .mockReturnValueOnce(null)
-            .mockReturnValue(mockPoiCluster);
-        globalThis.GeoLeaf = baseGeoLeaf({
-            _GeoJSONClustering: {
-                getClusteringStrategy: () => ({ shouldCluster: true, useSharedCluster: true }),
-                getSharedPOICluster,
-            },
-        });
-        const result = await LoaderSingleLayer._loadSingleLayer(
-            "lyrPend",
-            "Pending",
-            {
-                _cachedData: { type: "FeatureCollection", features: [] },
-                zIndex: 10,
-            },
-            {}
-        );
-        // earlyReturn was triggered — layer registered in pending state
-        expect(result.id).toBe("lyrPend");
-        // Run timers for the setTimeout in _setupPendingSharedCluster
-        vi.runAllTimers();
-        vi.useRealTimers();
     });
 
     // ── Shared cluster retry — no longer applicable (MapLibre native clustering) ──

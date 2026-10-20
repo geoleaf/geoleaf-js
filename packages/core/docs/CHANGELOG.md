@@ -11,7 +11,100 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## `@geoleaf-plugins/isochrone` 1.0.2 - 2026-10-19
+## [3.18.0] - Unreleased
+
+### Fixed
+
+- **A queued write no longer follows a profile switch.** The write target of a queued capture was
+  resolved from the profile active when the queue drained, and switching profile reloads the page,
+  whose first pass sends what the previous page left. A capture made under one profile thus went
+  to the `write` target of the other profile's layer of the same id, with that profile's
+  credentials and no signal. Or, when the other profile had no such layer, it was set aside as
+  `layerNoLongerWritable`. Each capture now carries the profile it was made under, and a pass sends
+  only the active profile's. The others wait, untouched — not sent, not set aside, and spending
+  nothing of their attempts — until their profile is active again. A capture queued by an earlier
+  version carries no profile and is sent as before.
+- **A capture is no longer drawn under another profile.** The queue keeps every profile's work,
+  and the device store keeps one copy of each entity per layer id, whatever the profile. After a
+  switch to a profile with a layer of the same id, that layer showed the other profile's work:
+  its creations and edits, restored at boot and read from the device when the layer reads offline,
+  and its deletions, replayed on the layer at boot. A layer now draws the active profile's work
+  only. A layer that only the other profile's work fills is read as never downloaded, and loads
+  from the network. One limit remains: an entity the other profile edited or deleted stays off
+  this profile's layer until that edit is sent. A capture queued by an earlier version carries no
+  profile and is drawn under every profile, as before.
+- **A download no longer takes another profile's downloaded data.** The same device store holds
+  what every profile downloaded, one copy per layer id. Two profiles of the same origin declaring a
+  layer of the same id over two different sources met there: a complete download under one removed
+  what the other had downloaded, the layer then showed the other profile's entities, and a layer
+  only the other profile had downloaded read as downloaded and empty instead of loading from the
+  network. Each downloaded entity now records the source that served it, and so does the download
+  status of each layer: a layer shows, and a download removes, only what its own source served.
+  Two profiles over the same source still share what they downloaded. One limit remains: when both
+  sources serve an entity of the same id, the last download keeps its copy, and the other profile's
+  layer misses that entity until its own next download, which is complete. Data downloaded by an
+  earlier version records no source and is shown under every profile, as before.
+- **An archived conflict stays with its profile.** `Storage.listConflicts()` listed, and
+  `Storage.clearConflicts()` purged, the conflicts of every profile of the origin: a conflict met
+  by a write queued under one profile showed under another whose layer merely shared the id, and a
+  purge there erased it unread. Both now cover the active profile's conflicts only. A conflict
+  archived by an earlier version has no profile and is covered under every profile, as before.
+- **Two tabs no longer drain the queue at the same time**, where the browser provides the Web
+  Locks API. The same capture could leave twice: the server's answer on `local_id` kept a
+  duplicate row from being created, but the capture spent its attempts twice.
+- **A profile without the PWA no longer takes the service worker from another profile of the same
+  origin.** With `modules.pwa.enabled` off, GeoLeaf unregistered its worker at boot, even when
+  another configuration of the same origin — another page, a configuration passed in memory —
+  enabled the PWA. That one lost its offline mode on its next load without network. A profile that
+  enables the PWA is now recorded in `localStorage["gl-pwa-holders"]`, and the worker is
+  unregistered only once no profile holds it. A profile that turns the PWA off still removes the
+  worker it had. If that storage cannot be read, the worker is unregistered, as before.
+- **After a measurement, dragging the map shows `grabbing` again**
+  (`@geoleaf-plugins/measure` 1.0.13). Leaving a distance, area, circle, rectangle, annotation or
+  custom tool wrote `cursor: grab` on the map canvas. At rest that looks the same, but it overrode
+  the engine's own rule, and the cursor stayed on `grab` while the map was dragged. The tools now
+  leave no cursor of their own behind.
+- **The editor's strokes follow a palette switch** (`@geoleaf-plugins/editor` 1.6.2). The editor
+  takes its stroke colour from the palette's accent, but it watched for a change in a place no
+  switch touches: once the editor had started, a new palette never reached its strokes. It now
+  listens to `geoleaf:palette-changed`. Light and dark still leave the stroke colour unchanged, on
+  purpose: the light theme's accent is a pale interface tone, which a stroke on the map would lose.
+- **`@geoleaf-plugins/routing` 1.0.5 and `@geoleaf-plugins/table` 1.2.1** — test comments only.
+  A routing test said its fixture-capture script was the only code of the repository that talks to
+  a provider; the isochrone plugin's capture script is the second. Four table test comments and
+  titles named their module by a path that does not exist (`table/panel.ts` for `src/panel.ts`,
+  `table/table-layer.ts` for `src/table-layer.ts`). Both
+  packages ship their sources, hence the versions. No runtime change.
+
+### Added
+
+- **`OutboxEntry.profileId`** — the profile a queued capture was made under. Optional: an entry
+  queued before 3.18.0 has none, and the database schema does not change.
+- **`ConflictRecord.profileId`**, and **`{ allProfiles: true }`** for `Storage.listConflicts()` and
+  `Storage.clearConflicts()` — the profile a conflicting write was queued under, and the option
+  that reads or purges every profile's conflicts, as `listPendingEdits` does.
+- **`FeatureRecord.sourceKey`** — the source a downloaded entity came from (its URL and
+  collection). Optional: a record written before 3.18.0 has none, and the database schema does not
+  change.
+- **`GeoLeaf.Storage.DB.listPendingEdits({ allProfiles: true })`** lists every profile's pending
+  edits, each with its `profileId`. Without the option it lists the active profile's only, as
+  `getSyncCounts()` and `getSyncStatus()` count them. An export of field work passes the option
+  (`@geoleaf-plugins/offline-ui` 1.7.1 does).
+- **`profile`, an option of `GeoLeaf.boot()` and `GeoLeaf.mount()`**, decides which profile boots.
+  Until now, a profile the user had picked with the profile switcher — stored in the browser for
+  the whole origin — won over the `data.activeProfile` of a configuration passed by the
+  integrator, while `config` was documented as "applied as-is". `profile` wins over that stored
+  choice. Without it, nothing changes, and the documentation of `config` now says so.
+
+### Removed
+
+- **`useSharedCluster`**, from the clustering decision (`ClusterStrategyResult`) and from a loaded
+  layer's data. It said whether a point layer joined a cluster shared with other layers, but no
+  layer is clustered with another: every clustered layer has its own source, and nothing read the
+  flag. The capability's schema descriptions and the configuration guide no longer describe a
+  shared cluster.
+
+## `@geoleaf-plugins/isochrone` 1.0.2 - 2026-10-20
 
 Published without a core release: `@geoleaf/core` stays at 3.17.0.
 

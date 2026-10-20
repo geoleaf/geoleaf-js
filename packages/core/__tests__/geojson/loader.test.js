@@ -11,7 +11,7 @@ vi.mock("../../src/kernel/geojson/shared.js", () => ({
     },
 }));
 vi.mock("../../src/capabilities/cluster/strategy.js", () => ({
-    getClusteringStrategy: vi.fn(() => ({ shouldCluster: false, useSharedCluster: false })),
+    getClusteringStrategy: vi.fn(() => ({ shouldCluster: false })),
 }));
 vi.mock("../../src/utils/general/di-accessors.js", () => ({
     getLog: () => ({ info: vi.fn(), warn: vi.fn(), debug: vi.fn(), error: vi.fn() }),

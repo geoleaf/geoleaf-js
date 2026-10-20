@@ -1,5 +1,5 @@
 /**
- * table/panel.ts unit tests.
+ * src/panel.ts unit tests.
  *
  * Ported from the core suite (`__tests__/table/table-panel.test.js`).
  * Adaptation: import paths point at the plugin's flat `src/` layout; the GeoJSON /
@@ -345,7 +345,7 @@ describe("modules/table/panel", () => {
     });
 });
 
-// ── T22 — table/panel.ts branch coverage ─────────────────────────────────────
+// ── T22 — src/panel.ts branch coverage ─────────────────────────────────────
 describe("modules/table/panel — T22 branch coverage", () => {
     beforeEach(() => {
         document.body.innerHTML = "";

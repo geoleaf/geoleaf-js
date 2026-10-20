@@ -35,6 +35,7 @@
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
 import { fetchBounded } from "../../../utils/general/fetch-bounded.js";
+import { belongsToActiveProfile } from "../config-seam.js";
 import type {
     ConflictReadOutcome,
     ConflictRecord,
@@ -54,6 +55,7 @@ interface ConflictsModule {
     put(record: ConflictRecord): Promise<void>;
     list(): Promise<ConflictRecord[]>;
     listByLayer(layerId: string): Promise<ConflictRecord[]>;
+    remove(layerId: string, localId: string): Promise<void>;
     clear(layerId?: string): Promise<void>;
 }
 
@@ -181,17 +183,27 @@ function _conflicts(): ConflictsModule | null {
  * ⚠️ Empty rather than throwing when the engine is not wired — a host asking "what did I
  * crush?" on an application without the offline capability gets "nothing", which is true.
  *
+ * ⚠️ **Only the active profile's conflicts, unless asked otherwise.** The store is shared by every
+ * profile of the origin, and a conflict belongs to the profile its write was queued under
+ * (`profileId`) — the same predicate as the queue's. A conflict without one, archived before
+ * 3.18.0, is listed under every profile.
+ *
  * @param layerId - Restrict to this layer; omitted, every layer.
+ * @param scope - `allProfiles: true` lists every profile's conflicts.
  * @returns The archived conflicts, newest write of each entity.
  * @example
  * const crushed = await GeoLeaf?.Storage?.listConflicts?.("sites");
  * console.info(`${crushed?.length ?? 0} version(s) écrasée(s) conservée(s)`);
  */
-export async function listConflicts(layerId?: string): Promise<ConflictRecord[]> {
+export async function listConflicts(
+    layerId?: string,
+    scope: { readonly allProfiles?: boolean } = {}
+): Promise<ConflictRecord[]> {
     const store = _conflicts();
     if (!store) return [];
     try {
-        return layerId === undefined ? await store.list() : await store.listByLayer(layerId);
+        const all = layerId === undefined ? await store.list() : await store.listByLayer(layerId);
+        return scope.allProfiles === true ? all : all.filter(belongsToActiveProfile);
     } catch (error) {
         Log.warn("[Offline.Conflict] lecture du magasin impossible :", String(error));
         return [];
@@ -207,16 +219,30 @@ export async function listConflicts(layerId?: string): Promise<ConflictRecord[]>
  * key bounds the store at one record per entity; this is what empties it once an operator
  * has looked at what was crushed.
  *
+ * ⚠️ **Only the active profile's conflicts, unless asked otherwise** — the scope
+ * {@link listConflicts} reads. A purge under one profile must not erase what another profile's
+ * operator has not looked at yet.
+ *
  * @param layerId - Restrict to this layer; omitted, every layer.
+ * @param scope - `allProfiles: true` purges every profile's conflicts.
  * @returns `true` when the purge ran, `false` when the engine is not wired.
  * @example
  * await GeoLeaf?.Storage?.clearConflicts?.("sites");
  */
-export async function clearConflicts(layerId?: string): Promise<boolean> {
+export async function clearConflicts(
+    layerId?: string,
+    scope: { readonly allProfiles?: boolean } = {}
+): Promise<boolean> {
     const store = _conflicts();
     if (!store) return false;
     try {
-        await store.clear(layerId);
+        if (scope.allProfiles === true) {
+            await store.clear(layerId);
+            return true;
+        }
+        for (const conflict of await listConflicts(layerId)) {
+            await store.remove(conflict.layerId, conflict.localId);
+        }
         return true;
     } catch (error) {
         Log.warn("[Offline.Conflict] purge du magasin impossible :", String(error));
@@ -257,6 +283,7 @@ export async function recordConflict(
         serverFeature: snapshot.row,
         readOutcome: snapshot.outcome,
         settledBy: "lastWriteWins",
+        ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
     };
 
     const store = _conflicts();

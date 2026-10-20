@@ -152,8 +152,8 @@ function main() {
     // fingerprint.
     //
     // ⚠️ AND IT OVER-SIGNALS, DELIBERATELY NOT FIXED HERE. It compares COMMAND
-    // LEAVES, not coverages: `ci.yml` runs `npx vitest run` where `ci:local` goes
-    // through `scripts/run-tests.cjs` — same verification, two invocations. A note
+    // LEAVES, not coverages: the same verification launched two ways — `test:guards`
+    // locally, the whole suite under coverage remotely — reads as two leaves. A note
     // that over-signals stays readable; a red that over-signals gets bypassed.
     // Triaging the 13, and the decision to port the real absences into `ci.yml`, are
     // a DECISION with CI cost — recorded, not taken here.

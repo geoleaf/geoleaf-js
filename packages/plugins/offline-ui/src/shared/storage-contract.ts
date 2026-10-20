@@ -68,6 +68,11 @@ export interface PendingEdit {
     createdAt: number;
     /** The edited entity, or `null` when the store no longer carries it. */
     feature: unknown;
+    /**
+     * The profile the edit was captured under — absent on an edit captured before core
+     * 3.18.0. Only an `allProfiles: true` listing can hold another profile's edits.
+     */
+    profileId?: string;
 }
 
 /**
@@ -98,8 +103,11 @@ export interface StorageContractDB {
      * @returns Its API, or `null` when the engine is not ready or the name unknown.
      */
     _ensureModule?(name: string): Record<string, unknown> | null;
-    /** The captures still owed to the server, joined to their entity. */
-    listPendingEdits(): Promise<PendingEdit[]>;
+    /**
+     * The captures still owed to the server, joined to their entity — the active profile's
+     * only, unless `allProfiles: true`.
+     */
+    listPendingEdits(options?: { readonly allProfiles?: boolean }): Promise<PendingEdit[]>;
     /** Removes the `synced` entities (the cache), never the outbox. */
     purgeCachedFeatures(): Promise<{ removed: number; preserved: number }>;
 }

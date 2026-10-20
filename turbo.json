@@ -6,16 +6,14 @@
     // strict.tsconfig.base.json doit invalider le cache turbo QUELLE QUE SOIT la tâche — pas
     // seulement celles dont quelqu'un a pensé à lister $TURBO_ROOT$/packages/build-config/**.
     //
-    // ⚠️ `vitest.config.ts` RACINE ajouté le 01/08/2026. C'est le fichier que la CI lit
-    // LITTÉRALEMENT — `ci.yml` lance `npx vitest run` en mode `projects`, sans turbo. Il
-    // n'était listé dans les `inputs` d'aucune tâche : le modifier ne changeait pas un seul
-    // hash local, donc `npm test` restait en HIT sur un verdict antérieur pendant que la CI
-    // exécutait la nouvelle configuration. Un `globalDependencies` est le bon niveau : il
-    // n'appartient à aucun paquet, et il gouverne le périmètre de tous.
+    // `vitest.config.ts` RACINE y a figuré du 01/08 au 20/10/2026 : `ci.yml` le lisait
+    // (`npx vitest run` en mode `projects`, sans turbo) quand aucune tâche locale ne le
+    // lisait, et le modifier laissait `npm test` en HIT sur un verdict antérieur. Retiré
+    // quand `ci.yml` a cessé de lancer ce run : la CI passe désormais par
+    // `npm run test:coverage:all`, donc par les configs de paquet que les `inputs` portent.
     "globalDependencies": [
         "packages/build-config/tsconfig.base.json",
-        "packages/build-config/tsconfig.package.json",
-        "vitest.config.ts"
+        "packages/build-config/tsconfig.package.json"
     ],
     "tasks": {
         "build": {
@@ -154,7 +152,10 @@
         },
         "test:coverage": {
             "dependsOn": ["build"],
-            "outputs": ["coverage/**"],
+            // `test-results.json` : le rapport JSON que `run-tests.cjs --coverage` fait écrire
+            // et que `check-test-failures.cjs` exige pour chaque paquet. Sans lui ici, une tâche
+            // rejouée par le cache ne le restaurerait pas.
+            "outputs": ["coverage/**", "test-results.json"],
             "passThroughEnv": ["GEOLEAF_TEST_FANOUT"],
             "inputs": [
                 "src/**",

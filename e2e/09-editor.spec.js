@@ -452,6 +452,76 @@ test("[editor] cancelDrawing abandons the shape being traced, and disarms the to
     expect(second).toEqual({ cancel: false, discard: false });
 });
 
+// The stroke takes the PALETTE's accent, read on `<html>`, and keeps it across light and dark:
+// under the theme classes the accent is an interface token, a pale surface tone in light, in
+// which a stroke all but vanishes on the map. The editor did read `<html>`, but watched its
+// classes, which nothing changes — a palette switch changes `data-gl-palette` — so it never
+// followed a palette switch.
+test("[editor] the stroke takes the palette's accent, keeps it in dark, and follows a palette switch", async ({
+    page,
+}) => {
+    /** `--gl-color-accent` as `<html>` resolves it — the palette's accent. */
+    const rootAccent = () =>
+        page.evaluate(() =>
+            getComputedStyle(document.documentElement)
+                .getPropertyValue("--gl-color-accent")
+                .trim()
+                .toLowerCase()
+        );
+    /** The colour of the line being traced, as terra-draw hands it to the engine. */
+    const strokeColor = () =>
+        page.evaluate(() => {
+            const native = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+            const line = native.getSource("td-linestring")?.serialize?.().data?.features?.[0];
+            return String(line?.properties?.lineStringColor ?? "").toLowerCase();
+        });
+
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.UI.applyTheme("dark"));
+    await armEditor(page);
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.toggleMenu());
+    const tool = page.locator('button.gl-editor-tool-btn[data-tool="polyline"]');
+    await expect(tool).toBeVisible({ timeout: 5000 });
+    await tool.click();
+    await page.waitForFunction(
+        () => {
+            const native = /** @type {any} */ (window).GeoLeaf?.Core?.getMap?.()?.getNativeMap?.();
+            try {
+                return !!native?.getLayer?.("td-linestring");
+            } catch {
+                return false;
+            }
+        },
+        null,
+        { timeout: 15000 }
+    );
+    await page.waitForTimeout(300);
+
+    const canvas = page.locator(".maplibregl-canvas");
+    await canvas.click({ position: { x: 220, y: 200 } });
+    await canvas.click({ position: { x: 340, y: 240 } });
+    await expect.poll(async () => (await drawnFeatures(page)).linestring).toBe(1);
+
+    const root = await rootAccent();
+    expect(root).toMatch(/^#[0-9a-f]{3,6}$/);
+    await expect.poll(strokeColor).toBe(root);
+
+    // What `ThemePalette.set()` does, in order: the attribute on <html>, then the event. The
+    // full variant does not mount the palette capability; its sheets are in the bundle.
+    await page.evaluate(() => {
+        document.documentElement.dataset.glPalette = "blue";
+        document.dispatchEvent(
+            new CustomEvent("geoleaf:palette-changed", { detail: { palette: "blue" } })
+        );
+    });
+    const blue = await rootAccent();
+    expect(blue).not.toBe(root);
+    // A new vertex re-renders the line with the mode's current styles.
+    await canvas.click({ position: { x: 300, y: 320 } });
+    await expect.poll(strokeColor).toBe(blue);
+
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Editor.cancelDrawing());
+});
+
 test("[editor] discardDraft from the feature-created listener: the form never opens", async ({
     page,
 }) => {

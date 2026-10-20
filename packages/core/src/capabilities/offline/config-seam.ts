@@ -71,3 +71,39 @@ export const coreProfileLayerConfig = profileLayerConfig;
  * console.info(`${declarees.length} couche(s) déclarée(s) hors-ligne`);
  */
 export const coreProfileLayers = profileLayers;
+
+/**
+ * Identifier of the active profile — the one a queued write is stamped with.
+ *
+ * Read through the live `GeoLeaf.Config`, like {@link coreConfigGet}, for the same
+ * chunk-timing reason.
+ *
+ * @returns The identifier, or `null` when no profile is loaded.
+ */
+export function coreActiveProfileId(): string | null {
+    const config = getGeoLeaf()?.Config as { getActiveProfileId?: () => unknown } | undefined;
+    const id = config?.getActiveProfileId?.();
+    return typeof id === "string" && id !== "" ? id : null;
+}
+
+/**
+ * Does this queue entry belong to the active profile? — the single routing predicate.
+ *
+ * 🛑 **The drain, the tallies and the quarantine exit all ask this one function.** A write
+ * target is resolved from the ACTIVE profile, so an entry of another profile must neither
+ * leave (it would reach the endpoint of a layer that merely shares its id) nor be judged
+ * (its layer is not declared here, which is not a fault of the entry).
+ *
+ * ⚠️ An entry with no `profileId` predates the field and belongs to every profile: that is
+ * the former behaviour, kept on purpose (see `OutboxEntry.profileId`). An entry stamped
+ * while no profile is loaded belongs to none — it waits, rather than being sent nowhere.
+ *
+ * @param entry - The queue entry, or any record carrying its `profileId`.
+ * @returns `true` when the entry may be replayed, counted and judged under this profile.
+ * @example
+ * const owed = (await outbox.list()).filter(belongsToActiveProfile);
+ * console.info(`${owed.length} écriture(s) de ce profil en file`);
+ */
+export function belongsToActiveProfile(entry: { readonly profileId?: string }): boolean {
+    return entry.profileId === undefined || entry.profileId === coreActiveProfileId();
+}

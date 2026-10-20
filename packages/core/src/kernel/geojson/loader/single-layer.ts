@@ -361,7 +361,7 @@ function _buildSingleLayerData(args: {
     layerId: string;
     layerLabel: string;
     def: DefLike;
-    clusterResult: { shouldCluster: boolean; useSharedCluster?: boolean };
+    clusterResult: { shouldCluster: boolean };
     features: unknown[];
     layerBasePath: string;
     inferredGeometry: string;
@@ -388,7 +388,6 @@ function _buildSingleLayerData(args: {
         clusterGroup: clusterResult.shouldCluster ? layerId : null,
         legendsConfig: def.legends,
         basePath: layerBasePath,
-        useSharedCluster: clusterResult.useSharedCluster,
         features,
         geometryType: def.geometryType || inferredGeometry,
         currentStyle: preloadedStyleData,
@@ -535,7 +534,7 @@ async function _doLoadSingleLayerMapLibre(
     const cluster: ClusterResolversLike | undefined = getCluster();
     const clusterResult = cluster
         ? cluster.getClusteringStrategy(def, geojsonData)
-        : { shouldCluster: false, useSharedCluster: false };
+        : { shouldCluster: false };
     _warnOnUnclusteredPointVolume(features, clusterResult, layerId, layerLabel, Log);
     const adapterOptions = buildSingleLayerAdapterOptions(
         def,

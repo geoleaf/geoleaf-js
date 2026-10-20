@@ -4,8 +4,8 @@ title: cluster — la politique de regroupement des points
 capability_id: cluster
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1c1e60f8c
-date: 12 octobre 2026
+verifie_contre: 25e9487ac
+date: 20 octobre 2026
 ---
 
 # cluster — la politique de regroupement des points
@@ -41,8 +41,9 @@ bord » serait faux du second : `applyGeoJSONClusterOptions` **mute en place** l
 qu'on lui passe, et journalise. Ce qu'aucun des deux ne touche, c'est la carte, le DOM ou un état
 partagé.
 
-- `getClusteringStrategy(def, data)` → `{ shouldCluster, useSharedCluster }` : cette couche
-  doit-elle être regroupée, et rejoint-elle le **cluster POI partagé** ou obtient-elle le sien ?
+- `getClusteringStrategy(def, data)` → `{ shouldCluster }` : cette couche doit-elle être
+  regroupée ? Une couche regroupée a **toujours sa propre source** : aucun cluster n'est partagé
+  entre couches.
 - `applyGeoJSONClusterOptions(options, def, layerId, Log)` : renseigne rayon et zoom de coupure
   dans le sac d'options de l'adaptateur.
 
@@ -54,10 +55,12 @@ type supercluster.
 - **Elle ne crée aucune source et n'installe aucune couche.** Les primitives natives — création de
   la source regroupée, câblage du clic pour éclater un amas — vivent dans l'adaptateur MapLibre.
   Cette capacité ne possède que la **politique** et les **défauts**.
-- **Elle ne pilote pas le cluster POI partagé.** Son rayon est fixé **côté adaptateur**
-  (`adapters/maplibre/maplibre-cluster.ts`), délibérément : l'adaptateur MapLibre ne doit pas
-  importer `capabilities/`. Voir §Décisions — c'est la source de la confusion la plus probable sur
-  `clusterRadius`.
+- **Elle ne fixe aucun plafond au zoom de coupure.** `clusterMaxZoom` n'est borné que par
+  `sourceMaxZoom - 1` (CL-12) : un profil peut demander des grappes jusqu'au zoom le plus profond.
+  Le plafond de 17 qu'appliquait l'ancien rendu POI n'a jamais valu pour une couche GeoJSON.
+- **Elle ne fournit pas le repli de l'adaptateur.** L'adaptateur porte son propre rayon de repli
+  (50, `adapters/maplibre/maplibre-cluster.ts`) pour une source regroupée qui n'en reçoit aucun ;
+  une couche passée par la capacité en reçoit toujours un (CL-11), donc ce repli ne la touche pas.
 - **Elle n'a pas de cycle de vie.** Aucun `ICoreModule`, aucun écouteur ; le gate est appliqué par
   le lecteur de configuration, pas au boot.
 - **Elle ne regroupe pas ce qui n'a pas de points.** Une couche sans géométrie `Point` n'est jamais
@@ -67,23 +70,23 @@ type supercluster.
 
 ## Fonctionnalités
 
-| ID    | Fonctionnalité                            | Entrée                                                                           | Sortie observable                                                                                                                                                                         | Code                                         |
-| ----- | ----------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| CL-01 | Gate de capacité                          | `modules.cluster.enabled: false`                                                 | `{ shouldCluster: false, useSharedCluster: false }` — sortie immédiate, plus aucune décision                                                                                              | `strategy.ts` → `getClusteringStrategy`      |
-| CL-02 | Refus explicite par couche                | `def.clustering.enabled === false`                                               | Aucun regroupement, même si le défaut global l'active                                                                                                                                     | `strategy.ts` → `_resolveClusteringConfig`   |
-| CL-03 | Double gate global / par couche           | `clustering: false` et aucun opt-in de couche                                    | Aucun regroupement. Un `def.clustering.enabled: true` suffit à passer outre                                                                                                               | `strategy.ts` → `getClusteringStrategy`      |
-| CL-04 | Sonde de géométrie                        | Données sans aucune géométrie `Point`                                            | Aucun regroupement — y compris quand `features` est absent                                                                                                                                | `strategy.ts` → `getClusteringStrategy`      |
-| CL-05 | Détection d'un réglage propre à la couche | `maxClusterRadius` ou `disableClusteringAtZoom` **différent** du défaut effectif | La couche obtient **son propre** cluster (`useSharedCluster: false`)                                                                                                                      | `strategy.ts` → `_resolveCustomClusterCheck` |
-| CL-06 | Stratégie `unified`                       | `clusterStrategy: "unified"` (le défaut)                                         | Regroupement **et** partage du cluster POI                                                                                                                                                | `strategy.ts` → `_resolveStrategyResult`     |
-| CL-07 | Stratégie `by-layer`                      | `clusterStrategy: "by-layer"`                                                    | Regroupé **seulement** si la couche l'a demandé (`clustering: true` ou `clustering.enabled: true`), et alors jamais partagé — le défaut global seul ne regroupe rien sous cette stratégie | `strategy.ts` → `_resolveStrategyResult`     |
-| CL-08 | Stratégie `by-source`                     | `clusterStrategy: "by-source"`                                                   | Regroupé sauf si `clusterStrategies["by-source"].sources.geojson === false`                                                                                                               | `strategy.ts` → `_resolveStrategyResult`     |
-| CL-09 | Stratégie `json-only`                     | `clusterStrategy: "json-only"`                                                   | Regroupé **seulement** si `clusterStrategies["json-only"].geojsonClustering === true`                                                                                                     | `strategy.ts` → `_resolveStrategyResult`     |
-| CL-10 | Stratégie inconnue                        | `clusterStrategy: "n-importe-quoi"`                                              | Avertissement journalisé **puis repli sur `unified`** — jamais d'échec                                                                                                                    | `strategy.ts` → `_resolveStrategyResult`     |
-| CL-11 | Résolution du rayon                       | Couche chargée avec regroupement                                                 | `clusterRadius` = def de couche → `modules.cluster` → constante partagée, dans cet ordre                                                                                                  | `options.ts` → `applyGeoJSONClusterOptions`  |
-| CL-12 | Résolution du zoom de coupure             | idem                                                                             | `clusterMaxZoom` résolu selon la même précédence, **puis borné à `sourceMaxZoom - 1`**                                                                                                    | `options.ts` → `applyGeoJSONClusterOptions`  |
-| CL-13 | Journalisation des valeurs appliquées     | Couche regroupée                                                                 | Un `Log.info` nommant la couche, le rayon et le zoom de coupure **effectivement retenus**                                                                                                 | `options.ts`                                 |
-| CL-14 | Deux surfaces montées                     | `registerGlobals(gl)`                                                            | `GeoLeaf.Cluster` (publique, deux lectures) **et** `GeoLeaf._Cluster` (privée, les deux résolveurs)                                                                                       | `install.ts`                                 |
-| CL-15 | Déclaration introspectable                | —                                                                                | `getAllCapabilities()` la liste, `getCapabilitySchema("cluster")` rend son schéma, `clusterStrategy` avec son `enum`                                                                      | `cluster-capability.ts`                      |
+| ID    | Fonctionnalité                        | Entrée                                          | Sortie observable                                                                                                                                                | Code                                        |
+| ----- | ------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| CL-01 | Gate de capacité                      | `modules.cluster.enabled: false`                | `{ shouldCluster: false }` — sortie immédiate, plus aucune décision                                                                                              | `strategy.ts` → `getClusteringStrategy`     |
+| CL-02 | Refus explicite par couche            | `def.clustering.enabled === false`              | Aucun regroupement, même si le défaut global l'active                                                                                                            | `strategy.ts` → `_resolveClusteringConfig`  |
+| CL-03 | Double gate global / par couche       | `clustering: false` et aucun opt-in de couche   | Aucun regroupement. Un `def.clustering.enabled: true` suffit à passer outre                                                                                      | `strategy.ts` → `getClusteringStrategy`     |
+| CL-04 | Sonde de géométrie                    | Données sans aucune géométrie `Point`           | Aucun regroupement — y compris quand `features` est absent                                                                                                       | `strategy.ts` → `getClusteringStrategy`     |
+| CL-05 | Réglage propre à la couche            | `maxClusterRadius` ou `disableClusteringAtZoom` | Ne décide **pas** du regroupement : il façonne les grappes de cette couche (CL-11, CL-12)                                                                        | `options.ts` → `applyGeoJSONClusterOptions` |
+| CL-06 | Stratégie `unified`                   | `clusterStrategy: "unified"` (le défaut)        | Toute couche de points est regroupée, chacune dans sa propre source                                                                                              | `strategy.ts` → `_resolveStrategyResult`    |
+| CL-07 | Stratégie `by-layer`                  | `clusterStrategy: "by-layer"`                   | Regroupé **seulement** si la couche l'a demandé (`clustering: true` ou `clustering.enabled: true`) — le défaut global seul ne regroupe rien sous cette stratégie | `strategy.ts` → `_resolveStrategyResult`    |
+| CL-08 | Stratégie `by-source`                 | `clusterStrategy: "by-source"`                  | Regroupé sauf si `clusterStrategies["by-source"].sources.geojson === false`                                                                                      | `strategy.ts` → `_resolveStrategyResult`    |
+| CL-09 | Stratégie `json-only`                 | `clusterStrategy: "json-only"`                  | Regroupé **seulement** si `clusterStrategies["json-only"].geojsonClustering === true`                                                                            | `strategy.ts` → `_resolveStrategyResult`    |
+| CL-10 | Stratégie inconnue                    | `clusterStrategy: "n-importe-quoi"`             | Avertissement journalisé **puis repli sur `unified`** — jamais d'échec                                                                                           | `strategy.ts` → `_resolveStrategyResult`    |
+| CL-11 | Résolution du rayon                   | Couche chargée avec regroupement                | `clusterRadius` = def de couche → `modules.cluster` → constante partagée, dans cet ordre                                                                         | `options.ts` → `applyGeoJSONClusterOptions` |
+| CL-12 | Résolution du zoom de coupure         | idem                                            | `clusterMaxZoom` résolu selon la même précédence, **puis borné à `sourceMaxZoom - 1`**                                                                           | `options.ts` → `applyGeoJSONClusterOptions` |
+| CL-13 | Journalisation des valeurs appliquées | Couche regroupée                                | Un `Log.info` nommant la couche, le rayon et le zoom de coupure **effectivement retenus**                                                                        | `options.ts`                                |
+| CL-14 | Deux surfaces montées                 | `registerGlobals(gl)`                           | `GeoLeaf.Cluster` (publique, deux lectures) **et** `GeoLeaf._Cluster` (privée, les deux résolveurs)                                                              | `install.ts`                                |
+| CL-15 | Déclaration introspectable            | —                                               | `getAllCapabilities()` la liste, `getCapabilitySchema("cluster")` rend son schéma, `clusterStrategy` avec son `enum`                                             | `cluster-capability.ts`                     |
 
 Les tests qui couvrent ces lignes : `packages/core/__tests__/capabilities/cluster/` — déclaration,
 stratégie, options.
@@ -148,9 +151,10 @@ Ignoré sous `unified` et `by-layer`. Les deux sites de lecture retombent sur un
 Deux conséquences réelles : un auteur de profil lisant `getCapabilitySchema("cluster")` **ne
 pouvait pas prédire** le rayon obtenu ; et une couche réglée explicitement sur le zoom de coupure
 réellement appliqué (14) était classée « réglage propre » à tort, donc sortie du cluster partagé.
+Cette comparaison a disparu depuis, avec le drapeau de partage qu'elle servait : plus aucun rendu ne
+le lisait.
 
-Depuis, le schéma (annoncé), le lecteur (appliqué) et la comparaison de surcharge importent la
-**même fabrique**, `clusterConfigDefaults()` — égalité par construction, la divergence ne peut plus
+Le schéma (annoncé) et le lecteur (appliqué) importent la **même fabrique**, `clusterConfigDefaults()` — égalité par construction, la divergence ne peut plus
 se réouvrir. Le principe des deux nombres a été élargi à **tout** le jeu de défauts : le schéma
 annonçait cinq défauts que le lecteur ne matérialisait pas, chaque consommateur réappliquant son
 propre repli.
@@ -226,7 +230,7 @@ définition de couche ; elle n'a pas d'état à annoncer.
 | **Une couche servie VIDE est regroupée sur sa DÉCLARATION (3.16.0)** | Une source est regroupée ou non pour de bon, à sa création, et la stratégie ne lisait que le premier lot : une couche de points créée vide puis remplie n'était jamais regroupée, quoi que demande sa configuration. Une collection vide ne dit rien de ce qu'elle portera ; la déclaration (`geometry` ou `geometryType`, famille des points) répond pour elle. Une donnée qui montre des entités reste crue contre la déclaration | Regrouper toute couche servie vide — une source regroupée n'indexe que des points : les lignes et polygones écrits ensuite ne seraient pas dessinés. Rebâtir la source à la première écriture — elle perdrait ses sous-couches, ses filtres et ses écouteurs |
 | **Deux surfaces séparées** (`Cluster` publique / `_Cluster` privée)  | Le chargeur a besoin des résolveurs, l'intégrateur a besoin de lire l'état. Les mélanger publierait deux fonctions internes dans le contrat d'API                                                                                                                                                                                                                                                                                   | Une seule surface — soit on publie l'interne, soit le chargeur importe statiquement la capacité et la rend non retirable                                                                                                                                     |
 | **Lecture paresseuse par localisateur de service**                   | Un import statique depuis `kernel/geojson/loader/` épinglerait la capacité dans la clôture eager de tous les bundles. Relire le seam à l'appel rend l'ordre d'écriture indifférent                                                                                                                                                                                                                                                  | L'import statique — l'état antérieur, celui qui épinglait la capacité dans la clôture eager                                                                                                                                                                  |
-| **Le rayon du cluster POI reste côté adaptateur**                    | L'adaptateur MapLibre **ne doit pas importer `capabilities/`** : la frontière moteur est à sens unique. Le défaut POI vit donc dans `adapters/maplibre/maplibre-cluster.ts`, et cette capacité ne possède que la politique GeoJSON                                                                                                                                                                                                  | Le centraliser ici — inverserait la frontière moteur                                                                                                                                                                                                         |
+| **Le repli de l'adaptateur reste côté adaptateur**                   | L'adaptateur MapLibre **ne doit pas importer `capabilities/`** : la frontière moteur est à sens unique. Son rayon de repli vit donc dans `adapters/maplibre/maplibre-cluster.ts`, et cette capacité ne possède que la politique GeoJSON                                                                                                                                                                                             | Le centraliser ici — inverserait la frontière moteur                                                                                                                                                                                                         |
 | **Une fabrique de défauts partagée** (`constants.ts`)                | Trois copies avaient **divergé en valeur**, pas seulement en emplacement : annoncé 50, appliqué 80, comparé 80/18. Un auteur de profil ne pouvait pas prédire ce qu'il obtiendrait                                                                                                                                                                                                                                                  | Trois littéraux et un test qui les compare — le test aurait signalé la divergence, pas empêché sa réouverture                                                                                                                                                |
 | **Fabrique plutôt que constante partagée**                           | `clusterStrategies` est un objet mutable : une constante partagée laisserait un appelant modifier les défauts du suivant                                                                                                                                                                                                                                                                                                            | Un objet gelé exporté                                                                                                                                                                                                                                        |
 | **Les replis `?? …` des consommateurs subsistent**                   | Ils couvrent les appelants qui fabriquent une configuration à la main (tests, fusions par couche) sans passer par le lecteur — défense en profondeur, pas duplication                                                                                                                                                                                                                                                               | Les retirer maintenant que le lecteur matérialise tout                                                                                                                                                                                                       |
@@ -256,18 +260,18 @@ saute les installeurs sans fabrique — le même non-événement que l'ancien bl
 
 Le reste passe par `utils/general/di-accessors` (`getLog`). **Aucun import de
 `adapters/maplibre/`** — une règle ESLint l'interdit à tout `capabilities/**`, et c'est
-exactement ce qui explique où vit le défaut du cluster POI.
+exactement ce qui explique où vit le repli de l'adaptateur.
 
 ### Frontière moteur, dans les deux sens
 
 C'est la capacité où la frontière est la plus visible :
 
 - **Elle ne construit rien** : les primitives natives restent dans l'adaptateur.
-- **L'adaptateur ne la lit pas** : il porte ses propres défauts POI plutôt que d'importer
+- **L'adaptateur ne la lit pas** : il porte son propre rayon de repli plutôt que d'importer
   `capabilities/`.
 
-Les deux moitiés de cette frontière expliquent pourquoi `clusterRadius` de `modules.cluster` ne
-gouverne **que** les couches GeoJSON, et jamais le cluster POI partagé.
+Les deux moitiés de cette frontière expliquent pourquoi le repli de l'adaptateur (50) et le défaut
+de la capacité (80) sont deux nombres : une couche passée par la capacité reçoit toujours le second.
 
 ### Aucune feuille de style
 

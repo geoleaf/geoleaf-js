@@ -59,8 +59,9 @@ packages/core/docs/public/
 # `packages/*/coverage`, que ce regroupement ne déplace PAS — c'est `packages/core/coverage/` que
 # `ci.yml:136-141` uploade. Seule la racine a bougé.
 coverage/
-# ⚠️ `test-results.json` est le FICHIER du reporter Vitest (ci.yml:112, lu par
-# check-test-failures.cjs:20) — homonyme du répertoire `test-results/` de Playwright,
+# ⚠️ `test-results.json` est le FICHIER du reporter JSON de Vitest, écrit dans chaque paquet
+# par `run-tests.cjs --coverage` et lu par `check-test-failures.cjs` — sans slash initial, le
+# motif les couvre tous. Homonyme du répertoire `test-results/` de Playwright,
 # qui lui a déménagé sous `artifacts/`. Les deux étaient ignorés, un seul a disparu.
 test-results.json
 playwright-results.json

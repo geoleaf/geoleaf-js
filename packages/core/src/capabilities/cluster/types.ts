@@ -52,10 +52,13 @@ export interface ClusterConfig {
     clusterStrategies?: Record<string, ClusterStrategyEntry>;
 }
 
-/** Result of the per-layer clustering decision. */
+/**
+ * Result of the per-layer clustering decision. A clustered layer always gets its own clustered
+ * source: there is no cluster shared between layers.
+ */
 export interface ClusterStrategyResult {
+    /** Whether the layer's points are clustered. */
     shouldCluster: boolean;
-    useSharedCluster: boolean;
 }
 
 /** Per-layer clustering sub-config (`def.clustering` object form). */

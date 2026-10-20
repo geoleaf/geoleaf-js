@@ -455,3 +455,85 @@ describe("bootWithPreset — where the configuration comes from", () => {
         expect(seen[0].url).toBeUndefined();
     });
 });
+
+describe("bootWithPreset — which profile boots", () => {
+    /** A `loadConfig` stand-in that records the options bag it was handed. */
+    function recorder() {
+        const seen = [];
+        return {
+            seen,
+            loadConfig: (opts) => {
+                seen.push(opts);
+                setTimeout(() => opts.onLoaded({}), 0);
+            },
+        };
+    }
+
+    beforeEach(() => localStorage.setItem("gl-profile", "tourism"));
+    afterEach(() => localStorage.clear());
+
+    // The profile switcher's stored choice used to win over everything the integrator passed,
+    // while `config` was documented as "applied as-is". `profile` is the integrator's word.
+    it("🔴 `profile` wins over the profile stored by the switcher", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, {
+            config: { data: { activeProfile: "field" } },
+            profile: "field",
+        });
+
+        expect(seen[0].profileId).toBe("field");
+    });
+
+    it("`profile` wins over the one-shot choice too, and still consumes it", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+        sessionStorage.setItem("gl-selected-profile", "survey");
+
+        await bootWithPreset(preset(), ctx, { profile: "field" });
+
+        expect(seen[0].profileId).toBe("field");
+        // Left in place, it would decide the NEXT load, which never asked for it.
+        expect(sessionStorage.getItem("gl-selected-profile")).toBeNull();
+    });
+
+    it("`profile` still wins when the one-shot store throws", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+        // A stand-in, not a spy on `Storage.prototype`: jsdom's stores do not go through it.
+        const refuse = () => {
+            throw new Error("SecurityError");
+        };
+        vi.stubGlobal("sessionStorage", { getItem: refuse, removeItem: refuse });
+        try {
+            await bootWithPreset(preset(), ctx, { profile: "field" });
+        } finally {
+            vi.unstubAllGlobals();
+        }
+
+        expect(seen[0].profileId).toBe("field");
+    });
+
+    it("a malformed `profile` is refused, NAMED, and the stored choice applies", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, { profile: "../secrets" });
+
+        expect(seen[0].profileId).toBe("tourism");
+        expect(ctx.AppLog.warn).toHaveBeenCalledWith(
+            expect.stringContaining("profile"),
+            expect.anything()
+        );
+    });
+
+    it("without `profile`, UNCHANGED: the stored choice wins over `data.activeProfile`", async () => {
+        const { seen, loadConfig } = recorder();
+        const ctx = makeCtx({ loadConfig });
+
+        await bootWithPreset(preset(), ctx, { config: { data: { activeProfile: "field" } } });
+
+        expect(seen[0].profileId).toBe("tourism");
+    });
+});

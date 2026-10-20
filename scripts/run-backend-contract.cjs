@@ -52,12 +52,13 @@ const env = {
  * Runs a command, inheriting stdio so a failure is readable in the run's log.
  * @param {string} file
  * @param {string[]} args
- * @param {{ stdin?: string }} [opts]
+ * @param {{ stdin?: string, env?: Record<string, string> }} [opts] `env` is added to the
+ *   shared environment, for this command only.
  */
 function run(file, args, opts = {}) {
     execFileSync(file, args, {
         cwd: ROOT,
-        env,
+        env: opts.env ? { ...env, ...opts.env } : env,
         stdio: opts.stdin ? ["pipe", "inherit", "inherit"] : "inherit",
         input: opts.stdin ? fs.readFileSync(path.join(ROOT, opts.stdin)) : undefined,
     });
@@ -117,6 +118,10 @@ writeConnector();
 // ("liaisons REPOINTÉES"). Nothing publishes it: no upload or deploy step follows.
 run("npm", ["run", "build:deploy"], {});
 
+// ⚠️ `GEOLEAF_E2E_TIMELINE`: this run uses the suite's config, hence its JSON reporter. Left on
+// the default path it would overwrite the suite's timeline, which the CI uploads after this
+// step — the two specs below would then stand for the whole night.
+//
 // 🛑 `GEOLEAF_E2E_WORKERS=1` is not a tuning knob: `e2e/helpers/worker-budget.js` REFUSES
 // to start beyond one worker while `GEOLEAF_BACKEND_BASE_URL` is set, because the three
 // specs that write to the bench would write the same rows concurrently — an intermittent
@@ -130,7 +135,7 @@ run(
         "e2e/31-delta-contract.spec.js",
         "--project=chromium",
     ],
-    {}
+    { env: { GEOLEAF_E2E_TIMELINE: "artifacts/playwright/timeline-backend-contract.json" } }
 );
 
 console.log("\n✅ Contrat backend — les deux specs ont joué contre un vrai serveur.");

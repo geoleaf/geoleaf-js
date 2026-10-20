@@ -20,8 +20,8 @@ const { getClusteringStrategy } = await import("../../../src/capabilities/cluste
 
 const POINTS = { features: [{ geometry: { type: "Point" } }] };
 const LINES = { features: [{ geometry: { type: "LineString" } }] };
-const NONE = { shouldCluster: false, useSharedCluster: false };
-const SHARED = { shouldCluster: true, useSharedCluster: true };
+const NONE = { shouldCluster: false };
+const CLUSTERED = { shouldCluster: true };
 
 /** Seeds `modules.cluster`; every other config path returns the passed default. */
 function setCluster(cluster) {
@@ -41,7 +41,7 @@ describe("getClusteringStrategy — capability gate", () => {
         // global clustering undefined + no per-layer opt-in → NONE (no clustering)
         expect(getClusteringStrategy({}, POINTS)).toEqual(NONE);
         // but a per-layer opt-in still clusters (capability active by default)
-        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual(CLUSTERED);
     });
 });
 
@@ -50,9 +50,9 @@ describe("getClusteringStrategy — global gate (modules.cluster.clustering)", (
         setCluster({ clustering: false });
         expect(getClusteringStrategy({}, POINTS)).toEqual(NONE);
     });
-    it("true + unified → shared cluster", () => {
+    it("true + unified → clusters", () => {
         setCluster({ clustering: true, clusterStrategy: "unified" });
-        expect(getClusteringStrategy({}, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({}, POINTS)).toEqual(CLUSTERED);
     });
     it("no Point geometry → never clusters", () => {
         setCluster({ clustering: true, clusterStrategy: "unified" });
@@ -65,12 +65,9 @@ describe("getClusteringStrategy — global gate (modules.cluster.clustering)", (
 });
 
 describe("getClusteringStrategy — canonical clusterStrategy", () => {
-    it("by-source (default sources) → clusters, not shared", () => {
+    it("by-source (default sources) → clusters", () => {
         setCluster({ clustering: true, clusterStrategy: "by-source" });
-        expect(getClusteringStrategy({}, POINTS)).toEqual({
-            shouldCluster: true,
-            useSharedCluster: false,
-        });
+        expect(getClusteringStrategy({}, POINTS)).toEqual(CLUSTERED);
     });
     it("by-source honours sources.geojson:false → NONE", () => {
         setCluster({
@@ -84,28 +81,25 @@ describe("getClusteringStrategy — canonical clusterStrategy", () => {
         setCluster({ clustering: true, clusterStrategy: "json-only" });
         expect(getClusteringStrategy({}, POINTS)).toEqual(NONE);
     });
-    it("json-only + geojsonClustering:true → clusters, not shared", () => {
+    it("json-only + geojsonClustering:true → clusters", () => {
         setCluster({
             clustering: true,
             clusterStrategy: "json-only",
             clusterStrategies: { "json-only": { geojsonClustering: true } },
         });
-        expect(getClusteringStrategy({}, POINTS)).toEqual({
-            shouldCluster: true,
-            useSharedCluster: false,
-        });
+        expect(getClusteringStrategy({}, POINTS)).toEqual(CLUSTERED);
     });
     it("by-layer + layer silent → NONE (no per-layer opt-in)", () => {
         setCluster({ clustering: true, clusterStrategy: "by-layer" });
         expect(getClusteringStrategy({}, POINTS)).toEqual(NONE);
     });
-    it("unknown strategy → defaults to unified (shared)", () => {
+    it("unknown strategy → defaults to unified (clusters)", () => {
         setCluster({ clustering: true, clusterStrategy: "nope-xyz" });
-        expect(getClusteringStrategy({}, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({}, POINTS)).toEqual(CLUSTERED);
     });
-    it("absent strategy → unified fallback (shared)", () => {
+    it("absent strategy → unified fallback (clusters)", () => {
         setCluster({ clustering: true });
-        expect(getClusteringStrategy({}, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({}, POINTS)).toEqual(CLUSTERED);
     });
 });
 
@@ -137,62 +131,27 @@ describe("getClusteringStrategy — per-layer override (def.clustering)", () => 
     });
     it("enabled:true clusters even if global clustering is off", () => {
         setCluster({ clustering: false, clusterStrategy: "unified" });
-        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual(CLUSTERED);
     });
-    it("by-layer strategy with layer enabled → clusters, not shared", () => {
+    it("by-layer strategy with layer enabled → clusters", () => {
         setCluster({ clustering: true, clusterStrategy: "by-layer" });
-        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual({
-            shouldCluster: true,
-            useSharedCluster: false,
-        });
+        expect(getClusteringStrategy({ clustering: { enabled: true } }, POINTS)).toEqual(CLUSTERED);
     });
 });
 
-describe("getClusteringStrategy — radius/zoom override vs defaults (ANO-031 parity)", () => {
-    it("maxClusterRadius ≠ config.clusterRadius → independent (non-shared) cluster", () => {
+// A per-layer radius or zoom used to decide whether the layer got its OWN cluster rather than a
+// shared one. Nothing is shared any more: they shape the cluster, never whether there is one.
+describe("getClusteringStrategy — a radius or zoom of the layer never decides whether it clusters", () => {
+    it.each([
+        ["maxClusterRadius", { clustering: { enabled: true, maxClusterRadius: 50 } }],
+        ["disableClusteringAtZoom", { clustering: { enabled: true, disableClusteringAtZoom: 10 } }],
+        [
+            "root clusterRadius",
+            { clustering: true, clusterRadius: 60, disableClusteringAtZoom: 14 },
+        ],
+    ])("%s → clusters, like the same layer without it", (_name, def) => {
         setCluster({ clustering: true, clusterStrategy: "unified", clusterRadius: 80 });
-        expect(
-            getClusteringStrategy({ clustering: { enabled: true, maxClusterRadius: 50 } }, POINTS)
-        ).toEqual({ shouldCluster: true, useSharedCluster: false });
-    });
-    it("maxClusterRadius == config.clusterRadius → shared (no override)", () => {
-        setCluster({ clustering: true, clusterStrategy: "unified", clusterRadius: 50 });
-        expect(
-            getClusteringStrategy({ clustering: { enabled: true, maxClusterRadius: 50 } }, POINTS)
-        ).toEqual(SHARED);
-    });
-    it("disableClusteringAtZoom ≠ applied default → independent cluster", () => {
-        setCluster({ clustering: true, clusterStrategy: "unified" });
-        expect(
-            getClusteringStrategy(
-                { clustering: { enabled: true, disableClusteringAtZoom: 10 } },
-                POINTS
-            )
-        ).toEqual({ shouldCluster: true, useSharedCluster: false });
-    });
-    it("disableClusteringAtZoom == applied default (14) → shared, not an override (S6: baseline aligned 18→14)", () => {
-        setCluster({ clustering: true, clusterStrategy: "unified" });
-        expect(
-            getClusteringStrategy(
-                { clustering: { enabled: true, disableClusteringAtZoom: 14 } },
-                POINTS
-            )
-        ).toEqual(SHARED);
-    });
-    it("normalized form (clustering:true + root clusterRadius) drives the override", () => {
-        setCluster({ clustering: true, clusterStrategy: "unified", clusterRadius: 80 });
-        expect(
-            getClusteringStrategy(
-                { clustering: true, clusterRadius: 60, disableClusteringAtZoom: 14 },
-                POINTS
-            )
-        ).toEqual({ shouldCluster: true, useSharedCluster: false });
-    });
-    it("def.clusterRadius used when maxClusterRadius absent", () => {
-        setCluster({ clustering: true });
-        expect(
-            getClusteringStrategy({ clustering: { enabled: true }, clusterRadius: 42 }, POINTS)
-        ).toEqual({ shouldCluster: true, useSharedCluster: false });
+        expect(getClusteringStrategy(def, POINTS)).toEqual(CLUSTERED);
     });
 });
 
@@ -203,16 +162,16 @@ describe("getClusteringStrategy — une couche servie VIDE", () => {
 
     it("déclarée en points, elle est regroupée comme si elle en portait", () => {
         setCluster({ clustering: true });
-        expect(getClusteringStrategy({ geometry: "point" }, EMPTY)).toEqual(SHARED);
+        expect(getClusteringStrategy({ geometry: "point" }, EMPTY)).toEqual(CLUSTERED);
         expect(
             getClusteringStrategy({ geometry: "point", clustering: { enabled: true } }, EMPTY)
-        ).toEqual(SHARED);
+        ).toEqual(CLUSTERED);
     });
 
     it("les deux orthographes de la déclaration sont lues, dans les deux vocabulaires", () => {
         setCluster({ clustering: true });
-        expect(getClusteringStrategy({ geometryType: "point" }, EMPTY)).toEqual(SHARED);
-        expect(getClusteringStrategy({ geometry: "MultiPoint" }, EMPTY)).toEqual(SHARED);
+        expect(getClusteringStrategy({ geometryType: "point" }, EMPTY)).toEqual(CLUSTERED);
+        expect(getClusteringStrategy({ geometry: "MultiPoint" }, EMPTY)).toEqual(CLUSTERED);
     });
 
     // A clustered source indexes points alone: lines and polygons written to it later would
@@ -222,13 +181,13 @@ describe("getClusteringStrategy — une couche servie VIDE", () => {
         expect(getClusteringStrategy({}, EMPTY)).toEqual(NONE);
         expect(getClusteringStrategy({ geometry: "polygon" }, EMPTY)).toEqual(NONE);
         expect(getClusteringStrategy({ geometry: "mixed" }, EMPTY)).toEqual(NONE);
-        expect(getClusteringStrategy({ geometry: "point" }, {})).toEqual(SHARED);
+        expect(getClusteringStrategy({ geometry: "point" }, {})).toEqual(CLUSTERED);
     });
 
     it("la donnée qui montre des entités l'emporte sur la déclaration", () => {
         setCluster({ clustering: true });
         expect(getClusteringStrategy({ geometry: "point" }, LINES)).toEqual(NONE);
-        expect(getClusteringStrategy({ geometry: "polygon" }, POINTS)).toEqual(SHARED);
+        expect(getClusteringStrategy({ geometry: "polygon" }, POINTS)).toEqual(CLUSTERED);
     });
 
     it("les refus d'avant tiennent : capacité coupée, couche qui s'y oppose", () => {

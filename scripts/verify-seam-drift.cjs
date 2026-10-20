@@ -236,7 +236,13 @@ const SEAMS = [
             "le filtre de la couche, et doit pouvoir l'appeler. RELU avant ré-épinglage : " +
             "`git diff` ne rend que ce membre optionnel et son commentaire, aucune des TROIS " +
             "fonctions appariées n'est touchée, et le membre existe sur `GeoLeafGlobal.Layers` " +
-            "(`LayerDataApi`) : l'hôte reste plus étroit que le core, ce que HOST-03 exige.",
+            "(`LayerDataApi`) : l'hôte reste plus étroit que le core, ce que HOST-03 exige. " +
+            "⚠️ 19/10/2026 — NEUVIÈME fois, par AJOUT de code non apparié : `config-seam.ts` " +
+            "gagne `coreActiveProfileId()` et `belongsToActiveProfile()` (core 3.18.0), lus par le " +
+            "moteur pour qu'une écriture en file ne parte que sous son profil. Aucun plugin ne " +
+            "route la file : les porter côté hôte élargirait `GeoLeafHost` sans lecteur. RELU " +
+            "avant ré-épinglage : `git diff` n'est qu'un ajout en fin de fichier, `coreConfigGet` " +
+            "est inchangée, corps compris, et `host.ts` n'a aucun diff.",
         files: [
             {
                 pkg: "core",
@@ -246,7 +252,7 @@ const SEAMS = [
             {
                 pkg: "core",
                 rel: "src/capabilities/offline/config-seam.ts",
-                hash: "56513e7dd005997dbc12c220362a2ecaaad9c7c33df47e27c4a87b1f172abc9b",
+                hash: "4ba0484db77e6c583c8f1180a69be932fe92bbc5d995ebe8307eae76418a968d",
             },
             {
                 pkg: "host-runtime",

@@ -99,7 +99,7 @@ export function deactivateCustom(): void {
     _cursorGuard = null;
     if (_map) {
         exitExclusiveMode(_map);
-        setCursor("grab");
+        setCursor("");
     }
     _map = null;
 }

@@ -256,7 +256,16 @@ export function releaseLayers(): void {
     _map = null;
 }
 
-/** Sets the map cursor style. */
+/**
+ * Writes the map canvas's inline cursor. A tool leaving the map passes `""`, never `"grab"`.
+ *
+ * At rest the canvas carries no inline cursor: the engine paints it from CSS classes on its
+ * canvas container — `grab`, and `grabbing` while the map is dragged. An inline `grab` looks
+ * identical at rest but overrides that `:active` rule, so the pan lost its `grabbing` feedback
+ * for the rest of the page's life after the first measure.
+ *
+ * @param cursor - A CSS cursor value, or `""` to hand the cursor back to the engine's CSS.
+ */
 export function setCursor(cursor: string): void {
     const map = _map ?? _getNativeMap();
     if (map?.getCanvas) {

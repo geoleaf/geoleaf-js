@@ -221,6 +221,13 @@ export interface FeatureRecord {
     readonly quarantine?: QuarantineReason;
     /** HTTP status of the last refusal, when the quarantine comes from one. See {@link OutboxEntry.quarantineStatus}. */
     readonly quarantineStatus?: number;
+    /**
+     * The source the record was pulled from — its URL and collection, serialised. The store is
+     * shared by every profile of the origin: a layer reads, and a pull sweeps, only the records
+     * of the source its own declaration pulls from. Absent on a record written before 3.18.0,
+     * which every profile reads, as before.
+     */
+    readonly sourceKey?: string;
 }
 
 /**
@@ -321,6 +328,24 @@ export interface OutboxEntry {
      * the drain block on a queue it should be walking past.
      */
     readonly nextAttemptAt?: number;
+    /**
+     * Identifier of the profile active when the edit was captured.
+     *
+     * 🛑 **THE WRITE TARGET IS RESOLVED AT DRAIN TIME, FROM THE ACTIVE PROFILE.** A profile
+     * switch reloads the page, and the first drain of the new page replays what the previous
+     * one left. Without this field, an entry captured under profile A was replayed under B:
+     * sent to the endpoint of B's layer of the same id, with B's credentials, and nothing
+     * said so — or set aside on the spot as `layerNoLongerWritable` when B has no such
+     * layer. The drain now replays only the active profile's entries; the others wait,
+     * untouched, until their profile is active again.
+     *
+     * ⚠️ **Absent means captured before the field existed** (core 3.18.0), and such an entry
+     * keeps the former behaviour: it is replayed under whichever profile is active. Its
+     * profile is not knowable, and holding it forever would strand field work that, in the
+     * usual case, belongs to the profile still in use. The database schema does not change:
+     * the field is optional, so no upgrade rewrites the entries already queued.
+     */
+    readonly profileId?: string;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -411,6 +436,13 @@ export interface ConflictRecord {
      * policy would make every archived record ambiguous.
      */
     readonly settledBy: ConflictPolicy;
+    /**
+     * The profile the conflicting write was queued under — its {@link OutboxEntry.profileId}.
+     * The store is shared by every profile of the origin: a conflict is listed, and purged,
+     * under its own profile. Absent on a conflict archived before 3.18.0, or for a write queued
+     * before then, which every profile reads, as before.
+     */
+    readonly profileId?: string;
 }
 
 /* -------------------------------------------------------------------------- */

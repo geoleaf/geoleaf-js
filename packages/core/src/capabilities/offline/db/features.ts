@@ -78,6 +78,10 @@ export interface FeaturesDBInstance {
      * `tombstones` are entities the source served as DELETED: never written, their stored copy
      * is removed when it is `synced` (`removed`) and kept when it holds local work
      * (`preserved`) — in the same transaction, under the same identity resolution.
+     *
+     * ⚠️ Each record carries the source that served it (`sourceKey`). A copy another source
+     * served is never `unchanged` — it is rewritten, and becomes this source's — and a
+     * tombstone never removes it: that source's deletion says nothing of this one's rows.
      */
     putManyPreservingLocal(
         records: readonly FeatureRecord[],
@@ -92,9 +96,13 @@ export interface FeaturesDBInstance {
      * be absent from. The state is read in the same transaction as the removal, for the reason
      * `putManyPreservingLocal` gives: an optimistic write must not slip between the two.
      *
+     * ⚠️ With `sourceKey`, only that source's records are candidates, and those written before
+     * records carried one: what another source served on a layer of the same id is not this
+     * pull's answer to judge. Without it, every record of the layer is, as before.
+     *
      * @returns How many records were removed.
      */
-    sweepSynced(layerId: string, keep: ReadonlySet<string>): Promise<number>;
+    sweepSynced(layerId: string, keep: ReadonlySet<string>, sourceKey?: string): Promise<number>;
 }
 
 const STORE = "features";
@@ -181,7 +189,7 @@ function init(db: IDBDatabase): FeaturesDBInstance {
 
         putManyPreservingLocal: (records, tombstones) => putPreserving(db, records, tombstones),
 
-        sweepSynced: (layerId, keep) => sweepSynced(db, layerId, keep),
+        sweepSynced: (layerId, keep, sourceKey) => sweepSynced(db, layerId, keep, sourceKey),
     };
 }
 
@@ -201,6 +209,18 @@ function sameVersion(
     served: VersionMarker | null | undefined
 ): boolean {
     return !!stored && !!served && stored.kind === served.kind && stored.value === served.value;
+}
+
+/**
+ * True when two tags name different sources — both present and unequal. A record written before
+ * records carried a source (`undefined`) differs from none.
+ *
+ * @param a - One record's `sourceKey`.
+ * @param b - The other's.
+ * @returns Whether the two records were served by different sources.
+ */
+function otherSource(a: string | undefined, b: string | undefined): boolean {
+    return a !== undefined && b !== undefined && a !== b;
 }
 
 /**
@@ -269,8 +289,12 @@ function putPreserving(
             const existing = store.get([record.layerId, localId]);
             existing.onsuccess = () => {
                 const current = existing.result as FeatureRecord | undefined;
+                // A copy another source served stays: that source's deletion is its rows' business.
                 if (item.tombstone) {
-                    bury(current, [record.layerId, localId]);
+                    const own = otherSource(current?.sourceKey, record.sourceKey)
+                        ? undefined
+                        : current;
+                    bury(own, [record.layerId, localId]);
                     return;
                 }
                 seen.push(localId);
@@ -283,8 +307,10 @@ function putPreserving(
                 // stored from the first pull on — for the conflict filter — and never compared
                 // here: every `synced` record was rewritten on every pull. A record the source
                 // serves under the marker already stored is left as it is.
+                // Another source's copy is rewritten under an equal marker too: it must say whose.
                 if (
                     current?.feature !== undefined &&
+                    current.sourceKey === record.sourceKey &&
                     sameVersion(current.version, record.version)
                 ) {
                     unchanged += 1;
@@ -314,7 +340,10 @@ function putPreserving(
             twins.onsuccess = () => {
                 const rows = (twins.result as FeatureRecord[] | undefined) ?? [];
                 const twin = rows.find(
-                    (r) => r.layerId === record.layerId && r.localId !== record.localId
+                    (r) =>
+                        r.layerId === record.layerId &&
+                        r.localId !== record.localId &&
+                        !otherSource(r.sourceKey, record.sourceKey)
                 );
                 applyTo(item, twin ? twin.localId : record.localId);
             };
@@ -345,9 +374,15 @@ function putPreserving(
  * @param db - Open IndexedDB connection.
  * @param layerId - The layer the pull covered.
  * @param keep - The keys the pull named (`PreservingPutTally.seen`, over every page).
+ * @param sourceKey - The source pulled; omitted, every record of the layer is a candidate.
  * @returns How many records were removed.
  */
-function sweepSynced(db: IDBDatabase, layerId: string, keep: ReadonlySet<string>): Promise<number> {
+function sweepSynced(
+    db: IDBDatabase,
+    layerId: string,
+    keep: ReadonlySet<string>,
+    sourceKey?: string
+): Promise<number> {
     return new Promise<number>((resolve, reject) => {
         const tx = db.transaction([STORE], "readwrite");
         const store = tx.objectStore(STORE);
@@ -369,7 +404,12 @@ function sweepSynced(db: IDBDatabase, layerId: string, keep: ReadonlySet<string>
                 const read = store.get(key);
                 read.onsuccess = () => {
                     const record = read.result as FeatureRecord | undefined;
-                    if (record && record.syncState === "synced" && record.serverId !== null) {
+                    if (
+                        record &&
+                        record.syncState === "synced" &&
+                        record.serverId !== null &&
+                        !otherSource(record.sourceKey, sourceKey)
+                    ) {
                         store.delete(key).onsuccess = () => {
                             removed += 1;
                             step();

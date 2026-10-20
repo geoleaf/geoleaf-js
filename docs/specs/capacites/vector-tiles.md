@@ -4,8 +4,8 @@ title: vector-tiles — les couches métier en tuiles vectorielles MVT
 capability_id: vector-tiles
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 3b6f01c88
-date: 10 octobre 2026
+verifie_contre: 25e9487ac
+date: 20 octobre 2026
 ---
 
 # vector-tiles — les couches métier en tuiles vectorielles MVT

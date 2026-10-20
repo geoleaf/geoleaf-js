@@ -43,9 +43,20 @@ import { PWA_CAPABILITY } from "./pwa-capability.js";
 import { PWA } from "../../api/geoleaf.pwa.js";
 import { PwaLifecycle } from "./lifecycle.js";
 import type { PWAConfig } from "./pwa-manager.js";
+import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 
 /** Shape of the `modules.pwa` config branch this installer reads — derived, not redeclared. */
 type PwaModuleConfig = Pick<PWAConfig, "enabled" | "installPrompt" | "offlineDetector">;
+
+/**
+ * The active profile — the id under which this context holds the worker. Read through the live
+ * `GeoLeaf.Config`, as `offline/config-seam.ts` does; `null` without a profile.
+ */
+function _activeProfileId(): string | null {
+    const config = getGeoLeaf()?.Config as { getActiveProfileId?: () => unknown } | undefined;
+    const id = config?.getActiveProfileId?.();
+    return typeof id === "string" && id !== "" ? id : null;
+}
 
 /** Self-sufficient installer for the PWA capability (service worker + install prompt). */
 export const PWA_INSTALLER: CapabilityInstaller = {
@@ -61,7 +72,10 @@ export const PWA_INSTALLER: CapabilityInstaller = {
     // Disabled → no SW registered; any residual SW is unregistered. Moved verbatim out of
     // `shared.module.ts` (S4) — same call, same merged config, same position in the sequence.
     sharedLifecycle(ctx: SharedLifecycleContext): void {
-        PwaLifecycle.init(ctx.config.modules?.pwa as PwaModuleConfig | undefined);
+        PwaLifecycle.init(
+            ctx.config.modules?.pwa as PwaModuleConfig | undefined,
+            _activeProfileId()
+        );
     },
 
     // Mirror of #7 — resets the lifecycle's module-level state so a recreate() re-inits

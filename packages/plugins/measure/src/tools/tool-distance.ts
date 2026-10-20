@@ -207,6 +207,6 @@ export function deactivateDistance(): void {
 
     // Cancel open session (shows finished features but discards in-progress vertices)
     if (getSession()) cancelSession();
-    setCursor("grab");
+    setCursor("");
     _map = null;
 }

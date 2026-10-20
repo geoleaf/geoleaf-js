@@ -45,8 +45,12 @@ import type { IGeoLeafConfig } from "../contracts/config.contract.js";
  */
 export interface BootOptions {
     /**
-     * A configuration object handed over in memory: applied as-is, and no request is emitted to
-     * fetch one. Wins over `configUrl`.
+     * A configuration object handed over in memory: no request is emitted to fetch one. Wins
+     * over `configUrl`.
+     *
+     * ⚠️ Its `data.activeProfile` is the LAST word on the profile, not the first: a profile the
+     * user picked with the profile switcher on the same origin, stored in the browser, wins over
+     * it. To decide the profile, pass {@link BootOptions.profile}.
      *
      * ⚠️ An empty object `{}` is a VALID inline configuration, exactly as for
      * `GeoLeaf.loadConfig` — the two bootstrap paths never diverge on the same value.
@@ -54,6 +58,20 @@ export interface BootOptions {
     config?: Record<string, unknown>;
     /** An explicit URL to fetch the configuration from. Used when `config` is absent. */
     configUrl?: string;
+    /**
+     * The profile to boot. Wins over the profile the user picked with the profile switcher
+     * (stored in the browser for the whole origin) and over the configuration's
+     * `data.activeProfile`. Without it, the stored choice wins over `data.activeProfile`.
+     *
+     * Letters, digits, `_` and `-`, at most 50 characters: any other value is refused with a
+     * warning in the console, and the boot goes on as if it were absent.
+     *
+     * @example
+     * ```ts
+     * GeoLeaf.mount("map", { configUrl: "/geoleaf/config.json", profile: "field" });
+     * ```
+     */
+    profile?: string;
     /**
      * Runs after the configuration and the profile load, before the map. Throwing aborts the
      * boot. This is where a host overrides a value that the profile declares, with

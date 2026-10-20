@@ -112,8 +112,9 @@ export default defineConfig({
     //      own `baseURL`) — the collision resolves by subtraction.
     //   2. no `outputDir` was declared, so results fell into Playwright's default
     //      `test-results/` — namesake of the Vitest reporter's
-    //      `test-results.json` FILE (ci.yml:112, read by
-    //      check-test-failures.cjs), which is unrelated and does not move.
+    //      `test-results.json` FILE (written in each package by the coverage
+    //      run, read by check-test-failures.cjs), which is unrelated and does
+    //      not move.
     //
     // ⚠️ `outputDir` and `outputFolder` must stay SIBLINGS, never nested: the
     // HTML reporter empties its folder before generating and Playwright refuses
@@ -131,7 +132,19 @@ export default defineConfig({
         // itself only by guessing who ran before it. A SIBLING of the two paths above, for
         // the reason written there. The CI uploads it on green runs too: a flaky test leaves
         // the run green, and that is exactly the run whose order needs reading.
-        ["json", { outputFile: "artifacts/playwright/timeline.json" }],
+        //
+        // ⚠️ The path is overridable, and one caller must override it:
+        // `scripts/run-backend-contract.cjs` runs Playwright again AFTER the suite, with this
+        // same config. Writing the same file, it replaced the suite's timeline with its own
+        // two specs before the CI uploaded it — every uploaded timeline from 11 to 16/10/2026
+        // held those seventeen tests and nothing else.
+        [
+            "json",
+            {
+                outputFile:
+                    process.env.GEOLEAF_E2E_TIMELINE || "artifacts/playwright/timeline.json",
+            },
+        ],
     ],
     timeout: 60 * 1000,
 

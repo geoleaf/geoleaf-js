@@ -60,8 +60,7 @@ export const CLUSTER_CAPABILITY: ICapabilityDeclaration = {
             default: DEFAULTS.clusterRadius,
             description:
                 "Cluster radius (px) for GeoJSON point layers when a layer sets none. A " +
-                "per-layer clusterRadius overrides it. (POI shared-cluster radius is fixed " +
-                "adapter-side at 50, not driven by this key.)",
+                "per-layer clusterRadius overrides it.",
         },
         disableClusteringAtZoom: {
             type: "number",
@@ -74,7 +73,11 @@ export const CLUSTER_CAPABILITY: ICapabilityDeclaration = {
             type: "string",
             default: DEFAULTS.clusterStrategy,
             enum: ["unified", "by-layer", "by-source", "json-only"],
-            description: "How GeoJSON point layers cluster relative to the shared POI cluster.",
+            description:
+                "Which GeoJSON point layers are clustered when the layer says nothing: " +
+                "`unified` all of them, `by-layer` none (only a layer setting clustering), " +
+                "`by-source` and `json-only` as clusterStrategies says. Each clustered layer " +
+                "has its own clustered source; no cluster is shared between layers.",
         },
         clusterStrategies: {
             type: "object",

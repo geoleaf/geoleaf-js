@@ -48,7 +48,6 @@ export function buildVtLayerData(args: {
         clusterGroup: null,
         legendsConfig: def.legends,
         basePath: layerBasePath,
-        useSharedCluster: false,
         features: [],
         // The alias resolves through `layerGeometry`. ⚠️ The order inverts
         // (`geometryType` first): no effect, none of the 6 configs declaring both

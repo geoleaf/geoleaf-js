@@ -4,7 +4,7 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: e472affd2
+verifie_contre: ec8a00260
 date: 15 octobre 2026
 ---
 

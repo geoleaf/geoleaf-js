@@ -26,6 +26,7 @@
 import { Log } from "../../../utils/log/index.js";
 import { StorageContract } from "../../../kernel/shared/index.js";
 import { LAST_SYNC_PREFERENCE } from "./push-engine.js";
+import { belongsToActiveProfile } from "../config-seam.js";
 import type { SyncStatus } from "../../../contracts/sync.contract.js";
 
 /**
@@ -38,7 +39,7 @@ import type { SyncStatus } from "../../../contracts/sync.contract.js";
 const OWED = new Set(["pending", "failed", "inFlight"]);
 
 /** The outbox module, or `null` while the engine is not wired. */
-function _outbox(): { list?(): Promise<{ state: string }[]> } | null {
+function _outbox(): { list?(): Promise<{ state: string; profileId?: string }[]> } | null {
     return StorageContract.DB?._ensureModule?.("Outbox") ?? null;
 }
 
@@ -74,6 +75,9 @@ export async function readSyncStatus(): Promise<SyncStatus> {
         let owed = 0;
         let quarantined = 0;
         for (const entry of entries) {
+            // The bar says what can leave from HERE: another profile's capture waits for its
+            // own profile, and counting it would show a debt no pass of this page will pay.
+            if (!belongsToActiveProfile(entry)) continue;
             if (OWED.has(entry.state)) owed += 1;
             else if (entry.state === "quarantined") quarantined += 1;
         }

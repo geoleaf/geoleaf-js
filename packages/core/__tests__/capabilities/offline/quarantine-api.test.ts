@@ -26,6 +26,9 @@ import {
 } from "../../../src/capabilities/offline/write/quarantine-api.js";
 
 vi.mock("../../../src/capabilities/offline/config-seam.js", () => ({
+    // Every entry here belongs to the active profile: the routing between profiles is the
+    // subject of `outbox-profile-routing.test.ts`, not of this suite.
+    belongsToActiveProfile: () => true,
     coreProfileLayerConfig: (layerId: string) => {
         if (layerId === "couche-ecrivable") return { write: { enabled: true } };
         // The dialect the core does not speak: its quarantine lifts when the declaration

@@ -228,6 +228,20 @@ a person pressing them is saying the session is back. ⚠️ If it is not, that 
 first 401 too, and sets one more entry aside. How the queue starts again is under
 [Authentication](#authentication).
 
+**A capture belongs to the profile it was made under** (_since v3.18.0_). Switching profile
+reloads the page, and its first pass sends what the previous page left. A pass sends only the
+captures of the **active** profile. The others wait in the queue, untouched: they are not sent, not
+set aside, and spend nothing of their four attempts. They leave once their profile is active again.
+Without this rule, a capture made under one profile went to the `write` target of the other
+profile's layer of the same id, with that profile's credentials. Or, when the other profile has no
+such layer, it was set aside as `layerNoLongerWritable`. The console says once per page how many
+captures belong to another profile. A capture queued by an earlier version carries no profile: it
+is sent under whichever profile is active, as before.
+
+Two tabs of the same origin no longer drain at the same time, where the browser provides the
+[Web Locks API](https://developer.mozilla.org/docs/Web/API/Web_Locks_API). The second waits for
+the first, then reads a queue the first has settled.
+
 ## Entries set aside
 
 An entry the queue cannot send as it is gets **set aside** — kept, counted, never dropped — with
@@ -257,7 +271,12 @@ one motive:
 - `GeoLeaf.Storage.DB.listPendingEdits()` lists every entry still owed or set aside, oldest first,
   with its `state` — `"quarantined"` for these, which also carry `quarantine`, the motive, and
   `quarantineStatus`, the HTTP status of the refusal when a server answer caused it.
-  `getSyncStatus().quarantined` counts them.
+  `getSyncStatus().quarantined` counts them. Both read the **active profile's** entries only.
+  `listPendingEdits({ allProfiles: true })` lists every profile's, each with its `profileId` —
+  what an export of field work needs.
+- A requeue does not lift the quarantine of another profile's entry by `layerNoLongerWritable` or
+  `dialectNotSupported`: the active profile's layer of the same id says nothing about it. It is
+  refused with `causeStillPresent` until its own profile is active.
 
 ```ts
 const storage = GeoLeaf?.Storage;
@@ -279,6 +298,10 @@ last write wins**, and it is the device's. The pass counts it in `conflicts`,
 the older — until `clearConflicts(layerId?)`. A row that could not be read is overwritten all the
 same, and the record's `readOutcome` says so. No other policy exists today.
 
+A conflict carries the profile its write was queued under (`profileId`, since 3.18.0): both
+methods read and purge the active profile's conflicts only, and `{ allProfiles: true }` covers
+every profile's. A conflict archived before 3.18.0 has no profile, and every profile sees it.
+
 ## Pulling never erases a capture
 
 `GeoLeaf.Storage.pullLayer(layerId, { bbox })` — or the download window of
@@ -291,6 +314,13 @@ A layer that is on the map when its pull ends is given what the device now holds
 the server deleted leaves the map, an edited one is redrawn — without a reload, and
 `geoleaf:layer:updated` announces it (since 3.15.0; a reload was needed before). The layer must
 declare `offline.enabled`: one that is drawn from the network is not touched by a pull.
+
+What a pull brings belongs to its source (since 3.18.0). Every profile of an origin shares the
+device store, one copy per layer id and entity: two profiles declaring a layer of the same id over
+two different sources each see, and each pull removes, only what their own source served — and a
+layer only the other profile pulled is read from the network. Two profiles over the same source
+share what they pulled. When both sources serve an entity of the same id, the last pull keeps its
+copy, and the other layer misses it until its own next pull, which is complete.
 
 ## Watching the queue
 

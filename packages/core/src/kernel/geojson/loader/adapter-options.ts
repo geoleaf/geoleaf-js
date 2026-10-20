@@ -57,7 +57,7 @@ function _resolveZoomBounds(
 export function buildSingleLayerAdapterOptions(
     def: DefLike,
     preloadedStyleData: Record<string, unknown> | null,
-    clusterResult: { shouldCluster: boolean; useSharedCluster?: boolean },
+    clusterResult: { shouldCluster: boolean },
     layerId: string,
     Log: GeoJSONLoaderLog,
     // S7 — resolved through the service locator (capabilities/cluster/install.ts), not

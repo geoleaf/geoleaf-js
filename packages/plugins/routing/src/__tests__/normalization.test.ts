@@ -6,8 +6,10 @@
  * properties that a model frozen before the corpus would have got wrong — each of which was
  * measured on these very files, not assumed.
  *
- * 🛑 **No network here, ever.** The corpus is versioned; `scripts/capture-route-fixtures.cjs` is
- * the only code in the repository that talks to a provider, and nothing runs it automatically.
+ * 🛑 **No network here, ever.** The corpus is versioned; `scripts/capture-route-fixtures.cjs`
+ * captures it, and it is one of the only two pieces of code in the repository that talk to a
+ * provider — the other is `scripts/capture-isochrone-fixtures.cjs`, for the isochrone plugin.
+ * Nothing runs either automatically.
  * A test hitting a public instance is subject to a fair-use quota and makes the run
  * non-reproducible: its red would say "the internet moved", which nobody can act on.
  */

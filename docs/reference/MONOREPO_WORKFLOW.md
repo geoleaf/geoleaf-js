@@ -301,9 +301,8 @@ Use `npx turbo run build --graph` to visualize the full task graph.
 
 Steps (ordre réel, ~30 étapes) : checkout → setup Node → `npm ci` → `turbo run build` →
 gates de bundle (exports, tree-shaking, `sideEffects`, paquet publié) → `turbo run typecheck` →
-lint → audits sécurité + gitleaks → **`npx vitest run`** (tests unitaires, mode `projects`,
-reporter JSON) → `check-test-failures.cjs` → **`npm run test:coverage:all`** (gate de
-couverture, seuils par paquet) → smoke-test → budget de bundle → knip → filet B3 (exports
+lint → audits sécurité + gitleaks → **`npm run test:coverage:all`** (tests unitaires sous
+couverture, seuils par paquet, un rapport JSON par paquet) → `check-test-failures.cjs` → smoke-test → budget de bundle → knip → filet B3 (exports
 orphelins du core) → gates de pureté, liens morts, duplication, i18n, CSS mort.
 
 ⚠️ Deux corrections par rapport aux versions antérieures de cette ligne : **`benchmark` n'est
@@ -313,10 +312,11 @@ plus les exports** — depuis le 26/07/2026 il gate les fichiers morts, les dép
 propre config morte, la catégorie exports/types étant coupée sur `packages/core/src/**`
 (`ignoreIssues` dans `knip.js`). L'angle exports du core est tenu par le filet B3, seul.
 
-⚠️ Les tests unitaires de la CI passent par `npx vitest run` (**mode `projects`**, un seul
-processus, 11 paquets), pas par `turbo run test`. C'est `ci:local` qui lance l'essaimage
-turbo, sur **17 paquets** — un sur-ensemble, vérifié à chaque run par
-`scripts/lib/test-scope.cjs`. Voir l'en-tête de `scripts/ci-local.cjs`.
+⚠️ Les tests unitaires ne tournent qu'**une fois**, sous couverture, en CI comme dans
+`ci:local` : `scripts/run-tests.cjs --coverage` essaime par turbo sur le périmètre de
+`scripts/lib/test-scope.cjs`. Jusqu'au 20/10/2026 la CI les jouait d'abord nus en mode
+`projects` (`npx vitest run`), sur un sous-ensemble de ce périmètre. Le mode `projects` reste
+un run de poste (`npm run test:vitest`). Voir l'en-tête de `scripts/ci-local.cjs`.
 
 ### ~~`sync-core-public.yml`~~, ~~`sync-demo-public.yml`~~, ~~`sync-plugins-mit-public.yml`~~ — **supprimés (20/07/2026)**
 

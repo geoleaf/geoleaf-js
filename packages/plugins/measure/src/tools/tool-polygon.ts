@@ -235,6 +235,6 @@ export function deactivatePolygon(): void {
     document.removeEventListener("keydown", _onKeyDown);
 
     if (getSession()) cancelSession();
-    setCursor("grab");
+    setCursor("");
     _map = null;
 }

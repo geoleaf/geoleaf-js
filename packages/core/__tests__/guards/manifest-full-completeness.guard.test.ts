@@ -171,8 +171,9 @@ describe("MFC — manifeste livré ↔ répertoires de capacités (lus sur le di
         //
         // 🛑 BUT THE CWD IS NOT `packages/core` EVERYWHERE, and the first
         // draft assumed it. `turbo run test` launches vitest PER PACKAGE (cwd
-        // = the package); `ci.yml` launches `npx vitest run` in workspace
-        // mode FROM THE ROOT. The `../..` climb then exited two levels ABOVE
+        // = the package); `npm run test:vitest` launches vitest in workspace
+        // mode FROM THE ROOT (`ci.yml` did until 20/10/2026). The `../..`
+        // climb then exited two levels ABOVE
         // the repo — measured on 18/08/2026 on the runner:
         // `/home/runner/work/scripts/check-example-bundle.cjs`, not found.
         //

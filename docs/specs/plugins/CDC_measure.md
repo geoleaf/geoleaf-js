@@ -4,8 +4,8 @@ title: measure — la mesure éphémère, et ses annotations
 plugin_id: measure
 package: "@geoleaf-plugins/measure"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 44494aafc
-date: 18 octobre 2026
+verifie_contre: 8e625466b
+date: 20 octobre 2026
 ---
 
 # measure — la mesure éphémère, et ses annotations
@@ -179,6 +179,7 @@ exporté par `public-api.ts` **à côté** de la façade, pas dedans.
 | ME-21 | **La suppression d'une annotation est atteignable au doigt** | Tap sur une annotation                                                                                   | Le tap ouvre l'édition **et** révèle le bouton de suppression, dont la cible s'élargit sur pointeur grossier. 🛑 Il n'était révélé que par un survol : sur écran tactile la suppression était donc **impossible**, alors que déplacer et éditer la même annotation fonctionnaient déjà                                                                                                                                                                                                                         | `annotation-overlays.ts`                   |
 | ME-22 | **Les mesures traversent un changement de fond**             | Basculement vers ou depuis un fond vectoriel — le style est remplacé                                     | Les sources et couches `gl-measure-*` sont portées dans le style entrant, avec les mesures qu'elles contiennent : `initLayers` les déclare à l'adaptateur qui pilote la carte (`declareOwnedStyleIds`, core ≥ 3.10.0). ⚠️ Posées hors du registre de l'adaptateur, elles étaient effacées par le diff, et chaque mesure terminée avec elles. Un cœur plus ancien : comportement d'avant, sans erreur                                                                                                           |
 | ME-23 | **Un appel venu avant la carte est DIT, ni muet ni levé**    | `openMeasureMenu()` ou `startMeasure()` avant que la carte existe, ou pendant le chargement de son style | Rien n'est initialisé et un avertissement de console le dit, avec le signal à attendre (`geoleaf:app:ready`) ; rien n'est verrouillé, l'appel suivant initialise. ⚠️ Sans carte l'appel était muet ; pendant le chargement du style, `addSource` levait dans un écouteur de la barre d'outils — une erreur non capturée sur la page (1.0.8)                                                                                                                                                                    | `measure-api.ts` → `_ensureMenu`           |
+| ME-24 | **Un outil qui s'arrête rend le curseur au moteur**          | Sortie de tout outil qui pose un curseur                                                                 | Le canvas ne garde **aucun** curseur en ligne (`setCursor("")`) : le moteur peint `grab` au repos et `grabbing` pendant un glissement, par ses propres classes. 🛑 Les outils écrivaient `grab` : identique au repos, mais la règle `:active` du moteur ne l'atteignait plus, et le déplacement de la carte restait sur `grab` pour toute la vie de la page. Gardé par `e2e/13-measure.spec.js`, vu rouge avant correctif                                                                                      | `draw-layers.ts`, `tools/tool-shared.ts`   |
 
 Les tests qui couvrent ces lignes : `packages/plugins/measure/src/__tests__/`, plus un scénario
 navigateur dédié sous `e2e/`.
