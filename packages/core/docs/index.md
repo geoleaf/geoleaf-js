@@ -31,12 +31,32 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.17.0 <Badge type="tip" text="2026-10-18" />
+## Release v3.18.0 <Badge type="tip" text="2026-10-20" />
 
-A minor release of `@geoleaf/core`, published with three plugins that now rely on it: a tool that
-takes over the map's clicks goes through the adapter, and three public subpaths can be imported.
+A minor release of `@geoleaf/core`, published with five plugins: offline work, downloaded data and
+archived conflicts stay with the profile — and the source — they belong to, and an integrator
+chooses the profile a map boots on.
 
 **Highlights:**
+
+- **Added** — `profile`, an option of `GeoLeaf.boot()` and `GeoLeaf.mount()`, decides which profile
+  boots, over the choice the profile switcher stored in the browser.
+- **Fixed** — a queued write is sent, and a capture is drawn, only under the profile it was made
+  under; an archived conflict is listed and purged only there (`{ allProfiles: true }` covers every
+  profile). `@geoleaf-plugins/offline-ui` 1.7.1 exports every profile's pending edits.
+- **Fixed** — what a download brings belongs to its source: two profiles with a layer of the same
+  id over two sources no longer remove or show each other's downloaded data.
+- **Fixed** — a profile without the PWA no longer removes the service worker another profile of
+  the same origin uses.
+- **Fixed** — `@geoleaf-plugins/measure` 1.0.13 gives the cursor back to the map after a
+  measurement, and `@geoleaf-plugins/editor` 1.6.2 strokes follow a palette switch.
+- **Removed** — `useSharedCluster`, a clustering flag no code read.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.17.0 (2026-10-18) — a minor release of `@geoleaf/core`, published with three plugins
+that now rely on it: a tool that takes over the map's clicks goes through the adapter, and three
+public subpaths can be imported.
 
 - **Added** — exclusive mode on the adapter: `IMapAdapter.enterExclusiveMode`,
   `exitExclusiveMode` and `isExclusiveMode`. While a tool holds it, a click opens no feature popup
@@ -51,8 +71,6 @@ takes over the map's clicks goes through the adapter, and three public subpaths 
   throws `ERR_MODULE_NOT_FOUND`.
 - **Removed** — `IMapAdapter.createClusterGroup`, without a deprecation period. To cluster a
   layer, pass the `cluster` option to `addGeoJSONLayer`.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.16.3 (2026-10-17) — a patch release of `@geoleaf/core` alone: map credits are cleaned
 and shown, and three profile readings are made consistent.
