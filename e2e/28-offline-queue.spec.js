@@ -47,6 +47,7 @@ import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
+import { armDrainWitness, waitEngineArmed } from "./helpers/boot.js";
 
 const ORIGIN = baseURL("core");
 
@@ -113,24 +114,24 @@ async function ensureWriteTarget(page) {
 const CAPTURE_ORDER = ["cap-1", "cap-2", "cap-3"];
 
 /**
- * Boots the application and waits for the offline engine to be WIRED.
+ * Boots the application and waits for the offline engine to be WIRED, then ARMED.
  *
  * ⚠️ We wait for `Storage.DB.<method>` and not `Storage.applyEdit`: the facade
  * mounts `applyEdit` at boot, so waiting on it would return `true` with
  * `Storage.DB` still `null`. Measured at the outbox port — the witness must
  * prove the WIRING, not the facade's existence.
  *
+ * 🛑 And the wiring is not enough: a seed written before the arming pass is over
+ * is that pass's to send. Measured on two cores, nine runs in ten: `cap-1` left
+ * as `layerNoLongerWritable` at its first attempt, before `ensureWriteTarget`
+ * could pose the target. See `waitEngineArmed`.
+ *
  * @param {import('@playwright/test').Page} page
  */
 async function boot(page) {
+    await armDrainWitness(page);
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(
-        () =>
-            typeof (/** @type {any} */ (globalThis).GeoLeaf?.Storage?.DB?.listPendingEdits) ===
-            "function",
-        null,
-        { timeout: 25000 }
-    );
+    await waitEngineArmed(page);
 }
 
 /**

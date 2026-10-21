@@ -319,3 +319,53 @@ export async function waitAppReadyWitness(page, budgetMs = 30_000) {
         timeout: budgetMs,
     });
 }
+
+/**
+ * Arms a witness of the offline engine's drain passes on `page`: it counts every
+ * `geoleaf:offline:outbox-drained`. Call it BEFORE `goto` / `reload` — the arming pass is the
+ * first, it fires during the boot, and a listener attached after it has missed it. The count
+ * restarts at zero on every navigation of the page.
+ *
+ * Pair it with {@link waitEngineArmed}.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<void>}
+ */
+export async function armDrainWitness(page) {
+    await page.addInitScript(() => {
+        /** @type {any} */ (window).__geoleafDrainPasses = 0;
+        document.addEventListener("geoleaf:offline:outbox-drained", () => {
+            /** @type {any} */ (window).__geoleafDrainPasses += 1;
+        });
+    });
+}
+
+/**
+ * Waits until the offline engine is WIRED (`Storage.DB` drivable) AND its arming pass is
+ * over. Requires {@link armDrainWitness} before the navigation.
+ *
+ * 🛑 A WIRED ENGINE IS NOT AN ARMED ONE. `Storage.DB` becomes drivable just BEFORE the core
+ * arms its drain triggers, and arming ends on a first drain pass. A capture written in that
+ * gap is the arming pass's to send — which is the product's contract, a capture made during
+ * the boot must leave — and a spec that seeds there sees its entry attempted before its own
+ * setup (write target, route, network cut) is in place. Measured on two cores: the pass
+ * waits 8 to 78 ms for its cross-tab lock before reading the queue, long enough for the
+ * first capture of a seed to land in it.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [budgetMs] Defaults to 25 s.
+ * @returns {Promise<void>}
+ */
+export async function waitEngineArmed(page, budgetMs = 25_000) {
+    await page.waitForFunction(
+        () => {
+            const w = /** @type {any} */ (window);
+            return (
+                typeof w.GeoLeaf?.Storage?.DB?.listPendingEdits === "function" &&
+                w.__geoleafDrainPasses >= 1
+            );
+        },
+        null,
+        { timeout: budgetMs }
+    );
+}

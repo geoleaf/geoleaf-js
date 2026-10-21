@@ -23,6 +23,7 @@ import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
+import { armDrainWitness, waitEngineArmed } from "./helpers/boot.js";
 
 const ORIGIN = baseURL("core");
 const LAYER = "sites_rosario";
@@ -38,18 +39,14 @@ const B_DATA_FILE = "e2e-profil-b-sites.geojson";
 test.use({ serviceWorkers: "block" });
 
 /**
- * Boots and waits for the offline engine to be WIRED (see `28-offline-queue.spec.js`).
+ * Waits for the offline engine to be WIRED, then ARMED — its arming pass over, so the
+ * capture under A is not that pass's to send, and the explicit drain under B is the first
+ * to judge the entry. Requires `armDrainWitness`, posed in {@link captureUnderA}.
  *
  * @param {import('@playwright/test').Page} page
  */
 async function waitForEngine(page) {
-    await page.waitForFunction(
-        () =>
-            typeof (/** @type {any} */ (globalThis).GeoLeaf?.Storage?.DB?.listPendingEdits) ===
-            "function",
-        null,
-        { timeout: 25000 }
-    );
+    await waitEngineArmed(page);
 }
 
 /**
@@ -137,6 +134,7 @@ async function rewriteProfileB(page, options = {}) {
  * @returns {Promise<{ entryId: string, profileId: string }>}
  */
 async function captureUnderA(page) {
+    await armDrainWitness(page);
     await wipeOnOrigin(page, ORIGIN);
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
     await page.evaluate((profile) => localStorage.setItem("gl-profile", profile), PROFILE_A);

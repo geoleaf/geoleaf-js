@@ -25,6 +25,7 @@ import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { wipeOnOrigin } from "./helpers/db-seed.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
+import { armDrainWitness, waitEngineArmed } from "./helpers/boot.js";
 
 const ORIGIN = baseURL("core");
 const LAYER = "sites_rosario";
@@ -58,16 +59,16 @@ async function ensureWriteTarget(page) {
     expect(posed, `la couche "${LAYER}" doit exister dans le profil actif`).toBe(true);
 }
 
-/** Boots and waits for the offline engine to be WIRED (not merely the facade mounted). */
+/**
+ * Boots and waits for the offline engine to be WIRED (not merely the facade mounted), then
+ * ARMED: a capture seeded before the arming pass is over is attempted by it, before the
+ * spec's route exists — measured on two cores, three runs in ten, the capture then waits
+ * out its 30 s retry delay and the drain under test walks past it. See `waitEngineArmed`.
+ */
 async function boot(page) {
+    await armDrainWitness(page);
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(
-        () =>
-            typeof (/** @type {any} */ (globalThis).GeoLeaf?.Storage?.DB?.listPendingEdits) ===
-            "function",
-        null,
-        { timeout: 25000 }
-    );
+    await waitEngineArmed(page);
 }
 
 /** Seeds one capture and returns its entry id. */

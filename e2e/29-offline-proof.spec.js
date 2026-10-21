@@ -80,7 +80,12 @@ import {
     assertZeroNetwork,
     recordRequests,
 } from "./helpers/offline.js";
-import { armAppReadyWitness, waitAppReadyWitness } from "./helpers/boot.js";
+import {
+    armAppReadyWitness,
+    armDrainWitness,
+    waitAppReadyWitness,
+    waitEngineArmed,
+} from "./helpers/boot.js";
 
 /** The variant embarking BOTH editing and `offline-ui` — the only one where the
  *  restoration cycle is reachable end to end. ⚠️ It used to be `deploy-addpoi`;
@@ -124,19 +129,14 @@ const NOT_APP_ORIGIN = new RegExp(`^(?!${ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "
  */
 async function boot(page) {
     await armAppReadyWitness(page);
+    await armDrainWitness(page);
     await page.goto(`${ORIGIN}/`, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction(
-        // 🛑 The witness must prove the engine is WIRED, not merely that the
-        // facade exists. `Storage.applyEdit` is mounted from boot and would
-        // return `true` too early — measured: the tests then started with
-        // `Storage.DB` still `null`. `DB.<method>` requires both, which is what
-        // `addToSyncQueue` did before its removal.
-        () =>
-            typeof (/** @type {any} */ (globalThis).GeoLeaf?.Storage?.DB?.listPendingEdits) ===
-            "function",
-        null,
-        { timeout: 25000 }
-    );
+    // 🛑 The witness must prove the engine is WIRED, not merely that the facade
+    // exists. `Storage.applyEdit` is mounted from boot and would return `true` too
+    // early — measured: the tests then started with `Storage.DB` still `null`.
+    // `DB.<method>` requires both, which is what `addToSyncQueue` did before its
+    // removal — and the arming pass must be over, or it sends what the test seeds.
+    await waitEngineArmed(page);
     await waitAppReadyWitness(page);
 }
 
