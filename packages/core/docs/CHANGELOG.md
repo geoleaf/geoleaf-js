@@ -11,6 +11,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## `@geoleaf-plugins/print` 1.3.6 - 2026-10-23
+
+Published without a core release: `@geoleaf/core` stays at 3.18.0.
+
+### Security
+
+- **The bundled DOMPurify moves to 3.4.17.** `print` ships jsPDF's optional sanitizer in a lazy
+  chunk, loaded on the first PDF export. 1.3.5 carried DOMPurify 3.4.16, covered by three
+  advisories fixed in 3.4.17: GHSA-cg2g-xh64-v4q7, GHSA-mrv2-3pqr-j5jr and GHSA-c6gr-qvv4-5v3f.
+  The plugin's own code is the same as 1.3.5's.
+
 ## [3.18.0] - 2026-10-20
 
 ### Fixed
