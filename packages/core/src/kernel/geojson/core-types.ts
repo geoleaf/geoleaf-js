@@ -162,6 +162,8 @@ export type GeoJSONLayerDef = GeoJSONLayerOptions & {
     showIconsOnMap?: boolean;
     /** `false` keeps the layer out of the layer manager (`layers/integration.ts`). */
     showInLayerManager?: boolean;
+    /** `false` puts the layer out of the themes' reach (`themes/theme-applier/visibility.ts`). */
+    themeable?: boolean;
     /** Makes the layer findable by `GeoLeaf.Layers.search` (`layer-search.ts`). */
     searchable?: { fields: string[] };
     styleRules?: GeoJSONStyleRule[];

@@ -2,7 +2,7 @@
  */
 /* theme-applier/visibility */
 
-const mockResetAllUserOverrides = vi.hoisted(() => vi.fn());
+const mockResetUserOverride = vi.hoisted(() => vi.fn());
 const mockSetVisibility = vi.hoisted(() => vi.fn());
 const mockGetLayers = vi.hoisted(() => vi.fn(() => []));
 const mockLayersMap = new Map();
@@ -25,7 +25,7 @@ vi.mock("../../src/kernel/shared/geojson-state.js", () => ({
 }));
 vi.mock("../../src/kernel/shared/layer-visibility-state.js", () => ({
     LayerVisibilityManager: {
-        resetAllUserOverrides: mockResetAllUserOverrides,
+        resetUserOverride: mockResetUserOverride,
         setVisibility: mockSetVisibility,
         VisibilitySource: { THEME: "theme" },
         getVisibilityState: () => ({ current: true }),
@@ -79,16 +79,32 @@ describe("theme-applier/visibility", () => {
     });
 
     describe("_hideAllLayers", () => {
-        it("calls resetAllUserOverrides and setVisibility for each layer", () => {
+        it("resets the user override of each layer and hides it", () => {
             const map = new Map([
                 ["layer-1", {}],
                 ["layer-2", {}],
             ]);
             mockGetLayers.mockReturnValue(map);
             TA._hideAllLayers();
-            expect(mockResetAllUserOverrides).toHaveBeenCalled();
+            expect(mockResetUserOverride).toHaveBeenCalledWith("layer-1");
+            expect(mockResetUserOverride).toHaveBeenCalledWith("layer-2");
             expect(mockSetVisibility).toHaveBeenCalledWith("layer-1", false, "theme");
             expect(mockSetVisibility).toHaveBeenCalledWith("layer-2", false, "theme");
+        });
+
+        // A technical layer with no row in the layer manager was switched off by the first
+        // theme that did not list it, and nothing could switch it back on.
+        it("leaves a `themeable: false` layer alone, and still hides an ordinary one", () => {
+            mockGetLayers.mockReturnValue(
+                new Map([
+                    ["technical", { config: { themeable: false, showInLayerManager: false } }],
+                    ["ordinary", { config: {} }],
+                ])
+            );
+            TA._hideAllLayers();
+            expect(mockSetVisibility).not.toHaveBeenCalledWith("technical", false, "theme");
+            expect(mockResetUserOverride).not.toHaveBeenCalledWith("technical");
+            expect(mockSetVisibility).toHaveBeenCalledWith("ordinary", false, "theme");
         });
     });
 
@@ -99,6 +115,14 @@ describe("theme-applier/visibility", () => {
             await expect(TA._applyLayerConfig(null)).resolves.toBeUndefined();
             expect(spy).not.toHaveBeenCalled();
             spy.mockRestore();
+        });
+
+        it("changes nothing on a `themeable: false` layer a theme lists", async () => {
+            mockLayersMap.set("technical", { config: { themeable: false } });
+            const setLayerSpy = vi.spyOn(TA, "_setLayerVisibilityAndStyle").mockResolvedValue();
+            await TA._applyLayerConfig({ id: "technical", visible: false, style: "other" });
+            expect(setLayerSpy).not.toHaveBeenCalled();
+            setLayerSpy.mockRestore();
         });
 
         it("calls _setLayerVisibilityAndStyle when layer exists in state", async () => {

@@ -13,6 +13,7 @@
 const lang_fr: Record<string, string> = {
     "table.toolbar.button": "Tableau",
     "ui.table.layer_placeholder": "Sélectionner une couche...",
+    "ui.table.no_visible_layer": "Aucune couche visible",
     "ui.table.zoomToSelection": "Zoom sur la sélection",
     "ui.table.highlight": "Surbrillance",
     "ui.table.exportSelection": "Exporter",

@@ -4,8 +4,8 @@ title: print — la carte à l'échelle, composée puis exportée
 plugin_id: print
 package: "@geoleaf-plugins/print"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: c4ea8018b
-date: 7 octobre 2026
+verifie_contre: b2d1c6cdf
+date: 23 octobre 2026
 ---
 
 # print — la carte à l'échelle, composée puis exportée
@@ -13,7 +13,11 @@ date: 7 octobre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/print` ·
 **Code :** `packages/plugins/print/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
-> ⚠️ **Ce que l'estampille du 01/10/2026 couvre** — print 1.3.3, trois commits. `817879f01` ne
+> ⚠️ **Ce que l'estampille du 23/10/2026 couvre** — print 1.3.6. `b2d1c6cdf` ne touche du paquet
+> que sa version et sa notice tierce : DOMPurify passe en 3.4.17 par le verrou (trois avis de
+> sécurité) — aucun source. Relu et inchangé : le reste.
+
+> ⚠️ **Ce que l'estampille du 01/10/2026 couvrait** — print 1.3.3, trois commits. `817879f01` ne
 > touche du paquet que sa notice tierce : le chunk PDF embarque DOMPurify 3.4.16 au lieu de
 > 3.4.13, par le verrou — aucun source. `9a54be0cf` : le
 > pied de page crédite le fond actif, et un fond crédité réserve la bande à lui seul (PR-17,

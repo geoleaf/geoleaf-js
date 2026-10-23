@@ -24,20 +24,44 @@ import type { BasemapDefinition, BaselayersInitOptions } from "./basemaps-types.
 export type { BaselayersInitOptions };
 
 /**
- * Initialises the basemaps system: registers default layers, applies custom
- * layers from options, sets the active layer, and renders the basemap UI controls.
- *
- * @param options - Initialisation options.
- * @param options.map - Map instance (uses the global map if omitted).
- * @param options.baselayers - Map of layer key → basemap config objects.
- * @param options.activeKey - Key of the basemap to activate on init.
- * @returns An object with the active key and the full layers registry.
+ * The basemaps `init` registers. A caller that declares basemaps gets those and no other: the
+ * defaults only stand in when nothing is declared. A declared key that names a default
+ * (`street`, `topo`, `satellite`) and brings no source of its own is merged over that default,
+ * so a declaration that only overrides its `label` or `apiKey` keeps the default's tiles. One
+ * that brings a source (`url`, `tiles`, `style`, `wmts`, `wms`, `imageSource`) is taken as is: merged, the default's `tiles` would
+ * win over the declared `url` (`normalizeTilesArray` reads `tiles` first) and serve the
+ * default's tiles under the declared name.
  */
+function _basemapsToRegister(declared: unknown): Record<string, BasemapDefinition> {
+    const entries =
+        declared && typeof declared === "object"
+            ? Object.entries(declared as Record<string, BasemapDefinition>)
+            : [];
+    if (entries.length === 0) return DEFAULT_BASELAYERS;
+    return Object.fromEntries(
+        entries.map(([key, def]) => {
+            const ownSource = Boolean(
+                def?.url || def?.tiles || def?.style || def?.wmts || def?.wms || def?.imageSource
+            );
+            const base =
+                !ownSource && Object.prototype.hasOwnProperty.call(DEFAULT_BASELAYERS, key)
+                    ? DEFAULT_BASELAYERS[key]
+                    : undefined;
+            return [key, base ? { ...base, ...def } : def];
+        })
+    );
+}
+
 /**
- * Registers the default basemaps, renders the controls and activates the initial basemap.
+ * Registers the basemaps, renders the controls and activates the initial basemap.
  *
- * @param options - `map` is the MapLibre instance to drive; `activeKey` selects the basemap
- *   to activate. Without it, the first registered basemap is activated.
+ * The basemaps registered are those of `options.baselayers` and no other. The built-in
+ * defaults (`street`, `topo`, `satellite`) are registered only when `options.baselayers` is
+ * absent or empty — a caller that declares its basemaps has chosen them.
+ *
+ * @param options - `map` is the MapLibre instance to drive; `baselayers` maps keys to the
+ *   basemap definitions to register; `activeKey` selects the basemap to activate. Without
+ *   it, the first registered basemap is activated.
  * @returns The active key and the registered layers, as they stand at the end of the call —
  *   ⚠️ `activeKey` may still be `null`, activation being deferred until the style is loaded.
  *
@@ -55,16 +79,12 @@ function init(options?: BaselayersInitOptions): {
 } {
     options = options || {};
 
-    registerBaseLayers(DEFAULT_BASELAYERS);
+    registerBaseLayers(_basemapsToRegister(options.baselayers));
 
     if (options.map) {
         setMap(options.map);
     } else {
         _acquireNativeMap(undefined);
-    }
-
-    if (options.baselayers && typeof options.baselayers === "object") {
-        registerBaseLayers(options.baselayers as Record<string, BasemapDefinition>);
     }
 
     if (options.activeKey) {

@@ -31,6 +31,11 @@
    ---------------------------------------------------------------------- */
 @layer gl.reset, gl.tokens, gl.kernel, gl.capabilities, gl.overrides;
 
+/* The one exception to "everything in a layer": the host guard is unlayered BY DESIGN, so that
+   a host page's generic rules (`select { color: … }`) cannot repaint GeoLeaf's fields — its
+   header says why it only writes `revert-layer`. */
+@import url("./geoleaf-host-guard.css");
+
 /* Tokens — variables de thème. Consommées par le kernel ET par les capacités. */
 @import url("./geoleaf-theme.css") layer(gl.tokens);
 

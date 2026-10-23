@@ -143,15 +143,24 @@
     width: 100%;
 }
 
+/* Basemap select: keeps its native shape, but carries its own colours — inherited ones are the
+   host's, and a host page in a dark scheme painted light text on this light panel. */
+.gl-layer-manager__basemap-select__select {
+    background-color: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+    color-scheme: var(--gl-color-scheme, light);
+}
+
 /* Select pour choisir le style */
 .gl-layer-manager__style-select {
     flex: 1;
     font-size: 0.68rem;
     padding: 4px 6px;
-    border: 1px solid var(--gl-color-border-soft, rgba(255, 255, 255, 0.15));
+    border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.15));
     border-radius: 4px;
-    background: var(--gl-color-bg-surface, rgba(0, 0, 0, 0.3));
-    color: var(--gl-color-text-main, #fff);
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+    color-scheme: var(--gl-color-scheme, light);
     cursor: pointer;
     min-width: 0;
     max-width: 100%;
@@ -180,7 +189,7 @@
 
 /* Options du select */
 .gl-layer-manager__style-select option {
-    background: var(--gl-color-bg-surface, #2a2a2a);
-    color: var(--gl-color-text-main, #fff);
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
     padding: 4px 8px;
 }

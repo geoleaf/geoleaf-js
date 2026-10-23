@@ -73,6 +73,11 @@
             "default": true,
             "description": "`false` keeps the layer out of the layer manager, and out of it only: the layer still loads, follows its theme's visibility, keeps its legend and stays drivable through `GeoLeaf.GeoJSON` / `GeoLeaf.Layers`. For a layer that must not be offered as a toggle (a snapping support, a computation layer). A section left with no listed layer is not created — unless `layerManagerConfig.sections` declares it, in which case its title shows with no rows."
         },
+        "themeable": {
+            "type": "boolean",
+            "default": true,
+            "description": "`false` puts the layer out of the themes' reach: applying a theme neither hides it for not listing it, nor changes its visibility or style when it lists it. For a technical layer whose visibility no theme decides (a clustering support, a computation layer) — typically paired with `showInLayerManager: false`, which leaves no toggle to switch it back on. Its visibility stays drivable through `GeoLeaf.GeoJSON` / `GeoLeaf.Layers`."
+        },
         "searchable": {
             "type": "object",
             "additionalProperties": false,

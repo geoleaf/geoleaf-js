@@ -13,6 +13,7 @@
 const lang_en: Record<string, string> = {
     "table.toolbar.button": "Table",
     "ui.table.layer_placeholder": "Select a layer...",
+    "ui.table.no_visible_layer": "No visible layer",
     "ui.table.zoomToSelection": "Zoom to selection",
     "ui.table.highlight": "Highlight",
     "ui.table.exportSelection": "Export",

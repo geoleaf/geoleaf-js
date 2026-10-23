@@ -34,10 +34,13 @@ vi.mock("../table-seam.js", () => ({
 }));
 // ⚠️ ONE mock per specifier: `Log` and `tLabel` now come from the same barrel, so a
 // second vi.mock("@geoleaf/host-runtime") would silently replace this one.
+// A test that needs another language puts its dictionary here; reset before each test.
+const activeDictionary = vi.hoisted(() => ({ labels: {} as Record<string, string> }));
 vi.mock("@geoleaf/host-runtime", async (importActual) => ({
     ...(await importActual<typeof import("@geoleaf/host-runtime")>()),
     Log: mockLogFns,
     tLabel: vi.fn((key: string) => {
+        if (key in activeDictionary.labels) return activeDictionary.labels[key];
         const labels: Record<string, string> = {
             "ui.table.layer_placeholder": "Select a layer...",
             "aria.table.hide": "Hide table",
@@ -86,6 +89,7 @@ describe("GeoLeaf._TablePanel", () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        activeDictionary.labels = {};
 
         // Clean up DOM between tests
         document.body.innerHTML = "";
@@ -479,6 +483,25 @@ describe("GeoLeaf._TablePanel", () => {
         test("should handle missing select element", () => {
             document.body.innerHTML = "";
             expect(() => TablePanel.refreshLayerSelector()).not.toThrow();
+        });
+
+        // Both placeholders went through hard-coded English strings: the table was
+        // translated except for its layer selector.
+        test("reads both placeholders from the active dictionary", () => {
+            activeDictionary.labels = {
+                "ui.table.layer_placeholder": "Seleccionar una capa...",
+                "ui.table.no_visible_layer": "Ninguna capa visible",
+            };
+            const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
+
+            TablePanel.refreshLayerSelector();
+            expect(select.options.length).toBeGreaterThan(1);
+            expect(select.options[0].textContent).toBe("Seleccionar una capa...");
+
+            installGeoJSONSeam(new Map());
+            TablePanel.refreshLayerSelector();
+            expect(select.options.length).toBe(1);
+            expect(select.options[0].textContent).toBe("Ninguna capa visible");
         });
     });
 

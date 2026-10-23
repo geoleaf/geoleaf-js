@@ -56,14 +56,14 @@ const _Config = Config as unknown as ConfigLike;
 
 /** Visibility manager: state + enum, narrowed to members used here. */
 interface VisibilityManagerLike {
-    resetAllUserOverrides(): void;
+    resetUserOverride(layerId: string): void;
     setVisibility(layerId: string, visible: boolean, source: unknown): void;
     VisibilitySource: { THEME: unknown };
 }
 
 /** Registered GeoJSON layer record (loose runtime shape). */
 interface LayerDataLike {
-    config?: { styles?: { available?: AvailableStyle[] } };
+    config?: { styles?: { available?: AvailableStyle[] }; themeable?: boolean };
     _layerDirectory?: string;
     currentStyle?: unknown;
 }
@@ -102,7 +102,7 @@ interface LabelButtonManagerLike {
 }
 
 /**
- * Deactivates all GeoJSON layers
+ * Hides every GeoJSON layer a theme drives — all but those declared `themeable: false`.
  * @private
  */
 TA._hideAllLayers = function () {
@@ -115,14 +115,24 @@ TA._hideAllLayers = function () {
         return;
     }
 
-    // Reset all user overrides to let the theme take control
-    VisibilityManager.resetAllUserOverrides();
-
-    // Iterate over all registered layers
-    GeoJSONShared.getLayers().forEach((_layerData: unknown, layerId: string) => {
+    // Every themeable layer is handed back to the theme: user override dropped, then hidden.
+    // A layer declared `themeable: false` is neither — the theme does not own it.
+    GeoJSONShared.getLayers().forEach((layerData: unknown, layerId: string) => {
+        if (!_isThemeable(layerData)) return;
+        VisibilityManager.resetUserOverride(layerId);
         VisibilityManager.setVisibility(layerId, false, VisibilityManager.VisibilitySource.THEME);
     });
 };
+
+/**
+ * Whether a theme drives this layer. Only an explicit `themeable: false` in the layer's
+ * definition keeps it out: a technical layer (clustering support, computation layer) that a
+ * theme would otherwise switch off for not listing it — and that nothing would switch back on
+ * when it has no row in the layer manager.
+ */
+function _isThemeable(layerData: unknown): boolean {
+    return (layerData as LayerDataLike | undefined)?.config?.themeable !== false;
+}
 
 /**
  * Applies the configuration d'a layer (visible/hidden + style)
@@ -141,6 +151,10 @@ TA._applyLayerConfig = function (layerConfig: ThemeLayerConfig) {
 
     // Retrieve the layer from the registre
     const layerData = GeoJSONShared.state.layers?.get(layerId);
+    // A theme that lists a `themeable: false` layer changes nothing on it either.
+    if (layerData && !_isThemeable(layerData)) {
+        return Promise.resolve();
+    }
 
     // R-perf S1 (refinement) — full per-layer cost: captures the pre-load gap
     // (ThemeCache.get lookup, def normalisation) + load + post-load style apply,

@@ -137,3 +137,10 @@
    .gl-baselayers / --stacked (wrapper jamais rendu), .gl-baselayer__icon et
    __label (le bouton reçoit textContent, sans sous-élément — basemaps/ui.ts),
    .gl-baselayer--compact, et .gl-layer-manager__baselayers + son @media. */
+
+/* Basemap credit: the engine paints its box half-white and colours only its links, so the
+   text inherited the host's colour — light text on that box under a dark host theme. Same
+   colour as the engine's links. */
+.maplibregl-ctrl-attrib-inner {
+    color: rgba(0, 0, 0, 0.75);
+}

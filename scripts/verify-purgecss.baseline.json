@@ -1,6 +1,6 @@
 {
     "_comment": "Sélecteurs CSS non référencés CONNUS — état figé, pas une liste d'exemptions. Le gate ne bloque que sur un sélecteur ABSENT d'ici. Trois natures s'y mélangent volontairement : (a) surfaces offertes et assumées (utilitaires de ui-base.css, classes .gl-geojson-* — leurs en-têtes les revendiquent comme telles, S12 a refusé de les purger), (b) classes référencées uniquement depuis des sources exclues par conception (tests, __mocks__, docs générées) — une classe utilisée seulement par un test EST morte en prod, (c) vraie dette. Ce qui est dynamique par construction va dans SAFELIST (purgecss-config.cjs), PAS ici. Régénérer via `--update-baseline` après avoir purgé un lot : le plancher ne fait que descendre.",
-    "generatedCount": 75,
+    "generatedCount": 76,
     "selectors": [
         "packages/_plugin-template/src/css/geoleaf-__PLUGIN_NAME__.css::.gl-__PLUGIN_NAME__",
         "packages/core/src/capabilities/feature-info/css/feature-info-gallery.css::.gl-poi-sidepanel-overlay",
@@ -23,6 +23,7 @@
         "packages/core/src/css/geoleaf-geojson.css::.gl-geojson-info__body",
         "packages/core/src/css/geoleaf-geojson.css::.gl-geojson-info__subtitle",
         "packages/core/src/css/geoleaf-geojson.css::.gl-geojson-info__title",
+        "packages/core/src/css/geoleaf-host-guard.css:::is(select, input, textarea):is([class^=\"gl-\"], [class*=\" gl-\"])",
         "packages/core/src/css/geoleaf-ui-base.css::.gl-align-between",
         "packages/core/src/css/geoleaf-ui-base.css::.gl-align-center",
         "packages/core/src/css/geoleaf-ui-base.css::.gl-align-start",

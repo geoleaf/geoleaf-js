@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "garde-d-hote",
+    "scope": ["packages/core/src/css/geoleaf-host-guard.css"],
+    "verdicts": {
+        "packages/core/src/css/geoleaf-host-guard.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Seule feuille GeoLeaf hors couche de cascade : rend la couleur et le fond des champs GeoLeaf et du crédit du fond aux couches `gl.*` (`revert-layer`), contre les règles génériques non classées d'une page hôte",
+            "confidence": "haute",
+            "rationale": "Hors couche par construction — une règle d'hôte non classée bat toute règle classée, quelle que soit sa spécificité. Importée sans `layer()` par `geoleaf-main.css`, qui motive l'exception sur place ; elle n'impose aucune valeur, sans quoi elle battrait aussi les états classés de GeoLeaf (survol, thème sombre)"
+        }
+    }
+}

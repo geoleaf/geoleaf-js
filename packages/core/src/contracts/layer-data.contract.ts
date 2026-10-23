@@ -149,6 +149,14 @@ export interface LayerDefinition {
      */
     showInLayerManager?: boolean;
     /**
+     * `false` puts the layer out of the themes' reach: applying a theme neither hides it for
+     * not listing it nor changes its visibility or style when it lists it. For a technical
+     * layer whose visibility no theme decides (a clustering support, a computation layer). Its
+     * visibility stays drivable through `GeoLeaf.GeoJSON.showLayer` / `hideLayer`. Absent or
+     * `true`: the themes drive it. Since 3.19.0.
+     */
+    themeable?: boolean;
+    /**
      * Makes the layer findable by `GeoLeaf.Layers.search`, on the feature's id and on the
      * listed `fields` — property names, bare (`"ref"`) or dotted (`"properties.ref"`). A layer
      * without this block is never searched. Since 3.10.0.

@@ -11,6 +11,52 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.19.0] - 2026-10-23
+
+### Changed
+
+- **The built-in basemaps no longer join a profile's.** `street`, `topo` and `satellite` were
+  registered on every `Baselayers.init`, before the profile's basemaps: a profile that declared
+  two offered five, the built-in three with their English labels — among them an imagery served
+  from a third-party host the profile had not chosen. They are now registered only when the
+  profile declares no basemap. **An integrator who relied on them without declaring them, next to
+  basemaps of their own, must now declare them.** A declared entry named `street`, `topo` or
+  `satellite` that brings no `url`, `tiles` or `style` still takes the built-in one's tiles and
+  overrides only what it carries (`label`, `apiKey`…). One that brings its own source is taken as
+  is: it used to be merged with the built-in one, whose `tiles` won over the declared `url`.
+- **Without a `defaultBasemap`, the first declared basemap is active.** The boot fell back to
+  `street`, which a profile that declares its basemaps no longer has. The configuration guide
+  already said "the first of the list".
+
+### Added
+
+- **`themeable`**, a key of a layer's definition. `false` puts the layer out of the themes'
+  reach: applying a theme neither hides it for not listing it, nor changes its visibility or style
+  when it lists it. For a technical layer whose visibility no theme decides — a clustering support,
+  a computation layer — that a theme switched off for not listing it, and that nothing switched
+  back on when it had no row in the layer manager. Absent or `true`, nothing changes.
+- **`--gl-color-scheme`** (`light`, `dark` under `.gl-theme-dark`), read by the layer manager's
+  selects as their `color-scheme`, so that the browser draws their lists in GeoLeaf's scheme and
+  not the host page's.
+
+### Fixed
+
+- **A host page's generic rules no longer repaint GeoLeaf's fields and the basemap credit.** Every
+  GeoLeaf rule lives in a `gl.*` cascade layer, and an unlayered rule beats every layered one: a
+  dark host theme's `select { color: …; background: transparent }` left light text on the layer
+  manager's light panel — 1.24:1 for the basemap select and the style selects. The credit
+  inherited the host's light text on the engine's half-white box. A new sheet, the only one outside
+  the layers, hands the colour and background of GeoLeaf's fields back to GeoLeaf's layers
+  (`revert-layer`); a host rule that names a GeoLeaf class, and `gl.overrides`, still apply. The
+  credit now carries the engine's link colour, and the basemap select its own colours.
+- **`@geoleaf-plugins/table` 1.2.2.** The layer selector's two placeholders were hard-coded in
+  English, in an otherwise translated table: they now come from the plugin's dictionaries, with a
+  new key, `ui.table.no_visible_layer`, in its six languages. And the panel no longer covers the
+  host page's dialogs: it sat at `z-index` 1100, above the 1050 of common modal dialogs, so a record
+  opened from a table row had its bottom hidden. It now reads `--gl-z-table-panel` (default
+  `--gl-z-panel`, 1040), and its export menu `--gl-z-table-panel-overlay` (default
+  `--gl-z-panel-overlay`, 1045).
+
 ## `@geoleaf-plugins/print` 1.3.6 - 2026-10-23
 
 Published without a core release: `@geoleaf/core` stays at 3.18.0.

@@ -13,6 +13,14 @@
     --gl-bp-lg: 768px; /* Tablette 6″ – seuil « icônes seules » barre pill mobile */
     --gl-bp-xl: 1024px; /* PC 10″ / 13″ */
 
+    /* Stacking scale of GeoLeaf's FIXED panels, the ones that live in the host's page rather
+       than in the map. Kept under 1050, where common modal dialogs sit (Bootstrap's modal and its
+       backdrop are 1055 / 1050, its off-canvas panels 1045): a dialog the host opens from a
+       GeoLeaf panel must cover it. A host lowers or raises the whole scale here, or one panel
+       through its own token (`--gl-z-table-panel`…). */
+    --gl-z-panel: 1040;
+    --gl-z-panel-overlay: 1045;
+
     /* Couleurs générales */
     --gl-color-bg-page: #f3f4f6;
     --gl-color-bg-surface: #ffffff;
@@ -20,6 +28,9 @@
     --gl-color-bg-overlay: rgba(255, 255, 255, 0.78);
 
     --gl-color-text-main: #0f172a;
+    /* The scheme native controls (a select's list, a field) are drawn in. Read by each
+       control, never set on a host element: GeoLeaf does not repaint the host's page. */
+    --gl-color-scheme: light;
     --gl-color-text-muted: #6b7280;
     --gl-color-text-inverse: #f9fafb;
 
@@ -180,6 +191,7 @@ body.gl-theme-light,
     --gl-color-bg-overlay: rgba(255, 255, 255, 0.78);
 
     --gl-color-text-main: #0f172a;
+    --gl-color-scheme: light;
     --gl-color-text-muted: #6b7280;
     --gl-color-text-inverse: #f9fafb;
 
@@ -249,6 +261,7 @@ body.gl-theme-dark,
     --gl-color-bg-overlay: rgba(15, 23, 42, 0.7);
 
     --gl-color-text-main: #e5e7eb;
+    --gl-color-scheme: dark;
     --gl-color-text-muted: #9ca3af;
     --gl-color-text-inverse: #eaeaea;
 

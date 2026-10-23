@@ -21,7 +21,8 @@
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
     transform: translateY(100%);
     transition: transform 0.3s ease-in-out;
-    z-index: 1100;
+    /* Under the host's modal dialogs: a record opened from a row must cover the panel. */
+    z-index: var(--gl-z-table-panel, var(--gl-z-panel, 1040));
     display: flex;
     flex-direction: column;
 }
@@ -217,7 +218,7 @@
 .gl-table-export-dropdown {
     display: none;
     position: fixed;
-    z-index: 1200;
+    z-index: var(--gl-z-table-panel-overlay, var(--gl-z-panel-overlay, 1045));
     min-width: 140px;
     background: var(--gl-color-bg-surface);
     border: 1px solid var(--gl-color-border-soft);
@@ -478,7 +479,7 @@ body.gl-theme-dark .gl-table-panel {
     }
     .gl-table-panel.gl-is-visible {
         transform: translateX(0) !important;
-        z-index: 1100 !important;
+        z-index: var(--gl-z-table-panel, var(--gl-z-panel, 1040)) !important;
     }
 }
 

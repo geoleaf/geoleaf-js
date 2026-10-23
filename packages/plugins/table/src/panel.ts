@@ -571,8 +571,9 @@ _TablePanel.refreshLayerSelector = function () {
     // Update the placeholder when no layer is visible
     const defaultOption = select.options[0];
     if (defaultOption) {
-        defaultOption.textContent =
-            select.options.length > 1 ? "Select a layer..." : "No visible layer";
+        defaultOption.textContent = getLabel(
+            select.options.length > 1 ? "ui.table.layer_placeholder" : "ui.table.no_visible_layer"
+        );
     }
 
     Log.info(

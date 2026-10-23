@@ -79,7 +79,10 @@ export function initBasemaps({ GeoLeaf, cfg, map, AppLog }: FeatureInitContext) 
     // Fallback to the raw map value for legacy paths.
     const nativeMap = _resolveNativeMap(GeoLeaf, map);
 
-    let activeKey = "street";
+    // Without a `defaultBasemap` flag, the first DECLARED basemap is active: the defaults are
+    // registered only when the profile declares none (`Baselayers.init`), so `street` may not
+    // exist. Left undefined (nothing declared), `init` activates the first registered one.
+    let activeKey: string | undefined;
     const basemapsCfg = cfg.basemaps;
     const basemapsFromConfig: Record<string, Record<string, unknown>> = {};
     if (basemapsCfg && typeof basemapsCfg === "object") {
@@ -114,6 +117,8 @@ export function initBasemaps({ GeoLeaf, cfg, map, AppLog }: FeatureInitContext) 
 
             basemapsFromConfig[key] = entry;
         });
+        // Outside the callback: it sits at the complexity ceiling.
+        activeKey ??= Object.values(basemapsFromConfig)[0]?.id as string | undefined;
     }
 
     try {

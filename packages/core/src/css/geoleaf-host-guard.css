@@ -1,0 +1,28 @@
+/* ======================================================================
+   GeoLeaf — host guard. The ONLY sheet outside the cascade layers, on purpose.
+
+   Every other GeoLeaf rule lives in a `gl.*` layer, and an UNLAYERED rule beats every layered
+   one whatever its specificity. A host page's generic rules are unlayered: one `select {
+   color: #e4e4e4; background: transparent }` from a dark host theme overrode the colours the
+   layer manager's selects carry, and left light text on a light panel (1.24:1, measured in
+   Chromium).
+
+   This sheet does not repeat those colours: unlayered, it would beat GeoLeaf's own layered
+   states (hover, focus, the dark theme) just as surely. It writes `revert-layer`, which drops
+   every UNLAYERED declaration of the property for these elements — the host's and this one —
+   and hands it back to the `gl.*` layers. Its selectors outrank a bare element selector, so a
+   host rule naming a GeoLeaf class still applies, and `gl.overrides` stays the integrator's way
+   in.
+
+   Scope kept to colour and background, on GeoLeaf's own fields and on the basemap credit
+   (whose text colour was inherited from the host). `all: revert-layer` would also drop the
+   `font: inherit` a host reset gives fields, and a GeoLeaf field that sets no font would fall
+   back to the browser's control font. Buttons are left out: one that sets no background would
+   fall back to the browser's grey.
+   ====================================================================== */
+
+:is(select, input, textarea):is([class^="gl-"], [class*=" gl-"]),
+.maplibregl-ctrl-attrib-inner {
+    color: revert-layer;
+    background: revert-layer;
+}

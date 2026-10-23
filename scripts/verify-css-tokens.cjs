@@ -102,6 +102,10 @@ const HOST_HOOKS = {
     // Text on the accent. The themes set `--gl-color-accent-contrast`; a host that wants
     // another colour on its buttons defines this one, and the three reads fall back otherwise.
     "--gl-color-on-accent": "packages/core/docs/CHANGELOG.md",
+    // The table panel's stacking level, and its export menu's. A host whose dialogs sit lower
+    // than common ones sets these; otherwise the panel reads the core's `--gl-z-panel` scale.
+    "--gl-z-table-panel": "packages/core/docs/CHANGELOG.md",
+    "--gl-z-table-panel-overlay": "packages/core/docs/CHANGELOG.md",
 };
 
 const PKG = path.join(ROOT, "packages");

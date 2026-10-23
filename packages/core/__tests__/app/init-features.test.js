@@ -47,6 +47,48 @@ describe("app/init-features (R5)", () => {
         });
     });
 
+    describe("initBasemaps — fond actif", () => {
+        // The defaults are registered only when the profile declares no basemap: falling back
+        // to `street` would name a basemap the profile never declared.
+        it("sans `defaultBasemap`, active le premier fond déclaré", () => {
+            const initFn = vi.fn();
+            const GeoLeaf = { BaseLayers: { init: initFn } };
+            const cfg = {
+                basemaps: {
+                    plan: { id: "plan", label: "Plan", url: "https://a.example/{z}/{x}/{y}.png" },
+                    ortho: {
+                        id: "ortho",
+                        label: "Ortho",
+                        url: "https://b.example/{z}/{x}/{y}.png",
+                    },
+                },
+            };
+            initBasemaps({ GeoLeaf, cfg, map, AppLog });
+            expect(initFn.mock.calls[0][0].activeKey).toBe("plan");
+        });
+        it("`defaultBasemap` l'emporte sur l'ordre de déclaration", () => {
+            const initFn = vi.fn();
+            const GeoLeaf = { BaseLayers: { init: initFn } };
+            const cfg = {
+                basemaps: {
+                    plan: { id: "plan", url: "https://a.example/{z}/{x}/{y}.png" },
+                    ortho: {
+                        id: "ortho",
+                        url: "https://b.example/{z}/{x}/{y}.png",
+                        defaultBasemap: true,
+                    },
+                },
+            };
+            initBasemaps({ GeoLeaf, cfg, map, AppLog });
+            expect(initFn.mock.calls[0][0].activeKey).toBe("ortho");
+        });
+        it("sans fond déclaré, laisse `init` choisir parmi les défauts", () => {
+            const initFn = vi.fn();
+            initBasemaps({ GeoLeaf: { BaseLayers: { init: initFn } }, cfg: {}, map, AppLog });
+            expect(initFn.mock.calls[0][0].activeKey).toBeUndefined();
+        });
+    });
+
     describe("initGeoJSON", () => {
         // F0/S8: GeoLeaf.GeoJSON.init() + loadFromActiveProfile were moved to
         // GeoJSONModule.init() (see geojson-module.test.js). initGeoJSON now only wires

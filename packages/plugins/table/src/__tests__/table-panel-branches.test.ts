@@ -241,7 +241,8 @@ describe("table/panel — branch coverage", () => {
         installGeoJSONSeam(new Map());
         TablePanel.refreshLayerSelector();
         const select = document.querySelector("[data-table-layer-select]") as HTMLSelectElement;
-        expect(select.options[0].textContent).toBe("No visible layer");
+        // `tLabel` is mocked to return its key: the placeholder goes through the dictionary.
+        expect(select.options[0].textContent).toBe("ui.table.no_visible_layer");
     });
 
     // ── _isLayerVisible — VisibilityManager returns null state ──────────

@@ -181,17 +181,16 @@ function _removeCurrentBasemap(): void {
  * No map API calls are made at registration time — the definition is stored
  * and applied lazily when `setBaseLayer()` is called.
  *
- * If the key is already registered (e.g. from `registerDefaultBaseLayers`),
- * the new definition is shallow-merged on top of the existing one so that
- * profile overrides (apiKey, defaultBasemap, label, offline…) take effect
- * without losing the structural fields (tiles, wmts, attribution…) already
- * provided by the default entry.
+ * If the key is already registered, the new definition is shallow-merged on top
+ * of the existing one, so that an override (apiKey, label, offline…) keeps the
+ * structural fields (tiles, wmts, attribution…) the first registration provided.
  */
 /**
  * Registers one basemap definition under a key.
  *
  * Registering does not activate: the basemap becomes selectable, and
- * {@link setBaseLayer} applies it. Re-registering a key replaces the definition.
+ * {@link setBaseLayer} applies it. Re-registering a key shallow-merges the new
+ * definition over the previous one.
  *
  * A missing key or definition logs a warning and returns — this never throws.
  *
@@ -628,7 +627,7 @@ export function getBaseLayers() {
  * Called when an application is unmounted (`UIModule.destroy()`). Without it the next map got
  * NO basemap: the active key survived, and {@link setBaseLayer} returns early on the key that is
  * already active — it was active on the map that went away. The definitions are registered again
- * by the next `Baselayers.init`, defaults included.
+ * by the next `Baselayers.init`.
  */
 export function resetBasemapRegistry(): void {
     // A ticket and a generation taken now supersede an activation deferred on the old map, and a
