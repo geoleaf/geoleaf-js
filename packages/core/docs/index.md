@@ -31,13 +31,31 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.18.0 <Badge type="tip" text="2026-10-20" />
+## Release v3.19.0 <Badge type="tip" text="2026-10-23" />
 
-A minor release of `@geoleaf/core`, published with five plugins: offline work, downloaded data and
-archived conflicts stay with the profile — and the source — they belong to, and an integrator
-chooses the profile a map boots on.
+A minor release of `@geoleaf/core`, published with `@geoleaf-plugins/table` 1.2.2: GeoLeaf sits
+better inside a host page — the host's generic rules no longer repaint its fields, its fixed
+panels stay under the host's dialogs — and a profile that declares its basemaps gets those only.
 
 **Highlights:**
+
+- **Changed** — the built-in basemaps (`street`, `topo`, `satellite`) no longer join a profile's:
+  they serve only a profile that declares none. An integrator who relied on them next to basemaps
+  of their own must now declare them. Without `defaultBasemap`, the first declared basemap is
+  active.
+- **Added** — `themeable: false` on a layer puts it out of the themes' reach: a theme neither hides
+  it for not listing it nor changes it when it lists it.
+- **Fixed** — a host page's generic rules (`select { color: … }`) no longer repaint GeoLeaf's
+  fields and the basemap credit: a dark host theme left light text on the layer manager's light
+  panel.
+- **Fixed** — `@geoleaf-plugins/table` 1.2.2 translates its layer selector's placeholders, and its
+  panel sits under the host's modal dialogs (`--gl-z-table-panel`, default 1040).
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.18.0 (2026-10-20) — a minor release of `@geoleaf/core`, published with five plugins:
+offline work, downloaded data and archived conflicts stay with the profile — and the source — they
+belong to, and an integrator chooses the profile a map boots on.
 
 - **Added** — `profile`, an option of `GeoLeaf.boot()` and `GeoLeaf.mount()`, decides which profile
   boots, over the choice the profile switcher stored in the browser.
@@ -51,8 +69,6 @@ chooses the profile a map boots on.
 - **Fixed** — `@geoleaf-plugins/measure` 1.0.13 gives the cursor back to the map after a
   measurement, and `@geoleaf-plugins/editor` 1.6.2 strokes follow a palette switch.
 - **Removed** — `useSharedCluster`, a clustering flag no code read.
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.17.0 (2026-10-18) — a minor release of `@geoleaf/core`, published with three plugins
 that now rely on it: a tool that takes over the map's clicks goes through the adapter, and three
