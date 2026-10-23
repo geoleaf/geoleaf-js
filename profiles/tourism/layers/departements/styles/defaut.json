@@ -1,0 +1,23 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "scaleConfig": {
+        "minScale": 35000000,
+        "maxScale": 300000
+    },
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "fillOpacity": 0,
+        "color": "#a1a1a1",
+        "opacity": 1,
+        "weight": 0.98,
+        "dashArray": "3.92 1.96"
+    },
+    "legend": {
+        "label": "Départements"
+    }
+}
