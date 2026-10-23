@@ -245,7 +245,7 @@
         "rollup-plugin-esbuild": "^6.2.1",
         "tsx": "^4.23.13",
         "turbo": "^2.10.12",
-        "vitest": "^4.1.8",
+        "vitest": "^5.0.2",
         "web-vitals": "^6.2.1"
     },
     "repository": {
