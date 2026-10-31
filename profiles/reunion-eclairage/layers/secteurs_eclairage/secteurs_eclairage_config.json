@@ -1,0 +1,57 @@
+{
+    "id": "secteurs_eclairage",
+    "label": "Secteurs d'éclairage",
+    "zIndex": 70,
+    "geometry": "polygon",
+    "interactiveShape": true,
+    "data": {
+        "directory": "data",
+        "file": "secteurs_eclairage.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.nom",
+        "fields": [
+            {
+                "field": "properties.nom",
+                "label": "nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.nb_candelabres",
+                "label": "Nb candélabres",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            },
+            {
+                "field": "properties.puissance_kw",
+                "label": "Puissance totale (kW)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

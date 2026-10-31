@@ -1,0 +1,42 @@
+{
+    "defaultTheme": "eclairage",
+    "config": {
+        "primaryThemes": {
+            "enabled": true,
+            "position": "top-map"
+        },
+        "secondaryThemes": {
+            "enabled": false
+        }
+    },
+    "themes": [
+        {
+            "id": "eclairage",
+            "label": "Éclairage",
+            "type": "primary",
+            "description": "Affiche l'ensemble des équipements d'éclairage public",
+            "icon": "💡",
+            "layers": [
+                { "id": "candelabres", "visible": true, "style": "altitude" },
+                { "id": "armoires", "visible": true, "style": "defaut" },
+                { "id": "reseau_cables", "visible": true, "style": "defaut" },
+                { "id": "secteurs_eclairage", "visible": true, "style": "defaut" },
+                { "id": "communes_reunion", "visible": false, "style": "defaut" }
+            ]
+        },
+        {
+            "id": "administration",
+            "label": "Administration",
+            "type": "primary",
+            "description": "Affiche les communes et secteurs d'éclairage",
+            "icon": "🗺️",
+            "layers": [
+                { "id": "candelabres", "visible": false, "style": "altitude" },
+                { "id": "armoires", "visible": false, "style": "defaut" },
+                { "id": "reseau_cables", "visible": false, "style": "defaut" },
+                { "id": "secteurs_eclairage", "visible": true, "style": "defaut" },
+                { "id": "communes_reunion", "visible": true, "style": "defaut" }
+            ]
+        }
+    ]
+}

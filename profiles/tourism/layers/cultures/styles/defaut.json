@@ -1,0 +1,58 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "shape": "circle",
+        "radius": 8,
+        "fillColor": "#9d5f3f",
+        "fillOpacity": 1,
+        "color": "#232323",
+        "opacity": 1,
+        "weight": 0
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.fclass",
+                "operator": "==",
+                "value": "archaeological"
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 8,
+                "fillColor": "#9d5f3f",
+                "fillOpacity": 1,
+                "color": "#232323",
+                "opacity": 1,
+                "weight": 0
+            },
+            "legend": {
+                "label": "archaeological"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.fclass",
+                "operator": "==",
+                "value": "museum"
+            },
+            "style": {
+                "shape": "circle",
+                "radius": 8,
+                "fillColor": "#bb1fd9",
+                "fillOpacity": 1,
+                "color": "#232323",
+                "opacity": 1,
+                "weight": 0
+            },
+            "legend": {
+                "label": "museum"
+            }
+        }
+    ]
+}

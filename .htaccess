@@ -1,0 +1,127 @@
+# ── GeoLeaf — recette Apache ──────────────────────────────────────────────────
+#
+# ⚠️ CE FICHIER EST INERTE SI `AllowOverride None` — le cas par défaut de beaucoup de
+# configurations. Il est alors présent, lu par personne, et l'application échoue
+# exactement comme s'il était absent. À vérifier dans le vhost AVANT de conclure.
+#
+# Détail de chaque exigence et de son symptôme : SERVEUR.md.
+
+# 🛑 SANS CETTE LIGNE, RIEN NE BOOTE.
+#
+# Le moteur cartographique (MapLibre GL JS 6) est ESM-only et entièrement livré en
+# `.mjs`. Servi sous un type non-JavaScript, le navigateur REFUSE de l'exécuter —
+# « Strict MIME type checking is enforced for module scripts ». Symptôme : spinner
+# infini, et une console dont seule la PREMIÈRE ligne rouge est la cause.
+AddType text/javascript .mjs
+
+# Les données des couches. Apache ne connaît pas l'extension : mesuré, un `.geojson` partait
+# SANS `Content-Type`, alors que son jumeau `.gz` partait typé — deux réponses pour un
+# même fichier, selon ce que le client accepte.
+AddType application/json .geojson
+
+# ⚠️ MultiViews doit rester désactivé. Avec lui, la présence de `fichier.js.gz` à côté
+# de `fichier.js` peut faire servir l'archive sans son `Content-Encoding` —
+# « Uncaught SyntaxError: Invalid or unexpected token ».
+Options -MultiViews -Indexes
+
+DirectoryIndex index.html
+
+# Sert les jumeaux `.gz` déjà présents. Sans ces règles ils existent et ne sont jamais
+# servis. (Retirer le bloc si mod_rewrite ou mod_headers n'est pas disponible : c'est
+# une optimisation, pas une condition de fonctionnement.)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    RewriteCond %{REQUEST_FILENAME}.gz -f
+    RewriteRule ^(.*)$ $1.gz [QSA,L]
+</IfModule>
+<IfModule mod_headers.c>
+    <FilesMatch "\.(mjs|js|css|json|geojson|svg|html)\.gz$">
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+</IfModule>
+# 🛑 Les archives doivent conserver le type de l'ORIGINAL, pas celui de l'archive : un module
+# servi `application/x-gzip` est REFUSÉ par le navigateur, comme un `.mjs` sans son type.
+# `ForceType`, et non `AddType .js.gz` : Apache lit les extensions une à une, et celle de
+# l'archive — `.gz`, que sa configuration par défaut associe à `application/x-gzip` —
+# l'emporte sur celle de l'original. Mesuré : avec `AddType`, tout jumeau partait sous le
+# type de l'archive.
+<FilesMatch "\.m?js\.gz$">
+    ForceType text/javascript
+</FilesMatch>
+<FilesMatch "\.css\.gz$">
+    ForceType text/css
+</FilesMatch>
+<FilesMatch "\.(json|geojson)\.gz$">
+    ForceType application/json
+</FilesMatch>
+<FilesMatch "\.svg\.gz$">
+    ForceType image/svg+xml
+</FilesMatch>
+<FilesMatch "\.html\.gz$">
+    ForceType text/html
+</FilesMatch>
+
+# 🛑 HTTPS N'EST PAS OPTIONNEL — la page déclare `upgrade-insecure-requests`, et le
+# service worker exige un contexte sécurisé. Décommenter si la redirection n'est pas
+# déjà faite en amont (vhost, proxy, CDN) :
+# <IfModule mod_rewrite.c>
+#     RewriteCond %{HTTPS} !=on
+#     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+# </IfModule>
+
+# En-têtes de sécurité. Aucun n'empêche le boot ; seul le serveur peut les poser.
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Content-Security-Policy "frame-ancestors 'self'"
+    # HSTS — à activer une fois le HTTPS stable (voir la note de la recette nginx :
+    # difficile à révoquer, renforcer par `; includeSubDomains`/`; preload` délibérément).
+    Header always set Strict-Transport-Security "max-age=31536000"
+
+    # Cache. 🛑 Les blocs jugent la LIGNE DE REQUÊTE (`THE_REQUEST`), pas le fichier servi, et
+    # c'est délibéré : la réécriture ci-dessus sert `init.js.gz` à la place de `init.js`, et
+    # un `<FilesMatch "^init\.js$">` ne matche pas l'archive — la règle ne s'appliquerait
+    # qu'aux clients qui refusent gzip. `THE_REQUEST` ne change pas avec la réécriture.
+    # Demande Apache 2.4 (`<If>`). ⚠️ Apache applique ces blocs DANS L'ORDRE et le dernier
+    # qui matche l'emporte : du plus général au plus précis.
+
+    # Artefacts empreintés — BORNÉ À `dist/`, le seul dossier dont chaque fichier est demandé
+    # par son contenu. Par extension seule, le moteur, les icônes et les sprites partaient
+    # épinglés un an sous un nom stable (SERVEUR.md §8).
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/dist/[^ ?]*\.(mjs|js|css|woff2?|png|svg)[ ?]#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
+    # Icônes de l'application : noms stables, changent rarement — une journée.
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/icons/#">
+        Header set Cache-Control "public, max-age=86400"
+    </If>
+    # Moteur de carte : noms stables, importés l'un par l'autre — revalidé à chaque visite.
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/vendor/#">
+        Header set Cache-Control "no-cache"
+    </If>
+    # Données de profil : revalidées à l'heure — JSON, GeoJSON et sprite d'icônes. Sans cette
+    # règle elles n'ont AUCUN `Cache-Control` et le navigateur applique son heuristique.
+    # ⚠️ APRÈS le bloc `/icons/` : un sprite vit sous `profiles/<id>/icons/`.
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/profiles/#">
+        Header set Cache-Control "public, max-age=3600"
+    </If>
+    # Point d'entrée, bootstrap, manifeste et service worker : toujours revalidés — ils
+    # référencent tout le reste. Le motif prend aussi la requête sur le dossier (`/`), qui
+    # sert `index.html`.
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/(index\.html|init\.js|manifest\.json|sw-core\.js)?[ ?]#">
+        Header set Cache-Control "no-cache"
+    </If>
+    # 🛑 Racine des profils : elle porte `data.profileVersion`, l'empreinte qui invalide tout
+    # le reste. On ne peut pas invalider par un jeton le fichier qui porte ce jeton — épinglé,
+    # il défait le mécanisme entier. Ce bloc est le DERNIER pour cette raison.
+    <If "%{THE_REQUEST} =~ m#^\S+ [^ ?]*/profiles/geoleaf\.config\.json[ ?]#">
+        Header set Cache-Control "no-cache"
+    </If>
+</IfModule>
+
+# ⚠️ NE PAS ajouter de repli « SPA » (FallbackResource / RewriteRule vers index.html).
+# Ce n'est pas une application à routes côté client, et un repli global fait RÉUSSIR le
+# pré-cache du service worker sur du HTML : le mode hors-ligne est alors silencieusement
+# corrompu, et le défaut ne se voit qu'une fois déconnecté.

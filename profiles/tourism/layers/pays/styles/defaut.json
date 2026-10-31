@@ -1,0 +1,24 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "casing": {
+            "enabled": false,
+            "color": "#000000",
+            "opacity": 1,
+            "widthPx": 0
+        },
+        "color": "#000000",
+        "opacity": 1,
+        "weight": 0.98,
+        "dashArray": "3.931 1.965 0.983 1.965 0.983 1.965"
+    },
+    "legend": {
+        "label": "Pays"
+    }
+}
