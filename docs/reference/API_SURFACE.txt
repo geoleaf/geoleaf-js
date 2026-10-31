@@ -625,6 +625,7 @@ CallSignature | @geoleaf-plugins/navigation.engine/runtime.GuidanceOptions.decod
 CallSignature | @geoleaf-plugins/navigation.engine/runtime.GuidanceOptions.recompute.recompute | doc:5a1d452797c4
 CallSignature | @geoleaf-plugins/navigation.engine/runtime.createGuidanceRuntime.createGuidanceRuntime | doc:d2c86d3f67f8
 CallSignature | @geoleaf-plugins/navigation.engine/snap.buildTrack.buildTrack | doc:bcf11e9706af
+CallSignature | @geoleaf-plugins/navigation.engine/snap.haversine.haversine | doc:53b211be6cee
 CallSignature | @geoleaf-plugins/navigation.engine/snap.snapToTrack.snapToTrack | doc:2a1c55a83c5a
 CallSignature | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.accept.accept | doc:06e210823fcc
 CallSignature | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.continueToNextLeg.continueToNextLeg | doc:58d647ea533a
@@ -632,6 +633,7 @@ CallSignature | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine
 CallSignature | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.stop.stop | doc:37407dcf4dc2
 CallSignature | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.suspend.suspend | doc:2cdcc915d2f6
 CallSignature | @geoleaf-plugins/navigation.guidance-contract.GuidanceListener.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.continueToNextLeg.continueToNextLeg | doc:5be767abae5e
 CallSignature | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.onProgress.onProgress | doc:ed2eb6a51725
 CallSignature | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.onProgress.onProgress.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.onView.onView | doc:4444bd7d5779
@@ -693,14 +695,19 @@ CallSignature | @geoleaf-plugins/navigation.ui/maneuver-labels.maneuverLabel.man
 CallSignature | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.destroy.destroy | doc:38941c2088f7
 CallSignature | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.update.update | doc:dcdcba808f80
 CallSignature | @geoleaf-plugins/navigation.ui/position-arrow.createPositionArrow.createPositionArrow | doc:ebd99dfa459b
+CallSignature | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.destroy.destroy | doc:1f0a3d4a67a1
+CallSignature | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.update.update | doc:67595131ebba
+CallSignature | @geoleaf-plugins/navigation.ui/session-controls.createSessionControls.createSessionControls | doc:066d3358f947
 CallSignature | @geoleaf-plugins/navigation.ui/session-notice.SessionNotice.remove.remove | doc:ad31f2c49a10
 CallSignature | @geoleaf-plugins/navigation.ui/session-notice.removeSessionNotice.removeSessionNotice | doc:b1974b9ea61b
 CallSignature | @geoleaf-plugins/navigation.ui/session-notice.showSessionNotice.showSessionNotice | doc:861b97ff48ff
 CallSignature | @geoleaf-plugins/navigation.ui/session-view.SessionView.detach.detach | doc:b19336f5a706
 CallSignature | @geoleaf-plugins/navigation.ui/session-view.SessionView.setVoiceEnabled.setVoiceEnabled | doc:06fbd934bdb5
+CallSignature | @geoleaf-plugins/navigation.ui/session-view.ViewSource.continueToNextLeg.continueToNextLeg | doc:c5ff0cb3e2eb
 CallSignature | @geoleaf-plugins/navigation.ui/session-view.ViewSource.onView.onView | doc:208a94fc078d
 CallSignature | @geoleaf-plugins/navigation.ui/session-view.ViewSource.onView.onView.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView | doc:0ea3659e3dd2
+CallSignature | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.onStop.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control-dom.buildStructure.buildStructure | doc:ba5ab9615511
 CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control-events.attachEventListeners.attachEventListeners | doc:abf302c30c1b
 CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control-events.cleanup.cleanup | doc:41eaac6a4dbf
@@ -982,6 +989,10 @@ CallSignature | @geoleaf-plugins/routing.composition.removeWaypoint.removeWaypoi
 CallSignature | @geoleaf-plugins/routing.composition.roleAt.roleAt | doc:50fa9b866acd
 CallSignature | @geoleaf-plugins/routing.config.getPluginConfig.getPluginConfig | doc:62571994035c
 CallSignature | @geoleaf-plugins/routing.config.travelProfile.travelProfile | doc:118b18d55c62
+CallSignature | @geoleaf-plugins/routing.engine-settings.getEngineSettings.getEngineSettings | doc:6f66d286722f
+CallSignature | @geoleaf-plugins/routing.engine-settings.setEngineSettings.setEngineSettings | doc:e93f8da6f999
+CallSignature | @geoleaf-plugins/routing.engine-url.buildEngineUrl.buildEngineUrl | doc:afc918675309
+CallSignature | @geoleaf-plugins/routing.engine-url.parseEndpoint.parseEndpoint | doc:5d87421af713
 CallSignature | @geoleaf-plugins/routing.entry-point.ActionDetail.close.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/routing.entry-point.actionId.actionId | doc:482bd3343166
 CallSignature | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint | doc:5f9b2ce55923
@@ -1015,14 +1026,16 @@ CallSignature | @geoleaf-plugins/routing.provider.createProvider.createProvider 
 CallSignature | @geoleaf-plugins/routing.provider.getProvider.getProvider | doc:5dc752736c37
 CallSignature | @geoleaf-plugins/routing.provider.registerProvider.registerProvider | doc:dd077dde22e1
 CallSignature | @geoleaf-plugins/routing.provider.registeredProviders.registeredProviders | doc:a8f02aefd609
-CallSignature | @geoleaf-plugins/routing.provider.resolveEndpoint.resolveEndpoint | doc:6c225b0f0d11
+CallSignature | @geoleaf-plugins/routing.provider.resolveEndpoint.resolveEndpoint | doc:1da9936e2b2b
 CallSignature | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson | doc:5b9ded943f8e
+CallSignature | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.classify.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/routing.providers/osrm.createOsrmProvider.createOsrmProvider | doc:693873cfe93e
 CallSignature | @geoleaf-plugins/routing.providers/valhalla.createValhallaProvider.createValhallaProvider | doc:26ef59867032
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.actionId.actionId | doc:8089513a9b88
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.addWaypoint.addWaypoint | doc:dbf459151326
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.clearRoute.clearRoute | doc:88afba83e460
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.clearWaypoints.clearWaypoints | doc:860d4591b567
+CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.configure.configure | doc:356dffa8f514
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.getConfig.getConfig | doc:f884e9a09f13
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.getProvider.getProvider | doc:7c1c2287b63e
 CallSignature | @geoleaf-plugins/routing.public-api.RoutingPublicApi.isRoutable.isRoutable | doc:4bfb84c12fbe
@@ -1043,6 +1056,7 @@ CallSignature | @geoleaf-plugins/routing.route-cache.clearRouteCache.clearRouteC
 CallSignature | @geoleaf-plugins/routing.route-cache.rememberRoute.rememberRoute | doc:124ed5fb92e4
 CallSignature | @geoleaf-plugins/routing.route-cache.routeCacheSize.routeCacheSize | doc:7cffb7c7fd00
 CallSignature | @geoleaf-plugins/routing.route-cache.routeKey.routeKey | doc:aaf258d10095
+CallSignature | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad.hasStopFarFromRoad | doc:bab66a529fdb
 CallSignature | @geoleaf-plugins/routing.ui-seam.hidePane.hidePane | doc:aaf5de3b4bc3
 CallSignature | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane | doc:690441182977
 CallSignature | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type.onOpen.onOpen | doc:-
@@ -4448,6 +4462,7 @@ Function | @geoleaf-plugins/navigation.engine/maneuver.nextManeuver | doc:-
 Function | @geoleaf-plugins/navigation.engine/progress.computeProgress | doc:-
 Function | @geoleaf-plugins/navigation.engine/runtime.createGuidanceRuntime | doc:-
 Function | @geoleaf-plugins/navigation.engine/snap.buildTrack | doc:-
+Function | @geoleaf-plugins/navigation.engine/snap.haversine | doc:-
 Function | @geoleaf-plugins/navigation.engine/snap.snapToTrack | doc:-
 Function | @geoleaf-plugins/navigation.platform/geo.startGeoWatch | doc:-
 Function | @geoleaf-plugins/navigation.platform/network.onNetworkReturn | doc:-
@@ -4470,6 +4485,7 @@ Function | @geoleaf-plugins/navigation.ui/maneuver-banner.cssToken | doc:-
 Function | @geoleaf-plugins/navigation.ui/maneuver-labels.formatApproachDistance | doc:-
 Function | @geoleaf-plugins/navigation.ui/maneuver-labels.maneuverLabel | doc:-
 Function | @geoleaf-plugins/navigation.ui/position-arrow.createPositionArrow | doc:-
+Function | @geoleaf-plugins/navigation.ui/session-controls.createSessionControls | doc:-
 Function | @geoleaf-plugins/navigation.ui/session-notice.removeSessionNotice | doc:-
 Function | @geoleaf-plugins/navigation.ui/session-notice.showSessionNotice | doc:-
 Function | @geoleaf-plugins/navigation.ui/session-view.attachSessionView | doc:-
@@ -4614,6 +4630,10 @@ Function | @geoleaf-plugins/routing.composition.removeWaypoint | doc:-
 Function | @geoleaf-plugins/routing.composition.roleAt | doc:-
 Function | @geoleaf-plugins/routing.config.getPluginConfig | doc:-
 Function | @geoleaf-plugins/routing.config.travelProfile | doc:-
+Function | @geoleaf-plugins/routing.engine-settings.getEngineSettings | doc:-
+Function | @geoleaf-plugins/routing.engine-settings.setEngineSettings | doc:-
+Function | @geoleaf-plugins/routing.engine-url.buildEngineUrl | doc:-
+Function | @geoleaf-plugins/routing.engine-url.parseEndpoint | doc:-
 Function | @geoleaf-plugins/routing.entry-point.actionId | doc:-
 Function | @geoleaf-plugins/routing.entry-point.wireEntryPoint | doc:-
 Function | @geoleaf-plugins/routing.fit-route.bboxWithin | doc:-
@@ -4653,6 +4673,7 @@ Function | @geoleaf-plugins/routing.route-cache.clearRouteCache | doc:-
 Function | @geoleaf-plugins/routing.route-cache.rememberRoute | doc:-
 Function | @geoleaf-plugins/routing.route-cache.routeCacheSize | doc:-
 Function | @geoleaf-plugins/routing.route-cache.routeKey | doc:-
+Function | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.hidePane | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.registerPane | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.showPane | doc:-
@@ -5843,6 +5864,7 @@ Interface | @geoleaf-plugins/navigation.ui/maneuver-banner.BannerLabels | doc:61
 Interface | @geoleaf-plugins/navigation.ui/maneuver-banner.BannerState | doc:e6f3a099b135
 Interface | @geoleaf-plugins/navigation.ui/maneuver-banner.ManeuverBanner | doc:ea97c41b28f4
 Interface | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow | doc:720454508065
+Interface | @geoleaf-plugins/navigation.ui/session-controls.SessionControls | doc:a9dc543a6b6d
 Interface | @geoleaf-plugins/navigation.ui/session-notice.NoticeLabels | doc:6261b869d676
 Interface | @geoleaf-plugins/navigation.ui/session-notice.SessionNotice | doc:58a1a3b40c83
 Interface | @geoleaf-plugins/navigation.ui/session-view.SessionView | doc:4aa78bc4e88d
@@ -5910,8 +5932,10 @@ Interface | @geoleaf-plugins/routing.config.PluginConfig | doc:c3627a52a9a0
 Interface | @geoleaf-plugins/routing.entry-point.ActionDetail | doc:6f7e6ba5986c
 Interface | @geoleaf-plugins/routing.geocode-seam.AddressHit | doc:c53ba4fea356
 Interface | @geoleaf-plugins/routing.legs.LegSummary | doc:4007d60bd2b8
+Interface | @geoleaf-plugins/routing.model.EngineSettings | doc:f7b90706efd8
 Interface | @geoleaf-plugins/routing.model.IRouteProvider | doc:731ebebb23c3
 Interface | @geoleaf-plugins/routing.model.NavProgress | doc:94586a658e19
+Interface | @geoleaf-plugins/routing.model.ProviderOptions | doc:75f5d95d66de
 Interface | @geoleaf-plugins/routing.model.RouteLeg | doc:772bc65fbe21
 Interface | @geoleaf-plugins/routing.model.RouteRequest | doc:8d50e8a21524
 Interface | @geoleaf-plugins/routing.model.RouteResult | doc:9135fcc66b68
@@ -6584,6 +6608,7 @@ Method | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.contin
 Method | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.start | doc:-
 Method | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.stop | doc:-
 Method | @geoleaf-plugins/navigation.engine/state-machine.GuidanceMachine.suspend | doc:-
+Method | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.continueToNextLeg | doc:-
 Method | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.onProgress | doc:-
 Method | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.onView | doc:-
 Method | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.start | doc:-
@@ -6616,9 +6641,12 @@ Method | @geoleaf-plugins/navigation.ui/maneuver-banner.ManeuverBanner.destroy |
 Method | @geoleaf-plugins/navigation.ui/maneuver-banner.ManeuverBanner.update | doc:-
 Method | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.destroy | doc:-
 Method | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.update | doc:-
+Method | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.destroy | doc:-
+Method | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.update | doc:-
 Method | @geoleaf-plugins/navigation.ui/session-notice.SessionNotice.remove | doc:-
 Method | @geoleaf-plugins/navigation.ui/session-view.SessionView.detach | doc:-
 Method | @geoleaf-plugins/navigation.ui/session-view.SessionView.setVoiceEnabled | doc:-
+Method | @geoleaf-plugins/navigation.ui/session-view.ViewSource.continueToNextLeg | doc:-
 Method | @geoleaf-plugins/navigation.ui/session-view.ViewSource.onView | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._attachEventListeners | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._buildStructure | doc:-
@@ -6746,6 +6774,7 @@ Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.actionId | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.addWaypoint | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.clearRoute | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.clearWaypoints | doc:-
+Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.configure | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.getConfig | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.getProvider | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.isRoutable | doc:-
@@ -8227,6 +8256,7 @@ Module | @geoleaf-plugins/navigation.ui/immersive | doc:-
 Module | @geoleaf-plugins/navigation.ui/maneuver-banner | doc:-
 Module | @geoleaf-plugins/navigation.ui/maneuver-labels | doc:-
 Module | @geoleaf-plugins/navigation.ui/position-arrow | doc:-
+Module | @geoleaf-plugins/navigation.ui/session-controls | doc:-
 Module | @geoleaf-plugins/navigation.ui/session-notice | doc:-
 Module | @geoleaf-plugins/navigation.ui/session-view | doc:-
 Module | @geoleaf-plugins/offline-ui | doc:-
@@ -8346,6 +8376,8 @@ Module | @geoleaf-plugins/routing | doc:-
 Module | @geoleaf-plugins/routing.composition | doc:-
 Module | @geoleaf-plugins/routing.config | doc:-
 Module | @geoleaf-plugins/routing.css | doc:-
+Module | @geoleaf-plugins/routing.engine-settings | doc:-
+Module | @geoleaf-plugins/routing.engine-url | doc:-
 Module | @geoleaf-plugins/routing.entry | doc:-
 Module | @geoleaf-plugins/routing.entry-point | doc:-
 Module | @geoleaf-plugins/routing.fit-route | doc:-
@@ -8370,6 +8402,7 @@ Module | @geoleaf-plugins/routing.providers/valhalla | doc:-
 Module | @geoleaf-plugins/routing.public-api | doc:-
 Module | @geoleaf-plugins/routing.publish | doc:-
 Module | @geoleaf-plugins/routing.route-cache | doc:-
+Module | @geoleaf-plugins/routing.stop-gap | doc:-
 Module | @geoleaf-plugins/routing.ui-seam | doc:-
 Module | @geoleaf-plugins/routing.ui/attribution | doc:-
 Module | @geoleaf-plugins/routing.ui/itinerary-panel | doc:-
@@ -9709,6 +9742,8 @@ Parameter | @geoleaf-plugins/navigation.engine/runtime.GuidanceOptions.recompute
 Parameter | @geoleaf-plugins/navigation.engine/runtime.GuidanceOptions.recompute.recompute.remaining | doc:fd945bb093aa
 Parameter | @geoleaf-plugins/navigation.engine/runtime.createGuidanceRuntime.createGuidanceRuntime.options | doc:72d8873f4291
 Parameter | @geoleaf-plugins/navigation.engine/snap.buildTrack.buildTrack.line | doc:8ffb27c2d1e9
+Parameter | @geoleaf-plugins/navigation.engine/snap.haversine.haversine.a | doc:8116949ad5f7
+Parameter | @geoleaf-plugins/navigation.engine/snap.haversine.haversine.b | doc:3e1f15fedd4f
 Parameter | @geoleaf-plugins/navigation.engine/snap.snapToTrack.snapToTrack.elapsedSeconds | doc:2a1892ef083d
 Parameter | @geoleaf-plugins/navigation.engine/snap.snapToTrack.snapToTrack.fix | doc:ea75e9944438
 Parameter | @geoleaf-plugins/navigation.engine/snap.snapToTrack.snapToTrack.near | doc:06d54e5a8368
@@ -9764,10 +9799,15 @@ Parameter | @geoleaf-plugins/navigation.ui/maneuver-labels.maneuverLabel.maneuve
 Parameter | @geoleaf-plugins/navigation.ui/maneuver-labels.maneuverLabel.maneuverLabel.modifier | doc:2e5c57390cb1
 Parameter | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.update.update.heading | doc:c086b57483ad
 Parameter | @geoleaf-plugins/navigation.ui/position-arrow.PositionArrow.update.update.position | doc:3bb63c209506
+Parameter | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.update.update.failure | doc:-
+Parameter | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.update.update.state | doc:-
+Parameter | @geoleaf-plugins/navigation.ui/session-controls.createSessionControls.createSessionControls.actions | doc:b0bee4ec0581
+Parameter | @geoleaf-plugins/navigation.ui/session-controls.createSessionControls.createSessionControls.labels | doc:31e5e69ff1a8
 Parameter | @geoleaf-plugins/navigation.ui/session-notice.showSessionNotice.showSessionNotice.labels | doc:6c817957c60f
 Parameter | @geoleaf-plugins/navigation.ui/session-view.SessionView.setVoiceEnabled.setVoiceEnabled.on | doc:-
 Parameter | @geoleaf-plugins/navigation.ui/session-view.ViewSource.onView.onView.listener | doc:2580ced0b6b7
 Parameter | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.camera | doc:94282bc34616
+Parameter | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.onStop | doc:226278670a9e
 Parameter | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.source | doc:e86dc79d0e2d
 Parameter | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.voice | doc:a6ecd422ff0a
 Parameter | @geoleaf-plugins/offline-ui.cache/cache-control-dom.buildStructure.buildStructure.self | doc:-
@@ -10096,6 +10136,11 @@ Parameter | @geoleaf-plugins/routing.composition.roleAt.roleAt.index | doc:b4deb
 Parameter | @geoleaf-plugins/routing.composition.roleAt.roleAt.total | doc:4577987597de
 Parameter | @geoleaf-plugins/routing.config.PluginConfig.__index.key | doc:-
 Parameter | @geoleaf-plugins/routing.config.travelProfile.travelProfile.config | doc:f86fc70d36d3
+Parameter | @geoleaf-plugins/routing.engine-settings.setEngineSettings.setEngineSettings.input | doc:8ccd6e773293
+Parameter | @geoleaf-plugins/routing.engine-url.buildEngineUrl.buildEngineUrl.action | doc:24ef6ddd6134
+Parameter | @geoleaf-plugins/routing.engine-url.buildEngineUrl.buildEngineUrl.endpoint | doc:a7c490483f20
+Parameter | @geoleaf-plugins/routing.engine-url.buildEngineUrl.buildEngineUrl.params | doc:4a3e0bec1872
+Parameter | @geoleaf-plugins/routing.engine-url.parseEndpoint.parseEndpoint.value | doc:62d200609d3f
 Parameter | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint.onDestination | doc:a0d74fa6cdad
 Parameter | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint.onDestination.__type.__type.destination | doc:-
 Parameter | @geoleaf-plugins/routing.fit-route.bboxWithin.bboxWithin.inner | doc:43ae904e20b1
@@ -10110,6 +10155,7 @@ Parameter | @geoleaf-plugins/routing.legs.legSummaries.legSummaries.route | doc:
 Parameter | @geoleaf-plugins/routing.legs.stepNumber.stepNumber.index | doc:4f3eb57c81b2
 Parameter | @geoleaf-plugins/routing.model.IRouteProvider.route.route.request | doc:-
 Parameter | @geoleaf-plugins/routing.model.RouteProviderFactory.__type.__type.endpoint | doc:-
+Parameter | @geoleaf-plugins/routing.model.RouteProviderFactory.__type.__type.options | doc:-
 Parameter | @geoleaf-plugins/routing.normalize-osrm.normalizeOsrm.normalizeOsrm.raw | doc:d2da4e7b64f8
 Parameter | @geoleaf-plugins/routing.normalize-valhalla.normalizeValhalla.normalizeValhalla.raw | doc:d2da4e7b64f8
 Parameter | @geoleaf-plugins/routing.origin.originFromUserPosition.originFromUserPosition.label | doc:9072f95d1951
@@ -10129,15 +10175,20 @@ Parameter | @geoleaf-plugins/routing.provider.getProvider.getProvider.config | d
 Parameter | @geoleaf-plugins/routing.provider.registerProvider.registerProvider.factory | doc:7424cf4b82f4
 Parameter | @geoleaf-plugins/routing.provider.registerProvider.registerProvider.id | doc:5096b6a1f195
 Parameter | @geoleaf-plugins/routing.provider.resolveEndpoint.resolveEndpoint.config | doc:9d5031684574
+Parameter | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.classify | doc:8588b93d4f91
+Parameter | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.classify.__type.__type.body | doc:-
 Parameter | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.init | doc:e11fd6899cc8
 Parameter | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.timeoutMs | doc:6410b6a5c77f
 Parameter | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.url | doc:6531ffd1aaa7
 Parameter | @geoleaf-plugins/routing.providers/osrm.createOsrmProvider.createOsrmProvider.endpoint | doc:27e9a27a8462
+Parameter | @geoleaf-plugins/routing.providers/osrm.createOsrmProvider.createOsrmProvider.query | doc:40c29209733e
 Parameter | @geoleaf-plugins/routing.providers/osrm.createOsrmProvider.createOsrmProvider.timeoutMs | doc:1776d60a0d20
 Parameter | @geoleaf-plugins/routing.providers/valhalla.createValhallaProvider.createValhallaProvider.endpoint | doc:6b93523ed362
+Parameter | @geoleaf-plugins/routing.providers/valhalla.createValhallaProvider.createValhallaProvider.query | doc:40c29209733e
 Parameter | @geoleaf-plugins/routing.providers/valhalla.createValhallaProvider.createValhallaProvider.timeoutMs | doc:1776d60a0d20
 Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.addWaypoint.addWaypoint.waypoint | doc:-
 Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.addWaypoint.addWaypoint.waypoints | doc:-
+Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.configure.configure.settings | doc:-
 Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.isRoutable.isRoutable.waypoints | doc:-
 Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.legSummaries.legSummaries.route | doc:-
 Parameter | @geoleaf-plugins/routing.public-api.RoutingPublicApi.moveWaypoint.moveWaypoint.from | doc:-
@@ -10157,6 +10208,8 @@ Parameter | @geoleaf-plugins/routing.route-cache.cachedRoute.cachedRoute.request
 Parameter | @geoleaf-plugins/routing.route-cache.rememberRoute.rememberRoute.request | doc:e181e50f8dc3
 Parameter | @geoleaf-plugins/routing.route-cache.rememberRoute.rememberRoute.route | doc:2b498ccbf17d
 Parameter | @geoleaf-plugins/routing.route-cache.routeKey.routeKey.request | doc:07ddefb84caf
+Parameter | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad.hasStopFarFromRoad.line | doc:d717d1ffb19b
+Parameter | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad.hasStopFarFromRoad.stops | doc:dfc0002687a2
 Parameter | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane | doc:392c10c77a63
 Parameter | @geoleaf-plugins/routing.ui-seam.showPane.showPane.paneId | doc:46b396e55e9b
 Parameter | @geoleaf-plugins/routing.ui/attribution.showRouteAttribution.showRouteAttribution.text | doc:f9181a92bd3c
@@ -14749,8 +14802,11 @@ Property | @geoleaf-plugins/navigation.engine/state-machine.MachineInput.off | d
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceRuntime.state | doc:2f215d954447
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.distanceToManeuver | doc:61bb6e121633
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.elapsedSeconds | doc:48e7170ca219
+Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.finalLeg | doc:65dfc571d0dd
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.heading | doc:7e92957a1ef5
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.position | doc:3865dcc78fa2
+Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.rerouteFailure | doc:c8d83a957d06
+Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.state | doc:7ad029575772
 Property | @geoleaf-plugins/navigation.guidance-contract.GuidanceView.step | doc:4acbb8e5036c
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.arrive | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.continue | doc:-
@@ -14759,6 +14815,7 @@ Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.ma
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.fork.right | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.merge | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.roundabout | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.stop | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.turn.left | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.turn.right | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.maneuver.turn.sharp-left | doc:-
@@ -14776,6 +14833,11 @@ Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.re
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.reroute.no-route | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.reroute.refused | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.reroute.timeout | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.arrived | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.continue | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.finish | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.stop | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.stopReached | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.toolbar.button | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.unit.kilometres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.unit.metres | doc:-
@@ -14789,6 +14851,7 @@ Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.ma
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.fork.right | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.merge | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.roundabout | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.stop | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.turn.left | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.turn.right | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.maneuver.turn.sharp-left | doc:-
@@ -14806,6 +14869,11 @@ Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.re
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.reroute.no-route | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.reroute.refused | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.reroute.timeout | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.arrived | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.continue | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.finish | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.stop | doc:-
+Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.stopReached | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.toolbar.button | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.unit.kilometres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.unit.metres | doc:-
@@ -14831,6 +14899,7 @@ Property | @geoleaf-plugins/navigation.ui/camera.CameraOptions.zoom | doc:d5f370
 Property | @geoleaf-plugins/navigation.ui/maneuver-banner.BannerState.distanceMetres | doc:f0ee911f4bc3
 Property | @geoleaf-plugins/navigation.ui/maneuver-banner.BannerState.step | doc:d17b7c6b4e6b
 Property | @geoleaf-plugins/navigation.ui/maneuver-banner.ManeuverBanner.element | doc:3dfdadb48927
+Property | @geoleaf-plugins/navigation.ui/session-controls.SessionControls.element | doc:0bffe47ab997
 Property | @geoleaf-plugins/navigation.ui/session-notice.NoticeLabels.background | doc:386f6daecfee
 Property | @geoleaf-plugins/navigation.ui/session-notice.NoticeLabels.dismiss | doc:5cc480746afb
 Property | @geoleaf-plugins/navigation.ui/session-notice.NoticeLabels.road | doc:40dac352bd25
@@ -15562,6 +15631,7 @@ Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.pick
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.searchFailed | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.submit | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.error.capReached | doc:-
+Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.error.farFromRoad | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.error.http | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.error.malformed | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.error.network | doc:-
@@ -15598,6 +15668,7 @@ Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.add.pick
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.add.searchFailed | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.add.submit | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.error.capReached | doc:-
+Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.error.farFromRoad | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.error.http | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.error.malformed | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-fr.default.__type.routing.error.network | doc:-
@@ -15632,6 +15703,8 @@ Property | @geoleaf-plugins/routing.legs.LegSummary.durationFromStart | doc:f317
 Property | @geoleaf-plugins/routing.legs.LegSummary.from | doc:ced68932c81f
 Property | @geoleaf-plugins/routing.legs.LegSummary.index | doc:0c613fc41be0
 Property | @geoleaf-plugins/routing.legs.LegSummary.to | doc:db4b4e656465
+Property | @geoleaf-plugins/routing.model.EngineSettings.endpoint | doc:1608cd511e7e
+Property | @geoleaf-plugins/routing.model.EngineSettings.query | doc:40c29209733e
 Property | @geoleaf-plugins/routing.model.IRouteProvider.attribution | doc:212ad550ffb0
 Property | @geoleaf-plugins/routing.model.IRouteProvider.id | doc:fca541809a74
 Property | @geoleaf-plugins/routing.model.NavProgress.distanceRemaining | doc:3714509eb4fe
@@ -15641,6 +15714,7 @@ Property | @geoleaf-plugins/routing.model.NavProgress.offRouteDistance | doc:eb6
 Property | @geoleaf-plugins/routing.model.NavProgress.rerouteFailure | doc:fc52652e219e
 Property | @geoleaf-plugins/routing.model.NavProgress.state | doc:2dcd87ded7b7
 Property | @geoleaf-plugins/routing.model.NavProgress.stepIndex | doc:e29fd1bc00a6
+Property | @geoleaf-plugins/routing.model.ProviderOptions.query | doc:6c59dce8c601
 Property | @geoleaf-plugins/routing.model.RouteLeg.distance | doc:609d2a1bfef6
 Property | @geoleaf-plugins/routing.model.RouteLeg.duration | doc:0332abb105e5
 Property | @geoleaf-plugins/routing.model.RouteLeg.steps | doc:850acb5391e0
@@ -19228,9 +19302,11 @@ Reference | @geoleaf-plugins/realtime-layer.entry.DecodedUpdate | doc:-
 Reference | @geoleaf-plugins/realtime-layer.entry.IDecoder | doc:-
 Reference | @geoleaf-plugins/realtime-layer.entry.IRealtimeSource | doc:-
 Reference | @geoleaf-plugins/realtime-layer.entry.StaleActionHandler | doc:-
+Reference | @geoleaf-plugins/routing.entry.EngineSettings | doc:-
 Reference | @geoleaf-plugins/routing.entry.IRouteProvider | doc:-
 Reference | @geoleaf-plugins/routing.entry.NavProgress | doc:-
 Reference | @geoleaf-plugins/routing.entry.NavState | doc:-
+Reference | @geoleaf-plugins/routing.entry.ProviderOptions | doc:-
 Reference | @geoleaf-plugins/routing.entry.RouteFailure | doc:-
 Reference | @geoleaf-plugins/routing.entry.RouteLeg | doc:-
 Reference | @geoleaf-plugins/routing.entry.RouteOutcome | doc:-
@@ -19911,6 +19987,7 @@ TypeLiteral | @geoleaf-plugins/navigation.platform/network.onNetworkReturn.onNet
 TypeLiteral | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.onProgress.onProgress.__type | doc:-
 TypeLiteral | @geoleaf-plugins/navigation.session.onProgress.onProgress.__type | doc:-
 TypeLiteral | @geoleaf-plugins/navigation.ui/session-view.ViewSource.onView.onView.__type | doc:-
+TypeLiteral | @geoleaf-plugins/navigation.ui/session-view.attachSessionView.attachSessionView.onStop.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.cache/cache-control-types.CACHE_EVENTS.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._refreshPreflight.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.cache/cache-control.CacheControl.__type | doc:-
@@ -19974,6 +20051,7 @@ TypeLiteral | @geoleaf-plugins/routing.lang/lang-en.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.model.RouteProviderFactory.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.pick-on-map.pickWaypointOnMap.pickWaypointOnMap.onPick.__type | doc:-
+TypeLiteral | @geoleaf-plugins/routing.providers/http.fetchRouteJson.fetchRouteJson.classify.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type | doc:-
 TypeLiteral | @geoleaf-plugins/table.export.buildGeoJSONCollection.buildGeoJSONCollection.__type | doc:-
 TypeLiteral | @geoleaf-plugins/table.lifecycle.TableLifecycle.__type | doc:-

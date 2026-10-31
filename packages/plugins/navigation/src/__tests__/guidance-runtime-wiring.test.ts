@@ -552,3 +552,105 @@ describe("le retour du réseau est un INDICE, jamais un prédicat", () => {
         expect(removed).toContain("online");
     });
 });
+
+describe("🛑 quitter une étape intermédiaire", () => {
+    /** Two 520 m legs on a straight line, so each fix lands where it is written. */
+    const LINE = [
+        [55.0, -21.0],
+        [55.01, -21.0],
+    ] as const;
+    const ROUTE = {
+        distance: 1040,
+        duration: 100,
+        geometry: "",
+        provider: "test",
+        waypoints: [
+            { coordinates: [55.0, -21.0] as const, name: "départ" },
+            { coordinates: [55.005, -21.0] as const, name: "étape" },
+            { coordinates: [55.01, -21.0] as const, name: "arrivée" },
+        ],
+        legs: [
+            { distance: 520, duration: 50, steps: [] },
+            { distance: 520, duration: 50, steps: [] },
+        ],
+    } as unknown as import("@geoleaf-plugins/routing").RouteResult;
+
+    let geo: ReturnType<typeof stubGeo>;
+
+    beforeEach(() => {
+        geo = stubGeo();
+    });
+
+    afterEach(() => {
+        vi.unstubAllGlobals();
+    });
+
+    /**
+     * Starts a session and reaches the stop.
+     *
+     * @param recompute What the engine answers.
+     * @returns The runtime and the states it emitted.
+     */
+    function reachStop(recompute = vi.fn().mockResolvedValue({ ok: false, reason: "network" })) {
+        const rt = createGuidanceRuntime({
+            config: CONFIG,
+            recompute,
+            decodeGeometry: () => LINE,
+            doc: stubDoc().doc,
+        });
+        const states: string[] = [];
+        rt.onProgress((p) => states.push(p.state));
+        rt.start(ROUTE, LINE);
+        geo.at(55.0, -21.0);
+        geo.at(55.0048, -21.0);
+        return { rt, states, recompute };
+    }
+
+    it("le bouton libère l'étape, et la destination reste atteignable", () => {
+        const { rt, states } = reachStop();
+        expect(rt.state).toBe("waypoint-reached");
+        rt.continueToNextLeg();
+        expect(rt.state).toBe("navigating");
+        geo.at(55.0099, -21.0);
+        expect(states.at(-1)).toBe("arrived");
+    });
+
+    it("🛑 un véhicule garé à l'étape y RESTE, même au bruit du GPS près", () => {
+        const { rt } = reachStop();
+        geo.at(55.0049, -21.0);
+        geo.at(55.0047, -21.0001);
+        expect(rt.state).toBe("waypoint-reached");
+    });
+
+    it("🛑 repartir sans toucher l'écran libère l'étape, jusqu'à l'arrivée", () => {
+        // The defect: nothing called `continueToNextLeg`, so the first stop held for the rest
+        // of the journey — no arrival, and no off-route detection behind it.
+        const { states } = reachStop();
+        geo.at(55.0065, -21.0);
+        geo.at(55.0099, -21.0);
+        expect(states).toContain("waypoint-reached");
+        expect(states.at(-1)).toBe("arrived");
+    });
+
+    it("🛑 quitter l'étape HORS du tracé recalcule vers ce qui reste, sans y retourner", async () => {
+        const { recompute } = reachStop();
+        for (const lat of [-20.9985, -20.998, -20.9975, -20.997]) geo.at(55.0048, lat);
+        await Promise.resolve();
+        expect(recompute).toHaveBeenCalled();
+        const [, remaining] = recompute.mock.calls[0]!;
+        expect(remaining.map((w: { name?: string }) => w.name)).toEqual(["arrivée"]);
+    });
+
+    it("`continueToNextLeg` hors d'une étape ne fait rien", () => {
+        const rt = createGuidanceRuntime({
+            config: CONFIG,
+            recompute: vi.fn(),
+            decodeGeometry: () => LINE,
+            doc: stubDoc().doc,
+        });
+        rt.start(ROUTE, LINE);
+        geo.at(55.001, -21.0);
+        rt.continueToNextLeg();
+        expect(rt.state).toBe("navigating");
+    });
+});

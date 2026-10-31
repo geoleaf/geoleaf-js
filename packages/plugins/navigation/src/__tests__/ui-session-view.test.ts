@@ -156,6 +156,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
                 listener = null;
             };
         },
+        continueToNextLeg: vi.fn(),
     };
 
     /** A view sample. */
@@ -166,6 +167,8 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
             position: [55, -21] as const,
             heading: 90,
             elapsedSeconds: 1,
+            state: "navigating" as const,
+            finalLeg: true,
             ...over,
         } as Parameters<GuidanceViewListener>[0];
     }
@@ -194,6 +197,45 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         getGeoLeafMock.mockReturnValue(undefined);
     });
 
+    it("🛑 l'`arrive` d'une étape intermédiaire ne se lit pas « Arrivée »", () => {
+        const v = attachSessionView(source, CAM, VOICE, () => {});
+        listener!(
+            view({
+                step: { ...step(100), maneuver: "arrive" },
+                state: "navigating",
+                finalLeg: false,
+            })
+        );
+        expect(document.querySelector(".gl-nav-banner__icon--stop")).not.toBeNull();
+        expect(document.querySelector(".gl-nav-banner__icon--arrive")).toBeNull();
+        listener!(
+            view({
+                step: { ...step(100), maneuver: "arrive" },
+                state: "navigating",
+                finalLeg: true,
+            })
+        );
+        expect(document.querySelector(".gl-nav-banner__icon--arrive")).not.toBeNull();
+        v.detach();
+    });
+
+    it("🛑 les commandes reçoivent l'état, et partent avec la session", () => {
+        const onStop = vi.fn();
+        const v = attachSessionView(source, CAM, VOICE, onStop);
+        document.querySelector<HTMLButtonElement>(".gl-nav-controls__stop")!.click();
+        expect(onStop).toHaveBeenCalledTimes(1);
+        listener!(view({ step: null, state: "waypoint-reached", finalLeg: false }));
+        document.querySelector<HTMLButtonElement>(".gl-nav-controls__continue")!.click();
+        expect(source.continueToNextLeg).toHaveBeenCalled();
+        // 🛑 At once, and not on the next fix: a vehicle at a standstill sends none, so the
+        // button would stay under a finger that has already pressed it.
+        expect(
+            document.querySelector<HTMLButtonElement>(".gl-nav-controls__continue")!.hidden
+        ).toBe(true);
+        v.detach();
+        expect(document.querySelector(".gl-nav-controls")).toBeNull();
+    });
+
     it("🛑 entre en mode immersif à l'attache, et le rend au détachement", () => {
         // The chrome that hid the banner is the application's, not this plugin's: the theme bar
         // sits at the same pixel with a z-index 501 points higher. Asking the host to strip it
@@ -201,7 +243,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         // guidance twenty minutes ago from still missing its controls.
         const setImmersive = vi.fn();
         getGeoLeafMock.mockReturnValue({ UI: { setImmersive }, Core: { getMap: () => undefined } });
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         expect(setImmersive).toHaveBeenCalledWith(true, { fullscreen: true });
         v.detach();
         expect(setImmersive).toHaveBeenLastCalledWith(false, { fullscreen: true });
@@ -215,7 +257,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
             setMarkerRotation: vi.fn(),
         };
         getGeoLeafMock.mockReturnValue({ UI: {}, Core: { getMap: () => marker } });
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         listener?.(view());
         expect(marker.createMarker).toHaveBeenCalledTimes(1);
         v.detach();
@@ -232,7 +274,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
             setMarkerRotation: vi.fn(),
         };
         getGeoLeafMock.mockReturnValue({ UI: {}, Core: { getMap: () => marker } });
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         listener?.(view({ position: [55.5, -21.5] as const }));
         expect(marker.createMarker.mock.calls[0]![1]).toEqual({ lng: 55.5, lat: -21.5 });
         expect(moves[0]).toMatchObject({ center: { lng: 55.5, lat: -21.5 } });
@@ -242,18 +284,18 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         // The assertion missing through the whole build-out. A test querying
         // only the API — `isGuiding()`, the emitted states — cannot tell
         // "guidance works" from "guidance works and displays nothing". This one can.
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         expect(container.querySelector(".gl-nav-banner")).not.toBeNull();
     });
 
     it("le bandeau naît CACHÉ — rien n'est encore annoncé", () => {
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         const el = container.querySelector<HTMLElement>(".gl-nav-banner");
         expect(el?.hidden).toBe(true);
     });
 
     it("un échantillon remplit le bandeau et bouge la caméra", () => {
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         listener?.(view());
 
         const el = container.querySelector<HTMLElement>(".gl-nav-banner");
@@ -268,13 +310,13 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         // The platform removes the heading precisely at a standstill. A
         // `bearing: 0` would swing the map at every red light, and the motion
         // would look deliberate.
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         listener?.(view({ heading: null }));
         expect(moves[0]).not.toHaveProperty("bearing");
     });
 
     it("détacher retire le bandeau, désabonne, et rend la carte", () => {
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         v.detach();
         expect(container.querySelector(".gl-nav-banner")).toBeNull();
         expect(unsubscribed).toBe(1);
@@ -292,7 +334,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         // What it shows is what matters: a detached view keeping its
         // subscription would retain the banner, the camera and their closure
         // for every remaining fix.
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         v.detach();
         expect(listener).toBeNull();
         const after = moves.length;
@@ -301,7 +343,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
     });
 
     it("détacher deux fois ne jette pas et ne rend pas la carte deux fois", () => {
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         v.detach();
         const after = moves.length;
         v.detach();
@@ -314,7 +356,7 @@ describe("attachSessionView — le câblage, vu depuis le DOM", () => {
         // start. Refusing to guide because a container is missing would break
         // exactly the setups where the engine itself works perfectly.
         getNativeMapMock.mockReturnValue(undefined);
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         expect(() => listener?.(view())).not.toThrow();
         expect(() => v.detach()).not.toThrow();
     });
@@ -339,6 +381,7 @@ describe("🛑 L'avertissement de session — la moitié qui n'est pas juridique
                 listener = null;
             };
         },
+        continueToNextLeg: vi.fn(),
     };
 
     beforeEach(() => {
@@ -359,13 +402,13 @@ describe("🛑 L'avertissement de session — la moitié qui n'est pas juridique
     });
 
     it("🛑 attacher une vue POSE l'avertissement dans la carte", () => {
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         expect(container.querySelector(".gl-nav-notice")).not.toBeNull();
     });
 
     it("il porte les DEUX phrases — la route et l'arrière-plan", () => {
         // One of the two alone is not enough, and the second is the one missing everywhere.
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         expect(container.querySelector(".gl-nav-notice__road")?.textContent).toBe(
             "L:navigation.notice.road"
         );
@@ -377,12 +420,12 @@ describe("🛑 L'avertissement de session — la moitié qui n'est pas juridique
     it("🛑 il ne PIÈGE pas le focus — `region`, jamais `alertdialog`", () => {
         // A focus trap at the moment someone is about to drive is the worst
         // possible place to set one.
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         expect(container.querySelector(".gl-nav-notice")?.getAttribute("role")).toBe("region");
     });
 
     it("le bouton le retire", () => {
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         container.querySelector<HTMLButtonElement>(".gl-nav-notice__dismiss")?.click();
         expect(container.querySelector(".gl-nav-notice")).toBeNull();
     });
@@ -392,7 +435,7 @@ describe("🛑 L'avertissement de session — la moitié qui n'est pas juridique
         // `start()` held behind a tap would open the watch afterwards, and the
         // FIRST fix — the one placing the driver on the line — would be the
         // one nobody waited for.
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
         container.querySelector<HTMLButtonElement>(".gl-nav-notice__dismiss")?.click();
         listener?.({
             step: null,
@@ -400,20 +443,22 @@ describe("🛑 L'avertissement de session — la moitié qui n'est pas juridique
             position: [55, -21],
             heading: 90,
             elapsedSeconds: 1,
+            state: "navigating",
+            finalLeg: true,
         });
         expect(moves).toHaveLength(1);
     });
 
     it("détacher la vue retire l'avertissement avec elle", () => {
         // A warning outliving its session warns about a guidance that has ended.
-        const v = attachSessionView(source, CAM, VOICE);
+        const v = attachSessionView(source, CAM, VOICE, () => {});
         v.detach();
         expect(container.querySelector(".gl-nav-notice")).toBeNull();
     });
 
     it("une seconde session ne LAISSE PAS deux avertissements", () => {
-        attachSessionView(source, CAM, VOICE);
-        attachSessionView(source, CAM, VOICE);
+        attachSessionView(source, CAM, VOICE, () => {});
+        attachSessionView(source, CAM, VOICE, () => {});
         expect(container.querySelectorAll(".gl-nav-notice")).toHaveLength(1);
     });
 });

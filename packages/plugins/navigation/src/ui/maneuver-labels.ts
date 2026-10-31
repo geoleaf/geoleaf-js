@@ -73,8 +73,11 @@ export function formatApproachDistance(
     unitKilometres: string
 ): string {
     if (!Number.isFinite(metres) || metres < 0) return "";
-    if (metres >= 1000)
+    // ⚠️ Decided on the ROUNDED figure: from 975 m the band below reaches 1000, and the banner
+    // would read "1 km", then "1000 m", then "950 m".
+    const band = Math.round(metres / 50) * 50;
+    if (band >= 1000)
         return `${(Math.round(metres / 100) / 10).toLocaleString()} ${unitKilometres}`;
-    if (metres >= 100) return `${Math.round(metres / 50) * 50} ${unitMetres}`;
+    if (metres >= 100) return `${band} ${unitMetres}`;
     return `${Math.round(metres / 10) * 10} ${unitMetres}`;
 }

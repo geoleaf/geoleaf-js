@@ -26,6 +26,9 @@
 //
 // Target: deploy-coverage (port 8769) — the instrumented variant, like
 // `22-feature-info`.
+import fs from "node:fs";
+import path from "node:path";
+import packages from "../scripts/lib/packages.cjs";
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { bootMapUntilLoaded } from "./helpers/boot.js";
@@ -534,6 +537,52 @@ test.describe("④ composer un trajet à TROIS points, depuis la barre d'outils"
         await addStop(page, "azerty");
         await expect(page.locator(".gl-routing-steps__item")).toHaveCount(0);
         await expect(page.locator(".gl-routing-add__message")).not.toBeEmpty();
+    });
+
+    test("🛑 calculer puis « Démarrer le guidage » enchaîne les deux greffons", async ({
+        page,
+    }) => {
+        // The one link no other test crosses: the panel's button handing a route to guidance.
+        // ⚠️ The engine's answer is the versioned fixture, so the no-network rule holds.
+        const body = fs.readFileSync(
+            path.join(
+                packages.requireByDirName("routing").absDir,
+                "fixtures",
+                "valhalla-reunion-3-waypoints.json"
+            ),
+            "utf8"
+        );
+        await page.route(/valhalla1\.openstreetmap\.de\/route/, (route) =>
+            route.request().method() === "OPTIONS"
+                ? route.fulfill({
+                      status: 204,
+                      headers: {
+                          "access-control-allow-origin": "*",
+                          "access-control-allow-headers": "content-type",
+                      },
+                  })
+                : route.fulfill({
+                      status: 200,
+                      contentType: "application/json",
+                      headers: { "access-control-allow-origin": "*" },
+                      body,
+                  })
+        );
+        await openPanel(page);
+        await addStop(page, "-20.8823, 55.4504");
+        await addStop(page, "-21.0096, 55.2708");
+        await addStop(page, "-21.3393, 55.4781");
+        await page.click(".gl-routing-panel__compute");
+        const guide = page.locator(".gl-routing-panel__guide");
+        await expect(guide).toBeVisible();
+        await guide.click();
+        await expect
+            .poll(() =>
+                page.evaluate(() => /** @type {any} */ (window).GeoLeaf.Navigation?.isGuiding?.())
+            )
+            .toBe(true);
+        await page.locator(".gl-nav-controls__stop").click();
+        await expect(page.locator(".gl-nav-controls")).toHaveCount(0);
     });
 
     test("🛑 le bouton « calculer » s'ACTIVE à deux points et pas avant", async ({ page }) => {

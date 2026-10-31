@@ -48,3 +48,9 @@ window.GEOLEAF_DEV_CONNECTOR = {
 //     endpoint: "https://localhost:8443",
 //     query: { api_key: "KEY" },
 // };
+
+// Optional — the routing plugin's engine, on the same terms, handed to `GeoLeaf.Routing.configure()`.
+// window.GEOLEAF_DEV_ROUTING = {
+//     endpoint: "https://localhost:8443",
+//     query: { api_key: "KEY" },
+// };

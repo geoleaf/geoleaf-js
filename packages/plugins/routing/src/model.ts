@@ -237,7 +237,25 @@ export interface IRouteProvider {
 }
 
 /** Builds a provider bound to one endpoint. */
-export type RouteProviderFactory = (endpoint: string) => IRouteProvider;
+export type RouteProviderFactory = (endpoint: string, options: ProviderOptions) => IRouteProvider;
+
+/** What the plugin hands a provider besides its address. */
+export interface ProviderOptions {
+    /** Query parameters every request must carry — where a key travels. Empty when none. */
+    readonly query: Readonly<Record<string, string>>;
+}
+
+/**
+ * What a host may give `configure()` at runtime.
+ *
+ * ⚠️ Not profile keys: a profile is a served file, so a key is never written in one.
+ */
+export interface EngineSettings {
+    /** Base address of the engine, `https://` only. Takes precedence over the profile's. */
+    readonly endpoint?: string;
+    /** Query parameters every request must carry. */
+    readonly query?: Readonly<Record<string, string>>;
+}
 
 /** Where the guidance runtime is in its lifecycle. */
 /**

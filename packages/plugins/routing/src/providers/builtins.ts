@@ -40,5 +40,7 @@ function timeoutMs(): number {
     return typeof v === "number" && Number.isFinite(v) && v > 0 ? v : DEFAULT_TIMEOUT_MS;
 }
 
-registerProvider("valhalla", (endpoint) => createValhallaProvider(endpoint, timeoutMs()));
-registerProvider("osrm", (endpoint) => createOsrmProvider(endpoint, timeoutMs()));
+registerProvider("valhalla", (endpoint, { query }) =>
+    createValhallaProvider(endpoint, timeoutMs(), query)
+);
+registerProvider("osrm", (endpoint, { query }) => createOsrmProvider(endpoint, timeoutMs(), query));

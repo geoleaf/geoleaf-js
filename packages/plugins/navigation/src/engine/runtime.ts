@@ -13,6 +13,7 @@ import type {
     RouteFailure,
     Waypoint,
     NavProgress,
+    NavState,
 } from "@geoleaf-plugins/routing";
 import type {
     GuidanceRuntime,
@@ -20,7 +21,7 @@ import type {
     GuidanceView,
     GuidanceViewListener,
 } from "../guidance-contract.js";
-import { buildTrack, snapToTrack, type Position, type RouteTrack } from "./snap.js";
+import { buildTrack, haversine, snapToTrack, type Position, type RouteTrack } from "./snap.js";
 import { computeProgress } from "./progress.js";
 import { nextManeuver } from "./maneuver.js";
 import { resolveHeading } from "./heading.js";
@@ -147,6 +148,16 @@ interface Session {
      * would leave a permanent warning under a guidance working again for twenty minutes.
      */
     lastFailure: RouteFailure | null;
+    /** Where the user stood when the current stop was reached, or `null` when none is held. */
+    heldAt: Position | null;
+    /**
+     * The leg in progress once a stop has been left, or `0`.
+     *
+     * ⚠️ The projection does not say it alone: someone leaving a stop off the line stays
+     * projected on the leg they finished, and a recomputation from there would send them back to
+     * the stop they have just served.
+     */
+    nextLeg: number;
 }
 
 /** What the pipeline needs besides the session. */
@@ -218,6 +229,8 @@ function releaseAnchor(session: Session): void {
 function adopt(session: Session, deps: Deps, route: RouteResult, line: readonly Position[]): void {
     session.route = route;
     session.track = buildTrack(line);
+    session.heldAt = null;
+    session.nextLeg = 0;
     releaseAnchor(session);
     deps.detector.reset();
 }
@@ -270,6 +283,60 @@ async function attemptRecompute(
 }
 
 /**
+ * How far from a held stop, as a multiple of the arrival radius, the user has visibly left it.
+ *
+ * ⚠️ Well beyond the radius itself: GPS noise moves a parked vehicle by more than that. Above it,
+ * someone parked at a delivery stays held, and someone who drove off without touching the screen
+ * is released, which a button alone would never do: they cannot be asked to tap while driving.
+ */
+const LEFT_STOP_RADII = 3;
+
+/**
+ * Releases a stop the user has driven away from.
+ *
+ * @param session The session.
+ * @param deps    The pipeline's collaborators.
+ * @param fix     The current fix, raw: a position off the line counts as leaving.
+ */
+function releaseLeftStop(session: Session, deps: Deps, fix: Position): void {
+    if (session.heldAt === null) return;
+    const leftAt = deps.options.config.arrivalRadiusMetres * LEFT_STOP_RADII;
+    if (haversine(session.heldAt, fix) <= leftAt) return;
+    continueToNextLeg(session, deps);
+}
+
+/**
+ * Records where a stop began to hold, the first time it does.
+ *
+ * @param session  The session.
+ * @param state    The state after this fix.
+ * @param position The projected position.
+ * @param legIndex The leg the stop ends.
+ */
+function noteHeldStop(
+    session: Session,
+    state: NavState,
+    position: Position,
+    legIndex: number
+): void {
+    if (state !== "waypoint-reached" || session.heldAt !== null) return;
+    session.heldAt = position;
+    session.nextLeg = legIndex + 1;
+}
+
+/**
+ * Leaves the stop being held.
+ *
+ * @param session The session.
+ * @param deps    The pipeline's collaborators.
+ */
+function continueToNextLeg(session: Session, deps: Deps): void {
+    if (deps.machine.state !== "waypoint-reached") return;
+    deps.machine.continueToNextLeg();
+    session.heldAt = null;
+}
+
+/**
  * One measured fix, all the way through.
  *
  * @param session The session.
@@ -292,12 +359,14 @@ function processFix(session: Session, deps: Deps, fix: GeoFix): void {
     session.anchor = verdict.off ? null : snapped.distanceAlong;
 
     const progress = computeProgress(route, snapped.distanceAlong, track.length);
+    releaseLeftStop(session, deps, fix.position);
     const state = deps.machine.accept({
         off: verdict.off,
         legIndex: progress.legIndex,
         legDistanceRemaining: progress.legDistanceRemaining,
         isFinalLeg: progress.legIndex === route.legs.length - 1,
     });
+    noteHeldStop(session, state, snapped.position, progress.legIndex);
 
     // ⚠️ `stepIndex` was a literal `0` here until the interface was wired, at both emit sites.
     // A field that is always zero is indistinguishable from a field nobody reads — right up to
@@ -340,6 +409,9 @@ function processFix(session: Session, deps: Deps, fix: GeoFix): void {
         position: snapped.position,
         heading,
         elapsedSeconds: elapsed,
+        state,
+        finalLeg: progress.legIndex === route.legs.length - 1,
+        ...(session.lastFailure ? { rerouteFailure: session.lastFailure } : {}),
     });
 
     // Recorded AFTER both emissions, so a listener that throws cannot leave the session with a
@@ -349,7 +421,8 @@ function processFix(session: Session, deps: Deps, fix: GeoFix): void {
 
     if (session.cooldown > 0) session.cooldown -= 1;
     if (state === "rerouting" && session.cooldown === 0) {
-        void attemptRecompute(session, deps, fix.position, progress.legIndex);
+        const leg = Math.max(progress.legIndex, session.nextLeg);
+        void attemptRecompute(session, deps, fix.position, leg);
     }
 }
 
@@ -376,6 +449,8 @@ export function createGuidanceRuntime(options: GuidanceOptions): GuidanceRuntime
         lastFailure: null,
         lastProjected: null,
         lastAlong: null,
+        heldAt: null,
+        nextLeg: 0,
     };
     const deps: Deps = {
         options,
@@ -464,6 +539,12 @@ export function createGuidanceRuntime(options: GuidanceOptions): GuidanceRuntime
             session.route = null;
             session.track = null;
             session.lastFailure = null;
+            session.heldAt = null;
+            session.nextLeg = 0;
+        },
+
+        continueToNextLeg(): void {
+            continueToNextLeg(session, deps);
         },
 
         onProgress(listener: GuidanceListener): () => void {

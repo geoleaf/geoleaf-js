@@ -1,0 +1,68 @@
+{
+    "schemaVersion": 2,
+    "lot": "recette-guidage",
+    "scope": [
+        "packages/plugins/routing/src/engine-settings.ts",
+        "packages/plugins/routing/src/engine-url.ts",
+        "packages/plugins/routing/src/stop-gap.ts",
+        "packages/plugins/navigation/src/ui/session-controls.ts"
+    ],
+    "verdicts": {
+        "packages/plugins/routing/src/engine-settings.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ce que `configure()` retient : adresse du moteur et paramètres de requête donnés à l'exécution par l'hôte, seul endroit où vit une clé.",
+            "confidence": "haute",
+            "rationale": "Module neuf relu en entier, ajouté par la recette du guidage contre un vrai moteur."
+        },
+        "packages/plugins/routing/src/engine-url.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Lecture et composition de l'URL d'un moteur par l'API `URL` : refuse ce qui n'est pas `https://` ou porte des identifiants, ne concatène rien.",
+            "confidence": "haute",
+            "rationale": "Module neuf relu en entier, ajouté par la recette du guidage contre un vrai moteur."
+        },
+        "packages/plugins/routing/src/stop-gap.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Dit si une étape est loin de la route calculée : un moteur la rattache à la route la plus proche et répond un succès, seule la géométrie le montre.",
+            "confidence": "haute",
+            "rationale": "Module neuf relu en entier, ajouté par la recette du guidage contre un vrai moteur."
+        },
+        "packages/plugins/navigation/src/ui/session-controls.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ce que le conducteur commande pendant une session : arrêt, reprise après une étape, et ligne d'état pour l'arrivée et le recalcul refusé.",
+            "confidence": "haute",
+            "rationale": "Module neuf relu en entier, ajouté par la recette du guidage contre un vrai moteur."
+        }
+    }
+}

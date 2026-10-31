@@ -14,6 +14,7 @@ import { createFollowCamera, type CameraOptions } from "./camera.js";
 import { showSessionNotice, removeSessionNotice } from "./session-notice.js";
 import { enterImmersive, exitImmersive } from "./immersive.js";
 import { createPositionArrow, type PositionArrow } from "./position-arrow.js";
+import { createSessionControls, type SessionControls } from "./session-controls.js";
 import { createAnnouncer, type Announcer, type AnnouncerOptions } from "./announcer.js";
 
 /**
@@ -66,6 +67,8 @@ export interface ViewSource {
      * @returns The unsubscribe function.
      */
     onView(listener: GuidanceViewListener): () => void;
+    /** Releases a hold at an intermediate stop. */
+    continueToNextLeg(): void;
 }
 
 /** The map surface this needs — `getContainer`, as `editor` and `measure` already use it. */
@@ -80,13 +83,15 @@ interface ContainerCapableMap {
  * @param camera How the follow camera frames the driver. Passed in rather than read here: the
  *               configuration is resolved once, in `session.ts`, so two readings cannot differ.
  * @param voice Starting state and distance for spoken announcements, resolved the same way.
+ * @param onStop Ends the session: what the driver's stop button calls.
  * @returns The attached view. Detaching is safe to call more than once, and safe to call when
  *          nothing attached: a session must be able to end even if the map went away first.
  */
 export function attachSessionView(
     source: ViewSource,
     camera: CameraOptions,
-    voice: AnnouncerOptions
+    voice: AnnouncerOptions,
+    onStop: () => void
 ): SessionView {
     const banner = createManeuverBanner({
         maneuver: (maneuver, modifier) => maneuverLabel(maneuver, modifier),
@@ -106,6 +111,29 @@ export function attachSessionView(
     // from the same two label helpers. Putting it beside the state module would have meant a
     // second subscription to `onView` for data the view already holds.
     const announcer: Announcer = createAnnouncer(voice);
+    const controls: SessionControls = createSessionControls(
+        {
+            stop: tLabel("navigation.session.stop", ""),
+            finish: tLabel("navigation.session.finish", ""),
+            continue: tLabel("navigation.session.continue", ""),
+            arrived: tLabel("navigation.session.arrived", ""),
+            stopReached: tLabel("navigation.session.stopReached", ""),
+            reroute: (reason) => tLabel(`navigation.reroute.${reason}`, ""),
+        },
+        {
+            onStop,
+            onContinue: () => {
+                source.continueToNextLeg();
+                // ⚠️ Redrawn here: the samples follow the fixes, and a vehicle at a standstill
+                // sends none, so the button would stay under the finger that pressed it.
+                controls.update("navigating", undefined);
+            },
+        }
+    );
+
+    // ⚠️ Placed beside the banner, in the container `mountAnchor` found: with no map there is
+    // nowhere to put them, and a host driving guidance headless has `stop()` for itself.
+    anchor?.parentElement?.append(controls.element);
 
     // The application chrome goes away for the length of the session. ⚠️ Asked for HERE rather
     // than by the caller: a session draws itself, and the interface it needs room for is the one
@@ -122,13 +150,15 @@ export function attachSessionView(
     });
 
     const unsubscribe = source.onView((view: GuidanceView) => {
-        banner.update({ step: view.step, distanceMetres: view.distanceToManeuver });
+        const step = namedStep(view);
+        banner.update({ step, distanceMetres: view.distanceToManeuver });
+        controls.update(view.state, view.rerouteFailure);
         followCamera.follow(view.position, view.heading, view.elapsedSeconds);
         // ⚠️ The arrow is fed the PROJECTED position, the same one the camera centres on. Using
         // the raw fix instead would make the driver's marker drift off the line the map is
         // holding under it — two truths about one position, a metre apart, both on screen.
         arrow.update(view.position, view.heading);
-        announcer.update(view.step, view.distanceToManeuver);
+        announcer.update(step, view.distanceToManeuver);
     });
 
     let detached = false;
@@ -158,6 +188,7 @@ export function attachSessionView(
             // over them alive for every remaining fix of the page's life.
             unsubscribe();
             banner.destroy();
+            controls.destroy();
             arrow.destroy();
             // ⚠️ Before anything else that could take time: a session ending while a sentence is
             // in flight must stop instructing a driver about a route they have left.
@@ -178,6 +209,20 @@ export function attachSessionView(
             followCamera.release();
         },
     };
+}
+
+/**
+ * The step as the driver must read it.
+ *
+ * ⚠️ Every engine ends each leg with an `arrive`. Before the last stop that word is false: read
+ * "Arrivée" with half the journey left, a driver believes the route is over.
+ *
+ * @param view The view sample.
+ * @returns The step, renamed when it ends an intermediate leg.
+ */
+function namedStep(view: GuidanceView): GuidanceView["step"] {
+    const { step } = view;
+    return step?.maneuver === "arrive" && !view.finalLeg ? { ...step, maneuver: "stop" } : step;
 }
 
 /**

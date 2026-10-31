@@ -134,7 +134,8 @@ export function startSession(
             zoom: cfg.followZoom,
             maxTransitionMs: cfg.cameraMaxTransitionMs,
         },
-        { enabled: cfg.voiceEnabled, announceAtMetres: cfg.voiceAnnounceAtMetres }
+        { enabled: cfg.voiceEnabled, announceAtMetres: cfg.voiceAnnounceAtMetres },
+        stopSession
     );
 
     // ⚠️ Fire-and-forget, and never awaited: a wake lock is a comfort, never a prerequisite. It

@@ -81,6 +81,23 @@ would make every arrival read as a departure.
 
 ---
 
+## What the driver controls
+
+A session puts two controls on the map, with a status line above them:
+
+- **Stop guidance** ends the session from any state. It reads **Finish** once the destination is
+  reached: guidance says so and waits, it does not take the map away by itself.
+- **Continue** appears at an intermediate stop, which holds until the driver leaves it. Driving
+  away releases the stop too, without touching the screen: a parked vehicle stays held, and one
+  more than three arrival radii from the stop does not.
+
+The status line stays empty while everything is well. When a recomputation is refused, it says why
+for as long as the driver is off route, and guidance carries on along the route it has.
+
+A host that draws its own interface reads the same states from `onProgress` and calls `stop()`.
+
+---
+
 ## Platform access is confined to three adapters
 
 The plugin reaches `navigator.geolocation`, `speechSynthesis`, `navigator.wakeLock` and the

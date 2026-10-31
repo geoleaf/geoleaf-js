@@ -291,6 +291,9 @@ test.describe("② le guidage sur la trace rejouée", () => {
                     recompute: async () => ({ ok: false, reason: "network" }),
                     decodeGeometry: () => line,
                 });
+                /** @type {string[]} */
+                const states = [];
+                gl.Navigation.onProgress((/** @type {any} */ p) => states.push(p.state));
                 let t = 1_700_000_000_000;
                 for (const f of fixes) {
                     t += 5000;
@@ -300,12 +303,44 @@ test.describe("② le guidage sur la trace rejouée", () => {
                 // Overshooting the destination does not restart guidance.
                 t += 5000;
                 /** @type {any} */ (window).__navFire(fixes[0][0], fixes[0][1], t);
-                return { atEnd, stillGuiding: gl.Navigation.isGuiding() };
+                return { atEnd, stillGuiding: gl.Navigation.isGuiding(), states };
             },
             { line: LINE, fixes: FIXES, route: ROUTE }
         );
+        // 🛑 The states, and not only `isGuiding()`: that alone stayed true on a guidance frozen
+        // at its first intermediate stop, which never reached `arrived` at all.
+        expect(state.states).toContain("waypoint-reached");
+        expect(state.states.at(-1)).toBe("arrived");
         expect(state.atEnd).toBe(true);
         expect(state.stillGuiding).toBe(true);
+    });
+
+    test("🛑 le conducteur peut ARRÊTER le guidage depuis la carte", async ({ page }) => {
+        await bootMapUntilLoaded(page);
+        await drive(page, 2);
+        await page.locator(".gl-nav-controls__stop").click();
+        const guiding = await page.evaluate(() =>
+            /** @type {any} */ (window).GeoLeaf.Navigation.isGuiding()
+        );
+        expect(guiding).toBe(false);
+        await expect(page.locator(".gl-nav-banner")).toHaveCount(0);
+        await expect(page.locator(".gl-nav-controls")).toHaveCount(0);
+    });
+
+    test("🛑 à une étape, « Continuer » paraît et libère l'étape", async ({ page }) => {
+        await bootMapUntilLoaded(page);
+        await drive(page, 5);
+        const resume = page.locator(".gl-nav-controls__continue");
+        await expect(resume).toBeVisible();
+        await resume.click();
+        await expect(resume).toBeHidden();
+    });
+
+    test("🛑 à l'arrivée, l'interface le dit et propose de terminer", async ({ page }) => {
+        await bootMapUntilLoaded(page);
+        await drive(page, FIXES.length);
+        await expect(page.locator(".gl-nav-controls__status")).not.toBeEmpty();
+        await expect(page.locator(".gl-nav-controls__stop")).toHaveText("Terminer");
     });
 
     test("`stop()` rend la main, et il est idempotent", async ({ page }) => {

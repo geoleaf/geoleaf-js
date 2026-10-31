@@ -11,6 +11,39 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## `@geoleaf-plugins/routing` 1.1.0 · `@geoleaf-plugins/navigation` 1.0.4 - 2026-10-31
+
+Published without a core release: `@geoleaf/core` stays at 3.19.0.
+
+### Added
+
+- **`GeoLeaf.Routing.configure({ endpoint, query })`** (`@geoleaf-plugins/routing` 1.1.0). The plugin
+  could not reach an engine protected by a key: `endpoint` is a served profile value, and nothing
+  else could carry a parameter. A host now gives the address and the parameters at runtime, on the
+  same terms as `GeoLeaf.Isochrone.configure()`: validated whole, and a refusal names the field,
+  never its value. A provider factory receives these parameters as its second argument.
+
+### Fixed
+
+- **Guidance no longer freezes at the first intermediate stop** (`@geoleaf-plugins/navigation`
+  1.0.4). Nothing released a stop: past the first one, guidance kept counting down but never
+  reached `arrived` and no longer detected leaving the route. A stop is now left with a Continue
+  button, or by driving away from it.
+- **A driver can stop guidance.** A session hid the application and offered no way out. It now
+  shows a Stop guidance button, which reads Finish once the destination is reached, and says that
+  it is.
+- **A refused recomputation is shown.** Its reason was emitted and never displayed: while off route,
+  the banner kept counting down without saying that no new route was coming.
+- **An intermediate stop no longer reads "Arrival"** in the banner, and the distance no longer goes
+  from "1 km" to "1000 m" to "950 m".
+- **"No route" is said as such with Valhalla** (`@geoleaf-plugins/routing` 1.1.0). Valhalla answers
+  it with an HTTP 400, which the panel reported in the sentence of a refused key.
+- **A stop far from any road is reported.** The engine attaches it to the nearest road and answers a
+  success; the panel now says so instead of showing the total. The route stays drawn.
+- **The panel writes distances with the separator of the interface language.**
+
+---
+
 ## [3.19.0] - 2026-10-23
 
 ### Changed

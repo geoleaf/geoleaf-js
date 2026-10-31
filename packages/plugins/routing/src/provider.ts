@@ -10,6 +10,8 @@
  */
 import { Log } from "@geoleaf/host-runtime";
 import type { IRouteProvider, RouteProviderFactory } from "./model.js";
+import { getEngineSettings } from "./engine-settings.js";
+import { parseEndpoint } from "./engine-url.js";
 import { getPluginConfig, type PluginConfig } from "./config.js";
 
 // The contract itself lives in `model.ts` — pure types, no runtime dependency. Re-exported here
@@ -69,13 +71,16 @@ export function registeredProviders(): string[] {
  * are going; over plain HTTP that is readable by every hop on the path, and a silent fallback
  * to a default endpoint would hide the refusal behind a route that still works.
  *
+ * The address given to `configure()` comes first: it is the one a host holding a key chose, and
+ * the key must never reach an address it was not given for.
+ *
  * @param config The merged plugin configuration.
  * @returns The endpoint to use, or `null` when the configuration names none that is acceptable.
  */
 export function resolveEndpoint(config: PluginConfig): string | null {
-    const explicit = config.endpoint;
+    const explicit = getEngineSettings()?.endpoint ?? config.endpoint;
     if (typeof explicit === "string" && explicit.length > 0) {
-        return explicit.startsWith("https://") ? explicit : null;
+        return parseEndpoint(explicit) ? explicit : null;
     }
     const provider = typeof config.provider === "string" ? config.provider : "";
     return DEFAULT_ENDPOINTS[provider] ?? null;
@@ -103,7 +108,7 @@ export function createProvider(config: PluginConfig = getPluginConfig()): IRoute
     const endpoint = resolveEndpoint({ ...config, provider: id });
     if (endpoint === null) return null;
 
-    const provider = factory(endpoint);
+    const provider = factory(endpoint, { query: getEngineSettings()?.query ?? {} });
 
     // 🛑 A provider with no credit is REFUSED, exactly like an endpoint that is not HTTPS: both
     // are ways of shipping something the integrator cannot be expected to notice is wrong. The

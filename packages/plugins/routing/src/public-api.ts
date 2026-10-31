@@ -26,13 +26,30 @@ import {
 } from "./composition.js";
 import { legSummaries, type LegSummary } from "./legs.js";
 import { publishRoute, clearRoute, routeFeatures, type PublishOutcome } from "./publish.js";
-import type { RouteResult, Waypoint } from "./model.js";
+import type { EngineSettings, RouteResult, Waypoint } from "./model.js";
 import { actionId } from "./entry-point.js";
+import { setEngineSettings } from "./engine-settings.js";
 
 /** The object mounted on `GeoLeaf.Routing`. */
 export interface RoutingPublicApi {
     /** The merged `modules.routing` configuration. */
     getConfig(): PluginConfig;
+    /**
+     * Gives the engine's address and the query parameters every request must carry, for the
+     * computations that follow. This is the door a key comes through: a profile is a served
+     * file, so a key is never written in one.
+     *
+     * Replaces the previous settings WHOLE; `null` clears them. Validated whole or refused
+     * whole: an address that is not `https://`, that cannot be read or that carries
+     * credentials, a parameter that is not a string, and a parameter named `steps`, `overview`
+     * or `geometries` — written by the OSRM adapter — are refused, and then nothing is applied.
+     * A refusal is logged with the name of the field, never with its value.
+     *
+     * The settings survive an unmount of the application. They do not survive a reload.
+     *
+     * @returns `true` once applied, `false` when refused.
+     */
+    configure(settings: EngineSettings | null): boolean;
     /**
      * Registers a routing engine under `id`, so an integrator can plug one this package does
      * not know. Must run before the first route is asked for.
@@ -97,6 +114,7 @@ export interface RoutingPublicApi {
 export function buildPublicApi(): RoutingPublicApi {
     return {
         getConfig: (): PluginConfig => getPluginConfig(),
+        configure: (settings): boolean => setEngineSettings(settings),
         registerProvider: (id: string, factory: RouteProviderFactory): void =>
             registerProvider(id, factory),
         getProvider: (): ProviderIdentity | null => getProvider(),

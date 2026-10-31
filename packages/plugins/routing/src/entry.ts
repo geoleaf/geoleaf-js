@@ -33,6 +33,8 @@ export type {
     RouteOutcome,
     IRouteProvider,
     RouteProviderFactory,
+    ProviderOptions,
+    EngineSettings,
 } from "./model.js";
 
 // The toolbar seam is the canonical extension path, and it is TYPED — import the shape from

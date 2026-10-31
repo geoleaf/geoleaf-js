@@ -7,7 +7,13 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
-import type { RouteResult, NavProgress, NavState, RouteStep } from "@geoleaf-plugins/routing";
+import type {
+    RouteResult,
+    NavProgress,
+    NavState,
+    RouteFailure,
+    RouteStep,
+} from "@geoleaf-plugins/routing";
 
 /**
  * ## Why this file exists before the runtime does
@@ -58,6 +64,12 @@ export interface GuidanceView {
     readonly heading: number | null;
     /** Seconds since the previous accepted fix, or `null` on the first. */
     readonly elapsedSeconds: number | null;
+    /** Where guidance stands after this fix. */
+    readonly state: NavState;
+    /** Whether the leg being travelled ends the route: its `arrive` is the destination. */
+    readonly finalLeg: boolean;
+    /** Why the last recomputation was refused, when one was. */
+    readonly rerouteFailure?: RouteFailure;
 }
 
 /** A view sample handed to whatever draws the session. */
@@ -84,6 +96,8 @@ export interface GuidanceRuntime {
     start(route: RouteResult, line: readonly (readonly [number, number])[]): void;
     /** Stops guidance and releases the platform adapters. Idempotent. */
     stop(): void;
+    /** Releases a hold at an intermediate stop. Does nothing in any other state. */
+    continueToNextLeg(): void;
     /** Subscribes to progress samples. Returns the unsubscribe function. */
     onProgress(listener: GuidanceListener): () => void;
     /**

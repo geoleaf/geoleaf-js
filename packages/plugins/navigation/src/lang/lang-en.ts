@@ -25,6 +25,7 @@ const langTemplateEn = {
     "navigation.toolbar.button": "Navigation",
     "navigation.maneuver.depart": "Depart",
     "navigation.maneuver.arrive": "Arrive",
+    "navigation.maneuver.stop": "Stop",
     "navigation.maneuver.continue": "Continue straight ahead",
     "navigation.maneuver.turn.left": "Turn left",
     "navigation.maneuver.turn.right": "Turn right",
@@ -37,6 +38,11 @@ const langTemplateEn = {
     "navigation.maneuver.fork.left": "Keep left at the fork",
     "navigation.maneuver.fork.right": "Keep right at the fork",
     "navigation.maneuver.roundabout": "Take the roundabout",
+    "navigation.session.stop": "Stop guidance",
+    "navigation.session.finish": "Finish",
+    "navigation.session.continue": "Continue",
+    "navigation.session.arrived": "You have arrived.",
+    "navigation.session.stopReached": "Stop reached.",
     "navigation.notice.road":
         "The highway code and actual conditions come before the suggested route.",
     "navigation.notice.background":

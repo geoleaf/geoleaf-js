@@ -18,6 +18,7 @@ import { travelProfile } from "./config.js";
 import { cachedRoute, rememberRoute } from "./route-cache.js";
 import { pickWaypointOnMap, type PickMode } from "./pick-on-map.js";
 import { fitRouteIfOutOfView } from "./fit-route.js";
+import { hasStopFarFromRoad } from "./stop-gap.js";
 import { showPane } from "./ui-seam.js";
 
 /**
@@ -134,6 +135,7 @@ const INPUT_REFUSAL_KEYS: Record<string, string> = {
 
 /** Refusal → i18n key suffix. */
 const FAILURE_KEYS: Readonly<Record<string, string>> = {
+    "far-from-road": "farFromRoad",
     timeout: "timeout",
     network: "network",
     http: "http",
@@ -435,7 +437,7 @@ async function compute(next: readonly Waypoint[]): Promise<void> {
         language: getActiveLang(),
     });
     if (cached) {
-        show(cached);
+        show(cached, next);
         return;
     }
 
@@ -473,15 +475,16 @@ async function compute(next: readonly Waypoint[]): Promise<void> {
     // ⚠️ Only a SUCCESS is remembered. Caching a refusal would make a transient network failure
     // permanent for the rest of the session, with a retry that never leaves the page.
     rememberRoute(request, outcome.route);
-    show(outcome.route);
+    show(outcome.route, next);
 }
 
 /**
  * Draws a computed route and tells the panel about it.
  *
  * @param route The route.
+ * @param stops The stops as the user placed them.
  */
-function show(route: RouteResult): void {
+function show(route: RouteResult, stops: readonly Waypoint[]): void {
     lastRoute = route;
     panel?.setRoute(route);
     const published = publishRoute(route);
@@ -495,6 +498,11 @@ function show(route: RouteResult): void {
     // screen. Moving the map for a line that was not drawn would leave someone looking at an empty
     // frame that just moved to show them nothing.
     fitRouteIfOutOfView(route);
+    // ⚠️ After the drawing, and only a warning: the route exists and may be what was meant. It
+    // replaces the total in the message area, and each leg keeps its own figures in the list.
+    if (hasStopFarFromRoad(stops, decodePolyline(route.geometry, POLYLINE_PRECISION))) {
+        panel?.showFailure("far-from-road");
+    }
 }
 
 /**
@@ -504,7 +512,14 @@ function show(route: RouteResult): void {
  * @returns The text.
  */
 function formatDistance(metres: number): string {
-    return metres >= 1000 ? `${(metres / 1000).toFixed(1)} km` : `${Math.round(metres)} m`;
+    if (metres < 1000) return `${Math.round(metres)} m`;
+    // ⚠️ In the interface language and not `toFixed`, which always writes a point: the guidance
+    // banner writes the same figure with the locale's own separator.
+    const km = (metres / 1000).toLocaleString(getActiveLang(), {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+    });
+    return `${km} km`;
 }
 
 /**

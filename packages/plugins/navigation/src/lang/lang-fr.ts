@@ -25,6 +25,7 @@ const langTemplateFr = {
     "navigation.toolbar.button": "Navigation",
     "navigation.maneuver.depart": "Départ",
     "navigation.maneuver.arrive": "Arrivée",
+    "navigation.maneuver.stop": "Étape",
     "navigation.maneuver.continue": "Continuez tout droit",
     "navigation.maneuver.turn.left": "Tournez à gauche",
     "navigation.maneuver.turn.right": "Tournez à droite",
@@ -37,6 +38,11 @@ const langTemplateFr = {
     "navigation.maneuver.fork.left": "Prenez à gauche à l'embranchement",
     "navigation.maneuver.fork.right": "Prenez à droite à l'embranchement",
     "navigation.maneuver.roundabout": "Prenez le rond-point",
+    "navigation.session.stop": "Arrêter le guidage",
+    "navigation.session.finish": "Terminer",
+    "navigation.session.continue": "Continuer",
+    "navigation.session.arrived": "Vous êtes arrivé.",
+    "navigation.session.stopReached": "Étape atteinte.",
     "navigation.notice.road":
         "Le code de la route et les conditions réelles priment sur l'itinéraire proposé.",
     "navigation.notice.background":

@@ -118,6 +118,11 @@ describe("maneuverLabel", () => {
 });
 
 describe("formatApproachDistance", () => {
+    it("🛑 ne repasse jamais par « 1000 m » entre « 1 km » et « 950 m »", () => {
+        expect(formatApproachDistance(990, "m", "km")).toBe(`${(1).toLocaleString()} km`);
+        expect(formatApproachDistance(970, "m", "km")).toBe("950 m");
+    });
+
     it("arrondit par bandes — un conducteur lit d'un coup d'œil", () => {
         expect(formatApproachDistance(437, "m", "km")).toBe("450 m");
         expect(formatApproachDistance(96, "m", "km")).toBe("100 m");

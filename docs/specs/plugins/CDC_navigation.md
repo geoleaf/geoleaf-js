@@ -4,8 +4,8 @@ title: navigation — le guidage temps réel, et les trois adaptateurs qui le re
 plugin_id: navigation
 package: "@geoleaf-plugins/navigation"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 45c7c0eb2
-date: 7 octobre 2026
+verifie_contre: 8e5c93ae8
+date: 31 octobre 2026
 ---
 
 # navigation — le guidage temps réel, et les trois adaptateurs qui le rendent portable
@@ -349,6 +349,7 @@ Ce qui a été ajouté avec le câblage, parce qu'il en avait besoin :
 | `src/engine/maneuver.ts`               | la manœuvre **à venir** et sa distance — la borne du pas SUIVANT, jamais celle du pas courant |
 | `GuidanceView` + `onView`              | un second canal, distinct de `onProgress` : position projetée, cap, secondes écoulées         |
 | `src/ui/session-view.ts`               | le montage — ancre dans le conteneur de carte, abonnement, démontage                          |
+| `src/ui/session-controls.ts`           | ce que le conducteur commande — arrêt, reprise, ligne d'état                                  |
 | `src/__tests__/session-wiring.test.ts` | **le test qui manquait** : `session.ts` n'en avait aucun                                      |
 
 🛑 **`NavProgress.stepIndex` était un `0` littéral** aux deux points d'émission du runtime. Un champ
@@ -476,6 +477,32 @@ d'arrivée et non une flèche à gauche.
 
 ---
 
+## Ce que le conducteur commande — `src/ui/session-controls.ts`
+
+🛑 **Une session prenait l'écran sans rendre la main.** Aucune interface n'appelait `stop()` : à
+l'arrivée, le conducteur restait sous un bandeau « 0 m » jusqu'au rechargement de la page. La
+recette contre un vrai moteur l'a montré, parce que l'E2E appelait `stop()` par l'API.
+
+| Commande  | Quand                         | Effet                                       |
+| --------- | ----------------------------- | ------------------------------------------- |
+| Arrêter   | toute la session              | `stopSession()`                             |
+| Terminer  | `arrived`, même bouton        | `stopSession()` : l'arrivée attend le geste |
+| Continuer | `waypoint-reached` uniquement | `continueToNextLeg()` sur le runtime        |
+
+🛑 **`waypoint-reached` n'avait aucune sortie.** `continueToNextLeg` n'avait d'appelant que dans les
+tests : dès la première étape intermédiaire, plus d'arrivée et plus de détection de sortie de
+tracé, le bandeau continuant d'avancer comme si de rien n'était. Deux sorties existent désormais,
+et la seconde compte autant que la première, puisqu'on ne demande pas de toucher un écran en
+conduisant : le bouton, et `releaseLeftStop` dans le runtime, qui libère l'étape quand le relevé
+s'en éloigne de plus de trois rayons d'arrivée. Le seuil laisse garé un véhicule au bruit du GPS.
+
+⚠️ Une étape quittée hors du tracé reste projetée sur le tronçon terminé. `session.nextLeg` empêche
+le recalcul de renvoyer vers l'étape qu'on vient de servir.
+
+⚠️ Chaque tronçon finit par un `arrive`, y compris avant la dernière étape. `session-view.ts` le
+renomme `stop` (« Étape ») sur un tronçon intermédiaire : lu « Arrivée » à mi-parcours, le mot est
+faux. `GuidanceView.finalLeg` porte l'information.
+
 ## Ce que le guidage DIT quand il ne peut pas recalculer
 
 Livré le 22/08/2026. `NavProgress` porte `rerouteFailure` — la cause de la dernière
@@ -490,6 +517,11 @@ mieux vaut revenir sur ses pas pendant qu'on sait encore où l'on est.
 `rerouteFailure: null` se lit « il y a eu un échec, sans cause », ce qui n'est l'état de personne.
 Et il est **effacé** dès qu'un recalcul aboutit : un motif qui survit à sa cause laisse un
 avertissement permanent sous un guidage qui remarche depuis vingt minutes.
+
+🛑 **Jusqu'au 31/10/2026, cet écart restait le même à l'écran.** Le motif était émis et ses phrases
+(`navigation.reroute.*`) étaient au dictionnaire, mais aucune interface ne les lisait. La ligne
+d'état de `session-controls.ts` les affiche, en `rerouting` seulement : revenu sur le tracé, le
+conducteur n'a plus rien à lire même si le motif subsiste.
 
 ### 🛑 `online` est un INDICE, jamais un PRÉDICAT
 

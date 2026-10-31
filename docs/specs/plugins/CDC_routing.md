@@ -4,8 +4,8 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: ec8a00260
-date: 15 octobre 2026
+verifie_contre: 8e5c93ae8
+date: 31 octobre 2026
 ---
 
 # routing — le calcul d'itinéraire, utilisable sans le guidage
@@ -102,6 +102,7 @@ gardes est consignée et assumée : la modifier changerait la sémantique de `re
 | Membre                                                               | Signature                              | État         |
 | -------------------------------------------------------------------- | -------------------------------------- | ------------ |
 | `getConfig()`                                                        | `(): PluginConfig`                     | ✅ livré     |
+| `configure(settings)`                                                | `(EngineSettings \| null): boolean`    | ✅ livré     |
 | `registerProvider(id, factory)`                                      | `(string, RouteProviderFactory): void` | ✅ livré     |
 | `listProviders()`                                                    | `(): string[]`                         | ✅ livré     |
 | `getProvider()`                                                      | `(): ProviderIdentity \| null`         | ✅ livré     |
@@ -116,6 +117,13 @@ gardes est consignée et assumée : la modifier changerait la sémantique de `re
 déclarent eux-mêmes, par un import à effet de bord de l'entrée — **jamais par un appel que l'hôte
 devrait se rappeler de faire**. Un plugin dont les moteurs intégrés n'existent qu'une fois le
 README lu a une configuration qui ne fait silencieusement rien.
+
+🛑 **`configure()` est la seule porte d'une clé.** Un profil est un fichier servi : une clé n'y
+s'écrit jamais. `endpoint` restait donc le seul moyen de nommer un moteur, et il ne savait porter
+aucun paramètre : `endpoint` + `/route` rendait une URL fausse dès qu'une clé y figurait, et le
+plugin ne joignait aucun moteur protégé. Le contrat est celui de `GeoLeaf.Isochrone.configure()`,
+tout ou rien, et un refus nomme le champ sans jamais citer sa valeur. Le fournisseur reçoit ces
+paramètres en second argument de sa fabrique.
 
 ⚠️ Le registre reste une **porte** : un intégrateur y branche un moteur que ce paquet ne connaît
 pas. S'il enregistre sous un id déjà pris, il remplace — c'est la raison d'être de la porte.
@@ -457,11 +465,26 @@ ne l'a pas au lieu de le dégrader.
 recherche ici » et « la recherche n'a rien trouvé » appellent des phrases opposées, et les
 confondre dirait à quelqu'un sans le plugin que son adresse n'existe pas.
 
-## L'auto-hébergement d'une instance — spécifié, jamais exécuté
+## Ce que le moteur répond quand il n'y a pas d'itinéraire
 
-> 📌 **Versé ici le 26/08/2026, à l'archivage de la roadmap qui le portait.** Le geste n'a jamais
-> été fait, faute d'instance ; sa recette et surtout **son critère de réussite** vivaient dans un
-> document sorti du dépôt. Ce paragraphe n'affirme rien sur le code : il conserve un critère.
+🛑 **Valhalla le dit par une erreur HTTP 400, pas par un `status` dans une réussite.** Mesuré sur une
+instance locale : code 171 pour un point trop loin de toute route, 154 au-delà de la distance
+maximale. Lus comme un simple échec HTTP, ces cas arrivaient à l'utilisateur sous la phrase d'une
+clé refusée. `fetchRouteJson` accepte donc un `classify` qui lit le corps de l'erreur, et
+`providers/valhalla.ts` y nomme ces codes `no-route`.
+
+⚠️ **Une réussite ne dit pas où la route s'arrête.** Le moteur rattache chaque étape à la route la
+plus proche, à n'importe quelle distance, et rend les coordonnées qu'on lui a données. Seule la
+géométrie le montre : `stop-gap.ts` compare les étapes à la ligne, et au-delà du seuil le panneau
+l'écrit à la place du total. Le tracé reste affiché, il peut être ce que l'utilisateur voulait.
+
+## L'auto-hébergement d'une instance — critère tenu
+
+> 📌 **Versé ici le 26/08/2026, à l'archivage de la roadmap qui le portait.** Exécuté le 31/10/2026
+> contre un Valhalla local : le trajet des fixtures, rejoué sur l'instance, satisfait les invariants
+> de `normalization.test.ts`, sans une clé JSON de différence avec le corpus. Le rejeu était un
+> script hors dépôt reprenant ces invariants, pas le fichier de test lui-même. Le paragraphe conserve
+> le critère, qui vaut pour toute bascule suivante.
 
 Basculer d'un fournisseur public vers une instance auto-hébergée doit être une **décision de
 configuration**, jamais une réécriture. Le critère qui le prouve est exigeant, et c'est tout son
@@ -473,9 +496,8 @@ intérêt :
 précisément ce que le critère interdit. Une fixture qu'on adapte prouve que le fournisseur a une
 forme particulière ; une fixture qu'on ne touche pas prouve que le contrat tient.
 
-🛑 **Ce qui manque n'est pas du code, c'est une machine.** Aucune session ne fournit une instance
-de routage, et c'est la raison — nommée — pour laquelle ce point est resté ouvert quand tout le
-reste du chantier a été rendu.
+⚠️ Une instance protégée par clé se branche par `configure()`, jamais par le profil. Les fixtures
+OSRM n'ont pas été rejouées : aucune instance OSRM locale n'existe.
 
 ## Deux extensions écartées, et leur motif
 

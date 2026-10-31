@@ -46,6 +46,8 @@ const langTemplateFr = {
     "routing.error.noRoute": "Aucun itinéraire entre ces points.",
     "routing.error.refused": "La configuration du service d'itinéraire a été refusée.",
     "routing.error.capReached": "Nombre maximal d'étapes atteint.",
+    "routing.error.farFromRoad":
+        "Une étape est loin de toute route : l'itinéraire s'arrête à la route la plus proche.",
     "routing.error.noLayer": "Le profil ne déclare pas la couche où tracer l'itinéraire.",
     "routing.error.originDenied": "Position refusée. Saisissez un point de départ.",
     "routing.error.originNoFix":

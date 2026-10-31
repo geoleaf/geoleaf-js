@@ -110,6 +110,7 @@ describe("le verrou d'écran — pris avec la session, rendu avec elle", () => {
             start: vi.fn(),
             stop: vi.fn(),
             onProgress: vi.fn(() => vi.fn()),
+            continueToNextLeg: vi.fn(),
             onView: vi.fn(() => vi.fn()),
         }));
     });
@@ -184,6 +185,7 @@ describe("startSession — l'interface est posée, et c'est vérifiable dans le 
                 fake.stopped += 1;
             },
             onProgress: () => () => {},
+            continueToNextLeg: () => {},
             onView: (l: GuidanceViewListener) => {
                 fake.viewListener = l;
                 return () => {
@@ -214,6 +216,7 @@ describe("startSession — l'interface est posée, et c'est vérifiable dans le 
             },
             stop: () => {},
             onProgress: () => () => {},
+            continueToNextLeg: () => {},
             onView: () => () => {},
         }));
         startSession(ROUTE, [], DEPS);
@@ -228,6 +231,8 @@ describe("startSession — l'interface est posée, et c'est vérifiable dans le 
             position: [55, -21],
             heading: 45,
             elapsedSeconds: 1,
+            state: "navigating",
+            finalLeg: true,
         });
         const el = container.querySelector<HTMLElement>(".gl-nav-banner");
         expect(el?.hidden).toBe(false);

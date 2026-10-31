@@ -210,7 +210,7 @@ function sliceByDistance(
  * @param b Second position.
  * @returns Metres.
  */
-function haversine(a: Position, b: Position): number {
+export function haversine(a: Position, b: Position): number {
     const R = 6371008.8;
     const toRad = Math.PI / 180;
     const dLat = (b[1] - a[1]) * toRad;

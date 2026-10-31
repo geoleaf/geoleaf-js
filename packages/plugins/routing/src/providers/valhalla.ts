@@ -10,6 +10,7 @@
 import type { IRouteProvider, RouteRequest, RouteOutcome } from "../model.js";
 import { normalizeValhalla } from "../normalize-valhalla.js";
 import { fetchRouteJson, DEFAULT_TIMEOUT_MS, OSM_ATTRIBUTION } from "./http.js";
+import { buildEngineUrl } from "../engine-url.js";
 
 /**
  * ## Why this adapter is thin, and must stay thin
@@ -29,16 +30,40 @@ const COSTING: Readonly<Record<RouteRequest["profile"], string>> = {
 };
 
 /**
+ * The `error_code` values by which Valhalla says that no route exists.
+ *
+ * 🛑 **Valhalla answers these with an HTTP 400, not with a `status` inside a success.** Measured on
+ * a local instance: 171 for a stop too far from any road, 154 beyond the distance limit. Read as
+ * a plain HTTP failure, they reached the user as "the service refused the request", the sentence
+ * of a refused key, about a question that simply has no answer. 155 (outside the service area),
+ * 170 (unconnected regions) and 442 (no path found) are the same answer in its documented forms.
+ */
+const NO_ROUTE_CODES: ReadonlySet<unknown> = new Set([154, 155, 170, 171, 442]);
+
+/**
+ * Names an HTTP error that is really an answer about the map.
+ *
+ * @param body The body of the error.
+ * @returns `no-route` when the code says so, `null` for any other refusal.
+ */
+function classifyRefusal(body: unknown): "no-route" | null {
+    const code = (body as { error_code?: unknown } | null)?.error_code;
+    return NO_ROUTE_CODES.has(code) ? "no-route" : null;
+}
+
+/**
  * Builds the Valhalla adapter for one endpoint.
  *
  * @param endpoint Base URL, already accepted by `resolveEndpoint` — which is what refuses
  *                 anything that is not HTTPS.
  * @param timeoutMs How long the engine is given to answer.
+ * @param query Query parameters every request must carry.
  * @returns The provider.
  */
 export function createValhallaProvider(
     endpoint: string,
-    timeoutMs: number = DEFAULT_TIMEOUT_MS
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+    query: Readonly<Record<string, string>> = {}
 ): IRouteProvider {
     return {
         id: "valhalla",
@@ -62,22 +87,26 @@ export function createValhallaProvider(
                 },
             };
 
+            const url = buildEngineUrl(endpoint, "/route", query);
+            if (url === null) return { ok: false, reason: "refused" };
+
             const res = await fetchRouteJson(
-                `${endpoint.replace(/\/+$/, "")}/route`,
+                url,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body),
                 },
-                timeoutMs
+                timeoutMs,
+                classifyRefusal
             );
             if (!res.ok) return res;
 
             const route = normalizeValhalla(res.body);
-            // 🛑 `no-route` and not `malformed`. Valhalla answers a non-zero `status` when the
-            // points cannot be joined, which is an ORDINARY answer about the map — two points on
-            // different islands have no route. Reporting it as a malfunction would tell the user
-            // to retry something that will never work.
+            // 🛑 `no-route` and not `malformed`: a non-zero `status` is an ORDINARY answer about
+            // the map. Reporting it as a malfunction would tell the user to retry something that
+            // will never work. The usual form of that answer is the HTTP error `classifyRefusal`
+            // reads; this branch covers the same answer inside a success.
             return route ? { ok: true, route } : { ok: false, reason: "no-route" };
         },
     };

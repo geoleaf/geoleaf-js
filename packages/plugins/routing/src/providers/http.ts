@@ -21,7 +21,9 @@ import type { RouteFailure } from "../model.js";
  * - **malformed** — the engine answered something this adapter cannot read. That is a bug on one
  *   of the two sides, and it must not look like "no route exists".
  * - **no-route** — an ordinary answer. Two points on different islands have no route, and telling
- *   the user "an error occurred" would be a lie.
+ *   the user "an error occurred" would be a lie. ⚠️ It does not always arrive as a success: an
+ *   engine may answer it with an HTTP error, so an adapter can read such a body by passing
+ *   `classify`.
  *
  * 🛑 **Collapsing them into `null` was the sprint-1 contract, and it was wrong** — not because it
  * loses information in the abstract, but because every one of the four ends up rendered as the
@@ -47,18 +49,26 @@ export const DEFAULT_TIMEOUT_MS = 10_000;
  *            what refuses anything that is not HTTPS.
  * @param init Request init, minus the signal.
  * @param timeoutMs How long the engine is given.
+ * @param classify Reads the body of an HTTP error, for an engine that names an ordinary answer
+ *                 there. Answers `null` to leave it an `http` failure.
  * @returns The parsed body, or a named reason.
  */
 export async function fetchRouteJson(
     url: string,
     init: RequestInit,
-    timeoutMs: number = DEFAULT_TIMEOUT_MS
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+    classify?: (body: unknown) => RouteFailure | null
 ): Promise<FetchOutcome> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const res = await fetch(url, { ...init, signal: controller.signal });
-        if (!res.ok) return { ok: false, reason: "http", status: res.status };
+        if (!res.ok) {
+            const named = classify ? classify(await readErrorBody(res)) : null;
+            return named
+                ? { ok: false, reason: named }
+                : { ok: false, reason: "http", status: res.status };
+        }
         try {
             return { ok: true, body: await res.json() };
         } catch {
@@ -73,6 +83,20 @@ export async function fetchRouteJson(
         return { ok: false, reason: aborted ? "timeout" : "network" };
     } finally {
         clearTimeout(timer);
+    }
+}
+
+/**
+ * Reads the body of an HTTP error, which nothing obliges to be JSON.
+ *
+ * @param res The response.
+ * @returns The parsed body, or `null` when it cannot be read.
+ */
+async function readErrorBody(res: Response): Promise<unknown> {
+    try {
+        return await res.json();
+    } catch {
+        return null;
     }
 }
 

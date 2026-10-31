@@ -146,6 +146,62 @@
     cursor: pointer;
 }
 
+/* Les commandes de session. 🛑 En HAUT à droite et non en bas : l'avertissement de début de
+   session occupe le bas-centre, et une commande cachée derrière lui ne se trouve pas pendant
+   qu'on conduit. La boîte se rabat sous le bandeau quand la largeur manque. */
+.gl-nav-controls {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.4rem;
+    max-width: min(60%, 16rem);
+    z-index: 500;
+    pointer-events: none;
+}
+
+.gl-nav-controls__status {
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text, #1a1a1a);
+    border-radius: var(--gl-border-radius, 6px);
+    box-shadow: var(--gl-shadow-panel, 0 2px 8px rgb(0 0 0 / 20%));
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+
+.gl-nav-controls__status:empty {
+    display: none;
+}
+
+.gl-nav-controls__button {
+    min-height: 2.75rem;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--gl-color-border, #ccc);
+    border-radius: var(--gl-border-radius, 6px);
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text, #1a1a1a);
+    box-shadow: var(--gl-shadow-panel, 0 2px 8px rgb(0 0 0 / 20%));
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+/* ⚠️ `hidden` doit gagner : un bouton de reprise visible hors d'une étape ne ferait rien. */
+.gl-nav-controls__button[hidden] {
+    display: none;
+}
+
+@media (max-width: 40rem) {
+    .gl-nav-controls {
+        top: 4.5rem;
+    }
+}
+
 /* ── La flèche de position du conducteur ─────────────────────────────────────────────
    Le marqueur est créé par la couture d'adaptateur du cœur ; sa RACINE reçoit cette classe
    et c'est aussi le nœud sur lequel le moteur écrit sa propre `transform` de placement.
@@ -225,6 +281,11 @@ body.gl-immersive .gl-user-location-marker {
 /* Les manœuvres autoportantes — déclarées APRÈS, donc prioritaires. Voir l'encadré. */
 
 .gl-nav-banner__icon--arrive {
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s6-6 6-10a6 6 0 1 0-12 0c0 4 6 10 6 10z' fill='black'/%3E%3Ccircle cx='12' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E");
+}
+
+/* Une étape intermédiaire : le même point que l'arrivée, sous un autre mot. */
+.gl-nav-banner__icon--stop {
     mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 21s6-6 6-10a6 6 0 1 0-12 0c0 4 6 10 6 10z' fill='black'/%3E%3Ccircle cx='12' cy='11' r='2.2' fill='white'/%3E%3C/svg%3E");
 }
 

@@ -29,8 +29,9 @@ import type { NavState } from "@geoleaf-plugins/routing";
  * An intermediate stop is a place someone stops FOR something — a delivery, a visit. Rolling
  * straight on to the next leg would be right for a via point drawn on a map and wrong for the
  * multi-stop rounds this scope exists to serve. The hold is released by
- * {@link GuidanceMachine.continueToNextLeg}, which the interface calls on an explicit action
- * or a timer, never this module.
+ * {@link GuidanceMachine.continueToNextLeg}: the interface's button, or the runtime once the
+ * user has driven away from the stop. Never this module, which cannot tell the two apart from
+ * someone parked.
  */
 
 /** What a fix tells the machine, once everything measurable about it has been measured. */

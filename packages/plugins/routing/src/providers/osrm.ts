@@ -9,6 +9,7 @@
 import type { IRouteProvider, RouteRequest, RouteOutcome } from "../model.js";
 import { normalizeOsrm } from "../normalize-osrm.js";
 import { fetchRouteJson, DEFAULT_TIMEOUT_MS, OSM_ATTRIBUTION } from "./http.js";
+import { buildEngineUrl } from "../engine-url.js";
 
 /**
  * ## The second provider is not redundancy, it is the test of the model
@@ -35,11 +36,13 @@ const PROFILE: Readonly<Record<RouteRequest["profile"], string>> = {
  *
  * @param endpoint Base URL, already accepted by `resolveEndpoint`.
  * @param timeoutMs How long the engine is given to answer.
+ * @param query Query parameters every request must carry.
  * @returns The provider.
  */
 export function createOsrmProvider(
     endpoint: string,
-    timeoutMs: number = DEFAULT_TIMEOUT_MS
+    timeoutMs: number = DEFAULT_TIMEOUT_MS,
+    query: Readonly<Record<string, string>> = {}
 ): IRouteProvider {
     return {
         id: "osrm",
@@ -53,9 +56,13 @@ export function createOsrmProvider(
             const profile = PROFILE[request.profile] ?? PROFILE.car;
             // `geometries=polyline` is OSRM's default and the model's precision — asking for
             // GeoJSON would buy a second decoding path for the one engine that does not need it.
-            const url =
-                `${endpoint.replace(/\/+$/, "")}/route/v1/${profile}/${coords}` +
-                `?steps=true&overview=full&geometries=polyline`;
+            const url = buildEngineUrl(endpoint, `/route/v1/${profile}/${coords}`, {
+                ...query,
+                steps: "true",
+                overview: "full",
+                geometries: "polyline",
+            });
+            if (url === null) return { ok: false, reason: "refused" };
 
             const res = await fetchRouteJson(url, { method: "GET" }, timeoutMs);
             if (!res.ok) return res;

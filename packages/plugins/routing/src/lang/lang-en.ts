@@ -45,6 +45,7 @@ const langTemplateEn = {
     "routing.error.noRoute": "No route between these points.",
     "routing.error.refused": "The routing service configuration was refused.",
     "routing.error.capReached": "Maximum number of stops reached.",
+    "routing.error.farFromRoad": "A stop is far from any road: the route ends at the nearest one.",
     "routing.error.noLayer": "The profile declares no layer to draw the route on.",
     "routing.error.originDenied": "Position denied. Enter a starting point.",
     "routing.error.originNoFix": "Position not known yet. Try again or enter a starting point.",

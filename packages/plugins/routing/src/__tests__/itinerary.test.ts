@@ -150,7 +150,7 @@ describe("the labels it resolves", () => {
         openPanel();
         const leg = captured!.labels.leg;
         expect(leg(450, 60)).toContain("450 m");
-        expect(leg(1500, 60)).toContain("1.5 km");
+        expect(leg(1500, 60)).toContain("1,5 km");
     });
 
     it("formats a duration in whole minutes, then in hours", () => {
@@ -191,7 +191,13 @@ describe("computing", () => {
             id: "x",
             route: async () => ({
                 ok: true,
-                route: { distance: 1, duration: 1, legs: [], waypoints: [{ coordinates: [1, 2] }] },
+                route: {
+                    distance: 1,
+                    duration: 1,
+                    legs: [],
+                    geometry: "",
+                    waypoints: [{ coordinates: [1, 2] }],
+                },
             }),
         };
         openPanel();
@@ -209,7 +215,13 @@ describe("computing", () => {
             id: "x",
             route: async () => ({
                 ok: true,
-                route: { distance: 1, duration: 1, legs: [], waypoints: [{ coordinates: [1, 2] }] },
+                route: {
+                    distance: 1,
+                    duration: 1,
+                    legs: [],
+                    geometry: "",
+                    waypoints: [{ coordinates: [1, 2] }],
+                },
             }),
         };
         openPanel();
@@ -223,7 +235,10 @@ describe("computing", () => {
         // none. The message says which of the two steps failed.
         _provider = {
             id: "x",
-            route: async () => ({ ok: true, route: { distance: 1, duration: 1, legs: [] } }),
+            route: async () => ({
+                ok: true,
+                route: { distance: 1, duration: 1, legs: [], geometry: "" },
+            }),
         };
         openPanel();
         captured!.handlers.onCompute([]);

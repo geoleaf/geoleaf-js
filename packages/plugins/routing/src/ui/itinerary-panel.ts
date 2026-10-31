@@ -54,6 +54,7 @@ export type PanelRefusal =
     | RouteFailure
     | "cap-reached"
     | "no-layer"
+    | "far-from-road"
     | "origin-denied"
     | "origin-no-fix"
     | "origin-unavailable";

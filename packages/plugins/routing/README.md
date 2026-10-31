@@ -69,7 +69,7 @@ So the plugin does it for you, and you should know how, in case you build your o
 Registering your own engine? Declare its credit:
 
 ```js
-GeoLeaf.Routing.registerProvider("my-engine", (endpoint) => ({
+GeoLeaf.Routing.registerProvider("my-engine", (endpoint, { query }) => ({
     id: "my-engine",
     attribution: "© My data source",
     async route(request) {
@@ -149,13 +149,27 @@ served file — the same exposure under another name.
    `endpoint` exists precisely so you can point at your own.
 2. **Put the key on a server you control**, and give `endpoint` the URL of a thin proxy that adds
    it. The browser then holds nothing.
-3. **If the key must reach the browser, restrict it at the provider** — by HTTP referrer, by
-   origin, and by quota. A restricted key that leaks costs you a quota; an unrestricted one costs
-   you a bill.
+3. **If the key must reach the browser, give it at runtime**, from what your own session obtained,
+   and restrict it at the provider — by HTTP referrer, by origin, and by quota. A restricted key
+   that leaks costs you a quota; an unrestricted one costs you a bill.
+
+```js
+// After the plugin has loaded. The address replaces `endpoint`; `query` goes on every request.
+GeoLeaf.Routing.configure({
+    endpoint: "https://routing.example.org",
+    query: { api_key: keyFromYourSession },
+});
+```
+
+`configure()` replaces the previous settings whole, and `null` clears them. It answers `false` and
+applies nothing on an address that is not `https://` or carries credentials, on a parameter that is
+not a string, and on `steps`, `overview` or `geometries`, which the OSRM adapter writes itself. A
+refusal is logged with the name of the field, never its value. The settings survive an unmount of
+the application and do not survive a reload.
 
 ⚠️ Restriction by referrer is a **mitigation, not a secret**: it makes the key useless from another
-origin, it does not make it unreadable from yours. Treat a key in a profile as public, and choose it
-so that being public is acceptable.
+origin, it does not make it unreadable from yours. A key that reaches a browser can be read there,
+so choose it so that being read is acceptable.
 
 ---
 
