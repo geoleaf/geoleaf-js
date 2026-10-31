@@ -418,13 +418,10 @@ if (window.GEOLEAF_DEV_ISOCHRONE) {
 }
 
 // The routing engine of the local workstation, on the same terms as the isochrone engine above.
-if (window.GEOLEAF_DEV_ROUTING) {
-    document.addEventListener("geoleaf:plugin:loaded", (e) => {
-        if (e.detail?.name !== "routing") return;
-        if (GeoLeaf.Routing?.configure(window.GEOLEAF_DEV_ROUTING) !== true) {
-            console.warn("[GeoLeaf] Routing dev config not applied — see the warning above.");
-        }
-    });
+// ⚠️ Called directly, unlike the block above: `routing` has an eager tag in index.html, so it is
+// mounted before this module runs and its `geoleaf:plugin:loaded` has already fired.
+if (window.GEOLEAF_DEV_ROUTING && GeoLeaf.Routing?.configure(window.GEOLEAF_DEV_ROUTING) !== true) {
+    console.warn("[GeoLeaf] Routing dev config not applied — see the warning above.");
 }
 
 // ── Preloading the plugins THE PROFILE requires ─────────────────────────────
