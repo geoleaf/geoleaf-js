@@ -6,9 +6,9 @@
  * every High/Critical advisory found, WITHOUT failing the build. The blocking
  * gate (`scripts/audit-ci.cjs`) already covers production dependencies; this
  * step exists only so a new devDependency vulnerability is visible in CI logs
- * the day it appears — it never turns the pipeline red, because some current
- * dev-only advisories (vite/esbuild via vitepress) have no available fix and
- * would otherwise leave the gate permanently, uselessly red.
+ * the day it appears — it never turns the pipeline red, because a dev-only
+ * advisory whose only exit is an upstream major would otherwise leave the gate
+ * permanently, uselessly red.
  *
  * Usage: node scripts/audit-dev-report.cjs (from repo root)
  */

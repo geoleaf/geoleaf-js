@@ -1,7 +1,7 @@
 {
     "_comment": "LI-01/02 — entrées de registre de package-lock.json SANS `integrity`, gelées à la pose. Liste DÉCROISSANTE : peupler l'intégrité (régénération délibérée du lock sous le packageManager déclaré) puis resserrer via --update-baseline. Clé = chemin du lock (stable au patch de version). Le gel ne prouve PAS que le reste est trivialement drainable — mesuré structurel (sous-arbre @algolia/*→docsearch→vitepress, DEV) le 31/08/2026 ; ce que la gate empêche, c'est la CROISSANCE de l'écart.",
     "_generated": "node scripts/check-lock-integrity.cjs --update-baseline",
-    "count": 700,
+    "count": 695,
     "entries": [
         "node_modules/@algolia/abtesting",
         "node_modules/@algolia/autocomplete-core",
@@ -270,7 +270,6 @@
         "node_modules/flatbuffers",
         "node_modules/flatgeobuf",
         "node_modules/focus-trap",
-        "node_modules/follow-redirects",
         "node_modules/foreground-child",
         "node_modules/fromentries",
         "node_modules/fs.realpath",
@@ -665,9 +664,6 @@
         "node_modules/utrie",
         "node_modules/vfile",
         "node_modules/vfile-message",
-        "node_modules/vite",
-        "node_modules/vite/node_modules/@esbuild/linux-x64",
-        "node_modules/vite/node_modules/esbuild",
         "node_modules/vitepress",
         "node_modules/vitepress/node_modules/@shikijs/core",
         "node_modules/vitepress/node_modules/@shikijs/engine-javascript",
@@ -699,7 +695,6 @@
         "node_modules/zstddec",
         "node_modules/zwitch",
         "packages/build-config/node_modules/fdir",
-        "packages/build-config/node_modules/picomatch",
         "packages/core/node_modules/picomatch",
         "packages/core/node_modules/qrcode-generator",
         "packages/core/node_modules/undici-types"

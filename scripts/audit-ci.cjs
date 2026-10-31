@@ -4,7 +4,7 @@
  *
  * Runs `npm audit --omit=dev` and FAILS the build on any High or Critical
  * vulnerability in the PRODUCTION dependency tree. Dev-only advisories
- * (vitepress/esbuild, nyc/depcheck — documented) are excluded
+ * (nyc/depcheck, build tooling — documented) are excluded
  * via `--omit=dev` and never block the gate.
  *
  * Usage: node scripts/audit-ci.cjs (from repo root)

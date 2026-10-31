@@ -227,7 +227,7 @@
         "eslint-plugin-security": "^4.0.1",
         "glob": "^13.0.6",
         "globals": "^17.12.0",
-        "happy-dom": "^20.14.0",
+        "happy-dom": "^21.0.4",
         "http-server": "^14.1.1",
         "husky": "^9.0.11",
         "jscpd": "^5.1.2",
@@ -259,8 +259,9 @@
     "author": "Mattieu Pottier",
     "license": "MIT",
     "_comment_overrides": {
+        "vitepress": "Force vite en ^6.4.5 sous vitepress, pose le 31/10/2026 : vitepress 1.6.4 est sa derniere stable et exige vite ^5.4.14, branche 5.x qui ne recoit aucun des correctifs (launch-editor, server.fs) ni esbuild >= 0.25. Hors de la plage amont : le verdict est le diff du site genere, identique hors empreintes. Retirer quand une stable de vitepress accepte une vite corrigee.",
         "brace-expansion": "Plancher de securite. Pose le 03/08/2026 sur GHSA-rgw5-rvv9-x895 (DoS), RELEVE le 30/09/2026 a ^5.0.12 sur GHSA-6j4f-fj2g-mc7p et GHSA-qhr7-859c-m2p7 (high) et GHSA-q2hr-2g5m-vwhr (moderate), plage >=4.0.0 <5.0.12 : le lock portait 5.0.9 et l'audit de production a rougi le cron public. Chemin de production : realtime-layer -> gtfs-realtime-bindings -> protobufjs-cli -> glob -> minimatch -> brace-expansion (une CLI declaree en dependance d'execution par gtfs-realtime-bindings). minimatch declare ^5.0.5, donc npm resoudrait seul la derniere 5.x : le plancher sert a faire echouer `npm ci` si le lock retombe sous le correctif, au lieu de passer en silence.",
-        "markdown-it": "Plancher de securite, releve le 30/09/2026 de ^14.2.0 a ^14.3.1 sur GHSA-253c-mchw-3w2r (moderate, <14.3.1). Meme chemin de production que brace-expansion : protobufjs-cli -> jsdoc -> markdown-it.",
+        "markdown-it": "Plancher de securite, releve le 30/09/2026 de ^14.2.0 a ^14.3.1 sur GHSA-253c-mchw-3w2r (moderate, <14.3.1), puis le 31/10/2026 a ^14.3.3 sur GHSA-gfr2-rv44-r23c (high) et GHSA-vfgh-jcmw-g37q (low). Chemin de developpement : protobufjs-cli -> jsdoc -> markdown-it, et typedoc -> markdown-it ; gtfs-realtime-bindings n est qu une devDependency de realtime-layer.",
         "_pourquoi_ici": "npm REFUSE une cle de commentaire DANS `overrides` — il la lit comme un override sans nom et sort en erreur sur `npm ls`. Mesure du 20/08/2026. Les cles inconnues au niveau racine, elles, sont ignorees."
     },
     "overrides": {
@@ -276,8 +277,11 @@
         "serialize-javascript": "^7.0.3",
         "minimatch": "^10.0.0",
         "dompurify": "^3.4.17",
-        "markdown-it": "^14.3.1",
+        "markdown-it": "^14.3.3",
         "protocol-buffers-schema": "^3.6.1",
-        "brace-expansion": "^5.0.12"
+        "brace-expansion": "^5.0.12",
+        "vitepress": {
+            "vite": "^6.4.5"
+        }
     }
 }

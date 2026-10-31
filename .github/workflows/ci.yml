@@ -517,9 +517,9 @@ jobs:
             - name: Signatures registre npm (SIGN)
               run: node scripts/verify-registry-signatures.cjs
 
-            # Full dependency tree (prod+dev), visibility only. Some dev-only advisories
-            # (vite/esbuild via vitepress) have no available fix; blocking on them would
-            # leave this gate permanently red.
+            # Full dependency tree (prod+dev), visibility only. A dev-only advisory whose
+            # only exit is an upstream major would leave this gate permanently red if it
+            # were blocking.
             #
             # ⚠️ « non-blocking » est tenu PAR LE SCRIPT, pas par un `continue-on-error`, et
             # ça n'a pas toujours été le cas. `audit-dev-report.cjs` sortait en 1 sur un
