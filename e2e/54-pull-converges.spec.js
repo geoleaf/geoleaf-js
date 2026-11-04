@@ -36,9 +36,25 @@ import { serveBasemapTilesLocally } from "./helpers/basemap.js";
 // see `ownBrowser` in `helpers/test.js`.
 test.use({ baseURL: baseURL("full"), ownBrowser: "54-pull-converges" });
 
+// ⏱️ PHASE STAMPS, READ IN THE RUN'S TIMELINE. On the CI runner the first test of this file has
+// been reported as hanging while its context was torn down, at 167 to 169 s — when its green
+// passes there took 110 to 156 s against a budget of 150 s. A budget that runs out during the
+// teardown and a teardown that hangs leave the same message. Each stamp is an annotation
+// `timing` (`<phase> @<epoch ms>`) in `timeline.json`, kept even when the attempt times out; what
+// the attempt lasted after the last stamp is the rest of the fixtures' teardown. `test.step` was
+// tried first: the JSON reporter gives a step a duration but no start, and drops hooks' steps.
+// Measured locally on 2 cores under nginx (03/11/2026): closing the CONTEXT took 55 s of this
+// test's 71 s, its body 10 s; closing it explicitly below is what isolates that cost.
+/** @param {string} phase */
+function stamp(phase) {
+    test.info().annotations.push({ type: "timing", description: `${phase} @${Date.now()}` });
+}
+
 // The basemap is not this spec's subject: its third-party latency must not decide it.
 test.beforeEach(async ({ context }) => {
+    stamp("beforeEach");
     await serveBasemapTilesLocally(context);
+    stamp("corps");
 });
 
 // 🛑 THIS TEST CLOSES ITS PAGE ITSELF, AND WAITS — OR THE NEXT TEST IN THE WORKER CANNOT START.
@@ -54,8 +70,12 @@ test.beforeEach(async ({ context }) => {
 // Why the fixture's own teardown — the context closed with this heavy page still open — leaves the
 // browser unable to create the next context is not established; closing the page first is what
 // was measured to prevent it.
-test.afterEach(async ({ page }) => {
+test.afterEach(async ({ page, context }) => {
+    stamp("afterEach");
     await page.close();
+    stamp("context.close");
+    await context.close();
+    stamp("démontage");
 });
 
 /** Where the injected pull source lives. Fulfilled here, so every request is readable. */
@@ -240,6 +260,7 @@ test("[offline] le second téléchargement ne réécrit que la modifiée, et la 
     await armPullSource(page);
     const source = await serveCollection(context, [row(1), row(2), row(3)]);
 
+    stamp("démarrage");
     await page.goto("/");
     await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20000 });
     // The container shows before the profile is merged: wait for the declaration itself.
@@ -254,6 +275,7 @@ test("[offline] le second téléchargement ne réécrit que la modifiée, et la 
     declaredBbox = [declared[0][1], declared[0][0], declared[1][1], declared[1][0]].join(",");
 
     // --- first download: the reference state ------------------------------------------------
+    stamp("premier téléchargement");
     await downloadWithProfileZone(page, () => source.asked.length);
     await expect.poll(async () => (await stored(page)).size, { timeout: 30000 }).toBe(3);
     const first = await stored(page);
@@ -263,7 +285,9 @@ test("[offline] le second téléchargement ne réécrit que la modifiée, et la 
     source.rows.delete(3);
     const askedBefore = source.asked.length;
 
+    stamp("second téléchargement");
     await downloadWithProfileZone(page, () => source.asked.length);
+    stamp("assertions");
 
     // --- the witness: the second download really reached the source, through the worker ------
     // Without it, a store read after a download that never ran would say "nothing changed" and

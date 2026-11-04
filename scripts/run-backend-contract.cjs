@@ -17,10 +17,18 @@
  * Both secrets are generated when absent, and never leave the process that made them.
  */
 
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawnSync } = require("node:child_process");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+
+// Queue behind other browser suites on the workstation; no-op elsewhere.
+const FT = path.join(os.homedir(), "dev/outils/navigateur/bin/file-tests");
+if (!process.env.FILE_TESTS_TENUE && fs.existsSync(FT)) {
+    const run = spawnSync(FT, [process.execPath, __filename, ...process.argv.slice(2)], { stdio: "inherit" });
+    process.exit(run.status ?? 1);
+}
 
 const ROOT = path.resolve(__dirname, "..");
 const COMPOSE = ["compose", "-f", "docker-compose.ci.yml"];

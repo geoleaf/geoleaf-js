@@ -527,7 +527,7 @@ const EXEMPTIONS = {
         gateReelle: false,
         motif: "runner neuf à chaque run ; le poste local présuppose les navigateurs installés.",
         // Without a local E2E suite, installing browsers no longer excuses anything.
-        temoin: (ctx) => ctx.e2eLeaves.has("playwright test"),
+        temoin: (ctx) => ctx.e2eLeaves.has("bash scripts/e2e-file.sh playwright test"),
     },
     "node scripts/build-deploy.cjs": {
         classe: "ÉQUIVALENCE",
@@ -722,7 +722,7 @@ const ALLOWED_E2E_EVENTS = new Set(["workflow_dispatch", "schedule"]);
 const DEFERRED_TO_E2E = {
     "node scripts/build-deploy-coverage.cjs":
         "construit l'application instrumentée Istanbul — une seconde build complète, hors du mode rapide.",
-    "playwright test":
+    "bash scripts/e2e-file.sh playwright test":
         "la suite E2E et ses navigateurs — le coût qui justifie l'existence du drapeau.",
     "node scripts/run-backend-contract.cjs":
         "monte un banc de QUATRE conteneurs (PostGIS, PostgREST, pygeoapi, passerelle TLS) et " +
