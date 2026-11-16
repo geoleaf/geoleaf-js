@@ -11,6 +11,25 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.19.1] - 2026-11-16
+
+### Fixed
+
+- **A profile mounted after another gets its own icons.** The profile's SVG sprite was inserted
+  into `document.body` and stayed there when its application was unmounted; the next mount — of
+  another profile, on the same page — saw a sprite already present, skipped its own, and its map
+  drew no POI icon at all while the console reported each missing symbol. The sprite now goes
+  with the application that injected it: `unmount()` removes it, and a sprite still on its way at
+  that moment no longer lands in the next application's page. A sprite root the host put there
+  itself is left alone. `Core.destroy()` alone, which is not an unmount, still keeps it.
+- **`onPerformanceMetrics` and `getPerformanceMetrics()` report the boot that just ended.** The
+  startup mark and the `geoleaf:startup-total` measure were posted after `geoleaf:app:ready`,
+  whose metrics reader runs synchronously: `startupTotalMs` and `timeToMapReadyMs` read `null` on
+  the page's first boot, then the previous boot's figures on every remount. They are now posted
+  before `geoleaf:map:ready` and `geoleaf:app:ready`.
+
+---
+
 ## `@geoleaf-plugins/routing` 1.1.0 · `@geoleaf-plugins/navigation` 1.0.4 - 2026-10-31
 
 Published without a core release: `@geoleaf/core` stays at 3.19.0.
