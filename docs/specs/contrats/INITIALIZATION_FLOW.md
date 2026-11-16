@@ -396,6 +396,13 @@ GeoLeaf.boot({
 });
 ```
 
+🛑 **La marque `geoleaf:initApp:ready` et la mesure `geoleaf:startup-total` sont posées AVANT
+`geoleaf:map:ready` et `geoleaf:app:ready`** (`app/init-reveal.ts`). Le lecteur des métriques
+(`utils/performance/runtime-metrics.ts`) répond à `geoleaf:app:ready` de façon synchrone et lit la
+DERNIÈRE mesure présente : posées après les événements, elles rendaient `null` au premier démarrage
+de la page, puis les chiffres du démarrage précédent à chaque remontage (corrigé en core 3.19.1,
+gardé par `__tests__/app/mount-remount.test.ts`).
+
 ---
 
 ## Gestion d'erreurs

@@ -64,6 +64,8 @@ import { CoordinatesDisplay } from "../../src/capabilities/coordinates/coordinat
 import { ScaleControl } from "../../src/capabilities/scale/scale-control.js";
 import { Legend } from "../../src/capabilities/legend/legend.js";
 import type { AppNamespace } from "../../src/app/app-types.js";
+// Posts the `geoleaf:app:ready` reader behind `onPerformanceMetrics` (import-time listener).
+import "../../src/utils/performance/runtime-metrics.js";
 
 type Preset = Parameters<typeof bootWithPreset>[0];
 type Ctx = Parameters<typeof bootWithPreset>[1];
@@ -340,6 +342,39 @@ describe("GeoLeaf.mount() — the application, mounted again and again", () => {
         expect(app._mountTarget).toEqual({ mapId: MAP_ID, element: el });
         await handle.unmount();
         expect(app._mountTarget).toBeNull();
+    });
+
+    it("🛑 onPerformanceMetrics reports THIS boot's startup, from the first boot of the page on", async () => {
+        type Metrics = { startupTotalMs: number | null; timeToMapReadyMs: number | null };
+        const received: Metrics[] = [];
+        const onPerformanceMetrics = (m: Metrics) => received.push(m);
+        // The page has measured no boot yet: the first one must not read `null`.
+        performance.clearMarks();
+        performance.clearMeasures();
+
+        for (let cycle = 1; cycle <= 2; cycle++) {
+            // Keeps two boots' marks apart once rounded to the millisecond.
+            await new Promise((resolve) => setTimeout(resolve, 5));
+            const before = performance.now();
+            const handle = lifecycle.mount(MAP_ID, {
+                watchdogMs: 0,
+                onPerformanceMetrics,
+            } as never);
+            await handle.ready;
+            const after = performance.now();
+
+            expect(received).toHaveLength(cycle);
+            const metrics = received[cycle - 1]!;
+            const measure = performance.getEntriesByName("geoleaf:startup-total", "measure");
+            const mark = performance.getEntriesByName("geoleaf:initApp:ready", "mark");
+            expect(measure).toHaveLength(cycle);
+            expect(metrics.startupTotalMs).toBe(measure.at(-1)!.duration);
+            expect(metrics.startupTotalMs!).toBeLessThanOrEqual(after - before);
+            expect(metrics.timeToMapReadyMs).toBe(Math.round(mark.at(-1)!.startTime));
+            expect(metrics.timeToMapReadyMs!).toBeGreaterThanOrEqual(Math.floor(before));
+
+            await handle.unmount();
+        }
     });
 
     it("a target that is neither an element nor an id is refused at once", () => {

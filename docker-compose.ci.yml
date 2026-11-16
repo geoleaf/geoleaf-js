@@ -1,10 +1,11 @@
 # GeoLeaf — le banc de preuve SUR UN RUNNER.
 #
-# `docker-compose.dev.yml` est inutilisable ici, et pour quatre raisons qui ne se devinent
-# pas : ses deux réseaux sont `external: true`, il route par étiquettes Traefik, il exige
-# `GEOLEAF_DEV_BACKEND_HOST` (un nom qui ne résout que sur le poste), et son PostGIS est
-# PARTAGÉ — hors compose. Un runner n'a rien de tout cela : il apporte sa base, il n'a ni
-# TLS ni entrée `hosts`, et il sert sur `localhost`.
+# `docker-compose.dev.yml` est inutilisable ici, et pour trois raisons qui ne se devinent
+# pas : son réseau `web` est `external: true`, il route par étiquettes Traefik, et il exige
+# `GEOLEAF_DEV_BACKEND_HOST` (un nom qui ne résout que sur le poste). Un runner n'a rien de
+# tout cela : il n'a ni TLS ni entrée `hosts`, et il sert sur `localhost`. La base, elle, est
+# apportée par les deux fichiers depuis le 11/11/2026 (avant, le dev lisait un PostGIS
+# partagé, hors compose).
 #
 # Ce que les deux topologies partagent, et c'est délibéré : le SCHÉMA (`01-schema.sql`), la
 # GRAINE (`02-seed.sql`) et la CONFIG pygeoapi (`pygeoapi.config.yml`, paramétrée par

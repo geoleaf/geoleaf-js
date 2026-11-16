@@ -87,10 +87,11 @@ pygeoapi est l'implémentation de référence et émet `next`/`prev` nativement.
 
 ## Le même banc, sur un runner — `docker-compose.ci.yml`
 
-`docker-compose.dev.yml` ne monte nulle part ailleurs qu'ici : réseaux `external: true`,
-étiquettes Traefik, un hôte qui ne résout que sur ce poste, et un PostGIS **partagé**, hors
-compose. Le banc de CI apporte sa base, n'a ni TLS d'infrastructure ni entrée `hosts`, et sert
-sur `localhost`.
+`docker-compose.dev.yml` ne monte nulle part ailleurs qu'ici : réseau `web` en `external: true`,
+étiquettes Traefik, et un hôte qui ne résout que sur ce poste. Le banc de CI n'a ni TLS
+d'infrastructure ni entrée `hosts`, et sert sur `localhost`. Les deux apportent leur propre base —
+le banc de dev depuis le 11/11/2026 (conteneur `geoleaf-js-db`) ; avant, il lisait le PostGIS
+partagé de l'atelier.
 
 Ce que les deux partagent est délibéré : le **schéma**, la **graine** et la **config pygeoapi**.
 Un second fichier de config aurait dérivé du premier sans que rien ne le dise — et c'est la config
@@ -170,7 +171,7 @@ disait rien de ce cas ; la clause y est désormais (§2.3 de `SERVER_CONTRACT.md
 
 ```bash
 set -a; . ./.env; set +a
-CA=~/dev/infra/traefik/certs/rootCA.pem
+CA=~/dev/platform/traefik/certs/rootCA.pem
 # le `next` reporte-t-il `datetime` ? (la clause qui a écarté pg_featureserv, sur le delta)
 curl -s -G --cacert $CA "https://$GEOLEAF_DEV_BACKEND_HOST/ogc/collections/sites_rosario_delta/items" \
   --data-urlencode "f=json" --data-urlencode "limit=2" \
@@ -194,26 +195,40 @@ au lieu de rougir : on lit « la mutation n'a rien cassé » là où rien n'a é
 
 Prérequis, tous déjà en place sur la machine de dev :
 
-- `shared-postgis-1` et `shared-traefik-1` démarrés (`~/dev/infra/shared/compose.yml`) ;
+- `shared-traefik-1` démarré (`make -C ~/dev/platform up`) — la base, elle, est le service `db`
+  de ce compose, et les deux serveurs la démarrent d'eux-mêmes (`depends_on`) ;
 - l'hôte de `GEOLEAF_DEV_BACKEND_HOST` dans le fichier hosts **Windows** (WSL lit le DNS de Windows) ;
-- son certificat et son entrée TLS, dans `~/dev/infra/traefik/dynamic/` ;
-- un `.env` à la racine du dépôt (git-ignoré) portant `GEOLEAF_PG_PASSWORD`, `GEOLEAF_JWT_SECRET`
-  **et `GEOLEAF_DEV_BACKEND_HOST`** — sans ce dernier, `docker compose` refuse de démarrer en le
-  nommant, ce qui est le comportement voulu.
+- son certificat et son entrée TLS, dans `~/dev/platform/traefik/dynamic/` ;
+- un `.env` à la racine du dépôt (git-ignoré) portant `GEOLEAF_PG_PASSWORD`, `GEOLEAF_JWT_SECRET`,
+  `GEOLEAF_DB_OWNER`, `GEOLEAF_DB_OWNER_PASSWORD` **et `GEOLEAF_DEV_BACKEND_HOST`** — sans l'un
+  des trois derniers, `docker compose` refuse de démarrer en nommant la variable, ce qui est le
+  comportement voulu.
 
 ### Base et graine
 
-Les deux commandes ci-dessous prennent le rôle Postgres en variable : `PGROLE` est le rôle
-propriétaire de **votre** conteneur PostGIS partagé, et il n'est pas déduit du dépôt. Posez-le
-d'abord — `docker exec shared-postgis-1 psql -U postgres -c '\du'` le liste si vous l'ignorez.
+La base vit dans le conteneur `geoleaf-js-db` (volume `geoleaf-js_db_data`) ; son propriétaire est
+le superutilisateur `GEOLEAF_DB_OWNER` du `.env`. Les quatre rôles du tableau plus bas et leurs
+`GRANT` viennent de `01-schema.sql`.
+
+🛑 **Sur un volume NEUF, monter en deux temps**, comme le banc de CI : `db` seul, le schéma puis la
+graine, et seulement ensuite les deux serveurs — ils meurent s'ils démarrent avant leurs rôles.
 
 ```bash
-docker exec -i -e PGOPTIONS="-c geoleaf.auth_password=$(grep -oP '(?<=^GEOLEAF_PG_PASSWORD=).*' .env)" shared-postgis-1 psql -U "$PGROLE" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/01-schema.sql
+set -a; . ./.env; set +a
+docker compose -f docker-compose.dev.yml up -d --wait db
 ```
 
 ```bash
-docker exec -i shared-postgis-1 psql -U "$PGROLE" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/02-seed.sql
+docker exec -i -e PGOPTIONS="-c geoleaf.auth_password=$GEOLEAF_PG_PASSWORD" geoleaf-js-db psql -U "$GEOLEAF_DB_OWNER" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/01-schema.sql
 ```
+
+```bash
+docker exec -i geoleaf-js-db psql -U "$GEOLEAF_DB_OWNER" -d geoleaf -v ON_ERROR_STOP=1 < docker/backend/02-seed.sql
+```
+
+Le volume actuel n'a pas été semé ainsi : le 11/11/2026, `geoleaf` et `geoleaf_lite` y ont été
+**restaurées** depuis le PostGIS partagé (rôles par `pg_dumpall --globals-only`, bases par
+`pg_dump -Fc` puis `pg_restore --no-owner`), pour garder l'état servi à l'identique.
 
 La graine est **idempotente** (elle tronque d'abord) et remet l'état reproductible : 27 lignes,
 aucune identité cliente.
@@ -251,20 +266,20 @@ vrai — un test qui casse le test d'à côté.
 
 ## Les quatre propriétés que le cycle exige, et comment les re-mesurer
 
-Toutes vérifiées au montage. `$CA` vaut `~/dev/infra/traefik/certs/rootCA.pem` — curl ne connaît pas
+Toutes vérifiées au montage. `$CA` vaut `~/dev/platform/traefik/certs/rootCA.pem` — curl ne connaît pas
 la CA mkcert, seul le navigateur la connaît ; sans `--cacert` toute commande ci-dessous rend
 `HTTP 000`, ce qui ressemble à « le service est mort » et n'est que « curl ne fait pas confiance ».
 
 **① Pagination par lien `next`** (4.1) — 3 pages, 27 features :
 
 ```bash
-curl -s --cacert ~/dev/infra/traefik/certs/rootCA.pem "https://$GEOLEAF_DEV_BACKEND_HOST/ogc/collections/sites_rosario/items?f=json&limit=10" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['numberMatched'],[l['rel'] for l in d['links']])"
+curl -s --cacert ~/dev/platform/traefik/certs/rootCA.pem "https://$GEOLEAF_DEV_BACKEND_HOST/ogc/collections/sites_rosario/items?f=json&limit=10" | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['numberMatched'],[l['rel'] for l in d['links']])"
 ```
 
 **② Le rapatriement ne confère PAS l'écriture** (invariant S6) — doit rendre **401** :
 
 ```bash
-curl -s --cacert ~/dev/infra/traefik/certs/rootCA.pem -o /dev/null -w "%{http_code}\n" -X POST "https://$GEOLEAF_DEV_BACKEND_HOST/sites_rosario" -H "Content-Type: application/json" -d '{"title":"intrus","geom":"SRID=4326;POINT(-60.6 -32.9)"}'
+curl -s --cacert ~/dev/platform/traefik/certs/rootCA.pem -o /dev/null -w "%{http_code}\n" -X POST "https://$GEOLEAF_DEV_BACKEND_HOST/sites_rosario" -H "Content-Type: application/json" -d '{"title":"intrus","geom":"SRID=4326;POINT(-60.6 -32.9)"}'
 ```
 
 **③ Le push rend l'identifiant serveur** (4.5) — **201**, et la réponse porte `id` :
@@ -275,7 +290,7 @@ GeoJSON sous `geometryProperty`. Pour lire ce que le client envoie réellement, 
 `packages/core/docs/SERVER_CONTRACT.md` §2.1, pas cette commande.
 
 ```bash
-curl -s --cacert ~/dev/infra/traefik/certs/rootCA.pem -X POST "https://$GEOLEAF_DEV_BACKEND_HOST/sites_rosario" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"local_id":"loc-demo-1","title":"Saisie","geom":"SRID=4326;POINT(-60.65 -32.94)"}'
+curl -s --cacert ~/dev/platform/traefik/certs/rootCA.pem -X POST "https://$GEOLEAF_DEV_BACKEND_HOST/sites_rosario" -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -H "Prefer: return=representation" -d '{"local_id":"loc-demo-1","title":"Saisie","geom":"SRID=4326;POINT(-60.65 -32.94)"}'
 ```
 
 **④ Le rejeu est idempotent** (4.5) — le même `local_id` rend **409** (`23505`), et la table garde

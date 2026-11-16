@@ -18,6 +18,7 @@
 
 import type { ILifecycleModule } from "../../contracts/core-module.contract.ts";
 import { ProfileManager } from "../../kernel/config/profile.js";
+import { resetProfileSprite } from "../../utils/loaders/profile-sprite-loader.js";
 
 /**
  * Represents the GeoLeaf configuration subsystem: helpers, validators,
@@ -45,5 +46,9 @@ export class ConfigModule implements ILifecycleModule {
         // Config singleton wiring itself is a foundation reference (preserved) — it was posted
         // at import and is never removed, so there is nothing to re-arm.
         ProfileManager.reset();
+        // The profile's icon sprite goes with the profile: left in the page, it stood in for the
+        // next profile's, whose injection the presence guard then skipped. Destroyed last (every
+        // module depends on `config`), so the legend has already let go of its swatches.
+        resetProfileSprite();
     }
 }

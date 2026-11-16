@@ -121,13 +121,14 @@ services:
     # to PostgREST's dialect would mean writing the transport code the contract says not
     # to write.
     #
-    # Both sit on `backend` (to reach shared-postgis-1) AND `web` (for Traefik). Path
-    # routing splits them on one hostname so `connector.local.js` keeps a single baseUrl.
+    # Both sit on `default` (to reach their own database, `db` below) AND `web` (for
+    # Traefik). Path routing splits them on one hostname so `connector.local.js` keeps a
+    # single baseUrl.
     geoleaf-postgrest:
         image: postgrest/postgrest:v12.2.3
         container_name: geoleaf-postgrest
         environment:
-            PGRST_DB_URI: postgres://geoleaf_auth:${GEOLEAF_PG_PASSWORD}@shared-postgis-1:5432/geoleaf
+            PGRST_DB_URI: postgres://geoleaf_auth:${GEOLEAF_PG_PASSWORD}@geoleaf-js-db:5432/geoleaf
             PGRST_DB_SCHEMAS: api
             # The role a request gets when it carries NO token. It can only SELECT -- this is
             # the SQL-side mirror of contract invariant S6 (pull never grants write).
@@ -138,7 +139,10 @@ services:
             # reconciliation the offline write cycle relies on.
             PGRST_DB_PREPARED_STATEMENTS: "false"
         depends_on:
-            - geoleaf-featureserv
+            db:
+                condition: service_healthy
+            geoleaf-featureserv:
+                condition: service_started
         labels:
             - "traefik.enable=true"
             - "traefik.http.services.geoleaf-postgrest.loadbalancer.server.port=3000"
@@ -154,7 +158,7 @@ services:
             - "traefik.http.routers.geoleaf-api-web.service=geoleaf-postgrest"
         networks:
             - web
-            - backend
+            - default
         restart: unless-stopped
 
     # 🛑 pygeoapi and NOT pg_featureserv, on a MEASURE rather than a preference.
@@ -186,8 +190,9 @@ services:
             # L'origine COMPLÈTE, schéma compris : le même fichier de config sert le banc de
             # dev (https, derrière Traefik) et celui d'un runner (http://localhost, sans TLS).
             GEOLEAF_BENCH_BASE_URL: https://${GEOLEAF_DEV_BACKEND_HOST:?GEOLEAF_DEV_BACKEND_HOST absent du .env — voir docker/backend/README.md}
-            # Le PostGIS est PARTAGÉ ici, apporté par le compose en CI — d'où la variable.
-            GEOLEAF_PG_HOST: shared-postgis-1
+            # La base est celle de ce compose (`db`) ici, celle de `docker-compose.ci.yml` en
+            # CI — d'où la variable.
+            GEOLEAF_PG_HOST: geoleaf-js-db
             PYGEOAPI_CONFIG: /pygeoapi/local.config.yml
             PYGEOAPI_OPENAPI: /pygeoapi/local.openapi.yml
         volumes:
@@ -205,15 +210,48 @@ services:
             # path constraint. Traefik ranks by rule length so /ogc would already win, but an
             # implicit win is one refactor away from an outage.
             - "traefik.http.routers.geoleaf-ogc.priority=100"
+        depends_on:
+            db:
+                condition: service_healthy
         networks:
             - web
-            - backend
+            - default
+        restart: unless-stopped
+
+    # The bench's own PostGIS. Until 11/11/2026 it lived in the workshop's shared server;
+    # it now belongs to this stack, like the CI bench's, and sits on `default` only —
+    # never on `web`, so Traefik cannot route to it.
+    # The owner is the superuser and its credentials come from the root `.env`
+    # (git-ignored). The four PostgREST/OGC roles and their GRANTs come from
+    # `docker/backend/01-schema.sql` (recipe: `docker/backend/README.md`).
+    # ⚠️ On a FRESH volume, start `db` alone and apply the schema and seed before the two
+    # servers: both die if they start before their roles exist (`docker-compose.ci.yml`).
+    db:
+        # Same pin as the CI bench: one PostGIS for both topologies.
+        image: postgis/postgis:16-3.4
+        container_name: geoleaf-js-db
+        environment:
+            POSTGRES_USER: ${GEOLEAF_DB_OWNER:?GEOLEAF_DB_OWNER absent du .env — voir docker/backend/README.md}
+            POSTGRES_PASSWORD: ${GEOLEAF_DB_OWNER_PASSWORD:?GEOLEAF_DB_OWNER_PASSWORD absent du .env — voir docker/backend/README.md}
+            POSTGRES_DB: geoleaf
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        healthcheck:
+            # Over TCP, never the socket: during init the entrypoint runs a temporary
+            # socket-only server, which a socket probe reports as ready
+            # (measured in `docker-compose.ci.yml`).
+            test: ["CMD-SHELL", 'pg_isready -h 127.0.0.1 -U "$$POSTGRES_USER" -d geoleaf']
+            interval: 5s
+            timeout: 3s
+            retries: 30
+        networks:
+            - default
         restart: unless-stopped
 
 networks:
     web:
         name: ${TRAEFIK_NETWORK:-web}
         external: true
-    backend:
-        name: backend
-        external: true
+
+volumes:
+    db_data:

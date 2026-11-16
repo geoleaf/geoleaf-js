@@ -22,6 +22,14 @@
  * Security: the profile-controlled sprite URL is SSRF-validated before fetch, and
  * inline `style="…"` attributes are stripped so an untrusted sprite cannot trip a
  * strict `style-src` CSP.
+ *
+ * Ownership: the sprite belongs to the application that injected it. `ConfigModule.destroy()`
+ * calls `resetProfileSprite()` with the active profile's reset, so an application unmounted
+ * (`GeoLeaf.mount()` handle's `unmount()`) takes its sprite with it. Left in the page, it made the
+ * next application — another profile mounted on the same page — skip its own injection (the
+ * presence guard saw a sprite) and draw no POI icon at all. ⚠️ Not on the lifecycle seam:
+ * `Core.destroy()` alone runs the seam while the legend and the other modules live on, and the
+ * swatches they render would lose the `<symbol>` defs they point at.
  */
 
 import { Log } from "../log/index.js";
@@ -59,6 +67,16 @@ const PROFILE_SPRITE_SELECTOR = 'svg[data-geoleaf-sprite="profile"]';
  * error, parse error) can still be retried by a later layer.
  */
 let _injectionInFlight: Promise<void> | null = null;
+
+/** The sprite root this loader inserted, the only one `resetProfileSprite()` removes. */
+let _injectedRoot: Element | null = null;
+
+/**
+ * Bumped by every `resetProfileSprite()`. An injection captures it before its `await
+ * fetch` and inserts nothing once it has moved: a fetch still in flight when its application
+ * is torn down must not put that application's sprite into the next one's page.
+ */
+let _generation = 0;
 
 /**
  * Whether the active profile's SVG sprite is present in the DOM, so a
@@ -119,6 +137,7 @@ function _buildSvgElement(svgText: string): Element | null {
 }
 
 function _appendSvgToBody(svgEl: Element): void {
+    _injectedRoot = svgEl;
     svgEl.setAttribute("data-geoleaf-sprite", "profile");
     svgEl.setAttribute("aria-hidden", "true");
     // Strip any literal inline style parsed from the sprite source (e.g.
@@ -144,7 +163,7 @@ function _appendSvgToBody(svgEl: Element): void {
         );
 }
 
-async function _fetchAndInjectSprite(spriteUrl: string): Promise<void> {
+async function _fetchAndInjectSprite(spriteUrl: string, generation: number): Promise<void> {
     // M1: validate the (profile-controlled) sprite URL before fetching to
     // prevent SSRF / unsafe protocols from an untrusted profile.
     let safeUrl: string;
@@ -161,6 +180,8 @@ async function _fetchAndInjectSprite(spriteUrl: string): Promise<void> {
             return;
         }
         const svgText = await response.text();
+        // Torn down while the sprite was on its way: it is no longer this page's to show.
+        if (generation !== _generation) return;
         const svgEl = _buildSvgElement(svgText);
         if (!svgEl) return;
         _appendSvgToBody(svgEl);
@@ -171,7 +192,9 @@ async function _fetchAndInjectSprite(spriteUrl: string): Promise<void> {
 
 /**
  * Injects the active profile's SVG sprite into the DOM (asynchronous). No-op when
- * the icons config or sprite URL is missing, or the sprite is already present.
+ * the icons config or sprite URL is missing, or the running application's sprite is
+ * already present — the sprite of an application torn down is removed with it
+ * (`resetProfileSprite()`), so it never stands in for the next one's.
  * The profile-controlled sprite URL is SSRF-validated before fetch.
  */
 export async function ensureProfileSpriteInjectedSync(): Promise<void> {
@@ -204,11 +227,29 @@ export async function ensureProfileSpriteInjectedSync(): Promise<void> {
             return;
         }
         if (Log) Log.info("[POI] Loading sprite from:", spriteUrl);
-        _injectionInFlight = _fetchAndInjectSprite(spriteUrl).finally(() => {
-            _injectionInFlight = null;
+        const inFlight = _fetchAndInjectSprite(spriteUrl, _generation).finally(() => {
+            // A reset may have dropped this injection already and a newer one taken the slot.
+            if (_injectionInFlight === inFlight) _injectionInFlight = null;
         });
-        await _injectionInFlight;
+        _injectionInFlight = inFlight;
+        await inFlight;
     } catch (err) {
         if (Log) Log.warn("[POI] Profile sprite load error :", err);
     }
+}
+
+/**
+ * Takes the sprite this loader injected out of the page and forgets every injection, settled or
+ * in flight, so the next application loads its own profile's sprite. Removes only the root the
+ * loader inserted, never one a host put there. Idempotent.
+ *
+ * Called by `ConfigModule.destroy()` when the application is unmounted, with the profile it
+ * belongs to.
+ */
+export function resetProfileSprite(): void {
+    _generation++;
+    _injectionInFlight = null;
+    _injectedRoot?.remove();
+    _injectedRoot = null;
+    delete (ensureProfileSpriteInjectedSync as SpriteLoaderFn)._lastConfig;
 }

@@ -242,4 +242,98 @@ test.describe("71-mount-remount — the application, unmounted and mounted again
         expect(await settledSnapshot(page)).toEqual(s0);
         expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
     });
+
+    // Another profile mounted on the same page gets ITS icons and ITS startup figures. The sprite
+    // of the first profile stayed in the page, its presence made the second skip its own
+    // injection, and the second map drew no icon; `onPerformanceMetrics` reported the previous
+    // boot's duration. The two served profiles ship sprites whose symbol ids differ by prefix.
+    test("another profile mounted after an unmount: its own sprite, its own icons, its own startup", async ({
+        page,
+    }) => {
+        test.setTimeout(180_000);
+        const pageErrors = [];
+        page.on("pageerror", (e) => pageErrors.push(e.message));
+        await installSignals(page);
+        await bootPage(page);
+
+        /** Mounts `profile`, and reads what the page holds once its icons are registered. */
+        const mountProfile = (profile, prefix) =>
+            page.evaluate(
+                async ({ id, profile, prefix }) => {
+                    const G = /** @type {any} */ (window).GeoLeaf;
+                    await /** @type {any} */ (window).__glHandle?.unmount();
+                    const metrics = [];
+                    const before = performance.now();
+                    const handle = G.mount(id, {
+                        profile,
+                        onPerformanceMetrics: (m) => metrics.push(m),
+                    });
+                    Object.assign(window, { __glHandle: handle });
+                    await handle.ready;
+                    const elapsed = performance.now() - before;
+                    const native = handle.getMap().getNativeMap();
+                    // The sprite is asked for after `ready` (the legend, layer by layer), and the
+                    // icons register once the POI layers have data: give both time, bounded.
+                    const deadline = Date.now() + 30_000;
+                    const settled = () =>
+                        document.querySelector("svg[data-geoleaf-sprite]") !== null &&
+                        (!prefix || native.listImages().some((i) => i.startsWith(prefix)));
+                    while (Date.now() < deadline && !settled()) {
+                        await new Promise((r) => setTimeout(r, 200));
+                    }
+                    const roots = Array.from(document.querySelectorAll("svg[data-geoleaf-sprite]"));
+                    return {
+                        roots: roots.length,
+                        symbols: roots.flatMap((r) =>
+                            Array.from(r.querySelectorAll("symbol[id]")).map((s) => s.id)
+                        ),
+                        images: native.listImages(),
+                        metrics,
+                        elapsed,
+                    };
+                },
+                { id: MAP_ID, profile, prefix }
+            );
+
+        // `drawsIcons`: the default theme shows a layer with icons on the map. `tourism`'s does not,
+        // so its map registers no icon whatever the sprite — only its sprite is judged.
+        const runs = [
+            { profile: "tourism", own: "tourism-", other: "reunion-", drawsIcons: false },
+            { profile: "reunion-eclairage", own: "reunion-", other: "tourism-", drawsIcons: true },
+            { profile: "tourism", own: "tourism-", other: "reunion-", drawsIcons: false },
+        ];
+        for (const { profile, own, other, drawsIcons } of runs) {
+            const got = await mountProfile(profile, drawsIcons ? own : null);
+            const where = `${profile} mounted`;
+            expect(got.roots, `${where}: sprite roots in the page`).toBe(1);
+            expect(got.symbols.length, `${where}: its sprite has symbols`).toBeGreaterThan(0);
+            expect(
+                got.symbols.filter((s) => !s.startsWith(own)),
+                `${where}: symbols of another sprite`
+            ).toEqual([]);
+            if (drawsIcons)
+                expect(
+                    got.images.some((i) => i.startsWith(own)),
+                    `${where}: its icons on the map — images: ${got.images.slice(0, 15).join(", ")}`
+                ).toBe(true);
+            expect(
+                got.images.filter((i) => i.startsWith(other)),
+                `${where}: the other profile's icons on the map`
+            ).toEqual([]);
+            expect(got.metrics, `${where}: one metrics report`).toHaveLength(1);
+            const { startupTotalMs } = got.metrics[0];
+            expect(startupTotalMs, `${where}: startupTotalMs`).not.toBeNull();
+            expect(
+                startupTotalMs,
+                `${where}: startupTotalMs measures THIS boot`
+            ).toBeLessThanOrEqual(got.elapsed);
+        }
+
+        await page.evaluate(() => /** @type {any} */ (window).__glHandle.unmount());
+        expect(
+            await page.locator("svg[data-geoleaf-sprite]").count(),
+            "a sprite root left after unmount()"
+        ).toBe(0);
+        expect(pageErrors, `uncaught errors: ${pageErrors.join(" | ")}`).toEqual([]);
+    });
 });

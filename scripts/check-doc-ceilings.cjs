@@ -8,7 +8,7 @@
  *
  * ## What this gates, and why a ratchet rather than a fixed limit
  *
- * `CLAUDE.md` and `ETAT.md` are loaded at the start of every session, before a single
+ * `CLAUDE.md` and `CADRE.md` are loaded at the start of every session, before a single
  * line of source. `CLAUDE.md` doubled in six weeks — and it did so DURING sessions that
  * were closing recommendations, so no single moment ever looked like a decision.
  *
@@ -82,7 +82,7 @@ if (!docsPaths.internalRootExists()) {
 }
 
 /** Files whose prose must carry no ratio. See DOC-CEIL-02 above for the exemption. */
-const NO_COUNTS = new Set(["CLAUDE.md", docsPaths.rel(docsPaths.internal("ETAT.md"))]);
+const NO_COUNTS = new Set(["CLAUDE.md", docsPaths.rel(docsPaths.internal("CADRE.md"))]);
 
 /**
  * Files whose ceiling is FIXED with rotation, not a decreasing ratchet.
@@ -113,7 +113,7 @@ const baseline = JSON.parse(fs.readFileSync(BASELINE, "utf8"));
 // wrong under `GEOLEAF_INTERNAL_DOCS_ROOT`. Resolution happens here, once.
 const SUBJECTS = {
     claude: "CLAUDE.md",
-    etat: docsPaths.rel(docsPaths.internal("ETAT.md")),
+    cadre: docsPaths.rel(docsPaths.internal("CADRE.md")),
     postmortems: docsPaths.rel(docsPaths.internal("POSTMORTEMS.md")),
 };
 const ceilings = Object.fromEntries(

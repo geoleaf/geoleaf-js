@@ -284,7 +284,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     // list again.
     "port-to-public.cjs",
     // scripts/lib/ — the workshop/public boundary, and the only home of its
-    // four patterns. They lived outside the repo (`~/.claude/geoleaf-nuit/`),
+    // five patterns. They lived outside the repo (`~/.claude/geoleaf-nuit/`),
     // hence on a single workstation: a port that did not find them
     // reintroduced 39 workshop files while exiting green. Guarded by
     // `public-partition.guard.test.ts`, seen red on two mutations.

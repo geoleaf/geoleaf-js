@@ -22,7 +22,7 @@
  * ① **The shapes reintroduction would take.** `CLAUDE.md` is read by its
  *    harness in any subdirectory: `packages/core/CLAUDE.md` is the return's
  *    most likely shape, and an anchored pattern (`/CLAUDE.md`) would let it
- *    through. The reason three patterns out of four are UN-anchored, and
+ *    through. The reason four patterns out of five are UN-anchored, and
  *    this test is what keeps them from being "fixed" by anchoring.
  *
  * ② **The false positives.** A too-wide pattern grabbing
@@ -35,7 +35,7 @@
  *
  * ## A guard never seen red guards nothing
  *
- * Anti-empty-guard assertion: the four declared patterns must all be
+ * Anti-empty-guard assertion: the five declared patterns must all be
  * exercised by at least one case. Without it, removing a pattern from the
  * module would make this guard green testing nothing any more.
  */
@@ -69,7 +69,7 @@ const partition: PublicPartition = requireCjs(
 
 /**
  * Classification cases: `[path, kept in the workshop?, case motive]`.
- * The first seven exercise the four patterns; the next six are the false
+ * The first nine exercise the five patterns; the next seven are the false
  * positives a too-wide pattern would produce.
  */
 const CASES: ReadonlyArray<[string, boolean, string]> = [
@@ -80,15 +80,18 @@ const CASES: ReadonlyArray<[string, boolean, string]> = [
     ["_docs_projet/registres/backlog_technique.md", true, "atelier, profond"],
     [".claude/commands/audit.md", true, "harnais"],
     [".github/copilot-instructions.md", true, "ancré par sa barre oblique"],
+    ["STATUS.md", true, "fiche de suivi, racine"],
+    ["packages/core/STATUS.md", true, "fiche de suivi, motif NON ancré"],
     ["README.md", false, "vitrine"],
     ["docs/specs/CDC_kernel.md", false, "doc publique"],
     ["packages/core/src/index.ts", false, "source"],
     ["scripts/lib/public-partition.cjs", false, "le module lui-même part au public"],
     ["docs/CLAUDE_GUIDE.md", false, "contient CLAUDE, n'est pas CLAUDE.md"],
     ["packages/core/docs/claude.md", false, "casse différente — le harnais ne le lit pas"],
+    ["docs/STATUS.md.bak", false, "contient STATUS.md, n'est pas STATUS.md"],
 ];
 
-/** A plausibly sized batch, carrying the four patterns. */
+/** A plausibly sized batch, carrying the five patterns. */
 function plausibleLot(): string[] {
     const files: string[] = [];
     for (let i = 0; i < partition.MIN_PUBLIC_FILES + 400; i++) {
@@ -96,9 +99,10 @@ function plausibleLot(): string[] {
     }
     files.push(
         "CLAUDE.md",
-        "_docs_projet/ETAT.md",
+        "_docs_projet/CADRE.md",
         ".claude/commands/x.md",
-        ".github/copilot-instructions.md"
+        ".github/copilot-instructions.md",
+        "STATUS.md"
     );
     return files;
 }
@@ -108,7 +112,7 @@ describe("public-partition — la frontière atelier/public", () => {
         expect(partition.isInternal(file)).toBe(internal);
     });
 
-    it("exerce les QUATRE motifs déclarés — anti-garde-vide", () => {
+    it("exerce les CINQ motifs déclarés — anti-garde-vide", () => {
         const exercised = new Set<string>();
         for (const [file] of CASES) {
             const { internal, pattern } = partition.classify(file);
@@ -139,11 +143,11 @@ describe("public-partition — la frontière atelier/public", () => {
     it("REFUSE quand AUCUN motif ne mord — l'atelier partirait en entier", () => {
         const rienDInterne = plausibleLot().filter((f) => !partition.isInternal(f));
         expect(() => partition.assertPartitionSane(partition.split(rienDInterne))).toThrow(
-            /4 motif\(s\)/
+            /5 motif\(s\)/
         );
     });
 
-    it("le fragment `.gitignore` porte les quatre motifs", () => {
+    it("le fragment `.gitignore` porte les cinq motifs", () => {
         const fragment = partition.gitignoreFragment();
         for (const { pattern } of partition.INTERNAL_PATTERNS) {
             expect(fragment).toContain(pattern);

@@ -5,7 +5,8 @@
 -- host resolved to 127.0.0.1 with no Traefik router behind it, and the only
 -- authenticated E2E mocked every response.
 --
--- DEV ONLY. Runs against the shared PostGIS on the `backend` network. Never deployed.
+-- DEV ONLY. Runs against the bench's own PostGIS: service `db` of docker-compose.dev.yml,
+-- service `postgis` of docker-compose.ci.yml. Never deployed.
 --
 -- Two consumers, one table:
 --   * pygeoapi  -> OGC API Features, the READ side. `ogc-api-loader.ts`

@@ -182,12 +182,13 @@ _docs_projet/travail/rapports/rapport_consommateurs-config-s5.md
 # travail qui porte encore l'appareil les ferait entrer, et rien — aucune gate,
 # aucun test — ne le signalerait.
 #
-# ⚠️ Trois motifs sur quatre sont NON ancrés, délibérément : `CLAUDE.md` est lu
+# ⚠️ Quatre motifs sur cinq sont NON ancrés, délibérément : `CLAUDE.md` est lu
 # par son harnais dans N'IMPORTE QUEL sous-répertoire, donc un motif ancré
 # laisserait passer `packages/core/CLAUDE.md` — la forme la plus probable de la
-# réintroduction. Le quatrième est ancré par sa seule barre oblique, et ça
-# suffit : ce fichier n'est lu qu'à la racine.
+# réintroduction. `.github/copilot-instructions.md` est ancré par sa seule barre
+# oblique, et ça suffit : ce fichier n'est lu qu'à la racine.
 _docs_projet/                     # l'atelier — journal, état, registres, roadmaps, rapports
 CLAUDE.md                         # instructions du harnais, lues dans n'importe quel sous-répertoire
 .claude/                          # commandes et réglages du harnais
 .github/copilot-instructions.md   # appareil interne pur — six lignes qui disent de lire CLAUDE.md
+STATUS.md                         # fiche de suivi du projet, lue par le tableau de bord du poste

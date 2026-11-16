@@ -191,16 +191,11 @@ export function setupReveal({
             }
         }
 
-        dispatchGeoLeafEvent("geoleaf:map:ready", undefined);
-        // Emit the application initialisation end event
-        // (used by boot.js to display the boot toast via GeoLeaf.bootInfo)
-        const bootVersion = GeoLeaf._version;
-        dispatchGeoLeafEvent("geoleaf:app:ready", {
-            ...(bootVersion !== undefined && { version: bootVersion }),
-            timestamp: Date.now(),
-        });
-        AppLog.info("Application ready: " + reason);
-        // perf 5 — benchmark: total startup time measurement
+        // perf 5 — benchmark: total startup time measurement.
+        // ⚠️ MEASURE FIRST, THEN ANNOUNCE. The metrics reader (`utils/performance/runtime-metrics.ts`)
+        // answers `geoleaf:app:ready` synchronously and reads the LAST `geoleaf:startup-total`
+        // measure and `geoleaf:initApp:ready` mark: posted after the events, they read `null` on
+        // the page's first boot and the previous boot's figures on every later one.
         if (typeof performance !== "undefined" && performance.mark) {
             performance.mark("geoleaf:initApp:ready");
             try {
@@ -219,6 +214,15 @@ export function setupReveal({
                 void error;
             }
         }
+        dispatchGeoLeafEvent("geoleaf:map:ready", undefined);
+        // Emit the application initialisation end event
+        // (used by boot.js to display the boot toast via GeoLeaf.bootInfo)
+        const bootVersion = GeoLeaf._version;
+        dispatchGeoLeafEvent("geoleaf:app:ready", {
+            ...(bootVersion !== undefined && { version: bootVersion }),
+            timestamp: Date.now(),
+        });
+        AppLog.info("Application ready: " + reason);
     }
 
     // ── Permalink hook 2 (§1.3.2): apply stored URL state + start sync ─────

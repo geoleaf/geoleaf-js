@@ -76,7 +76,7 @@ function writeSized(abs: string, bytes: number): void {
  * @param sizes - Byte size of each ratcheted subject, by logical name.
  * @returns The tree's root and the path of its baseline copy.
  */
-function makeTree(sizes: { claude: number; etat: number }): { root: string; baseline: string } {
+function makeTree(sizes: { claude: number; cadre: number }): { root: string; baseline: string } {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), "geoleaf-doc-ceil-"));
     trees.push(root);
     const internal = internalDirName();
@@ -88,7 +88,7 @@ function makeTree(sizes: { claude: number; etat: number }): { root: string; base
     const baseline = path.join(root, "scripts/.baselines/doc-ceilings.json");
     fs.copyFileSync(BASELINE, baseline);
     writeSized(path.join(root, "CLAUDE.md"), sizes.claude);
-    writeSized(path.join(root, internal, "ETAT.md"), sizes.etat);
+    writeSized(path.join(root, internal, "CADRE.md"), sizes.cadre);
     writeSized(path.join(root, internal, "POSTMORTEMS.md"), 64);
     return { root, baseline };
 }
@@ -108,15 +108,15 @@ function runGate(root: string, ...args: string[]) {
 describe("DOC-CEIL — `--update-baseline` écrit le format que son lecteur attend", () => {
     const { raw, parsed } = committedBaseline();
     const claude = parsed.ceilings["claude"];
-    const etat = parsed.ceilings["etat"];
+    const cadre = parsed.ceilings["cadre"];
 
     test("🛑 la baseline du dépôt est bien clefée par noms logiques — sinon ce fichier ne garde rien", () => {
         expect(typeof claude).toBe("number");
-        expect(typeof etat).toBe("number");
+        expect(typeof cadre).toBe("number");
     });
 
     test("régénérer une baseline déjà serrée ne change pas un octet", () => {
-        const tree = makeTree({ claude: claude ?? 0, etat: etat ?? 0 });
+        const tree = makeTree({ claude: claude ?? 0, cadre: cadre ?? 0 });
         const run = runGate(tree.root, "--update-baseline");
         expect({ status: run.status, stderr: (run.stderr ?? "").slice(0, 400) }).toMatchObject({
             status: 0,
@@ -125,21 +125,21 @@ describe("DOC-CEIL — `--update-baseline` écrit le format que son lecteur atte
     });
 
     test("resserrer garde les clés logiques et le commentaire, et ne baisse que le plafond mesuré", () => {
-        const smaller = (etat ?? 0) - 100;
-        const tree = makeTree({ claude: claude ?? 0, etat: smaller });
+        const smaller = (cadre ?? 0) - 100;
+        const tree = makeTree({ claude: claude ?? 0, cadre: smaller });
         const run = runGate(tree.root, "--update-baseline");
         expect(run.status).toBe(0);
         const written = JSON.parse(fs.readFileSync(tree.baseline, "utf8")) as CeilingsBaseline;
         expect(Object.keys(written.ceilings)).toEqual(Object.keys(parsed.ceilings));
-        expect(written.ceilings["etat"]).toBe(smaller);
+        expect(written.ceilings["cadre"]).toBe(smaller);
         expect(written.ceilings["claude"]).toBe(claude);
         expect(written._comment).toBe(parsed._comment);
     });
 
     test("la baseline régénérée mord encore : un fichier trop gros fait rougir DOC-CEIL-01", () => {
-        const tree = makeTree({ claude: claude ?? 0, etat: etat ?? 0 });
+        const tree = makeTree({ claude: claude ?? 0, cadre: cadre ?? 0 });
         expect(runGate(tree.root, "--update-baseline").status).toBe(0);
-        writeSized(path.join(tree.root, internalDirName(), "ETAT.md"), (etat ?? 0) + 1);
+        writeSized(path.join(tree.root, internalDirName(), "CADRE.md"), (cadre ?? 0) + 1);
         const run = runGate(tree.root);
         expect({ status: run.status, bit: (run.stderr ?? "").includes("DOC-CEIL-01") }).toEqual({
             status: 1,

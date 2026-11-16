@@ -12,7 +12,7 @@
  * where the package list had diverged). Not here: a publication boundary is a
  * **decision**, and deriving it would make it depend on a side effect. It is exactly the
  * arbitration written in `publish-plugins.cjs` for `PUBLISHED_PLUGINS` — widening an
- * external surface is decided, not observed. The four patterns below are therefore
+ * external surface is decided, not observed. The five patterns below are therefore
  * written by hand.
  *
  * What IS derived, however, is the **check**: a pattern that no longer matches anything
@@ -27,8 +27,10 @@
  * a reintroduction. Measured when laying the rule on 2026-08-10, and re-measured on
  * 08-11: 0 other `CLAUDE.md`, 0 other `_docs_projet`, 0 other `.claude` in the tree —
  * the generic form swallows nothing today, and it covers the case where there would be
- * one tomorrow. The fourth is anchored by its slash alone, and that suffices: that file
- * is only read at the root.
+ * one tomorrow. `STATUS.md` (the project status card, added on 2026-11-13) follows the
+ * same unanchored form: 0 other `STATUS.md` in the tree that day. The
+ * `.github/copilot-instructions.md` pattern is anchored by its slash alone, and that
+ * suffices: that file is only read at the root.
  *
  * ## Why this file is not a `.gitignore` of the working repo
  *
@@ -51,7 +53,7 @@
 "use strict";
 
 /**
- * The four internal-apparatus patterns, in the `.gitignore` form they take on the clone
+ * The five internal-apparatus patterns, in the `.gitignore` form they take on the clone
  * side.
  *
  * `dir: true` designates a directory (the pattern matches the path prefix); otherwise the
@@ -74,6 +76,11 @@ const INTERNAL_PATTERNS = [
         pattern: ".github/copilot-instructions.md",
         dir: false,
         why: "appareil interne pur — six lignes qui disent de lire CLAUDE.md",
+    },
+    {
+        pattern: "STATUS.md",
+        dir: false,
+        why: "fiche de suivi du projet, lue par le tableau de bord du poste",
     },
 ];
 
@@ -218,11 +225,11 @@ function gitignoreFragment() {
         "# travail qui porte encore l'appareil les ferait entrer, et rien — aucune gate,",
         "# aucun test — ne le signalerait.",
         "#",
-        "# ⚠️ Trois motifs sur quatre sont NON ancrés, délibérément : `CLAUDE.md` est lu",
+        "# ⚠️ Quatre motifs sur cinq sont NON ancrés, délibérément : `CLAUDE.md` est lu",
         "# par son harnais dans N'IMPORTE QUEL sous-répertoire, donc un motif ancré",
         "# laisserait passer `packages/core/CLAUDE.md` — la forme la plus probable de la",
-        "# réintroduction. Le quatrième est ancré par sa seule barre oblique, et ça",
-        "# suffit : ce fichier n'est lu qu'à la racine.",
+        "# réintroduction. `.github/copilot-instructions.md` est ancré par sa seule barre",
+        "# oblique, et ça suffit : ce fichier n'est lu qu'à la racine.",
         ...rules,
         "",
     ].join("\n");
