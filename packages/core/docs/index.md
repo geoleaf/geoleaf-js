@@ -31,13 +31,25 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.19.0 <Badge type="tip" text="2026-10-23" />
+## Release v3.19.1 <Badge type="tip" text="2026-11-16" />
 
-A minor release of `@geoleaf/core`, published with `@geoleaf-plugins/table` 1.2.2: GeoLeaf sits
-better inside a host page — the host's generic rules no longer repaint its fields, its fixed
-panels stay under the host's dialogs — and a profile that declares its basemaps gets those only.
+A patch release of `@geoleaf/core`: an application unmounted and mounted again with another
+profile gets its own icons and its own startup figures.
 
 **Highlights:**
+
+- **Fixed** — the profile's SVG sprite now leaves with the application that injected it: a profile
+  mounted after another on the same page drew no POI icon, its sprite skipped for the previous
+  one's.
+- **Fixed** — `onPerformanceMetrics` and `getPerformanceMetrics()` report the boot that just
+  ended: `startupTotalMs` read `null` on the page's first boot, then the previous boot's figure.
+
+See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.19.0 (2026-10-23) — a minor release of `@geoleaf/core`, published with
+`@geoleaf-plugins/table` 1.2.2: GeoLeaf sits better inside a host page — the host's generic rules
+no longer repaint its fields, its fixed panels stay under the host's dialogs — and a profile that
+declares its basemaps gets those only.
 
 - **Changed** — the built-in basemaps (`street`, `topo`, `satellite`) no longer join a profile's:
   they serve only a profile that declares none. An integrator who relied on them next to basemaps
@@ -50,8 +62,6 @@ panels stay under the host's dialogs — and a profile that declares its basemap
   panel.
 - **Fixed** — `@geoleaf-plugins/table` 1.2.2 translates its layer selector's placeholders, and its
   panel sits under the host's modal dialogs (`--gl-z-table-panel`, default 1040).
-
-See the [changelog](CHANGELOG) for the complete list.
 
 Release v3.18.0 (2026-10-20) — a minor release of `@geoleaf/core`, published with five plugins:
 offline work, downloaded data and archived conflicts stay with the profile — and the source — they
