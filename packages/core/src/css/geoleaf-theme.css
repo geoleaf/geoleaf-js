@@ -13,13 +13,25 @@
     --gl-bp-lg: 768px; /* Tablette 6″ – seuil « icônes seules » barre pill mobile */
     --gl-bp-xl: 1024px; /* PC 10″ / 13″ */
 
-    /* Stacking scale of GeoLeaf's FIXED panels, the ones that live in the host's page rather
-       than in the map. Kept under 1050, where common modal dialogs sit (Bootstrap's modal and its
-       backdrop are 1055 / 1050, its off-canvas panels 1045): a dialog the host opens from a
-       GeoLeaf panel must cover it. A host lowers or raises the whole scale here, or one panel
-       through its own token (`--gl-z-table-panel`…). */
-    --gl-z-panel: 1040;
-    --gl-z-panel-overlay: 1045;
+    /* Stacking scale of every GeoLeaf surface. GeoLeaf has no stacking root of its own: its
+       toolbar, selectors and panels are inserted NEXT TO the map, in the host's element, and its
+       windows in the host's <body>. So every level here competes with the host's page, and all
+       but the signals are kept under 1050, where common modal dialogs sit (Bootstrap's modal and
+       its backdrop are 1055 / 1050, its off-canvas panels 1045): a dialog the host opens must
+       cover GeoLeaf. The order between GeoLeaf's own surfaces is the one their former hard-coded
+       levels gave them. A host moves the whole scale, or one token. */
+    --gl-z-control: 1000; /* map controls: toolbar, side panel, recentre, theme selector */
+    --gl-z-control-raised: 1001; /* a control that must beat its neighbour */
+    --gl-z-control-tooltip: 1010; /* a tooltip next to a control */
+    --gl-z-map-popup: 1030; /* the engine's feature popup */
+    --gl-z-panel: 1040; /* fixed panels: feature, filter, table */
+    --gl-z-panel-popover: 1041; /* a toolbar popover over a panel: language, palette */
+    --gl-z-floating: 1042; /* floating bars over a panel, +0 to +3: mobile theme, proximity, search */
+    --gl-z-panel-overlay: 1045; /* a panel's own menus */
+    --gl-z-sheet: 1046; /* mobile sheets and their backdrop, +0 / +1 */
+    --gl-z-tooltip: 1048; /* the mobile toolbar's tooltip */
+    --gl-z-window: 1049; /* GeoLeaf's own windows: share, print, cache, form, viewers */
+    --gl-z-signal: 1090; /* boot veil, notifications, update banner (+0 to +9): above everything */
 
     /* Couleurs générales */
     --gl-color-bg-page: #f3f4f6;

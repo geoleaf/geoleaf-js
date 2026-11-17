@@ -26,3 +26,19 @@
     color: revert-layer;
     background: revert-layer;
 }
+
+/* GeoLeaf's TEXT, not only its fields: a host's bare `div { color }` repainted the scale (17:1 →
+   1.2:1) and the credit line (4.7:1 → 1.2:1), whose colours live in `gl.*` layers. Colour only:
+   the text's background is its container's, not its own. `revert-layer` on an element whose
+   layers set no colour falls back to inheritance — from a GeoLeaf parent, itself handed back to
+   its layers — so it can only restore, never invent.
+   Specificity (0,0,3) on purpose: above a host's `div` or `body div`, below a host rule that
+   names a GeoLeaf class (0,1,0), which still applies. Buttons stay out, as above. */
+html
+    body
+    :is(div, span, p, li, label, a, strong, small, h1, h2, h3):where(
+        [class^="gl-"],
+        [class*=" gl-"]
+    ) {
+    color: revert-layer;
+}

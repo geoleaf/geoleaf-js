@@ -76,7 +76,7 @@
         box-shadow: var(--gl-shadow-panel);
         transform: translateX(100%);
         transition: transform 0.28s ease;
-        z-index: 1100;
+        z-index: var(--gl-z-panel);
         display: flex;
         flex-direction: column;
         overflow: hidden;

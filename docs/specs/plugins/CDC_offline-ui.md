@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1079187cb
-date: 20 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -292,7 +292,8 @@ Trouvés en prouvant l'arrêt du rapatriement sur le bundle livré, et chacun in
 mesure du dépôt.
 
 **① La confirmation s'ouvrait SOUS la fenêtre.** Les boîtes du `modal-shell` vivent à
-`z-index: 10000` et la fenêtre était à `10002` : toute confirmation qu'elle ouvre — « Arrêter »,
+`z-index: 10000` (depuis 3.20.0 du core, toutes deux au niveau `--gl-z-window`) et la fenêtre
+était à `10002` : toute confirmation qu'elle ouvre — « Arrêter »,
 « Clear cache » — passait dessous. Mesuré, `document.elementFromPoint` au centre de « Confirmer »
 rendait `.gl-cache-zone__row-label`, puis `.gl-cache-control__body`. Le focus arrivant sur
 « Annuler », le clavier pouvait encore confirmer, à l'aveugle ; la souris et le doigt, non. La

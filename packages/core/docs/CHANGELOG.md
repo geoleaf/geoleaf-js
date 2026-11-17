@@ -11,6 +11,33 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.0] - 2026-11-17
+
+Published with `@geoleaf-plugins/editor` 1.6.3, `measure` 1.0.14, `geocoding` 1.1.5, `isochrone`
+1.0.3, `offline-ui` 1.7.2, `print` 1.3.7, `connector` 1.4.1 and `@geoleaf/field-renderer` 1.4.4.
+
+### Added
+
+- **A stacking scale of tokens**, from `--gl-z-control` to `--gl-z-window`, plus `--gl-z-signal`.
+  GeoLeaf has no stacking root of its own: its toolbar, selectors and panels are inserted next to
+  the map, in the host's element, and its windows in the host's `<body>`. Every level now reads a
+  token, and all of them but the signals stay under 1050, where common modal dialogs sit. A host
+  moves the whole scale or one token; the table is in the UI components guide.
+
+### Fixed
+
+- **A host dialog covers GeoLeaf.** Hard-coded levels — the address search at 1500, the feature and
+  filter panels at 1100, GeoLeaf's own windows from 2000 to 20000 — drew over a host dialog at 1055.
+  The order between GeoLeaf's surfaces is unchanged. The boot veil, the notifications and the
+  update and install banners stay above everything.
+- **A host's bare `div { color }` no longer repaints GeoLeaf's text.** The scale dropped from
+  17:1 to 1.2:1 contrast, the credit line from 4.7:1 to 1.2:1. The host guard hands the colour of
+  GeoLeaf's text back to its own layers; a host rule that names a GeoLeaf class still applies.
+- **The plugins' and libraries' windows and banners** (print, offline cache, form and photo viewer,
+  login, update banner) and the address search read the same scale, with a fallback value.
+
+---
+
 ## [3.19.1] - 2026-11-16
 
 ### Fixed

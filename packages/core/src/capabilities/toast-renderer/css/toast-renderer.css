@@ -42,7 +42,7 @@
         /* Above everything, modals included (field-renderer overlay: 10000), so toasts
    stay readable while a form is left open on an error. Still BELOW the
    field-renderer lightbox, which sits at 20000 (form-field-components.css:427). */
-        z-index: 10100;
+        z-index: calc(var(--gl-z-signal) + 1);
         pointer-events: none; /* does not swallow clicks */
         display: flex;
         flex-direction: column-reverse; /* stack grows upwards (newest at the bottom) */

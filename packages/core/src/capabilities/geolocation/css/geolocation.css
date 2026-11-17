@@ -131,7 +131,7 @@
         position: absolute;
         bottom: 72px;
         right: 8px;
-        z-index: 1000;
+        z-index: var(--gl-z-control);
         width: 44px;
         height: 44px;
         border-radius: 50%;

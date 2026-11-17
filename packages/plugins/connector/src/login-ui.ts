@@ -25,7 +25,7 @@ const _CSS = `
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 99999;
+  z-index: var(--gl-z-window, 1049);
   font-family: var(--gl-font-family, system-ui, -apple-system, sans-serif);
 }
 .gc-modal {

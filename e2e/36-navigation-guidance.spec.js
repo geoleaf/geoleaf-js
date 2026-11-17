@@ -502,7 +502,7 @@ test.describe("③ l'interface — la moitié qu'aucun oracle de ce fichier ne r
         await expect(banner).toBeVisible();
         // ⚠️ The boot veil must be GONE before hit-testing, and this line is not defensive: the
         // first run of this test failed on `gl-loader--fade`, the spinner mid-transition. It sits
-        // at z-index 9999 over the whole page and is only removed on `transitionend` (800 ms
+        // at the signal level (`--gl-z-signal`) over the whole page and is only removed on `transitionend` (800 ms
         // fallback), which `bootMapUntilLoaded` does not await — it waits for the map, not for
         // the veil. Without this, the assertion reports "covered" on a page that is merely still
         // revealing itself, and the reader would look for a stacking bug that is not there.

@@ -13,7 +13,7 @@
        banner wrapped into a column 195 px wide. */
     right: 12px;
     left: 12px;
-    z-index: 99998;
+    z-index: calc(var(--gl-z-signal, 1090) + 9);
     display: flex;
     align-items: center;
     flex-wrap: wrap;

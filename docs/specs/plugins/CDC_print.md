@@ -4,8 +4,8 @@ title: print — la carte à l'échelle, composée puis exportée
 plugin_id: print
 package: "@geoleaf-plugins/print"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: b2d1c6cdf
-date: 23 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # print — la carte à l'échelle, composée puis exportée

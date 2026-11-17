@@ -65,7 +65,7 @@ export function _openLightbox(src: string): void {
     // wins over it: at 9999 the photo opened BEHIND the form, whose overlay sits at 10000.
     applyCssText(
         overlay,
-        "position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:20000;cursor:zoom-out"
+        "position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:var(--gl-z-window,1049);cursor:zoom-out"
     );
     const img = _el("img");
     img.src = safeSrc;

@@ -4,8 +4,8 @@ title: measure — la mesure éphémère, et ses annotations
 plugin_id: measure
 package: "@geoleaf-plugins/measure"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8e625466b
-date: 20 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # measure — la mesure éphémère, et ses annotations

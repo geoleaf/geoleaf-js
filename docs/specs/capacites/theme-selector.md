@@ -4,8 +4,8 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 922b5d25a
-date: 10 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
@@ -380,7 +380,8 @@ est motivé sur place dans `packages/core/rollup.config.mjs`. Gisement complet v
 registre.
 
 🛑 **Les deux conteneurs ne sont plus posés à un `top` absolu, mais à `calc(<v> + var(--gl-map-top-inset, 0px))`.**
-`#gl-theme-primary-container` (z 1001) et `#gl-theme-secondary-container` (z 1000) vivent dans
+`#gl-theme-primary-container` (`--gl-z-control-raised`, 1001) et `#gl-theme-secondary-container`
+(`--gl-z-control`, 1000) vivent dans
 `.gl-main`, qui est aussi le bloc conteneur de la carte (`inset: 0`) : une surface qui s'installe en
 flux en tête de `.gl-main` ne les pousse pas, elle les **recouvre**. C'est arrivé le 05/09 avec la
 bande de synchronisation du hors-ligne, dont le `z-index: 2` passait sous ces deux-là — les

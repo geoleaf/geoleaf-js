@@ -439,6 +439,39 @@ A host that overrides `--gl-color-accent` sets `--gl-color-accent-text`,
 `--gl-color-accent-contrast` and `--gl-color-accent-hover` with it: left alone, they keep the
 default orange family, and a text written on the new accent may no longer be readable.
 
+### Stacking scale
+
+GeoLeaf has no stacking root of its own: its toolbar, selectors and panels are inserted next to
+the map, in the host's element, and its windows in the host's `<body>`. Every GeoLeaf level
+therefore competes with the host page. Since core 3.20.0 they all read one scale of tokens, kept
+under **1050** — where common modal dialogs sit (a Bootstrap modal and its backdrop are 1055 and 1050) — so that a dialog the host opens covers GeoLeaf. Only GeoLeaf's signals stay above.
+
+| Token                    | Default           | What it stacks                                                     |
+| ------------------------ | ----------------- | ------------------------------------------------------------------ |
+| `--gl-z-control`         | `1000`            | Map controls: toolbar, side panel, recentre button, theme selector |
+| `--gl-z-control-raised`  | `1001`            | A control that must beat its neighbour (filter toggle…)            |
+| `--gl-z-control-tooltip` | `1010`            | A tooltip next to a control                                        |
+| `--gl-z-map-popup`       | `1030`            | The feature popup                                                  |
+| `--gl-z-panel`           | `1040`            | Fixed panels: feature, filter, table                               |
+| `--gl-z-panel-popover`   | `1041`            | A toolbar popover over a panel (language, palette)                 |
+| `--gl-z-floating`        | `1042` (+0 to +3) | Floating bars over a panel: mobile theme bar, proximity, search    |
+| `--gl-z-panel-overlay`   | `1045`            | A panel's own menus                                                |
+| `--gl-z-sheet`           | `1046` (+0, +1)   | Mobile sheets and their backdrop                                   |
+| `--gl-z-tooltip`         | `1048`            | The mobile toolbar's tooltip                                       |
+| `--gl-z-window`          | `1049`            | GeoLeaf's own windows: share, print, cache, forms, viewers, login  |
+| `--gl-z-signal`          | `1090` (+0 to +9) | Boot veil, notifications, update and install banners               |
+
+```css
+/* A host whose dialogs sit at 2000 lets GeoLeaf's windows sit just under them. */
+:root {
+    --gl-z-window: 1990;
+}
+```
+
+Moving one token moves only what it names; the order between GeoLeaf's surfaces is the one the
+defaults give, and a host that shifts the scale shifts it whole. `--gl-z-table-panel` and
+`--gl-z-table-panel-overlay` still move the table's panel alone.
+
 ---
 
 ## Cross-module integration

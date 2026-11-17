@@ -19,7 +19,7 @@
        blind. The value came with the February 2026 migration and carried no motive. On the same
        layer they stack above, being appended to the body after this window; the toasts (10100)
        and this window keep their order. Proven with a mouse on the shipped bundle: `e2e/55`. */
-    z-index: 10000;
+    z-index: var(--gl-z-window, 1049);
     align-items: center;
     justify-content: center;
 }

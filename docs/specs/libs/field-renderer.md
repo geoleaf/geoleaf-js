@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 83f3efeb7
-date: 11 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -302,7 +302,9 @@ attente — vu rouge sur la croix encore active ; fermeture forcée ; croix rend
 
 - **Une photo ouverte depuis la fiche s'affichait DERRIÈRE elle.** La lightbox recevait un
   `z-index: 9999` en ligne (`types/field-media.ts`), qui l'emportait sur le `20000` de sa feuille ;
-  le voile du formulaire est à `10000`. La valeur en ligne est celle de la feuille.
+  le voile du formulaire était à `10000`. La valeur en ligne est celle de la feuille : depuis
+  1.4.4, toutes deux lisent le niveau des fenêtres de l'échelle du core (`--gl-z-window`), et la
+  photo, ajoutée au corps après le formulaire, passe devant lui à niveau égal.
 - **Taper la zone des étiquettes ne donnait pas le focus à son champ.** La zone porte
   `cursor: text` sur toute sa boîte, mais seule la ligne de saisie prenait le focus : un `click`
   sur la zone ELLE-MÊME le donne désormais à la saisie (`types/tags.ts`) — une pastille garde son
@@ -316,9 +318,9 @@ attente — vu rouge sur la croix encore active ; fermeture forcée ; croix rend
   déplacée : même bouton, ou l'autre quand elle a atteint un bout. Le glisser reste, pour la
   souris.
 
-**Preuves.** `src/__tests__/shared-scaffolding.test.ts` (« opens above the form overlay », vu rouge
-à 9999 — jsdom ne calcule pas la cascade : le test ne juge que la valeur en ligne, qui est celle
-qui décide) et `src/__tests__/field-renderer.test.ts` (« a tap on the zone itself gives the focus
+**Preuves.** `src/__tests__/shared-scaffolding.test.ts` (« opens at the window level, after the
+form overlay in the body » ; sa forme d'avant 1.4.4 a été vue rouge à 9999 — jsdom ne calcule pas
+la cascade : le test juge la valeur en ligne, qui est celle qui décide, et l'ordre dans le corps) et `src/__tests__/field-renderer.test.ts` (« a tap on the zone itself gives the focus
 to its input », vu rouge).
 
 ## Décisions de conception

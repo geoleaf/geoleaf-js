@@ -219,7 +219,7 @@ test.describe("cfg-c3 — basemaps/themes/taxonomy (état map/DOM réel)", () =>
         // `#geoleaf-map` is static markup (`apps/geoleaf-app/index.html`), styled
         // `position:absolute; inset:0` (`css/geoleaf-ui-base.css`) — visible from
         // the first layout on. What depends on `revealApp()` is the clearing of
-        // `#gl-loader`, a DISTINCT overlay (`position:fixed; z-index:9999`), and
+        // `#gl-loader`, a DISTINCT overlay (`position:fixed`, at the signal level `--gl-z-signal`), and
         // Playwright's `toBeVisible()` does not account for occlusion. Only the
         // SECOND proxy is concerned. The fix stays right; its explanation was
         // wrong, and a wrong mechanism makes someone redo the bad diagnosis six

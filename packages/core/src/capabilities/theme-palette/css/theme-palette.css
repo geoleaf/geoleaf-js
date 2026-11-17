@@ -41,7 +41,7 @@
         position: absolute;
         right: 44px;
         bottom: 8px;
-        z-index: 1200; /* above the side panel (950), below the POI sidepanel (1100) */
+        z-index: var(--gl-z-panel-popover); /* over the panels, under the floating bars */
         display: flex;
         flex-direction: column;
         min-width: 150px;

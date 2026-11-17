@@ -409,7 +409,8 @@ précisément à l'arrêt ; mettre 0 ferait pivoter la carte plein nord à chaqu
 
 **Le défaut d'origine n'était pas dans ce paquet.** Le bandeau s'ancre au haut-centre de la carte
 (`top: .75rem; left: 50%`, z-index 500) ; la barre de thèmes du cœur occupe **le même pixel**
-(`top: 10px; left: 50%`, z-index 1001, et 1490 en mobile). Comme `#geoleaf-map` est `absolute`
+(`top: 10px; left: 50%`, `--gl-z-control-raised` : 1001, et `--gl-z-floating` + 1 en mobile : 1043
+depuis core 3.20.0, 1490 avant). Comme `#geoleaf-map` est `absolute`
 **sans** `z-index`, il ne crée aucun contexte d'empilement : les deux valeurs se comparent
 directement, et 1001 gagne de 501 points. Le bandeau existait, se remplissait, se testait vert —
 et n'était pas visible.

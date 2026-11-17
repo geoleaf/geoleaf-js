@@ -149,7 +149,7 @@ function _createBanner(appName: string): HTMLElement {
             "display:flex",
             "align-items:center",
             "gap:12px",
-            "z-index:99999",
+            "z-index:calc(var(--gl-z-signal,1090) + 9)",
             "max-width:calc(100vw - 32px)",
             // On `document.body`, outside the application's root: `inherit` gave the banner
             // the host page's default font. The stack is repeated as the fallback — an inline

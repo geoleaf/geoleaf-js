@@ -4,8 +4,8 @@ title: isochrone — les zones atteignables depuis un point, demandées à un mo
 plugin_id: isochrone
 package: "@geoleaf-plugins/isochrone"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 932cc8b30
-date: 19 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # isochrone — les zones atteignables depuis un point, demandées à un moteur de routage

@@ -55,7 +55,7 @@
 
 .gl-toolbar-tooltip {
     position: absolute;
-    z-index: 9999;
+    z-index: var(--gl-z-tooltip);
     background: var(--gl-color-tooltip-bg, rgba(0, 0, 0, 0.78));
     color: var(--gl-color-tooltip-text, #ffffff);
     font-size: 0.72rem;

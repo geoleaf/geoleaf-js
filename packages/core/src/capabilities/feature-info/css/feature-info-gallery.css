@@ -254,7 +254,7 @@
     .gl-poi-lightbox-global {
         position: fixed;
         inset: 0;
-        z-index: 10000;
+        z-index: var(--gl-z-window);
         display: none;
         align-items: center;
         justify-content: center;
@@ -368,10 +368,10 @@
     /* ── Mobile: sidepanel must appear above theme bar (1490) + search bar (1500) ── */
     @media (max-width: 768px) {
         .gl-poi-sidepanel-overlay {
-            z-index: 1510 !important;
+            z-index: var(--gl-z-sheet) !important;
         }
         .gl-poi-sidepanel {
-            z-index: 1511 !important;
+            z-index: calc(var(--gl-z-sheet) + 1) !important;
         }
     }
 }

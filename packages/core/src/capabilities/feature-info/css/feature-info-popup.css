@@ -86,7 +86,7 @@
 
     /* Force popups above the theme selectors (850). */
     .maplibregl-popup {
-        z-index: 1050 !important;
+        z-index: var(--gl-z-map-popup) !important;
     }
 
     /* Hero image, first in the popup and outside the body (`render/popup-content.ts`). The

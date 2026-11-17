@@ -14,7 +14,7 @@
         font-family: var(--gl-font-family);
         position: fixed;
         inset: 0;
-        z-index: 2000;
+        z-index: var(--gl-z-window);
         display: flex;
         align-items: center;
         justify-content: center;

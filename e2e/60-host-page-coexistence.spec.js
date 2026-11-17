@@ -27,6 +27,12 @@ const CONTROLS = [
     ".gl-layer-manager__basemap-select__select",
     ".gl-layer-manager__style-select",
     ".maplibregl-ctrl-attrib-inner",
+    // Text, not fields: a host's bare `div { color }` repainted them too — measured 17:1 → 1.2:1
+    // for the scale, 4.7:1 → 1.2:1 for the credit line (17/11/2026).
+    ".gl-scale-graphic-line",
+    ".gl-scale-zoom",
+    ".gl-scale-coordinates",
+    ".gl-branding__content",
 ];
 
 /** WCAG AA for normal text. */
@@ -139,3 +145,75 @@ test("the table panel sits under the host's modal dialogs, and follows the host'
     });
     expect(await zIndex()).toBe(900);
 });
+
+// 🛑 THE DEFECT, B. Apart from the table panel, GeoLeaf's surfaces carried hard-coded stacking
+// levels — the geocoding bar at 1500, the feature and filter panels at 1100, its own windows from
+// 2000 to 20000 — and GeoLeaf has no stacking root of its own: its toolbar, panels and selectors
+// are inserted NEXT TO the map, in the host's element. A host dialog at the common 1055 was thus
+// covered by GeoLeaf. What is measured is the COVERING, not the level: a host dialog is opened
+// over the whole page and, at the centre of every visible GeoLeaf surface, the element on top must
+// be the host's. Only GeoLeaf's signals (boot veil, notifications, update banner) stay above.
+const SIGNALS = ["#gl-loader", "#gl-notifications", ".gl-sw-update"];
+
+/**
+ * The GeoLeaf surfaces that draw over a host dialog at 1055.
+ * @param {import("@playwright/test").Page} page
+ */
+function surfacesOverHostDialog(page) {
+    return page.evaluate((signals) => {
+        const dialog = document.createElement("div");
+        dialog.id = "host-dialog-probe";
+        Object.assign(dialog.style, { position: "fixed", inset: "0", zIndex: "1055" });
+        document.body.appendChild(dialog);
+        const over = [];
+        for (const el of document.querySelectorAll("body *")) {
+            if (el === dialog || !(el instanceof HTMLElement)) continue;
+            const named = [el.id, ...el.classList].some((n) => n.startsWith("gl-"));
+            if (!named || signals.some((s) => el.closest(s))) continue;
+            const cs = getComputedStyle(el);
+            if (cs.position !== "fixed" && cs.position !== "absolute") continue;
+            if (cs.display === "none" || cs.visibility === "hidden") continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) continue;
+            const x = r.left + r.width / 2;
+            const y = r.top + r.height / 2;
+            if (x < 0 || y < 0 || x > innerWidth || y > innerHeight) continue;
+            const top = document.elementFromPoint(x, y);
+            // A signal (the boot veil still fading out, a notification) is above by decision:
+            // a point it covers says nothing about the surface under it.
+            if (top && signals.some((sel) => top.closest(sel))) continue;
+            if (top && top !== dialog && !dialog.contains(top)) {
+                const name = el.id ? `#${el.id}` : `.${[...el.classList][0]}`;
+                const above = top.id
+                    ? `#${top.id}`
+                    : `${top.tagName.toLowerCase()}.${[...top.classList][0] ?? ""}`;
+                over.push(
+                    `${name} (z ${cs.zIndex}) under ${above} (z ${getComputedStyle(top).zIndex})`
+                );
+            }
+        }
+        dialog.remove();
+        return [...new Set(over)];
+    }, SIGNALS);
+}
+
+for (const [name, viewport] of /** @type {const} */ ([
+    ["desktop", { width: 1400, height: 900 }],
+    ["mobile", { width: 390, height: 800 }],
+])) {
+    test(`a host dialog at 1055 covers every GeoLeaf surface but its signals — ${name}`, async ({
+        page,
+    }) => {
+        await page.setViewportSize(viewport);
+        await bootMapUntilLoaded(page);
+        expect(await surfacesOverHostDialog(page), "at boot").toEqual([]);
+
+        // The filter panel is one of the fixed surfaces; open it the way a user does.
+        const toggle = page.locator("#gl-filter-toggle");
+        if (await toggle.isVisible()) {
+            await toggle.click();
+            await page.waitForSelector("#gl-filter-panel", { state: "visible", timeout: 10_000 });
+            expect(await surfacesOverHostDialog(page), "filter panel open").toEqual([]);
+        }
+    });
+}

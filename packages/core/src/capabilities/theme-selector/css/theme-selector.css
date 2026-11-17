@@ -19,7 +19,7 @@
         top: calc(10px + var(--gl-map-top-inset, 0px));
         left: 50%;
         transform: translateX(-50%);
-        z-index: 1001;
+        z-index: var(--gl-z-control-raised);
         pointer-events: none;
     }
 
@@ -31,7 +31,7 @@
         position: absolute;
         top: calc(10px + var(--gl-map-top-inset, 0px));
         right: 70px;
-        z-index: 1000;
+        z-index: var(--gl-z-control);
         pointer-events: none;
         transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
     }
@@ -362,7 +362,7 @@
             ) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            z-index: 1490 !important;
+            z-index: calc(var(--gl-z-floating) + 1) !important;
             max-width: calc(100% - 70px) !important; /* room for the left pill bar */
             overflow-x: auto !important;
             scrollbar-width: none !important;
@@ -403,7 +403,7 @@
             ) !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
-            z-index: 1489 !important;
+            z-index: var(--gl-z-floating) !important;
             pointer-events: none !important;
             max-width: calc(100% - 70px) !important;
             transition: top 0.2s ease !important;

@@ -4,8 +4,8 @@ title: theme-palette — la couleur d'accent de l'interface
 capability_id: theme-palette
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 1673c0432
-date: 7 octobre 2026
+verifie_contre: 51ff3c920
+date: 17 novembre 2026
 ---
 
 # theme-palette — la couleur d'accent de l'interface

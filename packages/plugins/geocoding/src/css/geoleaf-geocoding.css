@@ -163,7 +163,7 @@
 
 .gl-geocoding-ctrl {
     position: absolute;
-    z-index: 1500;
+    z-index: calc(var(--gl-z-floating, 1042) + 3);
     width: 320px;
     max-width: calc(100% - 2rem);
     font-family: inherit;

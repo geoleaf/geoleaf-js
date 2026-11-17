@@ -133,7 +133,7 @@ function _createBanner(appName: string): HTMLElement {
             "color:#fff",
             "padding:16px 16px 20px",
             "box-shadow:0 -2px 16px rgba(0,0,0,0.4)",
-            "z-index:99999",
+            "z-index:calc(var(--gl-z-signal,1090) + 9)",
             // On `document.body`, outside the application's root: `inherit` gave the banner
             // the host page's default font. The stack is repeated as the fallback — an inline
             // style is read by no gate, and the banner may show before the theme sheet.

@@ -252,13 +252,22 @@ describe("_media — _openLightbox", () => {
         expect(document.querySelector(".gl-lightbox")).toBeNull();
     });
 
-    // The form's own overlay sits at 10000. An inline z-index beats the stylesheet's, so the
-    // inline value is the one that decides: at 9999 the photo opened BEHIND the form.
-    it("opens above the form overlay", () => {
+    // An inline z-index beats the stylesheet's, so the inline value is the one that decides: at
+    // 9999 the photo once opened BEHIND the form, whose overlay sat at 10000. Both now read the
+    // window level of the stacking scale (`--gl-z-window`), and the photo, appended to the body
+    // after the form, is painted above it at that equal level.
+    it("opens at the window level, after the form overlay in the body", () => {
+        const form = document.createElement("div");
+        form.className = "gl-form-modal-overlay";
+        document.body.appendChild(form);
         _openLightbox("https://example.org/a.png");
         const overlay = document.querySelector<HTMLElement>(".gl-lightbox")!;
-        expect(Number(overlay.style.zIndex)).toBeGreaterThan(10000);
+        expect(overlay.style.zIndex).toBe("var(--gl-z-window, 1049)");
+        expect(
+            form.compareDocumentPosition(overlay) & Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
         overlay.remove();
+        form.remove();
     });
 });
 

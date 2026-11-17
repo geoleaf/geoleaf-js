@@ -24,7 +24,7 @@
         top: 0;
         left: 0;
         bottom: 0;
-        z-index: 1100;
+        z-index: var(--gl-z-panel);
 
         width: min(320px, calc(100% - 2rem));
         height: 100vh;
@@ -434,7 +434,7 @@
         top: 0.65rem;
         left: 50%;
         transform: translateX(-50%) scale(0.96);
-        z-index: 1499; /* just under the floating search pill (1500) */
+        z-index: calc(var(--gl-z-floating) + 2); /* just under the floating search bar (+3) */
         display: none;
         align-items: center;
         gap: 0.5rem;

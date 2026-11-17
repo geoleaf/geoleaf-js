@@ -304,6 +304,6 @@
     /* Too wide to stand beside the toolbar (1000): the open window goes over it. */
     .gl-isochrone {
         left: var(--gl-isochrone-left, 16px);
-        z-index: 1001;
+        z-index: var(--gl-z-control-raised, 1001);
     }
 }
