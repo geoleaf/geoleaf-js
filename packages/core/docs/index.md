@@ -31,20 +31,26 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.19.1 <Badge type="tip" text="2026-11-16" />
+## Release v3.20.0 <Badge type="tip" text="2026-11-17" />
 
-A patch release of `@geoleaf/core`: an application unmounted and mounted again with another
-profile gets its own icons and its own startup figures.
+A minor release of `@geoleaf/core`, published with eight packages: GeoLeaf stacks under the host's
+dialogs, and a host's generic rules no longer repaint its text.
 
 **Highlights:**
 
-- **Fixed** — the profile's SVG sprite now leaves with the application that injected it: a profile
-  mounted after another on the same page drew no POI icon, its sprite skipped for the previous
-  one's.
-- **Fixed** — `onPerformanceMetrics` and `getPerformanceMetrics()` report the boot that just
-  ended: `startupTotalMs` read `null` on the page's first boot, then the previous boot's figure.
+- **Added** — a stacking scale of tokens (`--gl-z-control` … `--gl-z-window`, `--gl-z-signal`).
+  Every GeoLeaf level reads one; all but the signals stay under 1050, where common modal dialogs
+  sit. A host moves the whole scale or one token.
+- **Fixed** — a host dialog covers GeoLeaf: the address search, the panels and GeoLeaf's own windows
+  drew over it.
+- **Fixed** — a host's bare `div { color }` no longer repaints the scale and the credit line.
+- **Fixed** — `editor` 1.6.3, `measure` 1.0.14, `geocoding` 1.1.5, `isochrone` 1.0.3, `offline-ui`
+  1.7.2, `print` 1.3.7, `connector` 1.4.1 and `@geoleaf/field-renderer` 1.4.4 read the same scale.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.19.1 (2026-11-16) — a patch release of `@geoleaf/core`: an application unmounted and
+mounted again with another profile gets its own icons and its own startup figures.
 
 Release v3.19.0 (2026-10-23) — a minor release of `@geoleaf/core`, published with
 `@geoleaf-plugins/table` 1.2.2: GeoLeaf sits better inside a host page — the host's generic rules

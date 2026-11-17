@@ -171,9 +171,15 @@ function main() {
                 ...process.env,
                 CI: "true",
                 TZ: "UTC",
-                // The worktree has no `.turbo` anyway, but a global cache
-                // configuration would make the belt useful — and it costs nothing.
+                // `TURBO_FORCE` skips READING the cache, not WRITING it.
                 TURBO_FORCE: "true",
+                // 🛑 THE CHAMBER'S OWN CACHE, thrown away with it. Without it, the chamber's
+                // builds (`CI=true`, `TZ=UTC`, another path) were written to the workshop's
+                // `.turbo/cache` under the same input hash, with chunks named differently; the next
+                // local `ci:local` hit that entry and laid those chunks over a `dist/` it does not
+                // purge — DIST-01, after every `ci:push` (entry written at 11:11:49 during the
+                // chamber's run, restored at 11:53 by `ci:local`, 17/11/2026).
+                TURBO_CACHE_DIR: path.join(dir, ".turbo-chamber-cache"),
             },
         });
         ok = gates.status === 0;
