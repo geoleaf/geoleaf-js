@@ -44,6 +44,8 @@ export class GeoJSONModule implements ILifecycleModule {
         // each module's init() in topological order and `geojson` precedes `ui`, awaiting
         // the load leaves the layer registry HOT before UIModule's theme applier runs →
         // `_applyLayerConfig` takes the TOGGLE branch, never ADD (no double load).
+        // `core-map` hands back a map whose style may still be loading: each layer waits for it
+        // inside the loader (`single-layer.ts`), so this await also covers that wait.
         const GeoLeaf = ensureGeoLeaf();
         const _app = (GeoLeaf._app ?? {}) as AppNamespace;
         const AppLog = _app.AppLog;

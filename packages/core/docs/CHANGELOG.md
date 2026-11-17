@@ -11,6 +11,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.1] - 2026-11-17
+
+### Fixed
+
+- **A remounted application creates its layers.** On `mount`, `unmount`, `mount` in one page, the
+  profile's GeoJSON layers were created before the map's style had finished loading: MapLibre
+  refused each source ("Style is not done loading"), the layer was never registered, and `ready`
+  resolved on a map without it. A first boot rarely showed it, because the layer's requests gave
+  the style time to load; a remount, with everything cached, almost always did, and layers whose
+  data is written inline (`inlineData`) were hit even on a first boot. A layer the engine refuses
+  while the style is loading now waits for the style and is created then — including when a
+  default basemap reloads the style at start. A layer the engine accepts is created at once, as
+  before: nothing waits behind sources or tiles still in flight. A layer that still fails to load
+  is logged with its id, as before.
+
+---
+
 ## [3.20.0] - 2026-11-17
 
 Published with `@geoleaf-plugins/editor` 1.6.3, `measure` 1.0.14, `geocoding` 1.1.5, `isochrone`

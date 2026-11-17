@@ -36,6 +36,7 @@ import { bindFeatureInteractionEvents } from "../feature-interaction.js";
 import { notifyPrimitive } from "../../../utils/notify/notify.primitive.js";
 import { announceTruncation } from "./truncation-notice.js";
 import { reconcileLayerFields } from "../field-reconciliation.js";
+import { whenStyleReady, type StyleReadyMap } from "../../../utils/general/style-ready.js";
 
 const getState = () => GeoJSONShared.state;
 
@@ -492,6 +493,41 @@ function _resolveReferenceLat(state: GeoJSONState): number | undefined {
     return typeof center?.lat === "number" ? center.lat : undefined;
 }
 
+/**
+ * Creates the layer through the adapter, once the map's style allows it.
+ *
+ * The engine refuses `addSource` while the style itself is still loading — by throwing — and
+ * the profile loader swallows that refusal: the layer would simply not exist, and `ready` would
+ * resolve anyway. A first boot rarely meets it, because the layer's requests (data file, default
+ * style) give the style time to load; a remount, with everything cached, or data written inline,
+ * reaches the engine first.
+ *
+ * ⚠️ TRIED FIRST, waited only on a refusal. `isStyleLoaded()` is false not only while the style
+ * loads but whenever ANY source, tile or image is in flight — a condition `addSource` does not
+ * set. Waiting on it before every creation would queue each layer behind the previous layer's
+ * source and the basemap's tiles. So the creation runs at once, and only when it throws on a
+ * style that is not loaded does it wait for {@link whenStyleReady} and try once more; any other
+ * error, or a second refusal, is the caller's. The adapter has no side effect before
+ * `addSource`, so the second attempt starts clean.
+ */
+async function _addWhenStyleAllows(
+    adapter: MapAdapterLike,
+    nativeMap: unknown,
+    layerId: string,
+    data: unknown,
+    options: Record<string, unknown>
+): Promise<void> {
+    try {
+        adapter.addGeoJSONLayer(layerId, data, options);
+        return;
+    } catch (err) {
+        const styleMap = nativeMap as StyleReadyMap | null | undefined;
+        if (typeof styleMap?.isStyleLoaded !== "function" || styleMap.isStyleLoaded()) throw err;
+        await whenStyleReady(styleMap);
+    }
+    adapter.addGeoJSONLayer(layerId, data, options);
+}
+
 async function _doLoadSingleLayerMapLibre(
     rawData: unknown,
     fromCache: boolean,
@@ -546,8 +582,11 @@ async function _doLoadSingleLayerMapLibre(
         _resolveReferenceLat(state)
     );
 
+    // Resolved once: the creation below may need it, and the interactions bound after it do.
+    const nativeMap = adapter.getNativeMap() as GeoJSONNativeMap;
+
     const _tAdd = _mark();
-    adapter.addGeoJSONLayer(layerId, geojsonData, adapterOptions);
+    await _addWhenStyleAllows(adapter, nativeMap, layerId, geojsonData, adapterOptions);
     if (_perf) {
         const _addMs = performance.now() - _tAdd;
         // ⚠️ `styleWait`, not `styleFetch`. The style is requested alongside the
@@ -569,7 +608,6 @@ async function _doLoadSingleLayerMapLibre(
     }
 
     // Bind popups & tooltips via event-driven MapLibre pattern
-    const nativeMap = adapter.getNativeMap() as GeoJSONNativeMap;
     const registry = adapter.getLayerRegistry?.();
     // A COPY: the registry's own array grows in place when a write completes the layer's
     // sub-layers, and the kernel tells that it did by comparing its list to the registry's.
