@@ -45,6 +45,16 @@ test.use({ baseURL: baseURL("full"), ownBrowser: "54-pull-converges" });
 // tried first: the JSON reporter gives a step a duration but no start, and drops hooks' steps.
 // Measured locally on 2 cores under nginx (03/11/2026): closing the CONTEXT took 55 s of this
 // test's 71 s, its body 10 s; closing it explicitly below is what isolates that cost.
+// Read on thirteen nightly runner passes (04 to 16/11/2026): the body takes 13 to 20 s, closing the
+// context 88 to 152 s, and the two failures of those nights ran out of budget at 149 and 152 s of
+// closing — a budget spent, not a hang: the close always ends. Releasing the context's routes
+// before closing it (`unrouteAll`) only moved that cost into the release (nine local passes each).
+/**
+ * Each test's budget, the context's close INCLUDED — the fixture's teardown counts against it.
+ * The worst runner total seen is 168 s; the margin keeps a slow night from passing for a hang.
+ */
+const PULL_TEST_BUDGET_MS = 240_000;
+
 /** @param {string} phase */
 function stamp(phase) {
     test.info().annotations.push({ type: "timing", description: `${phase} @${Date.now()}` });
@@ -256,7 +266,7 @@ test("[offline] le second téléchargement ne réécrit que la modifiée, et la 
     page,
     context,
 }) => {
-    test.setTimeout(150000);
+    test.setTimeout(PULL_TEST_BUDGET_MS);
     await armPullSource(page);
     const source = await serveCollection(context, [row(1), row(2), row(3)]);
 
@@ -324,7 +334,7 @@ test("[offline] la carte montre ce que le rapatriement vient d'écrire, sans rec
     // when it loads. A download rewrote the store and nothing told the layer: an entity the
     // server had deleted left the device and stayed on the map, an edited one kept its old
     // drawing, until the page was reloaded.
-    test.setTimeout(150000);
+    test.setTimeout(PULL_TEST_BUDGET_MS);
     await armPullSource(page, undefined, { displayed: true });
     const source = await serveCollection(context, [row(1), row(2), row(3)]);
 
@@ -374,7 +384,7 @@ test("[offline] une couche qui DÉCLARE fraîcheur et suppressions ne demande qu
     page,
     context,
 }) => {
-    test.setTimeout(150000);
+    test.setTimeout(PULL_TEST_BUDGET_MS);
     const T0 = "2026-09-01T07:00:00+00:00";
     const T3 = "2026-09-01T11:00:00+00:00";
     await armPullSource(page, { freshness: "datetime", deletedProperty: "deleted_at" });

@@ -127,6 +127,18 @@ async function bootAndSettle(page, context) {
     // ONLINE — see the header note: offline, the dynamic import fails.
     await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("navigation"));
     await settleNetwork(context, { timeout: 5000 }).catch(() => {});
+    // 🛑 The icon sheet is the one background request ③ names that the core keeps asking for: the
+    // legend fetches it after `ready`, and the engine's missing-image resolver asks again while the
+    // camera follows the guided position. `settleNetwork` gives up after 5 s without a word, so a
+    // sheet still on its way at the cut-off failed INSIDE the recording — the one red of the night
+    // of 02/11/2026, `failed …/sprite_tourism.svg`, reproduced by holding the sheet until the
+    // recording opens. The guidance loop never asks for it (the plugin does not reference it):
+    // waiting for it is the page being settled, not a filter widened.
+    await page.waitForFunction(
+        () => document.querySelector('svg[data-geoleaf-sprite="profile"]') !== null,
+        null,
+        { timeout: 20000 }
+    );
 }
 
 /**
