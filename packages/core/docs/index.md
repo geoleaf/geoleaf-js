@@ -31,23 +31,20 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.20.0 <Badge type="tip" text="2026-11-17" />
+## Release v3.20.1 <Badge type="tip" text="2026-11-17" />
 
-A minor release of `@geoleaf/core`, published with eight packages: GeoLeaf stacks under the host's
-dialogs, and a host's generic rules no longer repaint its text.
+A patch release of `@geoleaf/core`: an application unmounted and mounted again creates its layers.
 
 **Highlights:**
 
-- **Added** — a stacking scale of tokens (`--gl-z-control` … `--gl-z-window`, `--gl-z-signal`).
-  Every GeoLeaf level reads one; all but the signals stay under 1050, where common modal dialogs
-  sit. A host moves the whole scale or one token.
-- **Fixed** — a host dialog covers GeoLeaf: the address search, the panels and GeoLeaf's own windows
-  drew over it.
-- **Fixed** — a host's bare `div { color }` no longer repaints the scale and the credit line.
-- **Fixed** — `editor` 1.6.3, `measure` 1.0.14, `geocoding` 1.1.5, `isochrone` 1.0.3, `offline-ui`
-  1.7.2, `print` 1.3.7, `connector` 1.4.1 and `@geoleaf/field-renderer` 1.4.4 read the same scale.
+- **Fixed** — on `mount`, `unmount`, `mount`, the profile's GeoJSON layers were created before the
+  map's style had finished loading, and none appeared. A layer the engine refuses while the style
+  is loading now waits for it — layers with inline data included, even on a first boot.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.20.0 (2026-11-17) — a minor release of `@geoleaf/core`, published with eight packages:
+GeoLeaf stacks under the host's dialogs, and a host's generic rules no longer repaint its text.
 
 Release v3.19.1 (2026-11-16) — a patch release of `@geoleaf/core`: an application unmounted and
 mounted again with another profile gets its own icons and its own startup figures.
