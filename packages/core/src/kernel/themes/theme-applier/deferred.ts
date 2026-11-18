@@ -143,7 +143,8 @@ function _layerType(lc: ProfileLayerConfig): string {
 
 /** Build-up layer definition: the source config plus normalisation-time fields. */
 interface DeferredLayerDef extends Omit<ProfileLayerConfig, "clustering"> {
-    url?: string;
+    // `null` for an inline layer: the loader reads `url` only inside the fetch it skips.
+    url?: string | null;
     _profileId?: string | null;
     // Normalisation overwrites the source `clustering` object with a boolean flag.
     clustering?: ProfileLayerConfig["clustering"] | boolean;
@@ -195,24 +196,40 @@ async function _getCachedData(layerId: string, profileId: string | null): Promis
     return null;
 }
 
+/** Where a deferred layer's data comes from: an address to fetch, or a payload the host holds. */
+interface DeferredSource {
+    dataUrl: string | null;
+    inline: boolean;
+}
+
 async function _buildAndLoadLayer(
     loader: SingleLayerLoader,
     layerId: string,
     layerConfig: ProfileLayerConfig,
-    dataUrl: string,
+    source: DeferredSource,
     profileId: string | null
 ): Promise<unknown> {
     const layerLabel = layerConfig.label ? layerConfig.label : layerId;
-    const cachedData = await _getCachedData(layerId, profileId);
+    // An inline payload is the host's own, current copy: a theme-cache entry must not
+    // stand in for it, and storing it would duplicate what the host already holds.
+    const cachedData = source.inline
+        ? layerConfig.inlineData
+        : await _getCachedData(layerId, profileId);
     const layerDef: DeferredLayerDef = {
         ...layerConfig,
-        url: dataUrl,
+        url: source.dataUrl,
         type: _layerType(layerConfig),
         _profileId: profileId,
         // `_layerDirectory` was re-stated here although `...layerConfig` already carries it
         // (it is declared on `ProfileLayerConfig`). Inert today — same source both ways — but it
         // is literally the overwrite shape: an explicit key placed AFTER a spread. Removed.
     };
+    if (source.inline) {
+        // Same hand-over as the boot loader (`loader/profile.ts`): the public key gives way
+        // to the loader's internal one and does not stay alongside it, so the stored
+        // definition never retains a full collection.
+        delete layerDef.inlineData;
+    }
     const normalizedDef = _normalizeDeferredLayerDef(layerDef, cachedData);
     try {
         return await _loadAndCache(
@@ -221,7 +238,7 @@ async function _buildAndLoadLayer(
             layerLabel,
             normalizedDef,
             profileId,
-            cachedData
+            source.inline ? null : cachedData
         );
     } catch (err: unknown) {
         Log.warn(
@@ -234,7 +251,7 @@ async function _buildAndLoadLayer(
 
 function _getActiveProfileAndLayers(
     layerId: string
-): { layerConfig: ProfileLayerConfig; dataUrl: string; profileId: string | null } | null {
+): { layerConfig: ProfileLayerConfig; source: DeferredSource; profileId: string | null } | null {
     const activeProfile = _Config.getActiveProfile?.();
     if (!activeProfile || typeof activeProfile !== "object") return null;
     const profileLayersConfig = _getProfileLayers(activeProfile);
@@ -242,10 +259,24 @@ function _getActiveProfileAndLayers(
     const layerConfig = profileLayersConfig.find(
         (config: ProfileLayerConfig) => config.id === layerId
     );
+    // Not declared by the profile: a layer created at runtime may still register later,
+    // which is what the pending map waits for. Silent on purpose.
     if (!layerConfig) return null;
+    const profileId = activeProfile.id ?? null;
+    // A payload written inline stands IN FOR an address, exactly as on the boot path.
+    if (layerConfig.inlineData !== undefined) {
+        return { layerConfig, source: { dataUrl: null, inline: true }, profileId };
+    }
     const dataUrl = TA._resolveDataFilePath(layerConfig);
-    if (!dataUrl) return null;
-    return { layerConfig, dataUrl, profileId: activeProfile.id ?? null };
+    if (!dataUrl) {
+        // Declared by the profile, shown by a theme, and loadable by nothing: without this
+        // warning its config would wait in the pending map forever, and nothing would say so.
+        Log.warn(
+            `[ThemeApplier._loadLayerFromProfile] Layer "${layerId}" is shown by a theme but has no resolvable source (an address under data, a dataFile, or inlineData): it cannot be created.`
+        );
+        return null;
+    }
+    return { layerConfig, source: { dataUrl, inline: false }, profileId };
 }
 
 /**
@@ -266,7 +297,7 @@ TA._loadLayerFromProfile = async function (layerId: string) {
             loader,
             layerId,
             found.layerConfig,
-            found.dataUrl,
+            found.source,
             found.profileId
         );
     } catch (error: unknown) {

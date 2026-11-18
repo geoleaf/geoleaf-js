@@ -46,6 +46,7 @@ vi.mock("../../src/kernel/themes/theme-cache.js", () => ({
 vi.mock("../../src/utils/log/index.js", () => ({ Log: { warn: vi.fn() } }));
 import { ThemeApplierDeferred as TA } from "../../src/kernel/themes/theme-applier/deferred.js";
 import { LoaderSingleLayer } from "../../src/kernel/geojson/loader/single-layer.js";
+import { Log } from "../../src/utils/log/index.js";
 
 describe("theme-applier/deferred", () => {
     beforeEach(() => {
@@ -359,6 +360,80 @@ describe("theme-applier/deferred", () => {
             mockLoader.mockResolvedValue({ id: "layer-data3" });
             const result = await TA._loadLayerFromProfile("l3");
             expect(result).not.toBeNull();
+        });
+    });
+
+    // A layer whose data is written inline is off the default theme, so boot skips it,
+    // and the theme that shows it is the only path that ever creates it. The engine
+    // resolved addresses only: an inline layer resolved to nothing and its config waited
+    // forever in the pending map, silently.
+    describe("_loadLayerFromProfile — inline data (inlineData)", () => {
+        const payload = { type: "FeatureCollection", features: [] };
+
+        beforeEach(() => {
+            LoaderSingleLayer._loadSingleLayer = mockLoader;
+            mockLoader.mockResolvedValue({ id: "layer" });
+            mockConfigGet.mockReturnValue("profiles");
+        });
+
+        it("loads a profile layer that declares inlineData and no address", async () => {
+            mockGetActiveProfile.mockReturnValue({
+                id: "p1",
+                layers: [{ id: "inline", _layerDirectory: "dir", inlineData: payload }],
+            });
+            const result = await TA._loadLayerFromProfile("inline");
+            expect(result).toEqual({ id: "layer" });
+            expect(mockLoader).toHaveBeenCalledTimes(1);
+            const def = mockLoader.mock.calls[0][2];
+            expect(def._cachedData).toBe(payload);
+            expect(def.url).toBeNull();
+            // Handed over, not kept alongside: the stored definition must not retain it.
+            expect("inlineData" in def).toBe(false);
+        });
+
+        it("never lets the theme cache stand in for, nor store, a host-held payload", async () => {
+            mockThemeCacheGet.mockResolvedValue({ stale: true });
+            mockGetActiveProfile.mockReturnValue({
+                id: "p1",
+                layers: [{ id: "inline", inlineData: payload }],
+            });
+            await TA._loadLayerFromProfile("inline");
+            expect(mockThemeCacheGet).not.toHaveBeenCalled();
+            expect(mockThemeCacheStore).not.toHaveBeenCalled();
+            expect(mockLoader.mock.calls[0][2]._cachedData).toBe(payload);
+        });
+
+        it("warns, naming the layer, when a profile layer has no resolvable source", async () => {
+            mockGetActiveProfile.mockReturnValue({
+                id: "p1",
+                layers: [{ id: "sourceless", _layerDirectory: "dir" }],
+            });
+            expect(await TA._loadLayerFromProfile("sourceless")).toBeNull();
+            expect(mockLoader).not.toHaveBeenCalled();
+            const messages = Log.warn.mock.calls.map((c) => String(c[0]));
+            expect(messages.some((m) => m.includes('"sourceless"'))).toBe(true);
+        });
+
+        it("stays silent for a layer the profile does not declare (created later at runtime)", async () => {
+            mockGetActiveProfile.mockReturnValue({
+                id: "p1",
+                layers: [{ id: "other", inlineData: payload }],
+            });
+            expect(await TA._loadLayerFromProfile("runtime-only")).toBeNull();
+            expect(Log.warn).not.toHaveBeenCalled();
+        });
+
+        it("leaves an address-backed layer on its URL and its cache", async () => {
+            mockThemeCacheGet.mockResolvedValue(null);
+            mockGetActiveProfile.mockReturnValue({
+                id: "p1",
+                layers: [{ id: "remote", data: { dataUrl: "https://example.test/a.geojson" } }],
+            });
+            await TA._loadLayerFromProfile("remote");
+            const def = mockLoader.mock.calls[0][2];
+            expect(def.url).toBe("https://example.test/a.geojson");
+            expect(def._cachedData).toBeUndefined();
+            expect(mockThemeCacheGet).toHaveBeenCalledWith("remote", "p1");
         });
     });
 });

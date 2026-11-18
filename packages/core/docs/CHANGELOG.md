@@ -11,6 +11,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.2] - 2026-11-18
+
+### Fixed
+
+- **A theme creates the inline layer it shows.** At boot, only the layers the default theme shows
+  are loaded; every other one is created when a theme showing it is applied. That second path
+  resolved addresses only, so a layer whose data is written inline (`inlineData`) and hidden by the
+  default theme was never created, under any theme, and nothing said so. It is now created like
+  any other: shown by the theme that lists it, hidden on leaving it, and the data written later
+  with `Layers.setData` is displayed. Its payload is handed to the loader as is, never replaced by
+  nor stored into the theme cache. Address-backed layers behave as before.
+- **A layer a theme shows but that has no source is named.** A layer declared by the profile with
+  no source the engine can resolve — no address under `data`, no `dataFile`, no `inlineData` — used to
+  wait silently for a registration that never came; a warning now names it.
+
+---
+
 ## [3.20.1] - 2026-11-17
 
 ### Fixed

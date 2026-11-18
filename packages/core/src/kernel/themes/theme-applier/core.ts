@@ -127,6 +127,13 @@ export interface ProfileLayerConfig {
     type?: string;
     dataFile?: string;
     _layerDirectory?: string;
+    /**
+     * A payload carried by the layer instead of an address — see
+     * `LayerDefinition.inlineData` in `contracts/layer-data.contract.ts`. When a theme
+     * shows such a layer, the engine hands it to the loader as is, never through the
+     * theme cache.
+     */
+    inlineData?: unknown;
     plugin?: unknown;
     data?: {
         url?: string;

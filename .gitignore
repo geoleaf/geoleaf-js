@@ -35,6 +35,11 @@ dist/
 # `packages/<x>/docs-dist/` au lieu de le laisser rougir au check 5.
 /docs-dist/
 
+# Logos de travail posés à la main à la racine de `docs/` — copies de poste, pas une source.
+# Rien ne les lit : le logo de la doc est copié depuis le site publié par `npm run docs:deploy`
+# (step 2b). Ancré : un `docs/images/` de paquet resterait visible.
+/docs/images/
+
 # Doc de référence GÉNÉRÉE — régénérable à la demande par `npm run docs:deploy` :
 # step 1 `typedoc --options typedoc.json` (out = docs/api), step 2 recopie api/ →
 # public/api/, step 2b y dépose le logo. `docs/public/` est généré à 100 % (api/ + logo.png) ;
