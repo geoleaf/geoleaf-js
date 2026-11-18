@@ -31,17 +31,22 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.20.1 <Badge type="tip" text="2026-11-17" />
+## Release v3.20.2 <Badge type="tip" text="2026-11-18" />
 
-A patch release of `@geoleaf/core`: an application unmounted and mounted again creates its layers.
+A patch release of `@geoleaf/core`: a theme creates the inline layer it shows.
 
 **Highlights:**
 
-- **Fixed** — on `mount`, `unmount`, `mount`, the profile's GeoJSON layers were created before the
-  map's style had finished loading, and none appeared. A layer the engine refuses while the style
-  is loading now waits for it — layers with inline data included, even on a first boot.
+- **Fixed** — a layer whose data is written inline (`inlineData`) and hidden by the default theme
+  was never created, under any theme. The theme that shows it now creates it, hides it on leaving,
+  and the data written later with `Layers.setData` is displayed.
+- **Fixed** — a layer a theme shows but that has no source the engine can resolve is now named by
+  a warning, instead of waiting silently.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.20.1 (2026-11-17) — a patch release of `@geoleaf/core`: an application unmounted and
+mounted again creates its layers.
 
 Release v3.20.0 (2026-11-17) — a minor release of `@geoleaf/core`, published with eight packages:
 GeoLeaf stacks under the host's dialogs, and a host's generic rules no longer repaint its text.
