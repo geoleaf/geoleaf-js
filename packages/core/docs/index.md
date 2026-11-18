@@ -31,19 +31,21 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.20.2 <Badge type="tip" text="2026-11-18" />
+## Release v3.20.3 <Badge type="tip" text="2026-11-18" />
 
-A patch release of `@geoleaf/core`: a theme creates the inline layer it shows.
+A patch release of `@geoleaf/core`: a layer born empty is valid against the layer schema.
 
 **Highlights:**
 
-- **Fixed** — a layer whose data is written inline (`inlineData`) and hidden by the default theme
-  was never created, under any theme. The theme that shows it now creates it, hides it on leaving,
-  and the data written later with `Layers.setData` is displayed.
-- **Fixed** — a layer a theme shows but that has no source the engine can resolve is now named by
-  a warning, instead of waiting silently.
+- **Fixed** — a layer file may declare `"inlineData": { "type": "FeatureCollection", "features": [] }`:
+  the layer exists from boot, without any request, and the host writes its features with
+  `Layers.setData`. The loader always created such a layer, but the schema refused the key. Only
+  the empty collection is admitted: features are not frozen into a profile.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.20.2 (2026-11-18) — a patch release of `@geoleaf/core`: a theme creates the inline
+layer it shows.
 
 Release v3.20.1 (2026-11-17) — a patch release of `@geoleaf/core`: an application unmounted and
 mounted again creates its layers.
