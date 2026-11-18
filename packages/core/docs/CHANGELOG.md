@@ -11,6 +11,22 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.3] - 2026-11-18
+
+### Fixed
+
+- **A layer born empty is valid against the layer schema.** A layer whose features the host writes
+  itself (`Layers.setData`) is declared with an empty collection,
+  `"inlineData": { "type": "FeatureCollection", "features": [] }`, which makes it exist at boot
+  without any request. The loader has always created such a layer, but `layer-config.schema.json`
+  refused the key, and the same file without it was valid but never created: no form of the layer
+  was both loaded and valid. The schema now admits that empty collection, and only it — a value
+  that is not a `FeatureCollection`, or a collection that carries features, is still refused,
+  since features frozen into a profile are what `dataFile` exists to avoid. Nothing changes in
+  the code that loads a layer.
+
+---
+
 ## [3.20.2] - 2026-11-18
 
 ### Fixed

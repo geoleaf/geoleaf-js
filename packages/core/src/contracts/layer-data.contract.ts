@@ -109,15 +109,19 @@ export interface LayerDefinition {
      * same shape a fetched `url` would yield (it goes through the same mapping and
      * conversion). Supplying it makes `url`/`dataFile` unnecessary.
      *
-     * 🛑 **RUNTIME-ONLY, and this is the one key of this interface that a profile
-     * may NOT carry.** The interface's contract is that a runtime layer and a
-     * profile layer are described once; this key is the deliberate exception, and
-     * the motive is that a profile is a **static document** — a payload inlined
-     * there would be data frozen into configuration, which is the defect
-     * `dataFile` exists to avoid. ⚠️ The exception is **mechanical, not merely
-     * documented**: `layers.schema.json` declares the layer object
-     * `additionalProperties: false`, so a profile carrying this key fails
-     * validation rather than silently working.
+     * 🛑 **A payload is RUNTIME-ONLY: a profile may declare this key, but only
+     * empty.** The interface's contract is that a runtime layer and a profile
+     * layer are described once; this key is the deliberate exception, and the
+     * motive is that a profile is a **static document** — features inlined there
+     * would be data frozen into configuration, which is the defect `dataFile`
+     * exists to avoid. What a profile may declare is a layer **born empty**: an
+     * empty `FeatureCollection`, in its layer file (`configFile`), that makes the
+     * layer exist at boot without any request, its features written afterwards
+     * with `Layers.setData`. ⚠️ The limit
+     * is **mechanical, not merely documented**: `layer-config.schema.json` admits
+     * `inlineData` as a `FeatureCollection` whose `features` holds no item, and
+     * refuses any other value. No schema runs at load time: the loader reads
+     * whatever a definition carries, profile or runtime.
      *
      * 📌 Consumed once and not retained: the loader deletes its internal copy
      * after conversion, so a large collection is not held by the stored layer

@@ -572,11 +572,14 @@ features the host fetches on its own (a bounding-box query against its own backe
 through the same mapping, conversion and rendering, and the layer lands in the layer manager like
 any other, so it can be toggled.
 
-> **`inlineData` is runtime-only, and a profile may not carry it.** Every other key of a layer
-> definition is shared between profiles and runtime; this one is not, because a profile is a
-> static document and a payload inlined there would be data frozen into configuration — which is
-> what `dataFile` exists to avoid. The restriction is enforced, not just advised: the layer schema
-> rejects unknown keys, so a profile declaring it fails validation.
+> **A payload is runtime-only: a profile declares `inlineData` only empty.** Every other key of
+> a layer definition is shared between profiles and runtime; this one is not, because a profile is
+> a static document and features inlined there would be data frozen into configuration — which is
+> what `dataFile` exists to avoid. A profile's layer file may declare a layer **born empty**,
+> `"inlineData": { "type": "FeatureCollection", "features": [] }`: the layer exists from boot,
+> without any request, and the host writes its features with `setData`. The limit is enforced, not
+> just advised: the layer schema admits that empty collection and refuses any other value. Since
+> 3.20.3.
 
 **Kept out of the layer manager — `showInLayerManager: false`**
 

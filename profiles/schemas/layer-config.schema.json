@@ -148,6 +148,26 @@
             "type": "string",
             "description": "Optional layer type tag."
         },
+        "inlineData": {
+            "type": "object",
+            "description": "A layer born empty: an EMPTY GeoJSON FeatureCollection that makes the layer exist at boot without any request, its features written afterwards by the host with `Layers.setData`. Read by the GeoJSON loader (`loader/profile.ts`) and by the theme applier (`theme-applier/deferred.ts`). ⚠️ Empty only: a profile is a static document, and features frozen into it are what `dataFile` exists to avoid — a payload is handed over at runtime (`Layers.create`), never declared here.",
+            "required": ["type", "features"],
+            "additionalProperties": false,
+            "patternProperties": {
+                "^_comment": {}
+            },
+            "properties": {
+                "type": {
+                    "const": "FeatureCollection",
+                    "description": "Always `FeatureCollection`."
+                },
+                "features": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "description": "Always empty: the features are written at runtime with `Layers.setData`."
+                }
+            }
+        },
         "data": {
             "type": "object",
             "description": "Data source configuration. Extensible block (local GeoJSON, remote URL, vector tiles, realtime, OGC…) — kept permissive.",
