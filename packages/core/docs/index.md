@@ -31,19 +31,28 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.20.4 <Badge type="tip" text="2026-11-19" />
+## Release v3.20.5 <Badge type="tip" text="2026-11-19" />
 
-A patch release of `@geoleaf/core`: a profile mounted again after its styles changed paints the
-new styles.
+A patch release of `@geoleaf/core`, published with `@geoleaf-plugins/offline-ui` 1.7.3: an
+update applied while the page still boots no longer reloads it minutes later, and « See more »
+is offered only when the side panel has something to show.
 
 **Highlights:**
 
-- **Fixed** — a host that unmounts and mounts the same profile without reloading the page
-  receives a new bundle when a style changed on the server. The style built at the first mount
-  was still painted, until a page reload. A new bundle of a profile now replaces the styles the
-  previous one carried: the next mount paints the new colours, still without a style request.
+- **Fixed** — `GeoLeaf.PWA.applyUpdate()` called within a fraction of a second of the update
+  announcement sometimes left the new service worker waiting, in Chromium: the browser
+  activated it about five minutes later, and the page reloaded by itself. The gesture is now
+  held back until three seconds after the announcement. And a page taken over more than ten
+  seconds after the gesture is no longer reloaded: the update is announced again.
+- **Fixed** — `@geoleaf-plugins/offline-ui` 1.7.3: the update banner enables its « Reload »
+  button again when the same update is announced again.
+- **Fixed** — the popup no longer offers « See more » when no field is sent to the side panel:
+  the link opened an empty drawer.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.20.4 (2026-11-19) — a patch release of `@geoleaf/core`: a profile mounted again after
+its styles changed paints the new styles.
 
 Release v3.20.3 (2026-11-18) — a patch release of `@geoleaf/core`: a layer born empty is valid
 against the layer schema.
