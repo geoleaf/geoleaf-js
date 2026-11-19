@@ -127,6 +127,107 @@ describe("style documents carried by the bundle", () => {
         expect(fetched).toHaveBeenCalledTimes(1);
     });
 
+    describe("a newer bundle of the same profile — the remount case", () => {
+        /** The document with another line colour, as a server writes it into the next bundle. */
+        const recoloured = (color: string) => {
+            const doc = structuredClone(DOC);
+            doc.style.color = color;
+            return doc;
+        };
+        const colourOf = (r: unknown) =>
+            (r as { styleData: { style: { color: string } } }).styleData.style.color;
+        const refuseFetch = () => {
+            const refused = vi.fn(() => {
+                throw new Error("GUARD: a style carried by the bundle must cost no request");
+            });
+            vi.stubGlobal("fetch", refused);
+            return refused;
+        };
+
+        it("③ the newer bundle's document wins over the envelope of the first load", async () => {
+            const refused = refuseFetch();
+            seedStyleDocuments("p", { l: { defaut: recoloured("#111111") } });
+            const first = await loadAndValidateStyle("p", "l", "defaut", "defaut.json", "layers/l");
+            expect(colourOf(first)).toBe("#111111");
+
+            seedStyleDocuments("p", { l: { defaut: recoloured("#222222") } });
+            const second = await loadAndValidateStyle(
+                "p",
+                "l",
+                "defaut",
+                "defaut.json",
+                "layers/l"
+            );
+
+            expect(colourOf(second)).toBe("#222222");
+            expect(refused).not.toHaveBeenCalled();
+        });
+
+        it("④ the same bundle again — no request, the same envelope", async () => {
+            const refused = refuseFetch();
+            seedStyleDocuments("p", { l: { defaut: structuredClone(DOC) } });
+            const first = await loadAndValidateStyle("p", "l", "defaut", "defaut.json", "layers/l");
+            seedStyleDocuments("p", { l: { defaut: structuredClone(DOC) } });
+            const second = await loadAndValidateStyle(
+                "p",
+                "l",
+                "defaut",
+                "defaut.json",
+                "layers/l"
+            );
+
+            expect(refused).not.toHaveBeenCalled();
+            expect(shape(second)).toEqual(shape(first));
+        });
+
+        it("⑤ another profile keeps its documents and its envelopes", async () => {
+            refuseFetch();
+            seedStyleDocuments("other", { l: { defaut: recoloured("#333333") } });
+            const kept = await loadAndValidateStyle(
+                "other",
+                "l",
+                "defaut",
+                "defaut.json",
+                "layers/l"
+            );
+            seedStyleDocuments("p", { l: { defaut: recoloured("#222222") } });
+
+            expect(styleDocumentStore.has("other:l:defaut")).toBe(true);
+            const again = await loadAndValidateStyle(
+                "other",
+                "l",
+                "defaut",
+                "defaut.json",
+                "layers/l"
+            );
+            expect(again).toBe(kept);
+        });
+
+        it("⑥ a style the newer bundle no longer carries does not survive it", () => {
+            seedStyleDocuments("p", { l: { a: structuredClone(DOC), b: structuredClone(DOC) } });
+            seedStyleDocuments("p", { l: { a: structuredClone(DOC) } });
+
+            expect(styleDocumentStore.has("p:l:a")).toBe(true);
+            expect(styleDocumentStore.has("p:l:b")).toBe(false);
+        });
+
+        it("⑦ no bundle (the cascade) — a fetched envelope stays cached", async () => {
+            const fetched = vi.fn().mockResolvedValue({
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => structuredClone(DOC),
+                text: async () => JSON.stringify(DOC),
+            });
+            vi.stubGlobal("fetch", fetched);
+            await loadAndValidateStyle("p", "l", "defaut", "defaut.json", "layers/l");
+            seedStyleDocuments("p", undefined);
+            await loadAndValidateStyle("p", "l", "defaut", "defaut.json", "layers/l");
+
+            expect(fetched).toHaveBeenCalledTimes(1);
+        });
+    });
+
     it("clearing the cache clears the seeded documents too", () => {
         seedStyleDocuments("p", { l: { defaut: DOC } });
         expect(styleDocumentStore.size).toBeGreaterThan(0);

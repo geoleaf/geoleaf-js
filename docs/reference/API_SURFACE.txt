@@ -3776,7 +3776,7 @@ CallSignature | GeoLeaf Core API.utils/loaders/label-extractor.extractLabelConfi
 CallSignature | GeoLeaf Core API.utils/loaders/profile-sprite-loader.ensureProfileSpriteInjectedSync.ensureProfileSpriteInjectedSync | doc:1be2d2fa96aa
 CallSignature | GeoLeaf Core API.utils/loaders/profile-sprite-loader.isProfileSpriteReady.isProfileSpriteReady | doc:05e97596ca4d
 CallSignature | GeoLeaf Core API.utils/loaders/profile-sprite-loader.resetProfileSprite.resetProfileSprite | doc:9fffd826c894
-CallSignature | GeoLeaf Core API.utils/loaders/style-cache.seedStyleDocuments.seedStyleDocuments | doc:245d6611b28d
+CallSignature | GeoLeaf Core API.utils/loaders/style-cache.seedStyleDocuments.seedStyleDocuments | doc:a4b22e0ab6dd
 CallSignature | GeoLeaf Core API.utils/loaders/style-loader-core.loadAndValidateStyle.loadAndValidateStyle | doc:6b44bf58de74
 CallSignature | GeoLeaf Core API.utils/loaders/style-loader.StyleLoader.__type.extractLabelConfig.__type.__type | doc:6f7013b6a0e2
 CallSignature | GeoLeaf Core API.utils/loaders/style-loader.StyleLoader.__type.loadAndValidateStyle.__type.__type | doc:6b44bf58de74
@@ -13594,7 +13594,7 @@ Parameter | GeoLeaf Core API.utils/i18n/i18n.registerDict.registerDict.namespace
 Parameter | GeoLeaf Core API.utils/i18n/i18n.t.t.fallback | doc:-
 Parameter | GeoLeaf Core API.utils/i18n/i18n.t.t.key | doc:-
 Parameter | GeoLeaf Core API.utils/loaders/label-extractor.extractLabelConfig.extractLabelConfig.styleData | doc:ad76e65746fe
-Parameter | GeoLeaf Core API.utils/loaders/style-cache.seedStyleDocuments.seedStyleDocuments.bag | doc:328bd2b5ce29
+Parameter | GeoLeaf Core API.utils/loaders/style-cache.seedStyleDocuments.seedStyleDocuments.bag | doc:6ed661f0924f
 Parameter | GeoLeaf Core API.utils/loaders/style-cache.seedStyleDocuments.seedStyleDocuments.profileId | doc:1163544c3796
 Parameter | GeoLeaf Core API.utils/loaders/style-loader-core.loadAndValidateStyle.loadAndValidateStyle.layerDirectory | doc:ded2c5a237d4
 Parameter | GeoLeaf Core API.utils/loaders/style-loader-core.loadAndValidateStyle.loadAndValidateStyle.layerId | doc:024a9d09c82b

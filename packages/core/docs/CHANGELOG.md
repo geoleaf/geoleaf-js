@@ -11,6 +11,23 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.4] - 2026-11-19
+
+### Fixed
+
+- **A profile mounted again after its styles changed paints the new styles.** A host that
+  unmounts and mounts the same profile without reloading the page (`GeoLeaf.mount` / `unmount`)
+  receives a new bundle when a style changed on the server — the new `data.profileVersion`
+  makes the request reach it. The style loader still read the style built at the first mount,
+  kept in a cache it consults before the bundle's documents, so a changed colour only showed
+  after a page reload. A new bundle of a profile now replaces what the previous bundle of that
+  profile carried: the next load rebuilds each style from the new document, still without a
+  request, and a style the new bundle no longer carries does not survive it. A remount with an
+  unchanged bundle paints the same styles, without a request; another profile's styles, and the
+  styles a profile loaded without a bundle (`debug: true`), are kept as before.
+
+---
+
 ## [3.20.3] - 2026-11-18
 
 ### Fixed
