@@ -87,6 +87,10 @@ export function closePopup(): void {
  *
  * The close cross follows `modules.feature-info.popup.closeButton`, read at each
  * opening — shown only when the value is exactly `true`.
+ *
+ * The "see more" link is rendered only when the side panel would show at least one
+ * field — the layer's side-panel list, or the `layout` fields when overridden. A
+ * declared but empty list gets no link.
  */
 export function handleClick(detail: GeoLeafFeatureClickDetail, layout?: SidePanelLayout): void {
     const mgl = getMaplibre();
@@ -98,14 +102,19 @@ export function handleClick(detail: GeoLeafFeatureClickDetail, layout?: SidePane
     let fields: readonly RenderField[];
     let hasSidepanel: boolean;
 
+    // "See more" is offered only when the side panel would show at least one field.
+    // `hasFields` alone is not enough: an empty list is a declaration ("this surface
+    // is empty"), and linking to it would open an empty drawer.
     if (layout) {
         fields = toRenderFields(layout.fields);
-        hasSidepanel = true;
+        // The side panel reuses the same override list (see `sidepanel.ts`).
+        hasSidepanel = fields.length > 0;
     } else {
         const resolved = resolveSurfaceFields(detail.layerId, "popup");
         if (!hasFields(resolved)) return;
         fields = resolved;
-        hasSidepanel = hasFields(resolveSurfaceFields(detail.layerId, "sidepanel"));
+        const side = resolveSurfaceFields(detail.layerId, "sidepanel");
+        hasSidepanel = hasFields(side) && side.length > 0;
     }
 
     const node = buildPopupContent(

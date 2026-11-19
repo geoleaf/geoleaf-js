@@ -1312,7 +1312,8 @@ over when `applyUpdate()` is called, or once every tab of the application has be
 const offerReload = () => {
     myReloadButton.hidden = false;
 };
-// Emitted once per waiting version — possibly before this listener exists.
+// Emitted once per waiting version — possibly before this listener exists — and once more
+// when an applied update took the page too late to reload it.
 document.addEventListener("geoleaf:sw:update-waiting", offerReload);
 if (GeoLeaf.PWA.isUpdateWaiting()) offerReload();
 
@@ -1327,6 +1328,12 @@ myReloadButton.addEventListener("click", () => GeoLeaf.PWA.applyUpdate());
   then the page reloads — once, and not instantly: the browser waits for the previous worker to
   finish the requests it is serving. Call it from a user gesture — what the page holds in memory
   is lost. It returns `false`, and does nothing, when nothing was waiting.
+- A call made within three seconds of the announcement is held back until then (core 3.20.5):
+  passed on while the page still boots, the browser may leave the new worker waiting for
+  minutes. If the new worker takes the page more than ten seconds after the gesture was passed
+  on, the page is **not** reloaded under its user: `geoleaf:sw:update-waiting` is emitted again,
+  `isUpdateWaiting()` stays `true`, and the next `applyUpdate()` reloads at once. A button
+  disabled after the first gesture should be enabled again on that event.
 - `@geoleaf-plugins/offline-ui` asks the question for you, with a « Reload » banner. Without
   that plugin, nothing asks: the new version waits until the tabs are closed.
 - `geoleaf:sw:updated` says something else — a worker **activated** — and also fires at a first

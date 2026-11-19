@@ -104,7 +104,8 @@ const ROW_CONTAINERS: ReadonlyMap<string, string> = new Map([
  * @param rawProperties - The feature's properties as they came from the source.
  * @param ctx - Render context — layer and feature identity, plus the click position.
  * @param opts - `hasSidepanel` tells the builder whether a "see details"
- *   affordance has anywhere to lead; without one, it is not rendered at all.
+ *   affordance leads to a side panel with at least one field; without one, it is
+ *   not rendered at all.
  * @returns The popup root element, ready to mount. Text is escaped at the sinks.
  */
 export function buildPopupContent(

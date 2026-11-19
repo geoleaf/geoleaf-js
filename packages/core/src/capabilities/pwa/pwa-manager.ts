@@ -177,12 +177,19 @@ export const PWAManager = {
      * The reload is not instantaneous: the browser lets the new worker take over once the
      * previous one has finished the requests it is serving, and the page reloads then — once.
      *
+     * ⚠️ Two delays are decided here. A call made within three seconds of the announcement —
+     * the page still booting — is held back until then: passed on earlier, the browser may
+     * leave the new worker waiting for minutes. And if the new worker takes the page more than
+     * ten seconds after the gesture was passed on, the page does not reload under its user:
+     * `geoleaf:sw:update-waiting` is emitted again, and the next call reloads at once.
+     *
      * ⚠️ Without this call the new version stays installed and unused until every tab of
      * the application is closed. The offline plugin calls it from its « Reload » banner; an
      * application that does not embed that plugin has to offer the gesture itself.
      *
-     * @returns `true` when an update is being applied — the page will reload; `false`
-     *   when nothing was waiting, and nothing happens.
+     * @returns `true` when an update is being applied — the page will reload, unless the new
+     *   worker takes it too late and the update is offered again; `false` when nothing was
+     *   waiting, and nothing happens.
      * @example
      * myReloadButton.addEventListener("click", () => GeoLeaf?.PWA?.applyUpdate?.());
      */

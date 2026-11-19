@@ -11,6 +11,34 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [3.20.5] - 2026-11-19
+
+Published with `@geoleaf-plugins/offline-ui` 1.7.3.
+
+### Fixed
+
+- **An update applied too early no longer reloads the page minutes later.** A new version of the
+  application waits, and `GeoLeaf.PWA.applyUpdate()` applies it: the new service worker takes
+  over and the page reloads. Measured in Chromium, a gesture made within a fraction of a second
+  of the announcement, while the page still boots, sometimes never activated the new worker:
+  the browser forced the activation about five minutes later, and the page then reloaded by
+  itself, under a user who had moved on. A gesture made within three seconds of the
+  announcement is now held back until then and passed on once, which closed the window in the
+  measurement. And if the new worker takes the page more than ten seconds after the gesture was
+  passed on, the page is no longer reloaded: `geoleaf:sw:update-waiting` is emitted again,
+  `isUpdateWaiting()` stays `true`, and the next `applyUpdate()` reloads at once.
+- **`@geoleaf-plugins/offline-ui` 1.7.3 — the « Reload » button is given back.** When the core
+  announces the same update again, the banner already on screen enables its button again,
+  instead of leaving the one disabled by the first click.
+- **« See more » is no longer offered when the side panel has nothing to show.** The popup
+  linked to the side panel as soon as the layer declared a reading for it, even when no field
+  was sent there — no field of the `attributes` block naming the `sidepanel` surface, an empty
+  legacy `sidepanel` list, a list whose fields are all `hidden`, or a `layout` override with no
+  field. The link opened an empty drawer. It is now rendered only when the side panel would show
+  at least one field.
+
+---
+
 ## [3.20.4] - 2026-11-19
 
 ### Fixed

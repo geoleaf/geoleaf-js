@@ -1709,7 +1709,7 @@ CallSignature | GeoLeaf Core API.capabilities/feature-info/resolve.buildNormaliz
 CallSignature | GeoLeaf Core API.capabilities/feature-info/resolve.resolvePath.resolvePath | doc:7df3a68a9728
 CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/popup.closePopup.closePopup | doc:148093927574
 CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/popup.destroyPopup.destroyPopup | doc:6319a9121863
-CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/popup.handleClick.handleClick | doc:47f4058e9f20
+CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/popup.handleClick.handleClick | doc:4c5f2c1bbf86
 CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/sidepanel.closeSidePanel.closeSidePanel | doc:52c9cd78da2f
 CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/sidepanel.destroySidePanel.destroySidePanel | doc:ae8d2ddf9490
 CallSignature | GeoLeaf Core API.capabilities/feature-info/surfaces/sidepanel.isSidePanelOpen.isSidePanelOpen | doc:5aa18539ed4b
@@ -2206,7 +2206,7 @@ CallSignature | GeoLeaf Core API.capabilities/pwa/lifecycle.PwaLifecycle.__type.
 CallSignature | GeoLeaf Core API.capabilities/pwa/platform.isIOS.isIOS | doc:a760aebb2a77
 CallSignature | GeoLeaf Core API.capabilities/pwa/platform.isIOSInstallable.isIOSInstallable | doc:c07d2cdb6596
 CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type._reset._reset | doc:c713dd63528e
-CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.applyUpdate.applyUpdate | doc:3fab1710c15a
+CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.applyUpdate.applyUpdate | doc:c8e08a03cd0f
 CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.init.init | doc:d2ef38bc7b0b
 CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.isInstallable.isInstallable | doc:4df909626403
 CallSignature | GeoLeaf Core API.capabilities/pwa/pwa-manager.PWAManager.__type.isUpdateWaiting.isUpdateWaiting | doc:5e2d0f061471
@@ -2645,7 +2645,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Legend.__type.setLayerVisi
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Legend.__type.toggleAccordion.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.Notifications.__type.show.show | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type._reset._reset | doc:c713dd63528e
-CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type.applyUpdate.applyUpdate | doc:3fab1710c15a
+CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type.applyUpdate.applyUpdate | doc:c8e08a03cd0f
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type.init.init | doc:d2ef38bc7b0b
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type.isInstallable.isInstallable | doc:4df909626403
 CallSignature | GeoLeaf Core API.global.GeoLeafGlobal.PWA.__type.isUpdateWaiting.isUpdateWaiting | doc:5e2d0f061471
@@ -3479,7 +3479,7 @@ CallSignature | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector
 CallSignature | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector.__type.init.init | doc:d721d06f1492
 CallSignature | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector.__type.isOnline.isOnline | doc:b7d19b8d7cd2
 CallSignature | GeoLeaf Core API.kernel/storage/offline-detector.OfflineDetector.__type.stopPeriodicCheck.stopPeriodicCheck | doc:ef594637dba0
-CallSignature | GeoLeaf Core API.kernel/storage/sw-register.SWRegister.__type.applyUpdate.applyUpdate | doc:fed71764487b
+CallSignature | GeoLeaf Core API.kernel/storage/sw-register.SWRegister.__type.applyUpdate.applyUpdate | doc:db21491fc476
 CallSignature | GeoLeaf Core API.kernel/storage/sw-register.SWRegister.__type.isUpdateWaiting.isUpdateWaiting | doc:fd4a1489b75a
 CallSignature | GeoLeaf Core API.kernel/storage/sw-register.SWRegister.__type.register.register | doc:5f18be6291a1
 CallSignature | GeoLeaf Core API.kernel/themes/declares-no-themes.declaresNoThemes.declaresNoThemes | doc:0984893920aa
@@ -11008,7 +11008,7 @@ Parameter | GeoLeaf Core API.capabilities/feature-info/render/media.renderImage.
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/media.renderImage.renderImage.value | doc:9bd40619dd1a
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildPopupContent.buildPopupContent.ctx | doc:5f5284279472
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildPopupContent.buildPopupContent.fields | doc:bd36282cdba8
-Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildPopupContent.buildPopupContent.opts | doc:2fde84841bda
+Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildPopupContent.buildPopupContent.opts | doc:d2f51bd3c82f
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildPopupContent.buildPopupContent.rawProperties | doc:498978b85b21
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildTooltipText.buildTooltipText.fields | doc:add73dc8fe3a
 Parameter | GeoLeaf Core API.capabilities/feature-info/render/popup-content.buildTooltipText.buildTooltipText.rawProperties | doc:ca44307b7b31
@@ -17187,7 +17187,7 @@ Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:profile:failed.__type.failures | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:profile:failed.__type.fatal | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:profile:failed.__type.profileId | doc:-
-Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:sw:update-waiting | doc:4e0d713cc852
+Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:sw:update-waiting | doc:7b8565f89173
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:sw:updated | doc:1bbb3e8ba84a
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:table:closed | doc:-
 Property | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafEventMap.geoleaf:table:exportLayer | doc:-

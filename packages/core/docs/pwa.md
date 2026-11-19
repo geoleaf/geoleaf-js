@@ -163,6 +163,7 @@ accepts it.
 | First visit                                    | The worker takes the page at once: there is nothing to protect                                                                                    |
 | A new version is found, the page is in use     | It installs, then waits. `geoleaf:sw:update-waiting` is emitted on `document`                                                                     |
 | The user accepts — `GeoLeaf.PWA.applyUpdate()` | The new worker takes over, and **the page reloads** onto the new version                                                                          |
+| The new worker takes the page too late         | More than ten seconds after the gesture: no reload under the user. `geoleaf:sw:update-waiting` is emitted again, and the next gesture reloads     |
 | Nobody accepts                                 | The new version takes over once every tab of the application has been closed                                                                      |
 | The new version fails to pre-cache its files   | It is discarded and nothing is offered: the worker in place keeps serving. A file that stays missing blocks every update until it is served again |
 
@@ -183,7 +184,7 @@ function offerReload() {
 }
 
 // The event is emitted once per waiting version, possibly before your listener exists:
-// read the state as well.
+// read the state as well. It is emitted once more when an applied update came too late.
 document.addEventListener("geoleaf:sw:update-waiting", offerReload);
 if (GeoLeaf.PWA.isUpdateWaiting()) offerReload();
 
@@ -202,7 +203,13 @@ not: they are in IndexedDB.
 The reload is not instantaneous. The browser lets the new worker take over once the previous one
 has finished the requests it is serving — a slow tile server can hold it for a while — and the
 page reloads then, once. Disable your button after the click rather than expecting an immediate
-effect.
+effect — and enable it again on `geoleaf:sw:update-waiting`, emitted once more when the new worker
+took the page too late to reload it.
+
+A gesture made within three seconds of the announcement is held back until then (core 3.20.5).
+Measured in Chromium: passed on while the page still boots, it can leave the new worker waiting
+for minutes. A user answering a banner never notices; a host that calls `applyUpdate()` from the
+event itself does not need to wait on its own.
 
 :::
 

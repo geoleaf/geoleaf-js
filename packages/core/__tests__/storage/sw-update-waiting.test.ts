@@ -80,7 +80,18 @@ function takeOver(next: FakeWorker): void {
     next.become("activated");
 }
 
+/** How long the page leaves an update just announced before it sends the gesture on. */
+const SETTLE_MS = 3000;
+/** Beyond this delay after the gesture was sent on, an activation no longer reloads the page. */
+const RELOAD_WINDOW_MS = 10000;
+
+/** The page has settled since the announcement: a gesture made now is sent on at once. */
+function settle(): void {
+    vi.advanceTimersByTime(SETTLE_MS);
+}
+
 beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
     vi.resetModules();
     container = new FakeContainer();
     registration = new FakeRegistration();
@@ -104,6 +115,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
     detach();
     vi.unstubAllGlobals();
     Reflect.deleteProperty(navigator, "serviceWorker");
@@ -200,6 +212,7 @@ describe("the gesture", () => {
         heldBy();
         await SWRegister.register();
         const next = installUpdate();
+        settle();
 
         expect(SWRegister.applyUpdate()).toBe(true);
 
@@ -279,6 +292,107 @@ describe("the gesture", () => {
 
         expect(heard.updated).toBe(1);
         expect(reload).toHaveBeenCalledTimes(1);
+    });
+});
+
+// Measured in a real Chromium (E2E 79, test 306, and a probe run hundreds of times): a gesture
+// made within a fraction of a second of the announcement — while the page still boots, the
+// previous worker serving it — sometimes never activates the new one. The waiting worker
+// receives `SKIP_WAITING` and calls `skipWaiting()`, whose promise does not settle; a second
+// `SKIP_WAITING` changes nothing; the browser forces the activation some 288 s later. Two
+// answers on this side: the gesture is sent on once the page has settled, and an activation
+// that comes long after it no longer reloads a page whose user has moved on.
+describe("a gesture made while the page still boots", () => {
+    it("🛑 is sent on once the page has settled — not at once", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+
+        expect(SWRegister.applyUpdate()).toBe(true);
+        expect(next.postMessage).not.toHaveBeenCalled();
+
+        vi.advanceTimersByTime(SETTLE_MS - 1);
+        expect(next.postMessage).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(1);
+        expect(next.postMessage).toHaveBeenCalledTimes(1);
+        expect(next.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
+
+        takeOver(next);
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it("a gesture repeated while it is held back is sent on once", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+
+        SWRegister.applyUpdate();
+        SWRegister.applyUpdate();
+        settle();
+
+        expect(next.postMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("a gesture made long after the announcement is sent on at once", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+        vi.advanceTimersByTime(60000);
+
+        SWRegister.applyUpdate();
+
+        expect(next.postMessage).toHaveBeenCalledTimes(1);
+    });
+
+    it("a worker that took the page while the gesture was held back reloads it", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+
+        SWRegister.applyUpdate();
+        takeOver(next);
+        settle();
+
+        expect(reload).toHaveBeenCalledTimes(1);
+        // Nothing waits any more: nothing is sent to a worker that already holds the page.
+        expect(next.postMessage).not.toHaveBeenCalled();
+    });
+});
+
+describe("an activation that comes long after the gesture", () => {
+    it("🛑 does not reload the page under its user — the update is offered again", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+        settle();
+        SWRegister.applyUpdate();
+        expect(heard.waiting).toBe(1);
+
+        vi.advanceTimersByTime(RELOAD_WINDOW_MS + 1);
+        takeOver(next);
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(SWRegister.isUpdateWaiting()).toBe(true);
+        // Said again, so that an interface which took the first gesture can ask anew.
+        expect(heard.waiting).toBe(2);
+
+        // And the gesture made again reloads at once: the new version already holds the page.
+        expect(SWRegister.applyUpdate()).toBe(true);
+        expect(reload).toHaveBeenCalledTimes(1);
+    });
+
+    it("an activation within the window still reloads the page, once", async () => {
+        heldBy();
+        await SWRegister.register();
+        const next = installUpdate();
+        settle();
+        SWRegister.applyUpdate();
+
+        vi.advanceTimersByTime(RELOAD_WINDOW_MS);
+        takeOver(next);
+
+        expect(reload).toHaveBeenCalledTimes(1);
+        expect(heard.waiting).toBe(1);
     });
 });
 

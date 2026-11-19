@@ -123,6 +123,41 @@ let _outdated = false;
 let _reloading = false;
 
 /**
+ * How long the page leaves an update it just announced before it passes a gesture on to the
+ * waiting worker. A gesture made earlier is held back, then sent.
+ *
+ * 🛑 MEASURED, not a margin of comfort. In Chromium, a `SKIP_WAITING` that reaches the waiting
+ * worker while the page still boots — the previous worker serving it, sometimes restarting —
+ * may never activate it: `skipWaiting()` is called and its promise does not settle, a second
+ * message changes nothing, and the browser forces the activation some 288 s later. Seen at
+ * about 2 % of the gestures made within a fraction of a second of the announcement (E2E 79,
+ * a probe run hundreds of times), and at 0 in 100 with the gesture made three seconds later.
+ * It costs nothing to a user who answers a banner: the announcement is seconds old by then.
+ */
+const SETTLE_MS = 3000;
+
+/**
+ * Beyond this delay after the gesture was passed on, the change of controller it leads to no
+ * longer reloads the page: its user may be in the middle of something else. The page is marked
+ * outdated and the update is offered again — the next gesture reloads at once.
+ *
+ * ⚠️ Why a reload is still owed within it: an activation normally follows the gesture by a
+ * second or two, and a previous worker with requests in flight can hold it longer — the page
+ * was asked to reload, and does. What it no longer does is reload minutes later, on an
+ * activation the browser forced on its own clock.
+ */
+const RELOAD_WINDOW_MS = 10000;
+
+/** When this page first heard of the waiting worker — `Date.now()`, `null` before. */
+let _announcedAt: number | null = null;
+
+/** When the gesture was passed on to the waiting worker — `null` while held back, or before. */
+let _skipSentAt: number | null = null;
+
+/** A gesture held back until the page has settled ({@link SETTLE_MS}). */
+let _skipTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
  * Reloads the page — ONCE.
  *
  * 🛑 A SECOND `reload()` ABORTS THE FIRST. Measured in a browser that installs a worker at
@@ -155,6 +190,7 @@ function _container(): ServiceWorkerContainer | undefined {
 function _announceWaiting(worker: ServiceWorker): void {
     if (!_container()?.controller || _announced.has(worker)) return;
     _announced.add(worker);
+    _announcedAt = Date.now();
     Log.info("[SWRegister] A new Service Worker is installed and waits for the page.");
     dispatchGeoLeafEvent("geoleaf:sw:update-waiting", {});
 }
@@ -201,6 +237,10 @@ function _followWorker(worker: ServiceWorker | null): void {
  * `clients.claim()`, a worker replaced from another tab, a developer's "update on reload".
  * Here the reload answers `applyUpdate()` alone. A change nobody asked for on this page only
  * marks it outdated. And it reloads ONCE ({@link _reloadOnce}).
+ *
+ * ⚠️ AND ONLY WHILE THE GESTURE IS FRESH ({@link RELOAD_WINDOW_MS}). An activation that comes
+ * later — the browser forcing it minutes after a gesture it had held — no longer reloads: the
+ * page is marked outdated and the update is announced again, for an interface to ask anew.
  */
 function _watchController(): void {
     const container = _container();
@@ -211,12 +251,36 @@ function _watchController(): void {
         const before = _heldBy;
         _heldBy = container.controller;
         if (_applying) {
-            _reloadOnce();
+            const late = _skipSentAt !== null && Date.now() - _skipSentAt > RELOAD_WINDOW_MS;
+            if (!late) {
+                _reloadOnce();
+                return;
+            }
+            _applying = false;
+            _skipSentAt = null;
+            _outdated = true;
+            Log.warn(
+                "[SWRegister] The new Service Worker took the page long after the gesture; the page is not reloaded under its user, and the update is offered again."
+            );
+            dispatchGeoLeafEvent("geoleaf:sw:update-waiting", {});
             return;
         }
         // A page nothing held was simply taken: that is the first install's claim.
         if (before) _outdated = true;
     });
+}
+
+/**
+ * Passes the gesture on to the worker that waits NOW — re-read, since a gesture held back may
+ * outlive the worker it was made for. None waiting: it activated meanwhile, and the change of
+ * controller already answered the gesture.
+ */
+function _sendSkipWaiting(registration: ServiceWorkerRegistration | null): void {
+    _skipTimer = null;
+    const waiting = registration?.waiting;
+    if (!waiting) return;
+    _skipSentAt = Date.now();
+    waiting.postMessage({ type: "SKIP_WAITING" });
 }
 
 /**
@@ -331,8 +395,15 @@ const SWRegister = {
      * more than thirty seconds. Where the update was already applied from another tab,
      * nothing waits any more and the page reloads at once.
      *
-     * @returns `true` when an update is being applied — the page WILL reload; `false` when
-     *   nothing was waiting, and nothing happens.
+     * ⚠️ A gesture made within three seconds of the announcement is held back until then, and
+     * passed on once: sent while the page still boots, it can leave the new worker waiting for
+     * minutes. And a change of controller that comes more than ten seconds after the gesture
+     * was passed on reloads nothing — the page is marked outdated and `geoleaf:sw:update-waiting`
+     * is dispatched again, so the question can be asked anew; the next call reloads at once.
+     *
+     * @returns `true` when an update is being applied — the page will reload once the new
+     *   worker holds it, unless that comes too late, in which case the update is offered again;
+     *   `false` when nothing was waiting, and nothing happens.
      * @example
      * reloadButton.addEventListener("click", () => SWRegister.applyUpdate());
      */
@@ -344,7 +415,15 @@ const SWRegister = {
         const waiting = _container() ? this._registration?.waiting : null;
         if (!waiting) return false;
         _applying = true;
-        waiting.postMessage({ type: "SKIP_WAITING" });
+        // Already held back: it will be passed on once, whatever the number of gestures.
+        if (_skipTimer !== null) return true;
+        const hold = _announcedAt === null ? 0 : _announcedAt + SETTLE_MS - Date.now();
+        const registration = this._registration;
+        if (hold > 0) {
+            _skipTimer = setTimeout(() => _sendSkipWaiting(registration), hold);
+        } else {
+            _sendSkipWaiting(registration);
+        }
         return true;
     },
 

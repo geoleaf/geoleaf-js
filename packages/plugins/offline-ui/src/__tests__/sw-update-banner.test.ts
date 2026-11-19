@@ -74,6 +74,22 @@ describe("le bandeau de mise à jour", () => {
         expect(apply?.disabled).toBe(true);
     });
 
+    test("🛑 une mise à jour annoncée de nouveau rend le geste — le bouton pris ne reste pas mort", () => {
+        // The core says the update again when its activation came too late to reload the page
+        // under its user: the banner that took the first gesture must ask anew.
+        emit("geoleaf:sw:update-waiting");
+        const apply = button("sw-update-apply");
+        apply?.click();
+        expect(apply?.disabled).toBe(true);
+
+        emit("geoleaf:sw:update-waiting");
+
+        expect(document.querySelectorAll("#gl-sw-update-banner")).toHaveLength(1);
+        expect(button("sw-update-apply")?.disabled).toBe(false);
+        button("sw-update-apply")?.click();
+        expect(pwa.applyUpdate).toHaveBeenCalledTimes(2);
+    });
+
     test("le geste sans rien à appliquer retire le bandeau, plutôt qu'un bouton mort", () => {
         emit("geoleaf:sw:update-waiting");
         pwa.applyUpdate.mockReturnValue(false);

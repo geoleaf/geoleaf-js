@@ -1090,6 +1090,11 @@ export interface GeoLeafEventMap {
      * Emitted once per waiting worker — when its install completes, or when a page boots
      * onto one that was already waiting. Never at a first install. ⚠️ A listener set after
      * the boot may have missed it: read `GeoLeaf.PWA.isUpdateWaiting()` as well.
+     *
+     * Emitted once more for the same update when it was applied but the new worker took the
+     * page too late — more than ten seconds after the gesture was passed on: the page is not
+     * reloaded under its user, and the question is open again. `applyUpdate()` then reloads at
+     * once. An interface that took the first gesture should ask anew rather than stay disabled.
      */
     "geoleaf:sw:update-waiting": Record<string, never>;
     // Storage — a cache made room for itself. TWO producers, see the type.

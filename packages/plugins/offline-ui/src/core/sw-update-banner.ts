@@ -78,7 +78,16 @@ function _apply(button: HTMLButtonElement): void {
 }
 
 function _show(): void {
-    if (typeof document === "undefined" || document.getElementById(BANNER_ID)) return;
+    if (typeof document === "undefined") return;
+    const shown = document.getElementById(BANNER_ID);
+    if (shown) {
+        // Already on screen, its gesture perhaps taken: the core says the update again when the
+        // activation came too late to reload the page under its user — the question is open
+        // anew, and a button left disabled would be a dead one.
+        const taken = shown.querySelector<HTMLButtonElement>('[data-gl-action="sw-update-apply"]');
+        if (taken) taken.disabled = false;
+        return;
+    }
 
     const root = createElement("div", "gl-sw-update");
     root.id = BANNER_ID;
@@ -123,7 +132,8 @@ export function wireSwUpdateBanner(): void {
     _unwire();
     if (typeof document === "undefined") return;
 
-    // A NEW worker waits: asked again, whatever was answered to the previous one.
+    // A NEW worker waits — or the same update is said again, its activation having come too
+    // late to reload the page: asked again, whatever was answered before.
     const onWaiting = () => {
         _dismissed = false;
         _show();

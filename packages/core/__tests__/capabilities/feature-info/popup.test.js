@@ -212,6 +212,59 @@ describe("handleClick()", () => {
         handleClick(DETAIL);
         expect(document.querySelector(".gl-poi-popup__link")).toBeNull();
     });
+    // An EMPTY side-panel list is a declaration, not an absence — but it still leaves the
+    // panel with nothing to show, so the link would open an empty drawer.
+    it('"Voir plus" is absent when the attributes block sends no field to the side-panel', () => {
+        stubGeoLeaf(null);
+        globalThis.GeoLeaf.GeoJSON.getLayerConfig = (id) =>
+            id === "l1"
+                ? {
+                      attributes: {
+                          fields: [
+                              { field: "name", widget: "text", display: { surfaces: ["popup"] } },
+                              { field: "altitude", widget: "text" },
+                          ],
+                      },
+                  }
+                : null;
+        handleClick(DETAIL);
+        expect(popup()).not.toBeNull();
+        expect(document.querySelector(".gl-poi-popup__link")).toBeNull();
+    });
+    it('"Voir plus" is present when the attributes block sends a field to the side-panel', () => {
+        stubGeoLeaf(null);
+        globalThis.GeoLeaf.GeoJSON.getLayerConfig = (id) =>
+            id === "l1"
+                ? {
+                      attributes: {
+                          fields: [
+                              { field: "name", widget: "text", display: { surfaces: ["popup"] } },
+                              {
+                                  field: "altitude",
+                                  widget: "text",
+                                  display: { surfaces: ["sidepanel"] },
+                              },
+                          ],
+                      },
+                  }
+                : null;
+        handleClick(DETAIL);
+        expect(document.querySelector(".gl-poi-popup__link")).not.toBeNull();
+    });
+    it('"Voir plus" is absent when binding.sidepanel is an empty list', () => {
+        stubGeoLeaf({ ...DEFAULT_POPUP, sidepanel: [] });
+        handleClick(DETAIL);
+        expect(document.querySelector(".gl-poi-popup__link")).toBeNull();
+    });
+    it('"Voir plus" is absent when every binding.sidepanel field is hidden', () => {
+        stubGeoLeaf({ ...DEFAULT_POPUP, sidepanel: [{ field: "altitude", hidden: true }] });
+        handleClick(DETAIL);
+        expect(document.querySelector(".gl-poi-popup__link")).toBeNull();
+    });
+    it('"Voir plus" is absent when a layout override carries no field', () => {
+        handleClick(DETAIL, { fields: [] });
+        expect(document.querySelector(".gl-poi-popup__link")).toBeNull();
+    });
     it("closes on the Escape key", () => {
         handleClick(DETAIL);
         document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));

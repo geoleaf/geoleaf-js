@@ -87,11 +87,11 @@ off (see [offline-detector.md](offline-detector.md)).
 
 Outside the window, the « A new version is ready » banner follows three more:
 
-| Event                       | The banner then                                                        |
-| --------------------------- | ---------------------------------------------------------------------- |
-| `geoleaf:sw:update-waiting` | Appears — again, even after « Later »: it is another update            |
-| `geoleaf:app:ready`         | Appears if an update still waits and « Later » was not answered        |
-| `geoleaf:sw:updated`        | Leaves, unless the update was applied from another tab and still waits |
+| Event                       | The banner then                                                                                                                                                                                                  |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `geoleaf:sw:update-waiting` | Appears — again, even after « Later »: it is another update. Already shown, its **Reload** is enabled again: the core says an applied update once more when it took the page too late to reload it (core 3.20.5) |
+| `geoleaf:app:ready`         | Appears if an update still waits and « Later » was not answered                                                                                                                                                  |
+| `geoleaf:sw:updated`        | Leaves, unless the update was applied from another tab and still waits                                                                                                                                           |
 
 Its **Reload** button calls `GeoLeaf.PWA.applyUpdate()`; the core reloads the page.
 
