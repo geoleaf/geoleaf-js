@@ -1,0 +1,29 @@
+{
+    "layers": [
+        {
+            "id": "candelabres",
+            "configFile": "layers/candelabres/candelabres_config.json",
+            "layerManagerId": "data-eclairage"
+        },
+        {
+            "id": "armoires",
+            "configFile": "layers/armoires/armoires_config.json",
+            "layerManagerId": "data-eclairage"
+        },
+        {
+            "id": "reseau_cables",
+            "configFile": "layers/reseau_cables/reseau_cables_config.json",
+            "layerManagerId": "data-eclairage"
+        },
+        {
+            "id": "secteurs_eclairage",
+            "configFile": "layers/secteurs_eclairage/secteurs_eclairage_config.json",
+            "layerManagerId": "data-eclairage"
+        },
+        {
+            "id": "communes_reunion",
+            "configFile": "layers/communes_reunion/communes_reunion_config.json",
+            "layerManagerId": "data-administration"
+        }
+    ]
+}

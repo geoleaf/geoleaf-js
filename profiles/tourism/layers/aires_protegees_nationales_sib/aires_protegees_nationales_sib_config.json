@@ -1,0 +1,197 @@
+{
+    "id": "aires_protegees_nationales_sib",
+    "label": "Parcs nationaux – Aires protégées",
+    "type": "geojson",
+    "geometry": "polygon",
+    "zIndex": 53,
+    "interactiveShape": true,
+    "data": {
+        "directory": "data",
+        "file": "aires_protegees_nationales_sib.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.Name",
+                "label": "Nom",
+                "sortable": true,
+                "width": "60%"
+            },
+            {
+                "field": "properties.categoryId",
+                "label": "Catégorie",
+                "sortable": true,
+                "width": "20%"
+            },
+            {
+                "field": "properties.subCategoryId",
+                "label": "Sous-catégorie",
+                "sortable": true,
+                "width": "20%"
+            }
+        ],
+        "defaultSort": {
+            "field": "properties.Name",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": false
+    },
+    "attributes": {
+        "titleField": "properties.Name",
+        "fields": [
+            {
+                "field": "properties.Name",
+                "label": "Nom",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "attributes.photo",
+                "label": "Image principale",
+                "primitive": "string",
+                "widget": "image",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "hero": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.short_desc",
+                "label": "Résumé",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "accordion": true,
+                        "defaultOpen": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.categoryId",
+                "label": "Catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "category"
+                    }
+                }
+            },
+            {
+                "field": "attributes.subCategoryId",
+                "label": "Sous-catégorie",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "subcategory"
+                    }
+                }
+            },
+            {
+                "field": "attributes.informations",
+                "label": "Informations",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.highlights",
+                "label": "Points forts",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.gallery",
+                "label": "Galerie photos",
+                "primitive": "string[]",
+                "widget": "gallery",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.link_official",
+                "label": "Site officiel",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.link_wikipedia",
+                "label": "Wikipedia",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.tags",
+                "label": "Tags",
+                "primitive": "string[]",
+                "widget": "tags",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "_comment": "Point d'entrée du plugin `routing` — le bouton n'est posé ni par le cœur ni par le plugin, il se déclare ICI. ⚠️ Déclaré sur CETTE couche et non sur `hebergements`, qui serait sémantiquement plus naturelle : mesuré le 21/08/2026, `hebergements` n'est PAS enregistrée par le profil servi (`Layers.listLayerIds()` en rend cinq, sans elle), donc son popup ne s'ouvre jamais et le bouton serait invisible — une déclaration valide, gatée verte, et que personne ne peut atteindre. ⚠️ `payloadFields` est une liste blanche STRICTE : sans le champ du libellé, le panneau reçoit des coordonnées sans nom. Et `requiresPlugin` fait que le bouton n'est PAS rendu quand le plugin est absent — c'est le second sens de la garde, celui sans lequel on ne prouve rien.",
+                "field": "properties.Name",
+                "label": "Itinéraire",
+                "primitive": "string",
+                "widget": "action",
+                "options": {
+                    "actionId": "routing.destination",
+                    "requiresPlugin": "routing",
+                    "payloadFields": ["Name"]
+                },
+                "display": {
+                    "surfaces": ["popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

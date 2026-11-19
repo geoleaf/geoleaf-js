@@ -1,0 +1,324 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "fillColor": "#b9b177",
+        "fillOpacity": 0.5,
+        "color": "#6e6e6e",
+        "opacity": 0.5,
+        "weight": 0.98
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Altos Andes"
+            },
+            "style": {
+                "fillColor": "#b9b177",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Altos Andes"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Antartida"
+            },
+            "style": {
+                "fillColor": "#a3c7cd",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Antartida"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Bosques Patagonicos"
+            },
+            "style": {
+                "fillColor": "#c0b8a5",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Bosques Patagonicos"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Campos y Malezales"
+            },
+            "style": {
+                "fillColor": "#c4cda6",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Campos y Malezales"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Chaco Humedo"
+            },
+            "style": {
+                "fillColor": "#f2e99a",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Chaco Humedo"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Chaco Seco"
+            },
+            "style": {
+                "fillColor": "#c9c79e",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Chaco Seco"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Delta e Islas del Parana"
+            },
+            "style": {
+                "fillColor": "#b5a395",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Delta e Islas del Parana"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Espinal"
+            },
+            "style": {
+                "fillColor": "#fef5c9",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Espinal"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Estepa Patagonica"
+            },
+            "style": {
+                "fillColor": "#fff1da",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Estepa Patagonica"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Esteros del Ibera"
+            },
+            "style": {
+                "fillColor": "#c5c196",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Esteros del Ibera"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Islas del Atlantico Sur"
+            },
+            "style": {
+                "fillColor": "#dbe0c1",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Islas del Atlantico Sur"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Mar Argentino"
+            },
+            "style": {
+                "fillColor": "#e7fdfb",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Mar Argentino"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Monte de Llanuras y Mesetas"
+            },
+            "style": {
+                "fillColor": "#dbe0c1",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Monte de Llanuras y Mesetas"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Monte de Sierras y Bolsones"
+            },
+            "style": {
+                "fillColor": "#d1d99c",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Monte de Sierras y Bolsones"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Pampa"
+            },
+            "style": {
+                "fillColor": "#ecccb8",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Pampa"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Puna"
+            },
+            "style": {
+                "fillColor": "#fdd3a2",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Puna"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Yungas"
+            },
+            "style": {
+                "fillColor": "#bcb57f",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Yungas"
+            }
+        },
+        {
+            "when": {
+                "field": "properties.ecorregion",
+                "operator": "==",
+                "value": "Selva Paranense"
+            },
+            "style": {
+                "fillColor": "#c3e4af",
+                "fillOpacity": 0.5,
+                "color": "#6e6e6e",
+                "opacity": 0.5,
+                "weight": 0.98
+            },
+            "legend": {
+                "label": "Selva Paranense"
+            }
+        }
+    ]
+}

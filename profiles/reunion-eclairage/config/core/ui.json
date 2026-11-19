@@ -1,0 +1,34 @@
+{
+    "ui": {
+        "theme": "light",
+        "language": "fr",
+        "showBaseLayerControls": false,
+        "showLayerManager": true,
+        "showCacheButton": true,
+        "showCredentialButton": true
+    },
+    "layerManagerConfig": {
+        "title": "Couches",
+        "collapsedByDefault": false,
+        "sections": [
+            {
+                "id": "data-eclairage",
+                "label": "Éclairage public",
+                "order": 1,
+                "collapsedByDefault": false
+            },
+            {
+                "id": "data-administration",
+                "label": "Administration",
+                "order": 2,
+                "collapsedByDefault": true
+            },
+            {
+                "id": "basemap",
+                "label": "Fond de carte",
+                "order": 3,
+                "collapsedByDefault": true
+            }
+        ]
+    }
+}

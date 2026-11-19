@@ -1,0 +1,10 @@
+{
+    "_comment": "S11 capacités-extraction — modules.route (in-core route capability). Endpoint decorator: derives start/end markers from the line features of a bound layer. Opt-in PER LAYER (config.layers only — never all polylines). Bound to the trail layer `parcours` (Randonnée/Vélo) where a départ/arrivée makes sense; NOT to `routes_principales` (road network, where per-segment endpoints are meaningless). The line itself is rendered by the generic GeoJSON engine; the capability only styles the endpoints.",
+    "enabled": true,
+    "layers": {
+        "parcours": {
+            "start": { "fillColor": "#2b7cff", "color": "#ffffff", "radius": 6, "weight": 2 },
+            "end": { "fillColor": "#ff7b32", "color": "#ffffff", "radius": 6, "weight": 2 }
+        }
+    }
+}

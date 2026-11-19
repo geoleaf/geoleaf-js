@@ -1,0 +1,29 @@
+{
+    "id": "defaut",
+    "label": {
+        "enabled": true,
+        "visibleByDefault": false,
+        "field": "nom",
+        "font": {
+            "sizePt": 8
+        },
+        "color": "#7c2d12",
+        "opacity": 1,
+        "buffer": {
+            "enabled": true,
+            "color": "#fafafa",
+            "sizePx": 3.78
+        }
+    },
+    "description": "",
+    "style": {
+        "fillColor": "#f97316",
+        "fillOpacity": 0.25,
+        "color": "#c2410c",
+        "opacity": 1,
+        "weight": 2
+    },
+    "legend": {
+        "label": "Zones (démo édition)"
+    }
+}

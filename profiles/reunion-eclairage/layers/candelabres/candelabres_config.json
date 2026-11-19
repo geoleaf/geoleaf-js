@@ -1,0 +1,202 @@
+{
+    "id": "candelabres",
+    "label": "Candélabres",
+    "zIndex": 95,
+    "geometry": "point",
+    "geometryType": "point",
+    "interactiveShape": true,
+    "showIconsOnMap": true,
+    "data": {
+        "directory": "data",
+        "file": "candelabres.geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "altitude.json",
+        "available": [
+            {
+                "id": "altitude",
+                "label": "Couleur par altitude",
+                "file": "altitude.json"
+            },
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "table": {
+        "enabled": true,
+        "columns": [
+            {
+                "field": "properties.id",
+                "label": "ID",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.commune",
+                "label": "Commune",
+                "sortable": true,
+                "width": "25%"
+            },
+            {
+                "field": "properties.secteur",
+                "label": "Secteur",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.type_lampe",
+                "label": "Type",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.statut",
+                "label": "Statut",
+                "sortable": true,
+                "width": "15%"
+            },
+            {
+                "field": "properties.puissance_w",
+                "label": "Puissance",
+                "sortable": true,
+                "width": "15%"
+            }
+        ],
+        "defaultSort": {
+            "field": "properties.id",
+            "order": "asc"
+        }
+    },
+    "clustering": {
+        "enabled": true,
+        "maxClusterRadius": 60,
+        "disableClusteringAtZoom": 13
+    },
+    "attributes": {
+        "titleField": "properties.id",
+        "fields": [
+            {
+                "field": "properties.id",
+                "label": "Identifiant",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "title"
+                    }
+                }
+            },
+            {
+                "field": "properties.secteur",
+                "label": "Secteur",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup"]
+                }
+            },
+            {
+                "field": "properties.altitude",
+                "label": "Altitude (m)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup"]
+                }
+            },
+            {
+                "field": "properties.puissance_w",
+                "label": "Puissance (W)",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["popup"]
+                }
+            },
+            {
+                "field": "properties.statut",
+                "label": "Statut",
+                "primitive": "string",
+                "widget": "badge",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "emphasis": "category"
+                    }
+                }
+            },
+            {
+                "field": "attributes.short_desc",
+                "label": "Description",
+                "primitive": "string",
+                "widget": "longtext",
+                "display": {
+                    "surfaces": ["popup", "sidepanel"],
+                    "presentation": {
+                        "accordion": true,
+                        "defaultOpen": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.photo",
+                "label": "Photo",
+                "primitive": "string",
+                "widget": "image",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "hero": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.informations",
+                "label": "Caractéristiques techniques",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.highlights",
+                "label": "Observations",
+                "primitive": "string[]",
+                "widget": "list",
+                "display": {
+                    "surfaces": ["sidepanel"],
+                    "presentation": {
+                        "accordion": true
+                    }
+                }
+            },
+            {
+                "field": "attributes.link_official",
+                "label": "Documentation technique",
+                "primitive": "string",
+                "widget": "link",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            },
+            {
+                "field": "attributes.tags",
+                "label": "Tags",
+                "primitive": "string[]",
+                "widget": "tags",
+                "display": {
+                    "surfaces": ["sidepanel"]
+                }
+            }
+        ]
+    }
+}

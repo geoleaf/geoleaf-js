@@ -1,0 +1,36 @@
+{
+    "id": "communes_reunion",
+    "label": "Communes de La Réunion",
+    "zIndex": 60,
+    "geometry": "polygon",
+    "interactiveShape": true,
+    "data": {
+        "dataUrl": "https://data.geopf.fr/wfs/ows?service=WFS&version=2.0.0&request=GetFeature&typeName=ADMINEXPRESS-COG.LATEST:commune&outputFormat=application/json&count=50&srsName=EPSG:4326&bbox=55.2,-21.5,55.9,-20.8,EPSG:4326",
+        "format": "geojson"
+    },
+    "styles": {
+        "directory": "styles",
+        "default": "defaut.json",
+        "available": [
+            {
+                "id": "defaut",
+                "label": "Défaut",
+                "file": "defaut.json"
+            }
+        ]
+    },
+    "attributes": {
+        "titleField": "properties.nom_officiel",
+        "fields": [
+            {
+                "field": "properties.nom_officiel",
+                "label": "nom_officiel",
+                "primitive": "string",
+                "widget": "text",
+                "display": {
+                    "surfaces": ["tooltip", "popup", "sidepanel"]
+                }
+            }
+        ]
+    }
+}

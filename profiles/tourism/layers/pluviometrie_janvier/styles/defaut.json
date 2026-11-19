@@ -1,0 +1,183 @@
+{
+    "id": "defaut",
+    "label": "défaut",
+    "description": "",
+    "labelScale": {
+        "minScale": null,
+        "maxScale": null
+    },
+    "style": {
+        "fillOpacity": 0,
+        "color": "#4681cb",
+        "opacity": 1,
+        "weight": 1.51
+    },
+    "styleRules": [
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 1
+            },
+            "style": {
+                "extends": "base"
+            },
+            "legend": {
+                "label": "< 25 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 2
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 14,
+                    "stroke": {
+                        "color": "#c1eaff",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "25 à 50 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 3
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 12,
+                    "stroke": {
+                        "color": "#2e83de",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "50 à 75 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 4
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 12,
+                    "stroke": {
+                        "color": "#2f77c5",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "75 à 100 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 5
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 10,
+                    "stroke": {
+                        "color": "#2065b0",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "100 à 150 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 6
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 10,
+                    "stroke": {
+                        "color": "#3a6695",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "150 à 200 mm"
+            }
+        },
+        {
+            "when": {
+                "field": "class_id",
+                "operator": "==",
+                "value": 7
+            },
+            "style": {
+                "extends": "base",
+                "hatch": {
+                    "enabled": true,
+                    "type": "dot",
+                    "angleDeg": null,
+                    "spacingPx": 8,
+                    "stroke": {
+                        "color": "#22e3ff",
+                        "opacity": 1,
+                        "widthPx": 1
+                    },
+                    "renderMode": "pattern_only"
+                }
+            },
+            "legend": {
+                "label": "> 200 mm"
+            }
+        }
+    ],
+    "legend": {
+        "label": "Pluviométrie Janvier"
+    }
+}

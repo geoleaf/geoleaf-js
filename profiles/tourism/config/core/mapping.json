@@ -1,0 +1,29 @@
+{
+    "gbif": {
+        "description": "Normalisation des données GBIF Occurrence API vers le format GeoLeaf POI (forme plate per-source — contrat mapping ANO-083).",
+        "source": "https://api.gbif.org/v1/occurrence/search",
+        "mapping": {
+            "id": "key",
+            "title": "vernacularName",
+            "description": "scientificName",
+            "category": "kingdom",
+            "subcategory": "class",
+            "location.lat": "decimalLatitude",
+            "location.lng": "decimalLongitude",
+            "attributes.species": "species",
+            "attributes.vernacularName": "vernacularName",
+            "attributes.scientificName": "scientificName",
+            "attributes.kingdom": "kingdom",
+            "attributes.phylum": "phylum",
+            "attributes.class": "class",
+            "attributes.order": "order",
+            "attributes.family": "family",
+            "attributes.genus": "genus",
+            "attributes.basisOfRecord": "basisOfRecord",
+            "attributes.country": "country",
+            "attributes.eventDate": "eventDate",
+            "attributes.institutionCode": "institutionCode",
+            "attributes.datasetName": "datasetName"
+        }
+    }
+}

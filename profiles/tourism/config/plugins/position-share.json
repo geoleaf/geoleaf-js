@@ -1,0 +1,13 @@
+{
+    "enabled": false,
+    "mode": "manual",
+    "transport": "websocket",
+    "channel": "positions",
+    "intervalMs": 30000,
+    "minDistanceM": 10,
+    "showButton": true,
+    "receive": {
+        "enabled": false,
+        "layerId": "positions_terrain"
+    }
+}

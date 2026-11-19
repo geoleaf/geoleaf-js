@@ -1,0 +1,4 @@
+{
+    "_comment": "S8/F3 — modules.theme-selector (in-core capability capabilities/theme-selector). Capability gate only (opt-out) ; migrated from ui.showThemeSelector.",
+    "enabled": true
+}
