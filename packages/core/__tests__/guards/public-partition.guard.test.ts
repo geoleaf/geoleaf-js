@@ -22,8 +22,9 @@
  * ① **The shapes reintroduction would take.** `CLAUDE.md` is read by its
  *    harness in any subdirectory: `packages/core/CLAUDE.md` is the return's
  *    most likely shape, and an anchored pattern (`/CLAUDE.md`) would let it
- *    through. The reason four patterns out of five are UN-anchored, and
- *    this test is what keeps them from being "fixed" by anchoring.
+ *    through. The reason the patterns without an inner slash are
+ *    UN-anchored, and this test is what keeps them from being "fixed" by
+ *    anchoring.
  *
  * ② **The false positives.** A too-wide pattern grabbing
  *    `docs/CLAUDE_GUIDE.md` would remove public docs with nothing saying so
@@ -35,7 +36,7 @@
  *
  * ## A guard never seen red guards nothing
  *
- * Anti-empty-guard assertion: the five declared patterns must all be
+ * Anti-empty-guard assertion: the declared patterns must all be
  * exercised by at least one case. Without it, removing a pattern from the
  * module would make this guard green testing nothing any more.
  */
@@ -69,7 +70,7 @@ const partition: PublicPartition = requireCjs(
 
 /**
  * Classification cases: `[path, kept in the workshop?, case motive]`.
- * The first nine exercise the five patterns; the next seven are the false
+ * The internal cases exercise every pattern; the others are the false
  * positives a too-wide pattern would produce.
  */
 const CASES: ReadonlyArray<[string, boolean, string]> = [
@@ -82,6 +83,10 @@ const CASES: ReadonlyArray<[string, boolean, string]> = [
     [".github/copilot-instructions.md", true, "ancré par sa barre oblique"],
     ["STATUS.md", true, "fiche de suivi, racine"],
     ["packages/core/STATUS.md", true, "fiche de suivi, motif NON ancré"],
+    ["docs/recette/README.md", true, "index des recettes"],
+    ["docs/recette/outils/cellules.mjs", true, "outillage de recette, profond"],
+    ["docs/recetteur.md", false, "préfixe de nom, pas le répertoire"],
+    ["docs/reference/recette.md", false, "un document public qui parle de recette"],
     ["README.md", false, "vitrine"],
     ["docs/specs/CDC_kernel.md", false, "doc publique"],
     ["packages/core/src/index.ts", false, "source"],
@@ -91,7 +96,7 @@ const CASES: ReadonlyArray<[string, boolean, string]> = [
     ["docs/STATUS.md.bak", false, "contient STATUS.md, n'est pas STATUS.md"],
 ];
 
-/** A plausibly sized batch, carrying the five patterns. */
+/** A plausibly sized batch, carrying every pattern. */
 function plausibleLot(): string[] {
     const files: string[] = [];
     for (let i = 0; i < partition.MIN_PUBLIC_FILES + 400; i++) {
@@ -102,7 +107,8 @@ function plausibleLot(): string[] {
         "_docs_projet/CADRE.md",
         ".claude/commands/x.md",
         ".github/copilot-instructions.md",
-        "STATUS.md"
+        "STATUS.md",
+        "docs/recette/plan-recette.md"
     );
     return files;
 }
@@ -112,7 +118,7 @@ describe("public-partition — la frontière atelier/public", () => {
         expect(partition.isInternal(file)).toBe(internal);
     });
 
-    it("exerce les CINQ motifs déclarés — anti-garde-vide", () => {
+    it("exerce TOUS les motifs déclarés — anti-garde-vide", () => {
         const exercised = new Set<string>();
         for (const [file] of CASES) {
             const { internal, pattern } = partition.classify(file);
@@ -143,11 +149,11 @@ describe("public-partition — la frontière atelier/public", () => {
     it("REFUSE quand AUCUN motif ne mord — l'atelier partirait en entier", () => {
         const rienDInterne = plausibleLot().filter((f) => !partition.isInternal(f));
         expect(() => partition.assertPartitionSane(partition.split(rienDInterne))).toThrow(
-            /5 motif\(s\)/
+            `${partition.INTERNAL_PATTERNS.length} motif(s)`
         );
     });
 
-    it("le fragment `.gitignore` porte les cinq motifs", () => {
+    it("le fragment `.gitignore` porte tous les motifs", () => {
         const fragment = partition.gitignoreFragment();
         for (const { pattern } of partition.INTERNAL_PATTERNS) {
             expect(fragment).toContain(pattern);

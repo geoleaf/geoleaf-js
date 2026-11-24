@@ -138,6 +138,10 @@ it means for security:
   expires: the session does end then, and loudly.
 - Signing out calls no route: a token that must stop working before its expiry has to be revoked
   by the server.
+- Under `auth.contract: "pair"` (connector 1.5.0), the access token is held **in memory only** and
+  the single-use refresh token is persisted; renewals are serialised per device across tabs, and
+  signing out revokes the refresh token when `auth.revokeEndpoint` is set — §3.3 of the server
+  contract.
 
 ---
 
@@ -240,7 +244,10 @@ await GeoLeaf.Connector.configure({
 ```
 
 **Refresh is derived, not configured**: the connector reaches `POST {endpoint}/refresh`
-automatically — with the endpoint above, that is `/api/auth/login/refresh`.
+automatically — with the endpoint above, that is `/api/auth/login/refresh`. A server that answers
+`{ access_token, refresh_token, expires_in }` and rotates its refresh token is configured with
+`auth.contract: "pair"` and an explicit `auth.refreshEndpoint` instead — §3.3 of the
+[server contract](./SERVER_CONTRACT.md).
 
 ⚠️ **`expiresIn` is frequently missing.** Many JWT libraries return only the token, and their
 default success response carries no lifetime. Without it, sign-in fails ("Invalid server response:
@@ -253,8 +260,10 @@ token-TTL setting is the value to expose.
 
 **① A native OAuth 2.0 password flow is NOT compatible with this contract.** The ROPC grant
 (RFC 6749 §4.3, the `/token` endpoint of most OIDC servers) expects `grant_type=password` encoded
-as `application/x-www-form-urlencoded`. The connector sends **JSON**. Two ways out: use the
-callback mode of §7.4 with the provider's own SDK, or put a thin adapter in front:
+as `application/x-www-form-urlencoded`. The connector sends **JSON** — under both its contracts:
+`auth.contract: "pair"` reads the OAuth 2 **answer** (`access_token`, `refresh_token`,
+`expires_in`), not the grant's request. Two ways out: use the callback mode of §7.4 with the
+provider's own SDK, or put a thin adapter in front:
 
 ```
 POST /api/auth/login          ← receives { login, password }   (connector format)

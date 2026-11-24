@@ -284,7 +284,7 @@ const SCRIPTS_ALLOWLIST = new Set([
     // list again.
     "port-to-public.cjs",
     // scripts/lib/ — the workshop/public boundary, and the only home of its
-    // five patterns. They lived outside the repo (`~/.claude/geoleaf-nuit/`),
+    // patterns. They lived outside the repo (`~/.claude/geoleaf-nuit/`),
     // hence on a single workstation: a port that did not find them
     // reintroduced 39 workshop files while exiting green. Guarded by
     // `public-partition.guard.test.ts`, seen red on two mutations.
@@ -362,9 +362,14 @@ const SCRIPTS_ALLOWLIST = new Set([
     // ATELIER-CHECK — the gates whose SUBJECT lives in the workshop root, taken off
     // the push path. Subset DERIVED from `ci-local.cjs` through the `workshop: true`
     // flag, on `release-check.cjs`'s exact pattern (floor + load-bearing commands
-    // re-derived from the selection). The push protocol now asks for TWO greens —
-    // that is the price of no longer paying for them on every run.
+    // re-derived from the selection). `push-check.cjs` runs it on every push —
+    // that is the price of no longer paying for them on every `ci:local`.
     "atelier-check.cjs",
+    // PUSH-CHECK — what a push to the workshop repo must pass, DERIVED from what it sends:
+    // full `ci:local` as soon as one public path (per `lib/public-partition.cjs`) differs from
+    // the last green on a clean tree, a short set otherwise. Replaces a "two greens before
+    // every push" rule that cost a full run for a journal line.
+    "push-check.cjs",
     // DOC-CEIL — size ceiling of the documents loaded before any source, plus the ban on
     // copied counts in them. Decreasing ratchet; skips on the public clone, hence a
     // workshop gate (`atelier:check`).
@@ -858,6 +863,62 @@ const OUTSIDE_SCRIPTS_ALLOWLIST = new Set([
     "packages/build-config/vitest/resolve-js-to-ts.mjs",
     "packages/build-config/vitest/test-report.mjs",
     "packages/build-config/vitest/worker-budget.mjs",
+    // Acceptance tooling of the workshop (`docs/recette/`, which never ships): the isolation
+    // cell builder and its Rollup config, the contribution probe, the coupling matrix, the
+    // gesture runner, and each run's capture or gesture scripts. Run by hand, from the
+    // acceptance plan that cites them.
+    // Listed by PATH, same reasoning as above: a `docs/recette/` rule would be a hiding place.
+    "docs/recette/outils/cellules.mjs",
+    "docs/recette/outils/couplages.mjs",
+    "docs/recette/outils/geste.mjs",
+    "docs/recette/outils/rollup.cellule.mjs",
+    "docs/recette/outils/sonde-apport.mjs",
+    "docs/recette/sprint-00/scripts/captures.mjs",
+    "docs/recette/sprint-01/scripts/12-boot-carte-fonds.mjs",
+    "docs/recette/sprint-01/scripts/13-couches-themes.mjs",
+    "docs/recette/sprint-01/scripts/14-coquille-bus-i18n.mjs",
+    "docs/recette/sprint-01/scripts/15-silences.mjs",
+    "docs/recette/sprint-01/scripts/16-profils.mjs",
+    "docs/recette/sprint-01/scripts/17-d01-extrusion-langues.mjs",
+    "docs/recette/sprint-02/scripts/22-scale.mjs",
+    "docs/recette/sprint-02/scripts/23-coordinates.mjs",
+    "docs/recette/sprint-02/scripts/24-geolocation.mjs",
+    "docs/recette/sprint-02/scripts/25-branding.mjs",
+    "docs/recette/sprint-02/scripts/26-theme-toggle.mjs",
+    "docs/recette/sprint-02/scripts/27-echelle-six-zooms.mjs",
+    "docs/recette/sprint-02/scripts/_profil.mjs",
+    "docs/recette/sprint-03/scripts/32-taxonomy.mjs",
+    "docs/recette/sprint-03/scripts/33-labels.mjs",
+    "docs/recette/sprint-03/scripts/34-cluster.mjs",
+    "docs/recette/sprint-03/scripts/35-vector-tiles.mjs",
+    "docs/recette/sprint-03/scripts/36-route.mjs",
+    "docs/recette/sprint-03/scripts/37-verification-navigateur.mjs",
+    "docs/recette/sprint-03/scripts/_commun.mjs",
+    "docs/recette/sprint-03/scripts/_tuiles.mjs",
+    "docs/recette/sprint-04/scripts/42-feature-info.mjs",
+    "docs/recette/sprint-04/scripts/43-legend.mjs",
+    "docs/recette/sprint-04/scripts/44-filter.mjs",
+    "docs/recette/sprint-04/scripts/45-verification-navigateur.mjs",
+    "docs/recette/sprint-04/scripts/_commun.mjs",
+    "docs/recette/sprint-05/scripts/52-permalink.mjs",
+    "docs/recette/sprint-05/scripts/53-toast-renderer.mjs",
+    "docs/recette/sprint-05/scripts/54-theme-selector.mjs",
+    "docs/recette/sprint-05/scripts/55-theme-palette.mjs",
+    "docs/recette/sprint-05/scripts/56-verification-navigateur.mjs",
+    "docs/recette/sprint-05/scripts/_commun.mjs",
+    "docs/recette/sprint-06/scripts/61-contexte-persistant.mjs",
+    "docs/recette/sprint-06/scripts/62-profile-switcher.mjs",
+    "docs/recette/sprint-06/scripts/63-language-switcher.mjs",
+    "docs/recette/sprint-06/scripts/64-pwa.mjs",
+    "docs/recette/sprint-06/scripts/65-offline.mjs",
+    "docs/recette/sprint-06/scripts/66-verification-navigateur.mjs",
+    "docs/recette/sprint-06/scripts/_commun.mjs",
+    "docs/recette/sprint-07/scripts/71-complet.mjs",
+    "docs/recette/sprint-07/scripts/72-console-retraits.mjs",
+    "docs/recette/sprint-07/scripts/72-synthese-retraits.mjs",
+    "docs/recette/sprint-07/scripts/73-couples.mjs",
+    "docs/recette/sprint-07/scripts/74-exemples.mjs",
+    "docs/recette/sprint-07/scripts/74-metriques.mjs",
 ]);
 
 // Per-package Rollup configs, recognised STRUCTURALLY by exact basename rather than

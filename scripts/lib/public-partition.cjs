@@ -12,8 +12,8 @@
  * where the package list had diverged). Not here: a publication boundary is a
  * **decision**, and deriving it would make it depend on a side effect. It is exactly the
  * arbitration written in `publish-plugins.cjs` for `PUBLISHED_PLUGINS` — widening an
- * external surface is decided, not observed. The five patterns below are therefore
- * written by hand.
+ * external surface is decided, not observed. The patterns below are therefore written
+ * by hand.
  *
  * What IS derived, however, is the **check**: a pattern that no longer matches anything
  * THROWS (see {@link assertPartitionSane}). Without it, a renamed `_docs_projet/` would
@@ -53,8 +53,7 @@
 "use strict";
 
 /**
- * The five internal-apparatus patterns, in the `.gitignore` form they take on the clone
- * side.
+ * The internal-apparatus patterns, in the `.gitignore` form they take on the clone side.
  *
  * `dir: true` designates a directory (the pattern matches the path prefix); otherwise the
  * pattern matches a **file name** at any depth, unless it contains a slash, in which case
@@ -81,6 +80,15 @@ const INTERNAL_PATTERNS = [
         pattern: "STATUS.md",
         dir: false,
         why: "fiche de suivi du projet, lue par le tableau de bord du poste",
+    },
+    {
+        // Acceptance runs: their sources, scripts and isolation tooling. `docs/` ships to the
+        // public, but these files describe the workstation (hosts, vhosts, local engines),
+        // and the folder layout is shared by every repo of the workshop, so it stays here.
+        // Same unanchored directory form as the workshop directory above.
+        pattern: "docs/recette/",
+        dir: true,
+        why: "recettes jouées sur le poste — sources, scripts, outillage d'isolation",
     },
 ];
 
@@ -225,11 +233,11 @@ function gitignoreFragment() {
         "# travail qui porte encore l'appareil les ferait entrer, et rien — aucune gate,",
         "# aucun test — ne le signalerait.",
         "#",
-        "# ⚠️ Quatre motifs sur cinq sont NON ancrés, délibérément : `CLAUDE.md` est lu",
+        "# ⚠️ Les motifs sans barre oblique interne sont NON ancrés : `CLAUDE.md` est lu",
         "# par son harnais dans N'IMPORTE QUEL sous-répertoire, donc un motif ancré",
         "# laisserait passer `packages/core/CLAUDE.md` — la forme la plus probable de la",
         "# réintroduction. `.github/copilot-instructions.md` est ancré par sa seule barre",
-        "# oblique, et ça suffit : ce fichier n'est lu qu'à la racine.",
+        "# oblique, et ça suffit : ce fichier n'est lu qu'à la racine ; `docs/recette/` de même.",
         ...rules,
         "",
     ].join("\n");

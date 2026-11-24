@@ -83,6 +83,19 @@ printf '%s\n' "$_staged" | sed 's/^/   /'
 printf '\033[2m   ⚠️  Ce hook va AJOUTER l arbre qualifié régénéré. Sous session concurrente,\n'
 printf '       il porte aussi les fichiers des autres — relire la liste ci-dessus avant de valider.\033[0m\n\n'
 
+# Session skills — `.claude/skills/` holds copies of the workshop kit
+# (~/dev/platform/claude/skills, copied by `skills-sync`). A copy edited by hand would drift
+# from the source and be overwritten at the next sync: refuse it here, as the other
+# repositories that receive the kit do. Only when the commit touches those copies, and
+# silent outside the workshop (no script at that path: a clone elsewhere, or the Windows
+# side of the UNC mount).
+if printf '%s\n' "$_staged" | grep -q '^\.claude/skills/'; then
+  _sync="$HOME/dev/platform/scripts/skills-sync"
+  if [ -x "$_sync" ]; then
+    "$_sync" --check .
+  fi
+fi
+
 npx lint-staged
 
 # Arbre qualifié — RÉGÉNÉRÉ ici, pas seulement vérifié ailleurs.

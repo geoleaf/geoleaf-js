@@ -203,6 +203,12 @@ export default [
             // less docile report JS, not a current red. Flat config does not skip
             // a gitignored directory.
             "artifacts/",
+            // Acceptance isolation cells: copies of a deployed variant with a swapped,
+            // minified bundle, plus their build scratch. Git-ignored and regenerable,
+            // exactly like `deploy/` above — but flat config does not skip a gitignored
+            // directory, so without this line `npm run lint` judges ~40,000 minified
+            // findings. The cell TOOLING beside it stays linted.
+            "docs/recette/cellules/",
             // Moved out of `packages/`. ⚠️ MANDATORY, non-obvious edit: this
             // directory carries 129 `.js` files (hashed VitePress chunks) that no
             // other `ignores` covers — `**/dist/` does not match the `docs-dist`

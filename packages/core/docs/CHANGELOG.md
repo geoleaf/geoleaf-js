@@ -11,6 +11,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## `@geoleaf-plugins/connector` 1.5.0 - 2026-11-24
+
+Published without a core release: `@geoleaf/core` stays at 3.20.5.
+
+### Added
+
+- **A second token contract: an access token and a single-use refresh token**
+  (`@geoleaf-plugins/connector` 1.5.0). The `auth` mode expected `{ token, expiresIn }` and a
+  renewal at `POST {endpoint}/refresh` with the token as `Bearer`: a server answering in the shape
+  of OAuth 2 (RFC 6749 §5.1) could not plug in — the sign-in failed on "missing token or
+  expiresIn". `auth.contract: "pair"` reads `{ access_token, refresh_token, expires_in,
+refresh_expires_in? }`, renews by posting `{ refresh_token }` to `auth.refreshEndpoint`, and
+  signs out by revoking the refresh token at `auth.revokeEndpoint` when one is set — after erasing
+  the session, whatever the server answers. The access token is held in memory only. Because the
+  refresh token is single-use, renewals are serialised per device across tabs
+  (`navigator.locks`), the token is re-read from storage under the lock, and the new pair is shared
+  with the other tabs (`BroadcastChannel`). The default contract is unchanged.
+- **The login form can be mounted in an element of the host** (`@geoleaf-plugins/connector`
+  1.5.0). `auth.ui` takes an object: `mount` (an element, or a function called when the window
+  opens) renders the same form in a side panel or a drawer, without backdrop or page-wide focus
+  trap, and `onDismiss` is called on `Escape` or the close button. `notice` shows a warning above
+  the fields, and `reloadOnSuccess` reloads the page after a sign-in. `auth.ui: true` is still the
+  modal.
+- **A refusal carries its code and its wait** (`@geoleaf-plugins/connector` 1.5.0). `AuthError`
+  gains `code` — the problem's `code` member, or `error` (RFC 6749 §5.2) — and `retryAfter`, read
+  from the `Retry-After` of a `429`; the login window keeps its button disabled that long, with a
+  countdown.
+
+### Changed
+
+- **The password leaves the field as the request leaves** (`@geoleaf-plugins/connector` 1.5.0). It
+  was emptied only when the sign-in failed.
+- **A `429` on sign-in is worded "Too many attempts"** (`@geoleaf-plugins/connector` 1.5.0),
+  instead of "Authentication failed (429)".
+
 ## [3.20.5] - 2026-11-19
 
 Published with `@geoleaf-plugins/offline-ui` 1.7.3.

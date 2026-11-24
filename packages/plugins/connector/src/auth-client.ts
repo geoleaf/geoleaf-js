@@ -28,21 +28,105 @@ interface AuthProblem {
     readonly body: Record<string, unknown>;
 }
 
-/** Thrown when a sign-in fails. */
+/** What a refusal carried, as {@link AuthError} keeps it. */
+interface AuthRefusal {
+    readonly status: number;
+    readonly problem?: AuthProblem;
+    /** Seconds to wait, from the `Retry-After` of a `429`. */
+    readonly retryAfter?: number;
+}
+
+/**
+ * Thrown when a sign-in fails.
+ *
+ * Its message is the plugin's own wording, never the server's text, and never carries a
+ * credential: what the server said is on `problem`, to be shown as text.
+ */
 export class AuthError extends Error {
     /** HTTP status of the server's answer; absent when the exchange never got one. */
     readonly status?: number;
     /** The problem the answer declared, when it declared one. */
     readonly problem?: AuthProblem;
+    /**
+     * The application's code for the refusal — the problem's `code` member, or its `error`
+     * member (the shape of RFC 6749 §5.2) — when it is a non-empty string. What a host
+     * branches on: credentials refused, a second factor required, an account locked.
+     */
+    readonly code?: string;
+    /**
+     * Seconds before trying again, read from the `Retry-After` of a `429` (seconds or an HTTP
+     * date); absent otherwise. The login window keeps its button disabled for that long.
+     */
+    readonly retryAfter?: number;
 
-    constructor(message: string, answer?: { status: number; problem?: AuthProblem }) {
+    constructor(message: string, answer?: AuthRefusal) {
         super(message);
         this.name = "AuthError";
         if (answer) {
             this.status = answer.status;
-            if (answer.problem) this.problem = answer.problem;
+            if (answer.problem) {
+                this.problem = answer.problem;
+                const code = _codeOf(answer.problem.body);
+                if (code !== undefined) this.code = code;
+            }
+            if (answer.retryAfter !== undefined) this.retryAfter = answer.retryAfter;
         }
     }
+}
+
+/** The problem body's `code`, or its `error` — `undefined` unless a non-empty string. */
+function _codeOf(body: Record<string, unknown>): string | undefined {
+    for (const key of ["code", "error"]) {
+        const value = body[key];
+        if (typeof value === "string" && value !== "") return value;
+    }
+    return undefined;
+}
+
+/** Past this many seconds a `Retry-After` is not believed: the button would stay dead. */
+const RETRY_AFTER_MAX_S = 3600;
+
+/**
+ * The seconds a `Retry-After` header asks for — delta-seconds or an HTTP date (RFC 9110
+ * §10.2.3) — or `undefined` when it is absent, unreadable, or past an hour.
+ */
+function retryAfterOf(response: Response, now: number = Date.now()): number | undefined {
+    const raw = response.headers?.get("retry-after")?.trim();
+    if (!raw) return undefined;
+    let seconds: number;
+    if (/^\d+$/.test(raw)) {
+        seconds = Number(raw);
+    } else {
+        const at = Date.parse(raw);
+        if (Number.isNaN(at)) return undefined;
+        seconds = Math.ceil((at - now) / 1000);
+    }
+    if (seconds < 0) return 0;
+    return seconds > RETRY_AFTER_MAX_S ? undefined : seconds;
+}
+
+/**
+ * The refusal a non-2xx answer carries: its status, the problem it declared, and the wait a
+ * `429` asked for.
+ */
+export async function refusalOf(response: Response, deadline: number): Promise<AuthRefusal> {
+    const problem = await problemOf(response, deadline);
+    const retryAfter = response.status === 429 ? retryAfterOf(response) : undefined;
+    return {
+        status: response.status,
+        ...(problem && { problem }),
+        ...(retryAfter !== undefined && { retryAfter }),
+    };
+}
+
+/** The plugin's wording for a refused sign-in — shared by the two contracts. */
+export function signInRefusal(answer: AuthRefusal): AuthError {
+    const status = answer.status;
+    if (status === 401) return new AuthError("Invalid credentials", answer);
+    if (status === 404) return new AuthError("Endpoint not found (404)", answer);
+    if (status === 429) return new AuthError("Too many attempts", answer);
+    if (status >= 500) return new AuthError("Server error (" + status + ")", answer);
+    return new AuthError("Authentication failed (" + status + ")", answer);
 }
 
 interface AuthResponse {
@@ -74,7 +158,9 @@ export const EXCHANGE_TIMEOUT_MS = 15000;
  * fails the day the two lists differ. `501` is absent on purpose: "not implemented" does not
  * pass with time.
  */
-const TRANSIENT_RENEWAL_STATUSES: ReadonlySet<number> = new Set([408, 429, 500, 502, 503, 504]);
+export const TRANSIENT_RENEWAL_STATUSES: ReadonlySet<number> = new Set([
+    408, 429, 500, 502, 503, 504,
+]);
 
 /**
  * What a renewal attempt concluded — the session's fate is decided from it.
@@ -103,19 +189,10 @@ type RefreshResult =
  * string, or a lifetime that is not a positive number, would be stored already expired.
  */
 async function _parseAuthResponse(response: Response, deadline: number): Promise<AuthResponse> {
-    if (!response.ok) {
-        const problem = await _problemOf(response, deadline);
-        const answer = { status: response.status, ...(problem && { problem }) };
-        if (response.status === 401) throw new AuthError("Invalid credentials", answer);
-        if (response.status === 404) throw new AuthError("Endpoint not found (404)", answer);
-        if (response.status >= 500) {
-            throw new AuthError("Server error (" + response.status + ")", answer);
-        }
-        throw new AuthError("Authentication failed (" + response.status + ")", answer);
-    }
+    if (!response.ok) throw signInRefusal(await refusalOf(response, deadline));
     let text: string;
     try {
-        text = await _readWithin(response, deadline);
+        text = await readWithin(response, deadline);
     } catch {
         // Cut or stalled in transit: the same class as a network error.
         throw new AuthError("Network unavailable");
@@ -138,13 +215,13 @@ const PROBLEM_MAX_CHARS = 16_384;
  * before. The read shares the exchange's time budget, so a problem body that stalls delays
  * the refusal by what is left of it and no more, and is then dropped.
  */
-async function _problemOf(response: Response, deadline: number): Promise<AuthProblem | undefined> {
+async function problemOf(response: Response, deadline: number): Promise<AuthProblem | undefined> {
     // `?.`: a host or a test may hand `fetch` a double whose answers carry no headers.
     const declared = response.headers?.get("content-type") ?? "";
     if (!/^\s*application\/problem\+json\s*(;|$)/i.test(declared)) return undefined;
     let data: unknown;
     try {
-        const text = await _readWithin(response, deadline);
+        const text = await readWithin(response, deadline);
         if (text.length > PROBLEM_MAX_CHARS) return undefined;
         data = JSON.parse(text);
     } catch {
@@ -172,7 +249,7 @@ async function _problemOf(response: Response, deadline: number): Promise<AuthPro
  * WAITING for it. The race keeps the late read handled, so its eventual rejection cannot
  * surface as an unhandled one.
  */
-async function _readWithin(response: Response, deadline: number): Promise<string> {
+export async function readWithin(response: Response, deadline: number): Promise<string> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     const expired = new Promise<never>((_resolve, reject) => {
         timer = setTimeout(
@@ -308,7 +385,7 @@ export const AuthClient = {
 
         let text: string;
         try {
-            text = await _readWithin(response, deadline);
+            text = await readWithin(response, deadline);
         } catch {
             // Cut or stalled in transit: the same class as a network error.
             return { verdict: "unavailable", reason: "body" };

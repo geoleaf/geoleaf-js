@@ -19,6 +19,8 @@ const langConnectorFr = {
     "connector.error.networkUnavailable": "Serveur inaccessible. Vérifiez votre connexion.",
     "connector.error.generic": "Erreur : ",
     "connector.error.unexpected": "Une erreur inattendue est survenue.",
+    "connector.error.tooManyAttempts": "Trop de tentatives. Réessayez dans {seconds} s.",
+    "connector.error.tooManyAttemptsLater": "Trop de tentatives. Réessayez plus tard.",
 } satisfies Record<string, string>;
 
 export default langConnectorFr;

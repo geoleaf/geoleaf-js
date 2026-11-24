@@ -11,9 +11,9 @@
  *   node scripts/ci-local.cjs --report   # print the cost/bite ledger, run nothing
  *
  * ⚠️ A green here no longer covers the workshop gates: they moved to
- * `npm run atelier:check`. The push protocol therefore asks for TWO greens — see
- * CLAUDE.md. That is the price of not paying for them on every run, and it is
- * written rather than left to be discovered.
+ * `npm run atelier:check`. `scripts/push-check.cjs` runs them on every push, and asks
+ * for this script first whenever the push carries a public file. A green run also
+ * records whether the tracked tree was clean: only such a run can serve as its base.
  *
  * Exit code: 0 if every (required) gate passed, 1 otherwise. Each gate runs even
  * after a previous failure (unless --bail) so you get the full picture in one go.
@@ -1535,6 +1535,28 @@ function gitSha() {
     }
 }
 
+/**
+ * Whether the tracked tree matches `HEAD` — no staged or unstaged change to a tracked file.
+ *
+ * Untracked files are ignored on purpose: build outputs and local scratch live there, and none
+ * of them is part of a commit. A green run on a DIRTY tree judged something no commit holds, so
+ * `push-check.cjs` refuses to stand on it: this flag, written in the ledger row, is what lets it
+ * tell the two apart. Never throws: unknown reads as not clean.
+ *
+ * @returns {boolean} True when `git status --porcelain --untracked-files=no` prints nothing.
+ */
+function trackedTreeClean() {
+    try {
+        const r = spawnSync("git", ["status", "--porcelain", "--untracked-files=no"], {
+            cwd: ROOT,
+            encoding: "utf8",
+        });
+        return r.status === 0 && r.stdout.trim() === "";
+    } catch {
+        return false;
+    }
+}
+
 function runStep(step, index) {
     const label = `[${index + 1}/${ALL_STEPS.length}] ${step.name}`;
     console.log(`\n\x1b[36m── ${label} ──\x1b[0m`);
@@ -1663,6 +1685,9 @@ function main() {
             `${BAIL ? ", bail on first failure" : ""}`
     );
 
+    // Read BEFORE the first gate and again after the last: a tree edited during the run
+    // (a concurrent session, a gate that rewrites a tracked file) is not the tree judged.
+    const cleanAtStart = trackedTreeClean();
     const results = [];
     for (let i = 0; i < ALL_STEPS.length; i++) {
         const r = runStep(ALL_STEPS[i], i);
@@ -1682,6 +1707,7 @@ function main() {
     const ledger = require("./lib/gate-ledger.cjs").record({
         startedAt: new Date().toISOString(),
         sha: gitSha(),
+        clean: cleanAtStart && trackedTreeClean(),
         flags: [WITH_E2E ? "--e2e" : null, BAIL ? "--bail" : null].filter(Boolean),
         results,
     });

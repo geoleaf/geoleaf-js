@@ -19,6 +19,8 @@ const langConnectorDe = {
     "connector.error.networkUnavailable": "Server nicht erreichbar. Prüfen Sie Ihre Verbindung.",
     "connector.error.generic": "Fehler: ",
     "connector.error.unexpected": "Ein unerwarteter Fehler ist aufgetreten.",
+    "connector.error.tooManyAttempts": "Zu viele Versuche. Erneut versuchen in {seconds} s.",
+    "connector.error.tooManyAttemptsLater": "Zu viele Versuche. Bitte später erneut versuchen.",
 } satisfies Record<string, string>;
 
 export default langConnectorDe;

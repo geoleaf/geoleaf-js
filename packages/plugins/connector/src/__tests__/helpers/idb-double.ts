@@ -17,11 +17,13 @@
  * `close()` calls, so a suite can tell a database left open on a failure path.
  */
 
-/** A record as `token-store.ts` persists it. */
+/** A record as `token-store.ts` persists it — a `"token"` session or a `"pair"` one. */
 export interface IDBDoubleRecord {
     baseUrl: string;
-    token: string;
-    expiresAt: number;
+    token?: string;
+    expiresAt?: number;
+    refreshToken?: string;
+    refreshExpiresAt?: number;
 }
 
 /** The request shape the store reads: `result`, `error`, and the two callbacks. */

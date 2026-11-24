@@ -62,3 +62,8 @@ e2e/fixtures/**/*.geojson
 # ⚠️ `.topojson` aussi sous `e2e/fixtures/` — le motif d'à côté ne le couvrait pas et le
 # relevé l'a montré, pas une relecture. Deux extensions, une seule nature.
 e2e/fixtures/**/*.topojson
+# 21/11/2026 — même classe, autre auteur : `.claude/skills/` est une COPIE du kit de session de
+# l'atelier (~/dev/platform/claude/skills), écrite par `skills-sync` et vérifiée à l'octet près
+# par `skills-sync --check` (hook pre-commit). Prettier la réécrivait dans le commit même qui la
+# posait, et la copie dérivait aussitôt de sa source. Elle se corrige à la source, pas ici.
+.claude/skills/

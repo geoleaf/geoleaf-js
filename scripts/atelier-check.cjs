@@ -20,11 +20,10 @@
  *
  * ## What moving them COSTS, said plainly
  *
- * A green `ci:local` no longer covers these five. The push protocol therefore asks for
- * two greens instead of one (CLAUDE.md, §Protocole de push). That is a real weakening of
- * a single-command criterion, accepted knowingly: a one-command protocol that silently
- * stopped covering five gates would be worse than a two-command one that says what each
- * covers.
+ * A green `ci:local` no longer covers these five. `scripts/push-check.cjs` therefore runs
+ * this script on EVERY push, after `ci:local` when the push carries a public file. That is
+ * a weakening of a single-command criterion, accepted knowingly: a protocol that silently
+ * stopped covering five gates would be worse than one that says what each command covers.
  *
  * ⚠️ What did NOT move, and why — the distinction is easy to get wrong:
  *

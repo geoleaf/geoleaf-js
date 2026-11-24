@@ -48,6 +48,7 @@ Static token — scenario S6 in the table below, for development and public demo
 | S4       | `getToken: async () => await myAuth.get()`  | Async provider (any identity SDK)         |
 | S5       | `auth: { endpoint, ui: false }`             | Token preloaded in IDB — silent           |
 | S6       | `getToken: () => 'STATIC_DEV_TOKEN'`        | Non-sensitive data, public demo           |
+| S7       | `auth: { endpoint, contract: "pair", … }`   | Access + rotating refresh token (OAuth 2) |
 
 ---
 
@@ -60,10 +61,54 @@ There are two modes, `getToken` and `auth`, and **no API-key mode**: a key is ha
 written once, in §3 of the
 [server contract](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SERVER_CONTRACT.md).
 
-A server that speaks another dialect — an OAuth 2 token endpoint answering `access_token`, a key
-read from a header of its own — is served in one of two ways, both described in §7.6 of the
+A server that issues an access token and a **single-use refresh token** — the shape of an OAuth 2
+token endpoint, `access_token` / `refresh_token` / `expires_in` — is served by the second contract,
+`auth.contract: "pair"` (below, and §3.3 of the server contract). A server that speaks yet another
+dialect — a key read from a header of its own — is served in one of two ways, both described in
+§7.6 of the
 [security guide](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SECURITY.md):
 `getToken` with the page's own client, or a thin adapter on the server that answers the contract.
+
+### The `"pair"` contract — access token and rotating refresh token
+
+```javascript
+await GeoLeaf.Connector.configure({
+    baseUrl: "https://api.example.com",
+    auth: {
+        contract: "pair",
+        endpoint: "https://api.example.com/oauth/token", // POST { login, password }
+        refreshEndpoint: "https://api.example.com/oauth/refresh", // POST { refresh_token }
+        revokeEndpoint: "https://api.example.com/oauth/revoke", // POST { token } — optional
+        ui: true,
+    },
+});
+```
+
+| Gesture  | Request                                        | Answer expected                                                      |
+| -------- | ---------------------------------------------- | -------------------------------------------------------------------- |
+| Sign-in  | `POST endpoint` `{ "login", "password" }`      | `{ access_token, refresh_token, expires_in, refresh_expires_in? }`   |
+| Renewal  | `POST refreshEndpoint` `{ "refresh_token" }`   | the same shape, with a **new** `refresh_token` — no `Bearer` is sent |
+| Sign-out | `POST revokeEndpoint` `{ "token": <refresh> }` | `2xx`; a `400` ("already revoked") counts as done                    |
+
+What changes from the default contract, because a refresh token is **single-use** (a server may
+revoke the whole family of one presented twice):
+
+- the access token is held **in memory only**; the refresh token is stored in IndexedDB, keyed by
+  `baseUrl`. After a reload there is no access token: the first read renews first;
+- **one renewal at a time per device**, across tabs: a `navigator.locks` lock, the refresh token
+  re-read from the database under it, the new one written before anything else, then the pair
+  shared with the other tabs (`BroadcastChannel`), which renew nothing of their own. ⚠️ A browser
+  without `navigator.locks` serialises the renewals of one tab only, and says so once in the
+  console;
+- the access token is renewed in the background past 80 % of `expires_in`, on a read — no timer;
+  and once on a `401`, then the request is replayed;
+- `expires_in` and `refresh_expires_in` are the server's: no lifetime is written in the plugin.
+  `refresh_expires_in` bounds the session the pre-departure check is told of;
+- a sign-in, a renewal or a sign-out in one tab reaches the others: `token-refreshed` and
+  `signed-out` are fired there too.
+
+`refreshEndpoint` and `revokeEndpoint` carry a secret: they follow the HTTPS rule of `endpoint`.
+They are refused under the default contract, where they would be silently ignored.
 
 ---
 
@@ -78,7 +123,8 @@ await GeoLeaf.Connector.configure({
     // — OR —
     auth: {
         endpoint: "https://api.example.com/auth/login",
-        ui: true, // Show login modal if no valid token found
+        contract: "token", // the default — or "pair", see above
+        ui: true, // Show login modal if no valid token found — or an object, see below
         signupUrl: "https://app.example.com/signup", // "Create an account" link (optional)
         forgotPasswordUrl: "https://app.example.com/forgot", // "Forgot password" link (optional)
         credentialButton: {
@@ -98,9 +144,36 @@ GeoJSON worker on `@geoleaf/core` 3.4.0 or later; older versions send those requ
 token. A provider that throws or rejects fails the page's request with its error, while tiles
 and worker loads go without a token until it answers again.
 
+### The login window — a modal, or a form in an element of the host
+
+`auth.ui: true` is a modal. The object form configures it, and can mount the **same form** in an
+element of the host — a side panel, a drawer on a phone:
+
+```javascript
+auth: {
+    endpoint: "https://api.example.com/auth/login",
+    ui: {
+        mount: () => document.querySelector("#side-panel"), // or the element itself
+        onDismiss: () => closeSidePanel(), // Escape or the close button
+        notice: "Do not sign in on a shared device.", // shown above the fields, as text
+        reloadOnSuccess: true, // reload the page once signed in
+    },
+},
+```
+
+| Option            | Effect                                                                                                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mount`           | The element to render the form into, or a function called when the window opens. Without it, a modal. Mounted, there is no backdrop and no page-wide focus trap. |
+| `onDismiss`       | Called when the user closes the window without signing in — `Escape` on the form, or the close button — in both presentations.                                   |
+| `notice`          | A warning above the fields, rendered as text.                                                                                                                    |
+| `reloadOnSuccess` | Reloads the page after a successful sign-in: a third-party script loaded while signed out (an anti-robot challenge) never runs in a page that holds a token.     |
+
+In both presentations the password field is emptied as soon as the request leaves, and a `429`
+whose `Retry-After` says how long keeps the button disabled for that time, with a countdown.
+
 ### `GeoLeaf.Connector.openLoginModal()`
 
-Opens the login modal manually. Requires a prior `configure()` call carrying `auth`. There is one
+Opens the login window manually, in the presentation `auth.ui` asks for. Requires a prior `configure()` call carrying `auth`. There is one
 login window at a time: called while it is already on screen, it joins that window and its
 promise settles with it.
 
@@ -117,7 +190,10 @@ Ends the session: the stored token is erased, from memory and from the browser's
 await GeoLeaf.Connector.logout();
 ```
 
-It calls no route on the server and erases nothing else: edits waiting to be sent, photos and data
+Under `contract: "pair"`, the session is erased in every tab, `signed-out` is fired, and then the
+refresh token is revoked at `auth.revokeEndpoint` when one is set: the erasure does not wait for
+the server, and a revocation that fails still leaves the device signed out. Under the default
+contract it calls no route on the server. Either way it erases nothing else: edits waiting to be sent, photos and data
 prepared for offline use stay on the device. In `getToken` mode it does nothing — the host
 application holds the token, and ends its session itself. It never throws, and does nothing before
 `configure()`.
@@ -147,10 +223,10 @@ and `configure()` on the same API share the stored token.
 | Event                                         | Detail                                  | Fired when                                                         | Cancelable |
 | --------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------ | ---------- |
 | `geoleaf:connector:authenticated`             | `{ baseUrl }`                           | Login modal succeeded                                              | No         |
-| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                           | Automatic renewal succeeded                                        | No         |
+| `geoleaf:connector:token-refreshed`           | `{ baseUrl }`                           | Automatic renewal succeeded — under `"pair"`, in another tab too   | No         |
 | `geoleaf:connector:auth-error`                | `{ baseUrl, error }`                    | The session ended: refused                                         | No         |
 | `geoleaf:connector:login-failed`              | `{ baseUrl, error, status?, problem? }` | A sign-in from the login window was refused, or could not conclude | No         |
-| `geoleaf:connector:signed-out`                | `{ baseUrl }`                           | `logout()` ended the session                                       | No         |
+| `geoleaf:connector:signed-out`                | `{ baseUrl }`                           | `logout()` ended the session — under `"pair"`, in another tab too  | No         |
 | `geoleaf:connector:credential-button-clicked` | `{ baseUrl, authenticated }`            | Credential button clicked                                          | No         |
 | `geoleaf:connector:signup-requested`          | `{ url }`                               | "Create an account" clicked                                        | **Yes**    |
 | `geoleaf:connector:forgot-password-requested` | `{ url }`                               | "Forgot password" clicked                                          | **Yes**    |
@@ -261,6 +337,11 @@ document.addEventListener("geoleaf:connector:login-failed", (e) => {
 });
 ```
 
+The application's code for the refusal — a `code` member of the problem, or an `error` member
+(the shape of RFC 6749 §5.2) — is in `problem.body`, and on the `AuthError` the sign-in rejects
+with, as `code`. A `429` is worded "Too many attempts"; its `Retry-After`, in seconds or as an HTTP
+date, is on `AuthError.retryAfter`.
+
 It is not `geoleaf:connector:auth-error`, which says an established session ended.
 
 ## Security
@@ -268,13 +349,17 @@ It is not `geoleaf:connector:auth-error`, which says an established session ende
 - The token is **never** passed in a query string.
 - Passwords are wiped from memory after use (`OWASP A02`).
 - `baseUrl` and `auth.endpoint` must use HTTPS (an error is raised otherwise): the first
-  receives the token, the second the password. `http://` is tolerated, with a console warning,
+  receives the token, the second the password — and so must `auth.refreshEndpoint` and
+  `auth.revokeEndpoint`, which receive the refresh token. `http://` is tolerated, with a console warning,
   only when the URL itself targets a development host — `localhost`, `*.localhost`, the
   loopback addresses, or a name under `.test`, reserved for testing (RFC 6761). A relative URL
   targets the page's own host. Otherwise the page does not matter: a page served on `localhost` may not send a credential over `http://` to a
   remote host or to a LAN address. `auth.signupUrl` and `auth.forgotPasswordUrl` follow the
   same rule.
-- The modal's XSS sanitisation relies on `textContent` — no `innerHTML` with user data.
+- The login window's XSS sanitisation relies on `textContent` — no `innerHTML` with user data;
+  the host's `notice` is rendered as text too.
+- Under `contract: "pair"`, the access token is never written to storage, and no token appears in
+  a log, an error message or an exception.
 - Vector tiles (MVT) get the token through `map.setTransformRequest()` (MapLibre bridge) when
   the map displays them, and through `window.fetch` when the offline preparation downloads
   them — the same identity in both cases. PMTiles archives get it through `window.fetch`,

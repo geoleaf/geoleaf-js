@@ -87,18 +87,47 @@ export interface ConnectorConfig {
      */
     auth?: {
         /**
-         * Full URL of the auth endpoint.
-         * POST { login, password } → { token: string, expiresIn: number }
+         * Full URL of the sign-in endpoint: `POST { login, password }`.
+         *
+         * Under the default contract (`"token"`) it answers `{ token, expiresIn }`, and the
+         * renewal is `POST {endpoint}/refresh`. Under `"pair"` it answers
+         * `{ access_token, refresh_token, expires_in, refresh_expires_in? }` — see `contract`.
          *
          * It receives the password, so it is held to the rule of `baseUrl`: `https://`, or
          * `http://` toward a development host — any other value is a `ConfigError`.
          */
         endpoint: string;
         /**
-         * If true, renders a login modal when no valid token is found at startup.
-         * Default: false.
+         * The token contract the server speaks. Default: `"token"`.
+         *
+         * - `"token"` — one token, `{ token, expiresIn }`, renewed at `POST {endpoint}/refresh`
+         *   with the current token as `Bearer`; signing out is local.
+         * - `"pair"` — an access token and a SINGLE-USE refresh token (the shape of RFC 6749
+         *   §5.1). The access token is held in memory only, the refresh token is persisted. The
+         *   renewal posts `{ refresh_token }` to `refreshEndpoint` without `Bearer`, and every
+         *   answer carries a new refresh token. One renewal at a time per device, across tabs
+         *   (`navigator.locks`), and the new pair is shared with the other tabs
+         *   (`BroadcastChannel`). Signing out posts `{ token: <refresh token> }` to
+         *   `revokeEndpoint` when one is set, and erases the session whatever it answers.
          */
-        ui?: boolean;
+        contract?: "token" | "pair";
+        /**
+         * Full URL of the renewal, under `contract: "pair"` — required there, refused otherwise.
+         * It receives the refresh token: held to the rule of `endpoint`.
+         */
+        refreshEndpoint?: string;
+        /**
+         * Full URL of the revocation, under `contract: "pair"` — optional there (without it,
+         * signing out is local), refused otherwise. Held to the rule of `endpoint`.
+         */
+        revokeEndpoint?: string;
+        /**
+         * The login window. `true` (or an object) renders it when no valid session is found at
+         * startup, and again when a session ends; `false` or absent leaves it to the host.
+         *
+         * The object form configures it — see {@link LoginUiOptions}. `true` is `{}`: a modal.
+         */
+        ui?: boolean | LoginUiOptions;
         /** External signup page URL. Shown as a link in the login modal. Must be HTTPS in production. */
         signupUrl?: string;
         /** External forgot-password page URL. Shown as a link in the login modal. Must be HTTPS in production. */
@@ -114,6 +143,53 @@ export interface ConnectorConfig {
             iconVariant?: "lock" | "user";
         };
     };
+}
+
+/**
+ * How the login window is presented — the object form of `auth.ui`.
+ *
+ * Every member is optional; `{}` is the modal the boolean form renders.
+ */
+export interface LoginUiOptions {
+    /**
+     * An element of the host to render the form INTO, instead of a modal — a side panel, a
+     * drawer. A function is called each time the window opens, so the element may be created
+     * after `configure()`.
+     *
+     * In this presentation there is no backdrop and no page-wide focus trap: the focus goes to
+     * the first field, and `Escape` (on the form) and the close button call `onDismiss`. The
+     * form is removed from the element when it closes.
+     */
+    mount?: HTMLElement | (() => HTMLElement);
+    /**
+     * Called when the user closes the window without signing in — `Escape` or the close button,
+     * in both presentations. The host hides its panel there.
+     */
+    onDismiss?: () => void;
+    /**
+     * A warning shown above the fields, as text — for instance "do not use a shared device".
+     */
+    notice?: string;
+    /**
+     * Reload the page once a sign-in succeeds. Default: false.
+     *
+     * For a host that loads a third-party script while signed out (an anti-robot challenge):
+     * that script must never run in a page that holds a token, and a reload is the only way to
+     * be rid of it.
+     */
+    reloadOnSuccess?: boolean;
+}
+
+/** The login window options in force — `null` when `auth.ui` does not ask for a window. */
+export function loginUiOf(config: ConnectorConfig): LoginUiOptions | null {
+    const ui = config.auth?.ui;
+    if (!ui) return null;
+    return ui === true ? {} : ui;
+}
+
+/** Whether `config` speaks the `"pair"` token contract. */
+export function isPairContract(config: ConnectorConfig | null): boolean {
+    return config?.auth?.contract === "pair";
 }
 
 /** Thrown when ConnectorConfig fails validation. */
@@ -135,6 +211,8 @@ export function validateConfig(config: ConnectorConfig): void {
     // `auth.endpoint` receives the password: held to the same rule as `baseUrl`, which
     // receives the token. `_validateAuthMode` has already refused an empty one.
     if (config.auth) _requireSecureUrl(config.auth.endpoint, "auth.endpoint");
+    _validateContract(config);
+    _validateUi(config);
 
     // Validate external URLs (HTTPS, http tolerated toward a development host)
     _validateExternalUrl(config.auth?.signupUrl, "auth.signupUrl");
@@ -242,6 +320,66 @@ function _validateAuthMode(config: ConnectorConfig): void {
             "[GeoLeaf Connector] auth.endpoint must be a non-empty string when auth is configured."
         );
     }
+}
+
+/**
+ * Validates `auth.contract` and the endpoints that belong to it: `refreshEndpoint` required
+ * under `"pair"`, and neither it nor `revokeEndpoint` accepted under `"token"` — where they would
+ * be silently ignored, and a renewal the integrator believes configured would go elsewhere.
+ */
+function _validateContract(config: ConnectorConfig): void {
+    const auth = config.auth;
+    if (!auth) return;
+    const contract = auth.contract ?? "token";
+    if (contract !== "token" && contract !== "pair") {
+        throw new ConfigError(
+            `[GeoLeaf Connector] auth.contract must be "token" or "pair". Received: ${String(contract)}`
+        );
+    }
+    if (contract === "token") {
+        for (const field of ["refreshEndpoint", "revokeEndpoint"] as const) {
+            if (auth[field] !== undefined) {
+                throw new ConfigError(
+                    `[GeoLeaf Connector] auth.${field} belongs to contract "pair"; ` +
+                        `it is not read under contract "token".`
+                );
+            }
+        }
+        return;
+    }
+    if (typeof auth.refreshEndpoint !== "string" || !auth.refreshEndpoint.trim()) {
+        throw new ConfigError(
+            '[GeoLeaf Connector] auth.refreshEndpoint is required under contract "pair".'
+        );
+    }
+    _requireSecureUrl(auth.refreshEndpoint, "auth.refreshEndpoint");
+    _validateExternalUrl(auth.revokeEndpoint, "auth.revokeEndpoint");
+}
+
+/** Validates the object form of `auth.ui`: its members are what they say. */
+function _validateUi(config: ConnectorConfig): void {
+    const ui = config.auth?.ui;
+    if (ui === undefined || typeof ui === "boolean") return;
+    if (typeof ui !== "object" || ui === null) {
+        throw new ConfigError("[GeoLeaf Connector] auth.ui must be a boolean or an object.");
+    }
+    const { mount, onDismiss, notice } = ui;
+    if (mount !== undefined && typeof mount !== "function" && !_isElement(mount)) {
+        throw new ConfigError(
+            "[GeoLeaf Connector] auth.ui.mount must be an element or a function returning one."
+        );
+    }
+    if (onDismiss !== undefined && typeof onDismiss !== "function") {
+        throw new ConfigError("[GeoLeaf Connector] auth.ui.onDismiss must be a function.");
+    }
+    if (notice !== undefined && typeof notice !== "string") {
+        throw new ConfigError("[GeoLeaf Connector] auth.ui.notice must be a string.");
+    }
+}
+
+/** Whether `value` is a DOM element — `HTMLElement` may be absent outside a browser. */
+function _isElement(value: unknown): boolean {
+    return typeof HTMLElement !== "undefined" && value instanceof HTMLElement;
 }
 
 /** Silently coerces an unknown credential-button iconVariant back to the "lock" default. */

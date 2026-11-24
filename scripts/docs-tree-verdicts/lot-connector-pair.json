@@ -1,0 +1,68 @@
+{
+    "schemaVersion": 2,
+    "lot": "connector-pair",
+    "scope": [
+        "packages/plugins/connector/src/auth-pair-client.ts",
+        "packages/plugins/connector/src/pair-session.ts",
+        "packages/plugins/connector/src/login-form.ts",
+        "packages/plugins/connector/src/login-styles.ts"
+    ],
+    "verdicts": {
+        "packages/plugins/connector/src/auth-pair-client.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Client HTTP du contrat de jetons pair : connexion, renouvellement par le corps sans Bearer, révocation qui ne lève jamais ; lit la forme RFC 6749 §5.1 et rend les verdicts du contrat par défaut",
+            "confidence": "haute",
+            "rationale": "Un module par contrat : auth-client.ts porte le contrat par défaut et les lecteurs partagés, importés ici plutôt que recopiés. Objet éponyme PairAuthClient exporté : le suffixe -client est conforme (N7)"
+        },
+        "packages/plugins/connector/src/pair-session.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Cycle de vie d'une session pair : un renouvellement à la fois par appareil (navigator.locks), jeton de renouvellement relu sous le verrou, paire neuve écrite d'abord puis diffusée aux autres onglets (BroadcastChannel), déconnexion qui efface puis révoque",
+            "confidence": "haute",
+            "rationale": "Hors de token-store.ts, déjà au-delà de la limite douce : le magasin persiste et ne parle pas au réseau, ce module tient le verrou et le canal. Branché comme RefreshFn par connector-api.ts, il garde la déduplication, la pause et le refus retenu du magasin"
+        },
+        "packages/plugins/connector/src/login-form.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le formulaire de connexion sans son cadre, commun aux deux présentations : champs, lien d'inscription et de mot de passe oublié, avertissement de l'hôte, soumission selon le contrat de jetons, mot de passe vidé à l'envoi, compte à rebours d'un 429",
+            "confidence": "haute",
+            "rationale": "Extrait de login-ui.ts (590 L) au passage de la seconde présentation : ce qui ne dépend pas du cadre vit ici, le cadre dans login-ui.ts"
+        },
+        "packages/plugins/connector/src/login-styles.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "La feuille de la fenêtre de connexion, une constante adoptée une fois par adoptStylesheet, couleurs par jetons --gl-color-* ; sert la modale et le formulaire monté",
+            "confidence": "haute",
+            "rationale": "Extraite de login-ui.ts avec le découpage du formulaire : ~150 L de CSS que les deux modules partagent. Une constante plutôt qu'un fichier .css : la règle de l'en-tête d'origine (feuille inline, aucune feuille externe requise) tient"
+        }
+    }
+}

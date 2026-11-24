@@ -78,7 +78,9 @@ function ledgerPath() {
 /**
  * Appends one run to the ledger. Never throws.
  *
- * @param {{startedAt: string, sha: string|null, flags: string[], results: {name: string, ok: boolean, ms: number, code: number|null}[]}} run The run to record.
+ * @param {{startedAt: string, sha: string|null, clean?: boolean, flags: string[], results: {name: string, ok: boolean, ms: number, code: number|null}[]}} run The run to record.
+ *   `clean` says the tracked tree matched `HEAD` at both ends of the run; `push-check.cjs`
+ *   only stands on a green row that carries it.
  * @returns {{ok: boolean, path: string, error?: string}} Whether the append landed.
  */
 function record(run) {

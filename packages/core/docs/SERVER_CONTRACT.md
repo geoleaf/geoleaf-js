@@ -275,7 +275,8 @@ then written onto its entity as an edit. A failed upload keeps the file and trie
 
 Authentication is `@geoleaf-plugins/connector`'s: it adds `Authorization: Bearer <token>` to the
 requests under its `baseUrl` — the page's `fetch`, and the requests MapLibre makes (tiles, glyphs,
-sprites). It has two modes, and exactly one is configured.
+sprites). It has two modes, and exactly one is configured; the second, `auth.endpoint`, speaks one
+of two token contracts (§3.2 and §3.3).
 
 ### 3.1 `getToken` — the host provides the token
 
@@ -350,6 +351,66 @@ login window opens again.
 **Signing out** is local: the connector erases the token and emits `geoleaf:connector:signed-out`.
 It calls no route, so a token that must stop working before its expiry has to be revoked by the
 server itself.
+
+### 3.3 `auth.contract: "pair"` — an access token and a single-use refresh token
+
+From `@geoleaf-plugins/connector` 1.5.0. Every route is configured as a full URL; nothing is
+derived.
+
+**Sign-in** — `POST {auth.endpoint}`, the same JSON body as §3.2:
+
+```
+POST {auth.endpoint}
+Content-Type: application/json
+
+{ "login": "…", "password": "…" }
+```
+
+A 2xx JSON answer in the shape of [RFC 6749 §5.1](https://www.rfc-editor.org/rfc/rfc6749#section-5.1):
+
+```
+{ "access_token": "…", "refresh_token": "…", "expires_in": 900, "refresh_expires_in": 86400 }
+```
+
+`access_token` and `refresh_token` non-empty strings, `expires_in` (seconds) a finite number
+greater than 0; `refresh_expires_in` is optional, and bounds the session the connector reports to
+`GeoLeaf.Sync`. Any other `token_type`, `scope` or extra member is ignored. Refusals are read as in
+§3.2, problem details included; a `code` member — or `error`, the shape of RFC 6749 §5.2 — is
+handed to the host as the refusal's code. A `429` is read with its `Retry-After`, in seconds or as
+an HTTP date: the login window waits that long, up to an hour.
+
+**Renewal** — `POST {auth.refreshEndpoint}`, **without `Authorization`**:
+
+```
+POST {auth.refreshEndpoint}
+Content-Type: application/json
+
+{ "refresh_token": "…" }
+```
+
+The answer has the sign-in's shape, and **carries a new refresh token**: the one presented is
+spent. Its verdicts are those of §3.2's table — `renewed`, `unavailable` on the same transient
+statuses, `refused` otherwise. The connector presents a refresh token **once**: renewals are
+serialised per device across tabs, the token is re-read from storage just before the call, and the
+new one is stored before anything else happens. A server is therefore free to treat a replay as a
+theft and revoke the family.
+
+When it renews: a read past 80 % of `expires_in` renews in the background, a `401` on a data request
+renews once and replays, and a page load renews first — the access token is held in memory only,
+so a reloaded page has none.
+
+**Sign-out** — `POST {auth.revokeEndpoint}`, in the spirit of
+[RFC 7009](https://www.rfc-editor.org/rfc/rfc7009):
+
+```
+POST {auth.revokeEndpoint}
+Content-Type: application/json
+
+{ "token": "<refresh token>" }
+```
+
+A 2xx is a success, and so is a `400` ("already revoked"). The session is erased on the device
+**before** this call and whatever it answers. Without `auth.revokeEndpoint`, signing out is local.
 
 The security posture of this exchange — HTTPS, where the token is kept, the three traps of common
 identity providers — is in §7 of the [security guide](./SECURITY.md).

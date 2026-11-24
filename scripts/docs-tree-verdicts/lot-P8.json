@@ -41,7 +41,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Client HTTP de l'endpoint d'authentification : connexion (codes traduits en AuthError, mot de passe jamais conservé) et renouvellement classé en verdict — renouvelé, refusé ou indisponible — sur un échange borné, corps compris",
+            "description": "Client HTTP du contrat de jetons par défaut : connexion (codes traduits en AuthError, avec code applicatif et Retry-After d'un 429, mot de passe jamais conservé) et renouvellement classé en verdict sur un échange borné, corps compris ; ses lecteurs de corps et de refus servent aussi le contrat pair",
             "confidence": "haute",
             "rationale": "104 LOC, 2 importeurs internes (entry.ts, login-ui.ts) ; exporte l'objet éponyme AuthClient + AuthError → suffixe -client conforme au test N7 (objet éponyme exporté). Aucune dépendance hors @geoleaf/http-helpers"
         },
@@ -55,7 +55,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Type ConnectorConfig et sa validation — baseUrl en HTTPS, exclusivité getToken/auth, URL externes, repli silencieux de l'icône — avec l'erreur ConfigError",
+            "description": "Type ConnectorConfig et sa validation — baseUrl en HTTPS, exclusivité getToken/auth, contrat de jetons et ses routes, forme objet de auth.ui, URL externes, repli silencieux de l'icône — avec l'erreur ConfigError",
             "confidence": "haute",
             "rationale": "Renommé depuis config-schema.ts au STRUCT S4 : le paquet porte la forme majoritaire arbitrée en T5 §2 — config.ts (5 plugins + 14/18 capacités) contre config-schema.ts, dont il ne reste AUCUN dans le dépôt. 168 LOC, 5 importeurs, tous internes au paquet. Nuance assumée et conservée : ce fichier porte schéma + validation alors que geocoding/src/config.ts est un lecteur de profil — deux rôles sous un même nom canonique"
         },
@@ -209,9 +209,9 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Modale de connexion accessible : feuille adoptée, piège de focus, liens inscription et mot de passe oublié, soumission déléguée à AuthClient puis stockage du jeton",
+            "description": "Les deux présentations de la fenêtre de connexion : modale accessible (voile, piège de focus, Échap de page) ou formulaire monté dans un élément de l'hôte (ni voile ni écoute de page, fermeture rendue par onDismiss) ; une seule fenêtre à la fois",
             "confidence": "haute",
-            "rationale": "507 LOC dont ~130 de CSS en constante _CSS. L'en-tête assume la décision (« CSS is inlined as a constant — no external stylesheet required »), et le style est adopté par adoptStylesheet de host-runtime : E6 ne se déclenche pas (règle 3). Le piège de focus recopie 13 L de core/src/utils/controls/focus-trap.ts (T1 §2.10) mais INV-NS interdit l'import du core et host-runtime n'exporte aucun focus-trap"
+            "rationale": "183 LOC après découpage (1.5.0) : le formulaire est dans login-form.ts, la feuille dans login-styles.ts. Le piège de focus recopie 13 L de core/src/utils/controls/focus-trap.ts (T1 §2.10) mais INV-NS interdit l'import du core et host-runtime n'exporte aucun focus-trap"
         },
         "packages/plugins/connector/src/maplibre-bridge.ts": {
             "kind": "file",
@@ -237,7 +237,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Persistance IndexedDB et cache RAM des jetons JWT, avec rafraîchissement silencieux anti-concurrent et lecture synchrone réservée au pont MapLibre",
+            "description": "Persistance IndexedDB et cache RAM des sessions — jeton et échéance, ou sous le contrat pair le seul jeton de renouvellement en base et le jeton d'accès en mémoire —, avec rafraîchissement silencieux anti-concurrent et lecture synchrone réservée au pont MapLibre",
             "confidence": "haute",
             "rationale": "233 LOC, 5 importeurs internes — le module le plus consommé du paquet ; exporte l'objet éponyme TokenStore (T5 §3 : -store.ts, 1 occurrence, conforme). Wrapper IDB autonome, aucune dépendance externe"
         },

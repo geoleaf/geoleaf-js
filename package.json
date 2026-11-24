@@ -42,6 +42,7 @@
         "gitleaks:local": "node scripts/gitleaks-local.cjs",
         "ci:local": "node scripts/ci-local.cjs",
         "ci:push": "node scripts/ci-push.cjs",
+        "push:check": "node scripts/push-check.cjs",
         "atelier:check": "node scripts/atelier-check.cjs",
         "smoke-test": "node scripts/smoke-test.cjs",
         "dead-code": "node scripts/check-dead-code.cjs",

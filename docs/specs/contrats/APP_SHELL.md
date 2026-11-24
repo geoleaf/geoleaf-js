@@ -23,10 +23,18 @@ Quatre variantes, dont **deux seulement sont livrables** :
 | ----------------- | -------- | ------------ | ----- | -------- | ------------------ |
 | `deploy-core`     | ✅       | ✗            | ✗     | ✗        | ✗                  |
 | `deploy-full`     | ✅       | ✓            | ✓     | ✓        | ✗                  |
-| `deploy-local`    | ✗        | selon flags  | …     | …        | ✓                  |
-| `deploy-coverage` | ✗        | —            | —     | —        | ✗                  |
+| `deploy-local`    | ✗        | ✓            | ✓     | ✓        | ✓                  |
+| `deploy-coverage` | ✗        | ✗            | ✗     | ✗        | ✗                  |
 
-`deploy-coverage` est produite par `scripts/build-deploy-coverage.cjs`, qui la déclare non livrable.
+Les colonnes ne nomment que les trois greffons de la matrice : ceux dont le descripteur
+`package.json#geoleaf` porte un `includeFlag`. Tous les autres partent dans **chaque** variante —
+la flotte est découverte, jamais listée, et un greffon neuf la rejoint sans retouche du script.
+`deploy-local` porte par construction l'ensemble de `deploy-full` : seul le bootstrap l'en
+distingue. Le nombre de greffons ne s'écrit pas, il se mesure sur l'arbre bâti :
+`ls deploy/<variante>/dist/ | grep -c '\.plugin\.js$'`.
+
+`deploy-coverage` est produite par `scripts/build-deploy-coverage.cjs`, copie de `deploy-core` que
+ce script déclare non livrable.
 ⚠️ Ne jamais renommer `deploy/deploy-coverage/` — le nom est verrouillé par des littéraux du
 dépôt **et** par un vhost nginx hors dépôt, donc invisible à toute gate.
 

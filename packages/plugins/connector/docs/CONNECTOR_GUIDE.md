@@ -102,6 +102,7 @@ En CDN :
 | **S4** — Provider async    | `getToken: async () => await myAuth.get()`  | N'importe quel SDK d'identité          |
 | **S5** — Token silencieux  | `auth: { endpoint, ui: false }`             | Token pré-chargé en IDB — pas de modal |
 | **S6** — Données publiques | `getToken: () => 'STATIC_DEV_TOKEN'`        | Démo publique, données non sensibles   |
+| **S7** — Paire de jetons   | `auth: { endpoint, contract: "pair", … }`   | Accès + renouvellement à usage unique  |
 
 ### S1 — Token statique (développement)
 
@@ -132,6 +133,29 @@ Une session dont le renouvellement ne peut pas **aboutir** — hors réseau, dé
 
 Ce que le serveur doit répondre — la route de connexion, `POST {endpoint}/refresh`, les champs `token` et `expiresIn` (en secondes), et la lecture de chaque statut — est écrit dans [le contrat serveur](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SERVER_CONTRACT.md), §3.
 
+### S7 — Paire accès / renouvellement à usage unique
+
+```js
+await GeoLeaf.Connector.configure({
+    baseUrl: "https://api.example.com",
+    auth: {
+        contract: "pair",
+        endpoint: "https://api.example.com/oauth/token",
+        refreshEndpoint: "https://api.example.com/oauth/refresh",
+        revokeEndpoint: "https://api.example.com/oauth/revoke", // facultatif
+        ui: { mount: () => document.querySelector("#panneau"), onDismiss: () => fermerPanneau() },
+    },
+});
+```
+
+Pour un serveur qui répond `{ access_token, refresh_token, expires_in, refresh_expires_in? }` (la
+forme de RFC 6749 §5.1) et fait tourner le jeton de renouvellement à chaque appel. Le jeton
+d'accès reste en mémoire seulement, le jeton de renouvellement est stocké en IDB. Un seul
+renouvellement à la fois par appareil (`navigator.locks`), le jeton relu sous le verrou, la paire
+neuve diffusée aux autres onglets (`BroadcastChannel`). La déconnexion efface d'abord, dans tous
+les onglets, puis révoque. Le détail est au README du paquet et au §3.3 du
+[contrat serveur](https://github.com/geoleaf/geoleaf-js/blob/main/packages/core/docs/SERVER_CONTRACT.md).
+
 ### S4 — Provider async (SDK d'identité tiers)
 
 Le fournisseur est appelé à **chaque** requête qui a besoin du jeton : chaque `fetch` intercepté, chaque tuile vectorielle, chaque chargement GeoJSON de l'ouvrier. Une promesse atteint les tuiles avec MapLibre ≥ 5.21 et l'ouvrier avec `@geoleaf/core` ≥ 3.4.0. Un fournisseur qui jette ou rejette fait échouer la requête de la page ; tuiles et chargements de l'ouvrier partent alors sans jeton, jusqu'à ce qu'il réponde de nouveau.
@@ -160,14 +184,25 @@ await GeoLeaf.Connector.configure({
     // — OU —
     auth: {
         endpoint: "https://api.example.com/auth/login", // Endpoint login (POST)
-        ui: true, // true → modal si absent | false → silencieux
+        contract: "token", // défaut — ou "pair" (S7)
+        ui: true, // true → modal si absent | false → silencieux | objet → voir ci-dessous
     },
 });
 ```
 
+### La fenêtre de connexion : une modale, ou un formulaire chez l'hôte
+
+La forme objet de `auth.ui` monte le **même formulaire** dans un élément de l'hôte (`mount` : un
+élément, ou une fonction appelée à l'ouverture), sans voile ni piège de focus global ; `Échap`
+sur le formulaire et le bouton de fermeture appellent `onDismiss`. `notice` affiche un
+avertissement au-dessus des champs, en texte ; `reloadOnSuccess` recharge la page après une
+connexion réussie. Dans les deux présentations, le mot de passe est effacé du champ dès l'envoi,
+et un `429` qui dit combien de temps attendre désactive le bouton le temps dit, avec un compte à
+rebours.
+
 ### `GeoLeaf.Connector.openLoginModal()`
 
-Ouvre la fenêtre de connexion à la demande. Exige un `configure()` préalable portant `auth`. Il
+Ouvre la fenêtre de connexion à la demande, dans la présentation que demande `auth.ui`. Exige un `configure()` préalable portant `auth`. Il
 n'y a qu'une fenêtre de connexion à la fois : appelée alors qu'elle est déjà à l'écran, la méthode
 la rejoint, et sa promesse se règle avec elle.
 
@@ -185,7 +220,10 @@ d'abord.
 await GeoLeaf.Connector.logout();
 ```
 
-Aucune route du serveur n'est appelée, et rien d'autre n'est effacé : les saisies en attente
+Sous `contract: "pair"`, la session est effacée dans tous les onglets, puis le jeton de
+renouvellement est révoqué à `auth.revokeEndpoint` s'il est déclaré : l'effacement n'attend pas le
+serveur, et une révocation en échec laisse l'appareil déconnecté. Sous le contrat par défaut,
+aucune route du serveur n'est appelée. Dans les deux cas, rien d'autre n'est effacé : les saisies en attente
 d'envoi, les photos et les données préparées pour le hors-ligne restent sur l'appareil. En mode
 `getToken`, l'appel ne fait rien — l'application hôte détient le jeton et termine sa session
 elle-même. Il ne lève jamais, et ne fait rien avant `configure()`.

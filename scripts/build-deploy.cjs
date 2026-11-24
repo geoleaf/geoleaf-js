@@ -8,9 +8,13 @@
  *
  * ## The variants, and why there are two and no longer three (ARCHI S8)
  *
- * Nine plugins ship in EVERY variant (connector, websocket, realtime-layer, file-import,
- * flatgeobuf, geocoding, print, measure, table). Only three are variant-gated — storage,
- * cog, editor — and that is the whole of the matrix below.
+ * Every plugin of the DISCOVERED fleet ships in EVERY variant, except those whose descriptor
+ * (`package.json#geoleaf.includeFlag`) names one of the matrix's three flags: offline-ui
+ * (`includeStorage`), cog (`includeCog`) and editor (`includeEditor`). Those three flags
+ * are the whole of the matrix below. The plugin count is deliberately NOT written: a
+ * plugin joins the workspace without this file changing, so any number here would go
+ * stale silently. It is measured on the built tree, per variant:
+ * `ls deploy/<variant>/dist/ | grep -c '\.plugin\.js$'`.
  *
  * ✅ The ask was "5 variants → 2", and it is **2**. It was 3 for one
  * reason only: AddPOI and Editor were mutually exclusive BY DESIGN, so a single variant
@@ -20,8 +24,8 @@
  * journey, and `deploy-full` exercises it. The audit's target is reached on the merits.
  *
  * Plugin modes:
- *   • none    (default)     — core + Connector (Connector always bundled with core)
- *   • full                  — core + Storage + Cog + Editor (+ sw.js). The only variant
+ *   • none                  — core + every plugin without a variant flag (deploy-core's set)
+ *   • full                  — core + offline-ui + cog + editor. The only variant
  *                             carrying BOTH the editor and offline-ui, hence the one the
  *                             offline/sync E2E specs target.
  *   • all / --full          — generate all 2 variants
@@ -30,20 +34,20 @@
  *   deploy/
  *   ├── index.html
  *   ├── init.js
+ *   ├── sw-core.js                      (the single Service Worker, every variant)
  *   ├── dist/
  *   │   ├── geoleaf.esm.js
- *   │   ├── geoleaf.esm.js.map
- *   │   ├── geoleaf-connector.plugin.js   ← always present
- *   │   ├── geoleaf-main.min.css
- *   │   └── geoleaf-main.min.css.map
+ *   │   ├── geoleaf-<id>.plugin.js        ← one per plugin without a variant flag
+ *   │   └── geoleaf-main.min.css
  *   ├── icons/
  *   └── profiles/
  *       ├── geoleaf.config.json
  *       └── tourism/
  *
- * The gated variants add:
+ * No sourcemap ships in any variant: step 8b throws on one.
+ *
+ * The gated variant adds:
  *   deploy/
- *   ├── sw.js                           (Service Worker — same level as index.html)
  *   └── dist/
  *       ├── geoleaf-offline-ui.plugin.js   (full only)
  *       ├── geoleaf-cog.plugin.js       (full only)
@@ -51,7 +55,7 @@
  *
  * Usage:
  *   npm run build:deploy                           # all 2 variants: deploy-core, deploy-full
- *   node scripts/build-deploy.cjs --plugins=none   # single deploy/ (core + connector)
+ *   node scripts/build-deploy.cjs --plugins=none   # single deploy/ (deploy-core's plugin set)
  *   node scripts/build-deploy.cjs --plugins=full   # → deploy/deploy-full/ (offline POI test)
  *   node scripts/build-deploy.cjs --plugins=all    # all 2 variants
  *   node scripts/build-deploy.cjs --plugins=local  # → deploy/deploy-local/ — WORKSTATION,
@@ -433,9 +437,10 @@ function stripGatedInitBlock(js, pluginDirName, variantLabel) {
  * ⚠️ The twelve call sites below were `log.warn` until 08/08/2026, so a deploy missing
  * plugins exited **0**. That was never a corner case: step 2 of this script runs
  * `turbo run build:all --filter=@geoleaf/core`, which rebuilds the core, `connector`,
- * `offline-ui` and `field-renderer` — while **twelve** plugin bundles are copied. The filter
- * pulls the CORE's dependencies, and plugins depend on the core and not the reverse, so the
- * other ten keep whatever `dist/` they last had, or none at all on a fresh clone.
+ * `offline-ui` and `field-renderer` — while the bundle of EVERY plugin a variant carries is
+ * copied. The filter pulls the CORE's dependencies, and plugins depend on the core and not
+ * the reverse, so every other plugin keeps whatever `dist/` it last had, or none at all on a
+ * fresh clone.
  *
  * What the silence cost: `init.js` registers a lazy slot for every plugin regardless — only
  * `editor` and `cog` sit inside GATED-BLOCK markers. A variant shipped without, say,
@@ -1350,8 +1355,9 @@ function main() {
     // constant — no value produced by steps 1 or 2 feeds into it.
     const variants = BUILD_ALL_VARIANTS
         ? [
-              // 5.5 — 2 variants. The 9 always-bundled plugins are copied unconditionally
-              // further down; only these 3 flags vary, and they are the entire matrix.
+              // 5.5 — 2 variants. Every plugin whose descriptor names no flag is copied
+              // unconditionally further down; only these 3 flags vary, and they are the
+              // entire matrix.
               {
                   name: "deploy-core",
                   includeStorage: false,
@@ -1543,9 +1549,10 @@ function main() {
         //     them the dynamic import 404s the first time the feature runs (measured on
         //     realtime-layer's GTFS-RT decoder, print's jsPDF, editor's terra-draw).
         //   - A missing bundle THROWS. It used to log.warn: a deploy missing its plugins
-        //     shipped with exit code 0, and step 2 of this script only rebuilds 2 of the
-        //     12 bundles it copies — the other 10 can legitimately be absent after a
-        //     clean, and that absence must stop the build, not decorate its log.
+        //     shipped with exit code 0, and step 2 of this script rebuilds only connector
+        //     and offline-ui among the bundles it copies — every other one can
+        //     legitimately be absent after a clean, and that absence must stop the build,
+        //     not decorate its log.
         //
         // taxonomy + feature-info are NOT in this loop and never will be: both were
         // reclassified into @geoleaf/core (SR0) and ship inside dist/geoleaf.esm.js.
@@ -2161,8 +2168,9 @@ function main() {
         // out of the ~17 URLs a first load actually needs, and one of those three was DEAD —
         // it carried a `?v=` cache-buster the stylesheet link never carries, and the SW
         // matches without `ignoreSearch`. The app declared itself a PWA and could not boot
-        // offline. The count is deliberately NOT written anywhere: it differs per variant
-        // (deploy-core ships 6 plugins, deploy-full 8) and is printed, never asserted.
+        // offline. The count is deliberately NOT written anywhere: it differs per variant —
+        // a plugin bundle the variant's `index.html` loads at boot is one more URL, a lazy
+        // one is none — and it moves with the shell. It is printed below, never asserted.
         log.section("🧩 Deriving boot-critical assets");
         const { assets: bootAssets } = deriveBootCriticalAssets({
             outDir,
@@ -2376,12 +2384,12 @@ function main() {
 
         // Variant content gate: a core-only deploy must not carry a GATED plugin bundle.
         // What it guards is BUILD CORRECTNESS, nothing else: a core-only variant that
-        // ships storage/addpoi/cog/editor is a wrong build — the consumer asked for the
+        // ships offline-ui/cog/editor is a wrong build — the consumer asked for the
         // small bundle and got the big one.
         // ⚠️ ARCHI S8 — `cog` was MISSING from this list while being a gated plugin, so a cog
         // bundle could land in deploy-core and the guard would have reported nothing. Added.
-        // The list must hold exactly the three `include*` flags; the 9 always-bundled plugins
-        // belong in every variant and must never appear here.
+        // The list must hold exactly the three `include*` flags; every plugin whose descriptor
+        // names no flag belongs in every variant and must never appear here.
         // ⚠️ This list's four `.map` entries are REMOVED because they had
         // become UNREACHABLE: step 8b's guard throws on any sourcemap
         // whatsoever, so none can reach here any more. Keeping them would
@@ -2559,7 +2567,7 @@ function main() {
             log.ok(`deploy/${v.name}/ — ${totalFiles} files, ${sizeMB} MB`);
         }
         log.info(`Path: ${DEPLOY}`);
-        log.info("  deploy/deploy-core/   — Core + the 9 always-bundled plugins");
+        log.info("  deploy/deploy-core/   — Core + every plugin without a variant flag");
         log.info(
             "  deploy/deploy-full/   — + Storage + Cog + Editor (édition, capture POI, hors-ligne)"
         );

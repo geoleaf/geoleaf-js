@@ -830,7 +830,7 @@
             "severity": null,
             "description": "(en-tête absent — fichier de données ou baril)",
             "confidence": "haute",
-            "rationale": "Câblage MESURÉ, pas affirmé : exposé par `npm run atelier:check`, second vert exigé par le protocole de push. Sous-ensemble DÉRIVÉ de `ci-local.cjs` par le drapeau `workshop: true`, sur le patron de `release-check.cjs`. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
+            "rationale": "Câblage MESURÉ, pas affirmé : exposé par `npm run atelier:check`, joué à chaque push par `push-check.cjs`. Sous-ensemble DÉRIVÉ de `ci-local.cjs` par le drapeau `workshop: true`, sur le patron de `release-check.cjs`. Verdict « justifié » par défaut de la RUBRIC §0 : l'artefact est un instrument vivant du dépôt, atteint par un runner nommé ; rien dans le nom, l'emplacement ou le câblage ne porte un verdict actionnable."
         },
         "scripts/lib/gate-ledger.cjs": {
             "kind": "file",

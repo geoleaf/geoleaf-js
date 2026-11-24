@@ -24,7 +24,7 @@ const os = require("node:os");
 const path = require("node:path");
 
 // Queue behind other browser suites on the workstation; no-op elsewhere.
-const FT = path.join(os.homedir(), "dev/outils/navigateur/bin/file-tests");
+const FT = path.join(os.homedir(), "dev/tools/navigateur/bin/file-tests");
 if (!process.env.FILE_TESTS_TENUE && fs.existsSync(FT)) {
     const run = spawnSync(FT, [process.execPath, __filename, ...process.argv.slice(2)], { stdio: "inherit" });
     process.exit(run.status ?? 1);

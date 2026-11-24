@@ -4,8 +4,8 @@ title: connector — l'authentification et l'injection de jeton
 plugin_id: connector
 package: "@geoleaf-plugins/connector"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: 19c16f2b2
+date: 24 novembre 2026
 ---
 
 # connector — l'authentification et l'injection de jeton
@@ -13,6 +13,15 @@ date: 17 novembre 2026
 **Type :** plugin publié · **Paquet :** `@geoleaf-plugins/connector` ·
 **Code :** `packages/plugins/connector/` · **Vérifié contre :** voir `verifie_contre` en tête — une seconde empreinte vivait ici, que rien ne gardait ; cf. `__tests__/guards/spec-single-stamp.guard.test.ts`.
 
+> ⚠️ **Ce que l'estampille du 24/11/2026 couvre** — connector 1.5.0, deux commits. `6b3140d28` :
+> le contrat de jetons `"pair"` (CN-48) — un renouvellement à la fois par appareil (CN-49), la
+> paire diffusée aux onglets (CN-50), le renouvellement proactif à 80 % (CN-51), la déconnexion
+> qui efface puis révoque (CN-52) — et le formulaire monté chez l'hôte (CN-53), le mot de passe
+> vidé à l'envoi et l'attente d'un `429` (CN-54). Gardes vues rouges par mutation : verrou retiré
+> (un rejeu compté), jeton d'accès écrit en base, modale forcée en mode monté, jeton glissé dans
+> la raison d'un refus. Tables de configuration et de stockage reprises, `login-ui.ts` découpé. `19c16f2b2` : le bloc de liens vide n'est plus dessiné sous le bouton —
+> `display: flex` l'emportait sur `hidden` ; aucun comportement décrit ici ne change.
+>
 > ⚠️ **Ce que l'estampille du 04/10/2026 couvre** — connector 1.4.0, quatre commits.
 > `eb6b3466a` : la règle HTTPS juge la DESTINATION du secret et couvre `auth.endpoint` — CN-03
 > réécrite, la table de configuration et la décision « HTTPS toléré » avec elle. `eff03fb8c` : un
@@ -111,8 +120,11 @@ de connexion et un bouton d'accès dans l'interface.
 - **Il ne charge aucune donnée.** Il ne fait qu'ajouter un en-tête à ce que d'autres demandent.
 - **Il ne stocke jamais d'identifiants.** Seul le jeton est conservé ; le mot de passe est effacé
   de la mémoire immédiatement après usage.
-- **Il n'implémente aucun protocole d'autorisation normalisé** — ni OAuth, ni OIDC. Le contrat est
-  minimal : `POST { login, password }` → `{ token, expiresIn }`.
+- **Il n'implémente aucun protocole d'autorisation normalisé** — ni OAuth, ni OIDC, ni
+  redirection, ni PKCE. Il parle deux contrats de jetons, tous deux par identifiant et mot de
+  passe : le contrat par défaut, minimal — `POST { login, password }` → `{ token, expiresIn }` — et
+  le contrat `"pair"` (1.5.0), qui emprunte à OAuth 2 la **forme** de la réponse (RFC 6749 §5.1)
+  et l'esprit de la révocation (RFC 7009), sans le reste du protocole (§Le contrat « pair »).
 - **Il n'importe jamais `@geoleaf/core`.** Toutes ses interactions passent par le namespace global
   et par des événements — voir §Frontières.
 - **Il ne se configure pas par un profil**, à une exception près : un **drapeau d'interface**
@@ -251,6 +263,13 @@ imbriqué ne résoudrait rien. Les entrées françaises reproduisent exactement 
 | CN-44 | Un renouvellement refusé n'est demandé qu'une fois                          | Verdict `refused`, puis toute lecture de la session tant que le jeton refusé est celui qui est stocké                                                                  | Le refus est retenu en mémoire et rendu tel quel, **sans aller-retour**, `bypassPause` compris ; la session est déclarée terminée au premier 401 qui suit. Un jeton enregistré ou effacé l'oublie, un rechargement aussi. 🛑 **Jusqu'au 01/10/2026, une session expirée et refusée coûtait trois POST** — `configure()`, la lecture avant la requête, puis le chemin du 401                                                                                                                                                                                          | `token-store.ts` (`_refusedToken`, `_knownRefusal`)                                                   |
 | CN-45 | Un refus de connexion dit son motif                                         | Réponse non-2xx de `POST {auth.endpoint}` déclarée `application/problem+json` (RFC 9457), corps objet d'au plus 16 384 caractères                                      | L'erreur porte `status` et `problem` (`type`, `title`, `detail` s'ils sont des chaînes non vides, et le corps entier). La fenêtre affiche `detail`, à défaut `title`, sous son propre libellé — par `textContent`, borné à 300 caractères, dans la langue du serveur. Le statut décide toujours du libellé. Sans ce corps, rien ne change ; un corps coupé, illisible ou non déclaré est écarté, le statut gardé. Lu dans le budget de temps de l'échange                                                                                                            | `auth-client.ts` (`_problemOf`), `login-ui.ts` (`showError`)                                          |
 | CN-46 | Une connexion qui échoue s'annonce                                          | Toute connexion depuis la fenêtre qui est refusée ou n'aboutit pas                                                                                                     | `geoleaf:connector:login-failed` : `{ baseUrl, error }`, plus `status` quand un serveur a répondu et `problem` quand il en a déclaré un. Distinct de `auth-error`, qui dit qu'une session ÉTABLIE est morte                                                                                                                                                                                                                                                                                                                                                          | `login-ui.ts` (`_announceFailure`)                                                                    |
+| CN-48 | Un second contrat de jetons : la paire accès / renouvellement               | `auth.contract: "pair"`, `auth.refreshEndpoint`, `auth.revokeEndpoint` facultatif                                                                                      | Connexion `POST endpoint` `{ login, password }` → `{ access_token, refresh_token, expires_in, refresh_expires_in? }` ; renouvellement `POST refreshEndpoint` `{ refresh_token }` sans `Bearer`, chaque réponse portant un jeton de renouvellement NEUF. Jeton d'accès en mémoire seulement, jeton de renouvellement en base. Les deux routes neuves sont refusées sous le contrat par défaut, et tenues à la règle HTTPS (CN-03)                                                                                                                                     | `auth-pair-client.ts`, `config.ts` (`_validateContract`)                                              |
+| CN-49 | Un seul renouvellement à la fois par appareil                               | Deux onglets — ou deux appels — qui renouvellent la même session au même instant                                                                                       | Un verrou `navigator.locks` nommé d'après la session ; sous le verrou, le jeton de renouvellement est RELU dans la base, et le neuf y est écrit avant toute autre chose. Un onglet qui trouve la paire tournée par un autre attend son message (au plus une seconde) plutôt que de renouveler. 🛑 **Un jeton de renouvellement présenté deux fois peut révoquer toute sa famille côté serveur** — l'utilisateur déconnecté partout. Sans `navigator.locks`, un avertissement unique, et la sérialisation se réduit à l'onglet                                        | `pair-session.ts` (`_withDeviceLock`, `_renewUnderLock`)                                              |
+| CN-50 | La paire est diffusée aux autres onglets                                    | Un renouvellement, une connexion ou une déconnexion sous `"pair"`                                                                                                      | `BroadcastChannel("geoleaf-connector")` : le jeton d'accès et son échéance (jamais persistés), ou la déconnexion. L'onglet qui reçoit alimente sa mémoire et émet `token-refreshed` — ou efface et émet `signed-out`. Un message qui nomme une autre `baseUrl` est ignoré                                                                                                                                                                                                                                                                                            | `pair-session.ts` (`_receive`)                                                                        |
+| CN-51 | Renouvellement proactif à 80 % de la durée                                  | Lecture de la session sous `"pair"`, passé 80 % de `expires_in`                                                                                                        | Le jeton courant est rendu, et un renouvellement part en arrière-plan — sur une lecture, sans minuteur. Au chargement, aucun jeton d'accès n'existe : la première lecture renouvelle d'abord. `refresh_expires_in` borne la session que le pré-vol apprend (CN-41)                                                                                                                                                                                                                                                                                                   | `token-store.ts` (`resolveSession`, `renewAt`), `session-reader.ts`                                   |
+| CN-52 | La déconnexion révoque, et efface d'abord                                   | `logout()` sous `"pair"`                                                                                                                                               | Effacement local dans tous les onglets, `signed-out`, PUIS `POST revokeEndpoint` `{ token: <refresh> }` quand il est déclaré. Un 2xx ou un 400 « déjà révoqué » valent succès ; un échec laisse l'appareil déconnecté                                                                                                                                                                                                                                                                                                                                                | `pair-session.ts` (`endPair`), `connector-api.ts` (`logout`)                                          |
+| CN-53 | Le formulaire se monte dans un élément de l'hôte                            | `auth.ui: { mount, onDismiss?, notice?, reloadOnSuccess? }`                                                                                                            | Le même formulaire, dans l'élément (ou celui que rend la fonction à l'ouverture) : ni voile, ni `aria-modal`, ni piège de focus, ni écoute de page — `Échap` sur le formulaire et le bouton de fermeture appellent `onDismiss`. `true` reste la modale. `notice` en texte au-dessus des champs, `reloadOnSuccess` recharge la page après une connexion, dans les deux présentations                                                                                                                                                                                  | `login-ui.ts` (`_mounted`), `login-form.ts`                                                           |
+| CN-54 | Le mot de passe quitte le champ à l'envoi ; un `429` est attendu            | Envoi du formulaire ; refus `429` avec `Retry-After`                                                                                                                   | Le champ est vidé dès le départ de la requête. Un `429` est libellé « Too many attempts » ; son `Retry-After` (secondes ou date HTTP, au plus une heure) est porté sur `AuthError.retryAfter`, et le bouton reste désactivé le temps dit, avec un compte à rebours en `aria-live`. Le code applicatif d'un refus (`code`, ou `error` RFC 6749 §5.2) est porté sur `AuthError.code`                                                                                                                                                                                   | `login-form.ts` (`wireSubmit`, `_holdFor`), `auth-client.ts` (`refusalOf`)                            |
 | CN-47 | Une écriture déclarée sans authentification ne reçoit pas de jeton          | Requête dont l'`init` porte `geoleafWriteAuth: "none"` — la marque que le drain du core pose pour une couche `write.auth: "none"` (core ≥ 3.15.0)                      | Elle part comme elle est venue : aucun jeton posé, aucun jeton résolu, et un 401 rendu à l'appelant sans renouvellement ni rejeu — même sous `baseUrl`. Toute autre valeur, `bearer` comprise, laisse la requête à la règle ordinaire. Le nom de la marque est écrit dans les deux paquets, tenus égaux par la garde `write-auth-mark` du core                                                                                                                                                                                                                       | `fetch-interceptor.ts` (`_declaredAnonymous`)                                                         |
 
 🛑 **CN-32 EXISTE PARCE QUE LE CŒUR NE PEUT PAS VOIR UNE SESSION REVENIR, et son contrat le dit.**
@@ -454,16 +473,23 @@ jeton émis à l'utilisateur authentifié.
 
 Passée à l'appel de `configure()`, **jamais lue dans un profil** — à une exception, traitée plus bas.
 
-| Clé                                 | Type                   | Défaut   | Rôle                                                                                                                                   |
-| ----------------------------------- | ---------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `baseUrl`                           | `string` — obligatoire | —        | Origine et chemin de l'injection. **HTTPS requis**, `http://` toléré vers un hôte de développement seulement (CN-03)                   |
-| `getToken`                          | `function`             | —        | Fournisseur de jeton — **exclusif** avec `auth`. Appelé à **chaque** requête interceptée, chaque tuile, chaque chargement de l'ouvrier |
-| `auth.endpoint`                     | `string`               | —        | Point d'accès d'authentification — reçoit le mot de passe : même règle HTTPS que `baseUrl` (CN-03)                                     |
-| `auth.ui`                           | `boolean`              | `false`  | Ouvre la fenêtre de connexion quand aucune session n'est stockée ou qu'elle est refusée — pas quand son renouvellement est injoignable |
-| `auth.signupUrl`                    | `string`               | —        | Lien d'inscription dans la fenêtre — même règle HTTPS (CN-03)                                                                          |
-| `auth.forgotPasswordUrl`            | `string`               | —        | Lien de mot de passe oublié — mêmes règles                                                                                             |
-| `auth.credentialButton.enabled`     | `boolean`              | `false`  | Injecte le bouton d'accès                                                                                                              |
-| `auth.credentialButton.iconVariant` | `"lock"` / `"user"`    | `"lock"` | Variante d'icône ; une valeur inconnue est **corrigée en silence**                                                                     |
+| Clé                                 | Type                      | Défaut    | Rôle                                                                                                                                                       |
+| ----------------------------------- | ------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseUrl`                           | `string` — obligatoire    | —         | Origine et chemin de l'injection. **HTTPS requis**, `http://` toléré vers un hôte de développement seulement (CN-03)                                       |
+| `getToken`                          | `function`                | —         | Fournisseur de jeton — **exclusif** avec `auth`. Appelé à **chaque** requête interceptée, chaque tuile, chaque chargement de l'ouvrier                     |
+| `auth.endpoint`                     | `string`                  | —         | Point d'accès d'authentification — reçoit le mot de passe : même règle HTTPS que `baseUrl` (CN-03)                                                         |
+| `auth.contract`                     | `"token"` / `"pair"`      | `"token"` | Le contrat de jetons du serveur (CN-48)                                                                                                                    |
+| `auth.refreshEndpoint`              | `string`                  | —         | Renouvellement sous `"pair"` — obligatoire là, refusé ailleurs ; reçoit le jeton de renouvellement : règle HTTPS (CN-03)                                   |
+| `auth.revokeEndpoint`               | `string`                  | —         | Révocation sous `"pair"` — facultative (sans elle, déconnexion locale), refusée ailleurs ; règle HTTPS                                                     |
+| `auth.ui`                           | `boolean` / objet         | `false`   | Ouvre la fenêtre de connexion quand aucune session n'est stockée ou qu'elle est refusée — pas quand son renouvellement est injoignable. `true` : la modale |
+| `auth.ui.mount`                     | élément / `() => élément` | —         | Monte le formulaire dans un élément de l'hôte au lieu d'une modale (CN-53)                                                                                 |
+| `auth.ui.onDismiss`                 | `function`                | —         | Appelée quand l'utilisateur ferme la fenêtre sans se connecter                                                                                             |
+| `auth.ui.notice`                    | `string`                  | —         | Avertissement au-dessus des champs, en texte                                                                                                               |
+| `auth.ui.reloadOnSuccess`           | `boolean`                 | `false`   | Recharge la page après une connexion réussie                                                                                                               |
+| `auth.signupUrl`                    | `string`                  | —         | Lien d'inscription dans la fenêtre — même règle HTTPS (CN-03)                                                                                              |
+| `auth.forgotPasswordUrl`            | `string`                  | —         | Lien de mot de passe oublié — mêmes règles                                                                                                                 |
+| `auth.credentialButton.enabled`     | `boolean`                 | `false`   | Injecte le bouton d'accès                                                                                                                                  |
+| `auth.credentialButton.iconVariant` | `"lock"` / `"user"`       | `"lock"`  | Variante d'icône ; une valeur inconnue est **corrigée en silence**                                                                                         |
 
 ⚠️ **`getToken` est appelé à chaque requête interceptée, à chaque tuile et à chaque chargement de
 l'ouvrier**, et la mise en cache est à la charge de l'appelant. C'est écrit dans le type ; le plugin
@@ -626,12 +652,37 @@ pont).
 
 ### Stockage écrit
 
-| Emplacement                                             | Contenu                                   |
-| ------------------------------------------------------- | ----------------------------------------- |
-| Base indexée `geoleaf-connector`, magasin `auth-tokens` | Jeton et date d'expiration, par `baseUrl` |
-| Cache mémoire                                           | Le même, pour la lecture **synchrone**    |
+| Emplacement                                             | Contenu                                                                                                                                |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Base indexée `geoleaf-connector`, magasin `auth-tokens` | Jeton et date d'expiration, par `baseUrl` — sous `"pair"`, le jeton de **renouvellement** et son échéance, **jamais** le jeton d'accès |
+| Cache mémoire                                           | Le jeton d'accès, pour la lecture **synchrone** — sous `"pair"`, son seul lieu                                                         |
 
 **Jamais d'identifiants**, jamais de mot de passe, et le jeton n'est jamais journalisé.
+
+### Le contrat « pair »
+
+_Ajouté en 1.5.0, sur une demande aval : un serveur au contrat OAuth 2 courant ne pouvait pas se
+brancher sur le mode `auth` — la connexion échouait sur « missing token or expiresIn », et le
+renouvellement visait une route `…/refresh` qui n'existait pas. Le consommateur avait écrit son
+propre client et son propre écran, et n'utilisait le connector qu'en mode `getToken`._
+
+**Le contrat par défaut reste le défaut**, inchangé, et ses suites passent sans retouche.
+`_renewalFor` (`connector-api.ts`) choisit le renouvellement selon `auth.contract` ; le magasin
+(`token-store.ts`) reste celui des deux, avec sa déduplication, sa pause après panne et son refus
+retenu (CN-40, CN-44). Ce qui change tient à une seule règle : **le jeton de renouvellement est à
+usage unique**. D'où les trois règles de `pair-session.ts` — un verrou par appareil, le jeton relu
+sous le verrou, le neuf écrit avant tout — et le jeton d'accès hors de toute persistance, qui fait
+qu'un rechargement renouvelle avant d'envoyer quoi que ce soit.
+
+⚠️ **La comparaison à quoi un verdict s'applique change d'objet.** Sous `"pair"`, ce que
+`saveIfCurrent`, `declareSessionDead` et le refus retenu comparent est le jeton de
+**renouvellement** présenté (`_storedToken`), pas le jeton d'accès — c'est lui qui identifie la
+session.
+
+⚠️ **La fermeture de la fenêtre montée se dit par un rappel, pas par un événement.** Un événement
+`geoleaf:` neuf se type dans la carte du **core** (EM-01) : le lot aurait touché le core et lié la
+publication du connector à la sienne. `onDismiss` se passe au même endroit que `mount`, et
+l'hôte qui fournit l'élément y fournit la fermeture.
 
 ---
 

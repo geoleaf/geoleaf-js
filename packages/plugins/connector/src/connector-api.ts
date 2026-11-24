@@ -43,7 +43,7 @@
  * `console.groupCollapsed`, with no test covering it.
  */
 
-import { validateConfig, ConfigError } from "./config.js";
+import { validateConfig, ConfigError, isPairContract } from "./config.js";
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
 import type { RefreshFn, RefreshOutcome, SessionState } from "./token-store.js";
@@ -59,6 +59,7 @@ import { armSessionResume, disarmSessionResume } from "./session-resume.js";
 import { registerSessionReader } from "./session-reader.js";
 import { armRenewalRetry, disarmRenewalRetry } from "./renewal-retry.js";
 import { installCredentialButton, uninstallCredentialButton } from "./credential-button.js";
+import { PairSessions } from "./pair-session.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -148,9 +149,15 @@ function _wireGuidedReconnect(config: ConnectorConfig): void {
  *
  * Built for `configure()`, which installs it as the PAGE's, and for each `createConnector()`
  * instance, which keeps it to itself — one body, so the renewal logic lives in one place.
+ *
+ * Under `contract: "pair"` it is `pair-session.ts`'s: one renewal per device, the refresh token
+ * read under the lock and rotated at each call.
  */
 function _renewalFor(config: ConnectorConfig): RefreshFn | null {
     if (!config.auth?.endpoint) return null;
+    if (isPairContract(config) && config.auth.refreshEndpoint) {
+        return PairSessions.renewal(config.auth.refreshEndpoint);
+    }
     return async (baseUrl: string): Promise<RefreshOutcome> => {
         // 🛑 THE RAW RECORD, NOT `getTokenSync`. The whole point of a refresh is to
         // trade an EXPIRED token for a fresh one — and `getTokenSync` evicts an expired
@@ -256,6 +263,10 @@ export async function configure(config: ConnectorConfig): Promise<void> {
     // with the renewal possible from that very read. ⚠️ SET ON EVERY CALL, `null` without
     // `auth.endpoint`: the page's renewal is this function's alone to install and to remove.
     TokenStore._setRefreshFn(_renewalFor(config));
+    // The pairs other tabs renew reach this one — before the first read below, which may wait
+    // for another tab's renewal under the lock.
+    if (isPairContract(config)) PairSessions.armChannel(config.baseUrl);
+    else PairSessions.disarmChannel();
 
     _wireGuidedReconnect(config);
     // The captures a dead session set aside come back when the operator does — the core
@@ -351,6 +362,11 @@ export async function openLoginModal(): Promise<void> {
 /**
  * Ends the session: the stored token is erased and the host is told.
  *
+ * Under `contract: "pair"` the session is erased in every tab of the device, then the refresh
+ * token is revoked at `auth.revokeEndpoint` when one is set. The erasure comes first and does
+ * not depend on the server's answer: a revocation that fails or times out (15 seconds) still
+ * leaves the device signed out.
+ *
  * 🛑 **THERE WAS NO WAY TO END A SESSION.** The public surface carried `configure` and
  * `openLoginModal` only; `TokenStore.clear` had a single caller — the 401 path — and the
  * store's own docblock states that "sign-out must clear it here and not only in memory".
@@ -375,7 +391,8 @@ export async function openLoginModal(): Promise<void> {
  * import would be false, since the package exports only `createConnector`. The honest
  * form is prose until the namespace carries a type.
  *
- * @returns Resolves once the token is gone. Never throws — a sign-out that fails on an
+ * @returns Resolves once the token is gone — under `"pair"`, once the revocation concluded
+ *   too; `geoleaf:connector:signed-out` is emitted as soon as the erasure is done. Never throws — a sign-out that fails on an
  *   unconfigured plugin has nothing to report.
  */
 export async function logout(): Promise<void> {
@@ -383,11 +400,30 @@ export async function logout(): Promise<void> {
     if (!config || config.getToken) return;
     // Before the erasure: a relaunch firing in between would renew the session being ended.
     disarmRenewalRetry();
-    await TokenStore.clear(config.baseUrl);
-    if (typeof document !== "undefined") {
+    const announce = (): void => {
+        if (typeof document === "undefined") return;
         document.dispatchEvent(
             new CustomEvent("geoleaf:connector:signed-out", { detail: { baseUrl: config.baseUrl } })
         );
+    };
+    if (isPairContract(config)) {
+        await _erased(PairSessions.end(config.baseUrl, config.auth?.revokeEndpoint, announce));
+        return;
+    }
+    await TokenStore.clear(config.baseUrl);
+    announce();
+}
+
+/**
+ * Waits for a `"pair"` sign-out — erasure, then revocation — and swallows what the
+ * revocation concluded: the sign-out never throws, and the erasure has happened by then.
+ */
+async function _erased(revocation: Promise<boolean>): Promise<void> {
+    try {
+        await revocation;
+    } catch {
+        // `PairSessions.end` erases before it revokes, and the revocation never throws:
+        // nothing reaches here but a failed erasure of the database, which `clear` absorbs.
     }
 }
 

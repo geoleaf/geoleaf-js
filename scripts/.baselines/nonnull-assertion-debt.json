@@ -1,7 +1,7 @@
 {
     "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans le registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
     "_generated": "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
-    "count": 247,
+    "count": 244,
     "entries": [
         "packages/core/src/adapters/maplibre/maplibre-hatch-patterns.ts::ctx::!::canvas.getContext(\"2d\")",
         "packages/core/src/app/app-types.ts::asGeoLeafConfig::as-unknown::config",
@@ -196,9 +196,6 @@
         "packages/libs/host-runtime/src/notify-seam.ts::getUINotifications::as-unknown::globalThis",
         "packages/plugins/cog/src/cog-loader.ts::fileDir::as-unknown::image.fileDirectory",
         "packages/plugins/cog/src/cog-loader.ts::withGeoKeys::as-unknown::image",
-        "packages/plugins/connector/src/login-ui.ts::evt::!::config.auth",
-        "packages/plugins/connector/src/login-ui.ts::evt::!::config.auth!.forgotPasswordUrl",
-        "packages/plugins/connector/src/login-ui.ts::evt::!::config.auth!.signupUrl",
         "packages/plugins/editor/src/drawing/terra-draw-adapter.ts::deselectFeature::as-unknown::id",
         "packages/plugins/editor/src/drawing/terra-draw-adapter.ts::getFeature::as-unknown::id",
         "packages/plugins/editor/src/drawing/terra-draw-adapter.ts::removeFeatures::as-unknown::ids",

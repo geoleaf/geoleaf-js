@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "push-check",
+    "scope": ["scripts/push-check.cjs"],
+    "verdicts": {
+        "scripts/push-check.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Décide ce qu'un push vers le dépôt d'atelier doit passer : `ci:local` complet dès qu'un chemin public diffère du dernier vert sur arbre propre, un ensemble court sinon",
+            "confidence": "haute",
+            "rationale": "Exposé en `npm run push:check`, cité par le protocole de push ; décision pure (`findBase`, `decide`) gardée par `push-check.guard.test.ts`, vue rouge sous deux mutations. Réutilise la frontière de `lib/public-partition.cjs` et le registre de `lib/gate-ledger.cjs` plutôt que d'en tenir une copie"
+        }
+    }
+}

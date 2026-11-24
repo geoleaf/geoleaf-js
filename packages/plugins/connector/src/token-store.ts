@@ -11,10 +11,35 @@ import { EXCHANGE_TIMEOUT_MS } from "./auth-client.js";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+/**
+ * A session as IndexedDB holds it — one shape per token contract.
+ *
+ * - `"token"`: `token` + `expiresAt`.
+ * - `"pair"`: `refreshToken` (+ `refreshExpiresAt` when the server said). 🛑 **Never the access
+ *   token**: it lives in the RAM cache only, and a reload renews before anything is sent.
+ *
+ * Same store, same key (`baseUrl`), same database version: a record of the other shape is read
+ * as no session of this one.
+ */
 interface TokenRecord {
     baseUrl: string;
+    token?: string;
+    expiresAt?: number; // timestamp ms
+    refreshToken?: string;
+    refreshExpiresAt?: number; // timestamp ms
+}
+
+/** A `"pair"` session as stored: the refresh token and, when known, its expiry (ms). */
+interface PairRecord {
+    readonly refreshToken: string;
+    readonly refreshExpiresAt?: number;
+}
+
+/** A token held in memory: `renewAt` is when a read renews it in the background. */
+interface MemoryEntry {
     token: string;
-    expiresAt: number; // timestamp ms
+    expiresAt: number;
+    renewAt?: number;
 }
 
 /**
@@ -71,7 +96,14 @@ const STORE_NAME = "auth-tokens";
 
 // ─── RAM cache ────────────────────────────────────────────────────────────────
 
-const _cache = new Map<string, { token: string; expiresAt: number }>();
+const _cache = new Map<string, MemoryEntry>();
+
+/**
+ * The refresh token stored for a `"pair"` session, mirrored in memory — written BEFORE the
+ * database, like `_cache`, so that a compare-and-set never reads a database that lags behind.
+ * Dropped when another tab says it rotated the pair: the database then decides.
+ */
+const _pairRefresh = new Map<string, string>();
 
 // ─── Refresh state ────────────────────────────────────────────────────────────
 
@@ -196,7 +228,7 @@ async function load(baseUrl: string): Promise<{ token: string; expiresAt: number
     const cached = _cache.get(baseUrl);
     if (cached) return cached;
     const record = await _idbGet(baseUrl);
-    if (record) {
+    if (record?.token !== undefined && record.expiresAt !== undefined) {
         _cache.set(baseUrl, { token: record.token, expiresAt: record.expiresAt });
         return { token: record.token, expiresAt: record.expiresAt };
     }
@@ -206,18 +238,84 @@ async function load(baseUrl: string): Promise<{ token: string; expiresAt: number
 /** Removes a token from IDB and RAM cache. */
 async function clear(baseUrl: string): Promise<void> {
     _cache.delete(baseUrl);
+    _pairRefresh.delete(baseUrl);
     _endOutage(baseUrl);
     await _idbDelete(baseUrl);
 }
 
 /**
- * The token stored right now — memory first, since every write lands there first; then the
- * database, which alone still holds an expired token `getTokenSync` evicted from memory.
+ * The token that identifies the session stored right now — the one a renewal presents, and the
+ * one a verdict is compared against.
+ *
+ * Memory first, since every write lands there first; then the database, which alone still holds
+ * an expired token `getTokenSync` evicted from memory. Under the `"pair"` contract it is the
+ * REFRESH token: the access token is not what a renewal presents.
  */
 async function _storedToken(baseUrl: string): Promise<string | null> {
+    const pair = _pairRefresh.get(baseUrl);
+    if (pair !== undefined) return pair;
     const cached = _cache.get(baseUrl);
     if (cached) return cached.token;
-    return (await _idbGet(baseUrl))?.token ?? null;
+    const record = await _idbGet(baseUrl);
+    return record?.refreshToken ?? record?.token ?? null;
+}
+
+// ─── "pair" contract ──────────────────────────────────────────────────────────
+
+/**
+ * Reads the `"pair"` session from the DATABASE, bypassing memory — the read `pair-session.ts`
+ * makes under its device-wide lock, where another tab may have rotated the pair meanwhile.
+ *
+ * @returns The record, or `null` when no `"pair"` session is stored.
+ */
+async function readPairRecord(baseUrl: string): Promise<PairRecord | null> {
+    const record = await _idbGet(baseUrl);
+    if (!record?.refreshToken) return null;
+    return {
+        refreshToken: record.refreshToken,
+        ...(record.refreshExpiresAt !== undefined && { refreshExpiresAt: record.refreshExpiresAt }),
+    };
+}
+
+/**
+ * Stores a `"pair"` session: the refresh token in the database FIRST, then the access token in
+ * memory. 🛑 In that order: a renewal that dies between the two leaves a session the next
+ * renewal can still use, while the reverse would leave a spent refresh token stored.
+ *
+ * @param baseUrl - The API the session authenticates against.
+ * @param pair - The refresh token and its expiry.
+ * @param access - The access token, its expiry and its renewal point (ms).
+ */
+async function savePair(
+    baseUrl: string,
+    pair: PairRecord,
+    access: { token: string; expiresAt: number; renewAt: number }
+): Promise<void> {
+    _pairRefresh.set(baseUrl, pair.refreshToken);
+    _endOutage(baseUrl);
+    await _idbPut({ baseUrl, ...pair });
+    _cache.set(baseUrl, { ...access });
+}
+
+/**
+ * Holds an access token in memory only — what another tab's renewal shares. The database
+ * already holds the refresh token that tab wrote, so the memory mirror of it is dropped and
+ * the next comparison reads the database.
+ */
+function holdInMemory(
+    baseUrl: string,
+    access: { token: string; expiresAt: number; renewAt: number }
+): void {
+    _pairRefresh.delete(baseUrl);
+    _endOutage(baseUrl);
+    _cache.set(baseUrl, { ...access });
+}
+
+/** Forgets a session from memory only — another tab erased it from the database. */
+function forgetMemory(baseUrl: string): void {
+    _cache.delete(baseUrl);
+    _pairRefresh.delete(baseUrl);
+    _endOutage(baseUrl);
 }
 
 /**
@@ -422,7 +520,8 @@ function inflightRefresh(baseUrl: string): Promise<RefreshOutcome> | null {
  * RAM cache → IDB → renewal, and what came of it.
  *
  * Sequence:
- *  1. RAM cache hit with >30s margin → the token (proactive renewal when <5 min left)
+ *  1. RAM cache hit with >30s margin → the token (proactive renewal when <5 min left, or past
+ *     80 % of its lifetime under the "pair" contract — the entry's `renewAt`)
  *  2. IDB hit with >30s margin → populate RAM, the token (same proactive renewal)
  *  3. A token stored, expired or close to it → renewal; its verdict when it does not renew
  *  4. Nothing stored → `absent`
@@ -441,13 +540,20 @@ async function resolveSession(
     // 1. RAM cache — valid with >30s margin
     const cached = _cache.get(baseUrl);
     if (cached && cached.expiresAt > now + 30_000) {
-        if (cached.expiresAt - now < 300_000) void _refreshToken(baseUrl, false, renew);
+        if (now >= (cached.renewAt ?? cached.expiresAt - 300_000)) {
+            void _refreshToken(baseUrl, false, renew);
+        }
         return { token: cached.token };
     }
 
-    // 2. IDB fallback
+    // 2. IDB fallback — a "token" record only: a "pair" record holds no access token, and
+    // falls to the renewal (3), which is how a reload resumes a "pair" session.
     const record = await _idbGet(baseUrl);
-    if (record && record.expiresAt > now + 30_000) {
+    if (
+        record?.token !== undefined &&
+        record.expiresAt !== undefined &&
+        record.expiresAt > now + 30_000
+    ) {
         _cache.set(baseUrl, { token: record.token, expiresAt: record.expiresAt });
         if (record.expiresAt - now < 300_000) void _refreshToken(baseUrl, false, renew);
         return { token: record.token };
@@ -541,6 +647,10 @@ export const TokenStore = {
     forceRefresh,
     inflightRefresh,
     holdRenewals,
+    readPairRecord,
+    savePair,
+    holdInMemory,
+    forgetMemory,
 
     /**
      * Installs the PAGE's renewal — the one the singleton's 401 path and its relaunch use.
