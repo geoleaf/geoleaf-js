@@ -11,7 +11,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## [Unreleased]
+## [3.20.6] - 2026-11-25
+
+Published with `@geoleaf-plugins/offline-ui` 1.7.4, `@geoleaf-plugins/editor` 1.6.4 and
+`@geoleaf/field-renderer` 1.4.5.
 
 ### Added
 
