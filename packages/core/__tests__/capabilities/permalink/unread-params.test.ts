@@ -84,8 +84,8 @@ describe("un lien ouvert sans la capacité qui le lit", () => {
     // 🛑 The two cases above write the address THEMSELVES, after the restore. In the browser,
     // the last write happens BEFORE it — the view set by applyState fires its moveend at once —
     // and nothing wrote again: the link copied before any gesture still lost its filter
-    // (contre-recette of 25/11/2026, scripts/73-couples.mjs). The restore must rewrite the
-    // address itself, with no gesture.
+    // (seen in a real browser on 25/11/2026). The restore must rewrite the address itself,
+    // with no gesture.
     // The browser's path: the link carries a theme AND a filter, the page has neither selector
     // nor filter, and the restore runs from the grace period after app:ready — no event left
     // to trigger a write after it.
