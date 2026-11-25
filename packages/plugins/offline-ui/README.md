@@ -100,6 +100,15 @@ Load it **after** `@geoleaf/core`:
 
 ## API
 
+### `GeoLeaf.UI.CacheButton.openModal()`
+
+Opens the offline preparation window — the same call as the toolbar action, for a host that
+offers its own button. It is the plugin's only public member, added to the core's `UI` façade.
+
+```js
+GeoLeaf.UI.CacheButton.openModal();
+```
+
 `GeoLeaf.Storage` is a facade of **`@geoleaf/core`** — this plugin drives it and mounts no
 namespace of its own. The members below are the ones its interface uses; the core's API
 reference documents the facade.

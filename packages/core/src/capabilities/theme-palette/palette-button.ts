@@ -19,26 +19,17 @@ import { domCreate, applyCssText } from "../../utils/general/dom-helpers.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
 import { getPalettes } from "./config.js";
 import { applyPalette, getPalette } from "./palette-engine.js";
+import {
+    closeChoicePopover,
+    initChoiceButton,
+    toggleChoicePopover,
+} from "../../utils/controls/choice-popover.js";
 
 /** Marker + idempotency class of the button. */
 export const PALETTE_BUTTON_CLASS = "gl-rp-palette-btn";
 const PALETTE_POPOVER_CLASS = "gl-palette-popover";
 const PALETTE_ITEM_CLASS = "gl-palette-popover__item";
 const PALETTE_SWATCH_CLASS = "gl-palette-popover__swatch";
-
-let _openPopover: HTMLElement | null = null;
-let _outsideHandler: ((e: Event) => void) | null = null;
-
-/** Closes the popover and releases its document-level listeners. */
-function closePalettePopover(): void {
-    if (_outsideHandler && typeof document !== "undefined") {
-        document.removeEventListener("click", _outsideHandler, true);
-        document.removeEventListener("keydown", _outsideHandler, true);
-    }
-    _outsideHandler = null;
-    _openPopover?.remove();
-    _openPopover = null;
-}
 
 /** Marks the active row, so the popover reflects a live switch without a rebuild. */
 function _syncActive(popover: HTMLElement): void {
@@ -49,16 +40,17 @@ function _syncActive(popover: HTMLElement): void {
     });
 }
 
-/** Builds the popover of palette swatches. */
-function _buildPopover(anchor: HTMLElement): HTMLElement {
+/**
+ * Builds the list of palette swatches — plain buttons, the active one marked `aria-current`.
+ * Placed, opened and closed by the shared disclosure (`utils/controls/choice-popover.ts`).
+ */
+function _buildPopover(): HTMLElement {
     const popover = domCreate("div", PALETTE_POPOVER_CLASS);
-    popover.setAttribute("role", "menu");
     popover.setAttribute("aria-label", getLabel("aria.palette.select"));
 
     for (const palette of getPalettes()) {
         const item = domCreate("button", PALETTE_ITEM_CLASS, popover);
         item.type = "button";
-        item.setAttribute("role", "menuitem");
         item.dataset.glPalette = palette.id;
 
         const dot = domCreate("span", PALETTE_SWATCH_CLASS, item);
@@ -79,32 +71,8 @@ function _buildPopover(anchor: HTMLElement): HTMLElement {
         });
     }
 
-    anchor.parentElement?.appendChild(popover);
     _syncActive(popover);
     return popover;
-}
-
-/** Opens the popover, wiring outside-click and Escape to close it. */
-function _openFor(btn: HTMLElement): void {
-    if (_openPopover) {
-        closePalettePopover();
-        return;
-    }
-    const popover = _buildPopover(btn);
-    _openPopover = popover;
-
-    _outsideHandler = (e: Event) => {
-        if (e.type === "keydown") {
-            if ((e as KeyboardEvent).key !== "Escape") return;
-            closePalettePopover();
-            btn.focus();
-            return;
-        }
-        if (popover.contains(e.target as Node) || btn.contains(e.target as Node)) return;
-        closePalettePopover();
-    };
-    document.addEventListener("click", _outsideHandler, true);
-    document.addEventListener("keydown", _outsideHandler, true);
 }
 
 /** SVG path — a painter's palette glyph, drawn to match the 18px stroke icons around it. */
@@ -131,13 +99,13 @@ export function buildPaletteButton(variant: "desktop" | "mobile"): HTMLButtonEle
 
     const label = getLabel("ui.palette.button");
     btn.setAttribute("aria-label", label);
-    btn.setAttribute("aria-haspopup", "menu");
+    initChoiceButton(btn);
     btn.title = label;
 
     btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        _openFor(btn);
+        toggleChoicePopover(btn, _buildPopover);
     });
 
     return btn;
@@ -158,6 +126,6 @@ export function appendPaletteButtonToTabs(tabs: HTMLElement): void {
 /** Removes every palette button this capability injected (teardown counterpart). */
 export function removePaletteButtonsFromDocument(): void {
     if (typeof document === "undefined") return;
-    closePalettePopover();
+    closeChoicePopover();
     document.querySelectorAll(`.${PALETTE_BUTTON_CLASS}`).forEach((btn) => btn.remove());
 }

@@ -91,6 +91,8 @@ interface RouteLayerRegistry {
     getAllLayerIds(): string[];
     /** GeoJSON geometry-type vocabulary present on a layer. */
     getGeometryTypes(layerId: string): Set<string> | undefined;
+    /** The layer's entry — read for its draw rank (`zIndex`). */
+    get?(layerId: string): { zIndex?: number } | undefined;
 }
 
 /**
@@ -102,6 +104,9 @@ export interface RouteMapAdapter {
     addGeoJSONLayer: (id: string, data: unknown, style?: Record<string, unknown>) => void;
     /** Removes a previously added layer (idempotent endpoint refresh). */
     removeLayer?: (id: string) => void;
+    /** Shows / hides a layer — the endpoint sub-layer follows its decorated layer. */
+    showLayer?: (id: string) => void;
+    hideLayer?: (id: string) => void;
     /** The core per-layer registry (used by the ready-sweep). */
     getLayerRegistry?: () => RouteLayerRegistry | null;
 }

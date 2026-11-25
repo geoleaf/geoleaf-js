@@ -848,6 +848,17 @@ describe("addClusterSubLayers — minZoom / maxZoom (N-1b)", () => {
         expect(compteur.maxzoom).toBe(18);
     });
 
+    it("le compteur se pose en haut de la bande des couches, le cercle à son rang", () => {
+        // Each layer clusters on its own: a later layer's circle covered an earlier layer's
+        // count (« 589 » over « 1.xk », measured on a phone). Counts are inserted right under
+        // the POI sentinel — above every ranked circle — while the circle keeps its rank.
+        map.getLayer = vi.fn((id) => (id === "gl-sentinel-poi" ? { id } : undefined));
+        addClusterSubLayers(map, "poi", "src-poi", {}, "gl-other-fill");
+        const [cercles, compteur] = map.addLayer.mock.calls;
+        expect(cercles[1]).toBe("gl-other-fill");
+        expect(compteur[1]).toBe("gl-sentinel-poi");
+    });
+
     it("ne pose aucune borne quand aucune n'est fournie", () => {
         addClusterSubLayers(map, "poi", "src-poi", {}, undefined);
         const cercles = map.addLayer.mock.calls[0][0];

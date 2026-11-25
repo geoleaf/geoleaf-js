@@ -154,14 +154,16 @@
         padding-bottom: 4px;
     }
 
-    /* Ensure title is left-aligned, occupies remaining space and truncates if too long */
+    /* Left-aligned, takes the remaining space, and WRAPS when too long. It used to hold one
+       line with an ellipsis: on a phone a feature's full name was readable nowhere in the
+       panel, and a hover title does not exist on a touch screen. */
     .gl-poi-sidepanel__content .gl-poi-sidepanel__title .gl-poi-sidepanel__title-text,
     .gl-poi-sidepanel__content .gl-poi-sidepanel__title-text {
         flex: 1 1 auto;
+        min-width: 0;
         text-align: left;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     /* Safety: ensure the title wrapper uses full width and aligns children to start */

@@ -95,14 +95,19 @@
         border: none !important;
     }
 
+    /* The dot is an SVG circle (see geolocation.ts: the marker icon goes through an SVG-only
+       allow-list). Accent fill, inverse ring; the drop shadow follows the circle, not a box. */
     .gl-user-location-dot {
-        width: 16px;
-        height: 16px;
-        background: var(--gl-color-accent);
-        border: 3px solid var(--gl-color-text-inverse);
-        border-radius: 50%;
-        box-shadow: var(--gl-shadow-medium);
+        display: block;
+        overflow: visible;
+        filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.35));
         animation: gl-user-location-appear 0.3s ease-out;
+    }
+
+    .gl-user-location-dot circle {
+        fill: var(--gl-color-accent);
+        stroke: var(--gl-color-text-inverse);
+        stroke-width: 3;
     }
 
     @keyframes gl-user-location-appear {

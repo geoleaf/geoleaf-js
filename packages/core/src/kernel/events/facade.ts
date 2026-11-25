@@ -77,7 +77,7 @@
  * | Event name                    | When fired                              | Key payload fields                        |
  * |-------------------------------|-----------------------------------------|-------------------------------------------|
  * | `geoleaf:app:ready`           | App fully initialized                   | `version`, `timestamp`                    |
- * | `geoleaf:map:ready`           | MapLibre map created                    | —                                         |
+ * | `geoleaf:map:ready`           | Map can draw — once per map             | —                                         |
  * | `geoleaf:basemap:change`      | Base tile layer switched                | `key`, `previousKey`                      |
  * | `geoleaf:theme:applied`       | Theme applied (layers loaded)           | `themeName`, `layerCount`                 |
  * | `geoleaf:poi:click`           | 🛑 **DECLARED, NEVER EMITTED** (see below) | `poiId`, `layerId`, `source` (no referent) |

@@ -17,20 +17,28 @@ export interface ValidateUrlOptions {
 }
 
 /**
- * Resolve the base URL for relative URL parsing, defaulting to the current origin.
+ * Resolve the base URL for relative URL parsing, defaulting to the DOCUMENT's address.
+ *
+ * ⚠️ Not the origin. Until 3.20.6 the default was `location.origin`: served at the root of a
+ * site the two coincide, served in a folder they do not — a profile's relative
+ * `icons/sprite.svg` resolved to `/profiles/…` at the site's root, a 404. The document's base
+ * (`document.baseURI`, which honours a `<base>` element), then the page's address, then the
+ * origin: the order a browser itself resolves a relative URL in.
  *
  * @param baseUrl - Optional explicit base URL.
  * @returns The resolved base URL string.
  */
 export function resolveBaseUrl(baseUrl?: string): string {
-    const _loc =
-        typeof globalThis !== "undefined" && "location" in globalThis
-            ? (globalThis as unknown as { location: { origin?: string } }).location
-            : typeof location !== "undefined"
-              ? location
-              : null;
-
-    return baseUrl ?? _loc?.origin ?? "https://localhost";
+    if (baseUrl) return baseUrl;
+    const _g = typeof globalThis !== "undefined" ? (globalThis as Record<string, unknown>) : {};
+    const doc = _g.document as { baseURI?: string } | undefined;
+    if (typeof doc?.baseURI === "string" && /^https?:/.test(doc.baseURI)) return doc.baseURI;
+    const loc = (_g.location ?? (typeof location !== "undefined" ? location : null)) as {
+        href?: string;
+        origin?: string;
+    } | null;
+    if (typeof loc?.href === "string" && /^https?:/.test(loc.href)) return loc.href;
+    return loc?.origin ?? "https://localhost";
 }
 
 const _ALLOWED_DATA_TYPES = [

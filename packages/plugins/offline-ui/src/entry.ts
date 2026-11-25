@@ -5,12 +5,19 @@
  * ESM only — no UMD, no CommonJS. Loaded AFTER @geoleaf/core, BEFORE GeoLeaf.boot().
  * © 2026 Mattieu Pottier — MIT License
  *
- * ## ⚠️ No `public-api.ts` here, and it is a FINDING, not an oversight
+ * ## ⚠️ No namespace of its own — and a `public-api.ts` for the one member it adds
  *
  * `connector` and the former `addpoi` were aligned on the `buildPublicApi()`
  * pattern, which brings them into the scope of `check-facade-purity.cjs` — a gate
  * that enumerates facades by FILE EXISTENCE. One might believe storage was left
  * aside. It is not: **it mounts no namespace of its own.**
+ *
+ * It does add ONE member to a core façade: `GeoLeaf.UI.CacheButton`, whose
+ * `openModal()` a host calls from its own button. That member, and only it, is
+ * declared in `public-api.ts`, with its mount point (`PUBLIC_API_MOUNT`), so a
+ * consumer manifest can depend on it and the consumer-contract gate can measure it.
+ * The paragraphs below still hold for `Storage`, which this plugin drives and does
+ * not set.
  *
  * `GeoLeaf.Storage` is a CORE facade (the `offline` capability,
  * `kernel/storage/facade.ts`). This plugin DRIVES it — it registers the offline
@@ -18,9 +25,9 @@
  * many words: `typeof _g.GeoLeaf?.Storage === "object"` queries a surface it did
  * not set.
  *
- * Creating an empty `public-api.ts` to "enter the gate" would be a structural
- * lie: the file would announce a facade where there is nothing to expose, and the
- * gate would validate it. A gate satisfied by a shell guards nothing.
+ * Declaring `Storage` members in `public-api.ts` to "enter the gate" would be a
+ * structural lie: the file would announce a facade this plugin does not set, and
+ * the gate would validate it. A gate satisfied by a shell guards nothing.
  *
  * ⚠️ **This paragraph extended the finding to `route` AND `vector-tiles` "for the
  * same reason". Measured on 20/08/2026: true of `route`, false of

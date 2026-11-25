@@ -214,6 +214,18 @@ l'introspection énumère. Ne pas citer de numéro de ligne pour `global.d.ts`.
 chargeur retombe sur `{ shouldCluster: false }` — **exactement le même résultat** qu'une capacité
 présente mais désactivée. C'est ce qui rend le retrait indolore.
 
+**Le conseil d'une couche lourde non regroupée nomme la vraie cause** (3.20.6). Au-delà de 1 000
+points non regroupés, le chargeur avertit : capacité absente du bundle, il le dit ; éteinte, il
+nomme `modules.cluster.enabled` ; présente et allumée, il conseille `clustering` sur la couche ou
+`modules.cluster.clustering`. Jusqu'en 3.20.5 il conseillait toujours ces deux clés, inopérantes
+sans la capacité — le profil de la recette les portait déjà.
+
+**Les compteurs de grappes sont dessinés au-dessus de tous les cercles** (3.20.6). Chaque couche
+regroupe à part ; le cercle d'une couche de rang supérieur couvrait le compteur d'une grappe voisine
+d'une autre couche. La sous-couche du compteur se pose en haut de la bande des couches classées
+(juste sous la sentinelle des POI), le cercle garde le rang de sa couche, et un reclassement ne
+déplace pas le compteur (`maplibre-cluster-builders.ts`, `maplibre-layer-order.ts`).
+
 ### Événements
 
 **Aucun** émis, **aucun** écouté. La capacité est une fonction de la configuration et de la

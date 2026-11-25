@@ -302,8 +302,9 @@ export function svgUseIcon(symbolId: string): SVGSVGElement {
  * free strings, so either spelling may appear on either surface. Shared by the
  * popup and side-panel builders: holding one predicate here is what stops the
  * two surfaces from drifting apart on the same field (a title carries the
- * taxonomy glyph and is never dropped when empty, so a surface that misses one
- * spelling silently downgrades the field).
+ * taxonomy glyph, so a surface that misses one spelling silently downgrades the
+ * field). An EMPTY title is not kept everywhere: the popup omits it by choice
+ * (`renderTitleNode`, widget-dispatch.ts); the side panel renders it as text.
  *
  * @param field Field configuration.
  * @returns `true` when the field renders as a title.

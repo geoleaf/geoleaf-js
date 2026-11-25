@@ -503,12 +503,12 @@ A layer can carry several styles in `layers/<layer-name>/styles/<style-id>.json`
         "visibleByDefault": false
     },
     "scaleConfig": {
-        "minScale": 9222148,
-        "maxScale": 2252
+        "minScale": 4611074,
+        "maxScale": 1126
     },
     "labelScale": {
         "minScale": 576384,
-        "maxScale": 2252
+        "maxScale": 1126
     },
     "style": {
         "fillColor": "#3388ff",

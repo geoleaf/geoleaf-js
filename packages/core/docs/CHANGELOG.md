@@ -11,6 +11,230 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`GeoLeaf.UI.CacheButton.openModal()` is a declared public member**
+  (`@geoleaf-plugins/offline-ui` 1.7.4). A host opening the offline preparation window from its
+  own button — the same call as the toolbar action — relied on a member the plugin documented
+  as internal. The plugin now declares it in `public-api.ts`, with its mount point on the core's
+  `UI` façade, and a test holds the mounted object to that declaration. Nothing changes at
+  runtime: the member was already there.
+
+### Changed
+
+- **The scale denominator is now the scale actually drawn — scale bounds move by one zoom
+  level.** GeoLeaf computed scales with the 256-px tile convention, while MapLibre's zoom levels
+  follow 512-px tiles: every `1:N` was twice the scale on screen (measured at six zooms, ratio
+  2.00). The scale control, `GeoLeaf.Utils.calculateMapScale()`, the scale typed into the
+  editable scale field, and the `scaleConfig` / `labelScale` bounds of the layers
+  (`minScale`, `maxScale`) now use the true scale.
+
+    **Migration — your bounds:** a layer configured with `minScale` / `maxScale` now switches one
+    zoom level later than before. To keep the zooms at which your layers appear and disappear,
+    **divide every non-zero `minScale` / `maxScale` by 2** (e.g. `{ "minScale": 9222148, "maxScale":
+2252 }` → `{ "minScale": 4611074, "maxScale": 1126 }`). `0` and `null` keep meaning « no
+    bound ». The demonstration profiles of the repository were recalibrated this way.
+
+- **A profile's `modules.<id>` block completes the application's, it no longer replaces it.**
+  The two blocks are deep-merged, the profile's keys winning (arrays replace). Until 3.20.5 a
+  profile writing `"modules": { "branding": { "position": "topright" } }` replaced the whole
+  block of `geoleaf.config.json`: `enabled` was lost and the capability switched off without a
+  word. **Migration:** a profile that relied on the replacement to drop a key of the application's
+  block must now set that key explicitly (to `null`, `false` or its value).
+
+### Fixed
+
+- **An offline preparation no longer requests a `mapping.json` the profile does not have.**
+  The resource list added `<profile>/mapping.json` to every preparation; on a modular profile,
+  which declares its mapping in `Files.mappingFile` or has none, that meant a retried 404 and
+  console errors each time. It is now added only where the profile loader itself fetches it: a
+  legacy profile with a `normalized: false` layer.
+
+- **Escape in a host dialog no longer closes the GeoLeaf window under it**
+  (`@geoleaf-plugins/editor` 1.6.4, `@geoleaf-plugins/offline-ui` 1.7.4,
+  `@geoleaf/field-renderer` 1.4.5). The field form and the confirmation boxes listened to every
+  key of the page: a host dialog opened over the form (a « Search more » from a field, a
+  confirmation of the host's) closed its own box on Escape — and the GeoLeaf form under it
+  too, or asked to discard it. A key aimed at a host element outside GeoLeaf is now left to the
+  host; Escape from the form, from the map or with nothing focused still closes the form.
+- **The shell no longer shows a control that nothing can serve.** The mobile toolbar, the
+  desktop side panel and the host page's filter toggle decided their controls on the
+  configuration alone. A bundle that does not embark `filter`, `legend`, `geolocation` or
+  `theme-selector` still showed the Filters and Legend tabs (empty), the « My position »,
+  « Proximity » and « Themes » buttons (pressing them did nothing), and an unstyled bar for the
+  filter toggle. Each control now follows its capability: embarked in the bundle **and**
+  switched on by the configuration.
+- **« Themes » follows the theme selector's own rule.** The bar is built only when
+  `modules.theme-selector.enabled` is `true`; the mobile button used to appear as soon as the key
+  was not `false`, and opened nothing. It now appears with the bar, and only then.
+- **The absence of an in-core capability becomes a fact.** `GeoLeaf.Capabilities.onUnavailable`
+  was documented as the channel through which a missing capability is reported, but only the
+  offline engine ever fed it. At boot, every in-core capability that the merged configuration
+  names (`modules.<id>`, not `enabled: false`) and the bundle does not embark is now declared
+  unavailable, with its motif, and logged once. Plugin capabilities are never declared absent at
+  boot: they may register later.
+- **No more waiting for a capability that cannot come.** On a bundle or a configuration without
+  the offline engine (`offline` and `pwa` both embarked and enabled), each layer declaring an
+  offline read waited 3 s before taking the network — and the loading batches being sequential,
+  every following layer waited too; `Storage.pullLayer()` and `Storage.applyEdit()` waited 3 s
+  before refusing. They now act at once, and the warning names the real cause. Without `scale`,
+  the coordinates readout no longer waits 5 s for a scale bar that will not appear.
+- **Cluster counts are no longer covered by another layer's clusters.** Each layer clusters on
+  its own, and a higher layer's circle hid a nearby count of a lower layer. Counts are now drawn
+  above every cluster circle.
+- **The « points rendered unclustered » warning names the real cause.** Without the cluster
+  capability in the bundle, or with `modules.cluster.enabled: false`, it advised setting keys that
+  could not take effect; it now says which of the two it is.
+- **`modules.labels.enabled: false` switches every label off.** The switch held only for the
+  capability's lifecycle: labels kept being painted through the layer loaders, and the 🏷️
+  button came back at the first visibility, style or theme change. Both entry points now refuse.
+- **Relative URLs of a profile resolve against the page, not the site's root.** Served in a
+  folder (`https://host/app/`), the profile's taxonomy sprite was fetched from `/profiles/…` at
+  the site's root: a 404, and no category icon anywhere — map, legend, popups. `validateUrl`
+  now resolves a relative URL against the document's address (`document.baseURI`), as the
+  browser does and as the offline cache already did.
+- **The endpoint markers of a route follow their layer.** Hiding the decorated layer hid the
+  line but left its start and end markers on the map; they now hide and show with it. They are
+  also drawn right above their layer — they were drawn under every GeoLeaf layer, and the layer's
+  own points covered them. The engine id of their sub-layer no longer repeats `gl-`
+  (`gl-route-<id>-endpoints-circle`).
+- **The user's position shows as a dot again.** The marker icon was a `<div>`, which the SVG-only
+  allow-list applied to marker icons removed: the marker was empty, and only the accuracy circle
+  showed — nothing at all above 1 000 m of accuracy. The icon is now an SVG circle.
+- **`geoleaf:map:ready` is dispatched once per map.** The MapLibre adapter dispatched it on the
+  engine's `load` and the boot's reveal dispatched it again: every subscriber ran twice per boot.
+  The first of the two now announces it, the second is silent for that map; several maps still
+  each get their own.
+- **A map destroyed during the boot ends quietly.** The layer loads still in flight logged one
+  « Failed to load layer » error each (5 to 19 per destroy): an interrupted load is logged at
+  `debug`. A destroy from a `geoleaf:app:ready` listener no longer lets the layer manager mount
+  on the destroyed map (« map is not ready »).
+- **`Core.destroy()` stops the GPS watch.** Geolocation kept watching after the map was gone, and
+  `GeoLeaf.Geolocation.getState().active` stayed `true`.
+- **On a phone, the basemap credit no longer covers the scale and the branding line.** The
+  credit opens expanded at load (as the providers' terms ask) and spans the whole bottom edge of
+  a phone; until the first drag it covered the bottom-left controls. While it is expanded, the
+  bottom-left corner now moves up by its measured height.
+- **A control placed top-right clears the secondary theme bar and the right-hand tab strip.**
+  A scale (or any control) configured with `position: "topright"` ran under both.
+- **Labels that were hard-coded now follow the page's language.** The filter panel's search
+  buttons (« Rechercher », « Effacer ») and its category expand arrow (« Déplier ») were written in
+  French for every language; the warning for a layer whose default style cannot be found was
+  written in English. They come from the dictionaries, in the six languages.
+- **Without the `taxonomy` capability, the category field of the filter keeps silent.** It said
+  that the visible layers carry no category, which was the wrong cause: there was nothing to read
+  them. The French « empty » messages of the panel now say « couches », not « layers ».
+- **French guillemets no longer leave a lone « at the end of a line.** The iOS install sheet
+  uses a narrow no-break space inside the guillemets.
+- **The language and palette choices open inside the screen on a phone.** Both lists used the
+  desktop anchor (to the left of the right-hand tab strip) in the mobile toolbar too, which sits
+  on the left edge: they opened off the screen (x = −156 and −146 on a 412 px phone). In the
+  mobile toolbar they now open to the right of the bar.
+- **The language and palette buttons are honest disclosures.** They announced a menu
+  (`role="menu"`, `aria-haspopup="menu"`) without its keyboard contract. They now carry
+  `aria-expanded` and `aria-controls`; the list is a labelled group of plain buttons, inserted
+  right after its button, and the focus lands on the active entry when it opens. Escape closes it
+  and returns the focus to the button; one list is open at a time.
+- **The keyboard stays inside the side panel, whatever its title holds.** The shared focus trap
+  counted the `<use href>` of the SVG glyph that `taxonomy` draws in the panel's title as a
+  focusable; it became the last one, Tab was never wrapped, and the tabulation left the panel.
+  Links are now matched as `a[href]` / `area[href]`, SVG elements are left out, and a focus that
+  fell to `<body>` is brought back into the surface.
+- **Showing the QR code keeps the keyboard in the share dialog.** The focused « Show the QR
+  code » button was disabled then hidden, and the focus fell out of the dialog. The focus now
+  moves to the copy button first.
+- **Escape closes the image viewer only.** Opened over the side panel, the viewer and the panel
+  both listened to Escape, and one press closed both.
+- **The theme toggle answers the mouse and the finger.** MapLibre turns the pointer off on its
+  control corners and back on only for its own controls; GeoLeaf's controls did not get it back, so
+  a click or a tap on the theme toggle fell through to the map — only the keyboard worked. Every
+  GeoLeaf control (`.geoleaf-ctrl`) receives the pointer again, and so does the branding overlay,
+  whose own stylesheet switched it off in the bottom-left corner.
+- **A removed control leaves the map.** `GeoLeaf.Branding.destroy()`, and the teardown of the theme
+  toggle and of the geolocation button, left their element on screen: the adapter's `onRemove` did
+  nothing. It now detaches the element.
+- **`GeoLeaf.Branding.init()` called twice keeps one overlay.** The second call replaces the first
+  instead of stacking another one on top.
+- **Proximity goes with the filter.** With `modules.filter.enabled: false`, the proximity button
+  stayed and still filtered the map. It is gone, and `GeoLeaf.Filter.proximity.toggle()` returns
+  `false` and sets no filter while the filter is switched off.
+- **Resetting the filter clears the proximity.** `GeoLeaf.Filter.reset()` and the panel's
+  « Reset » button cleared the panel's controls only: a proximity placed from the toolbar stayed
+  applied, the map stayed filtered and the proximity button stayed lit — a second press on it was
+  the only way back to « everything visible ». Both now clear the proximity too (circle, marker,
+  centre), and the button switches off.
+- **A one-photo gallery opens the image viewer.** The magnifier showed on the image, and a click
+  opened nothing: the viewer was wired only for galleries with thumbnails, that is more than one
+  photo. It now opens on the single photo too.
+- **One title per mobile sheet, and the legend open there.** Below 1 440 px, the Layers and
+  Legend sheets showed their title twice — the sheet's, then the moved panel's own header — and
+  a legend configured with `collapsedByDefault` arrived folded. The moved panel's header is hidden
+  in the sheet, as the filter panel's already was, and the legend is shown open, as the wide-screen
+  side panel already did.
+- **A long feature name is readable in full in the side panel.** The title held one line and
+  ended in an ellipsis: on a phone the full name was readable nowhere. It now wraps.
+- **A fixed brand palette applies without a selector.** `modules.theme-palette` with
+  `enabled: false` and `default: "green"` — fix the accent colour, offer no choice — left the
+  interface orange: the `enabled` key also decided whether the capability registered at all.
+  `enabled` now governs the selector button only; the configured `default` palette always
+  applies. `GeoLeaf.Introspection.getCapabilityStatus("theme-palette").enabled` is therefore
+  `true` whenever the capability is embarked; `GeoLeaf.ThemePalette.isEnabled()` still says
+  whether the button is offered.
+- **A persistent toast no longer waits behind temporary ones.** The two budgets were already
+  counted apart, but the queue stopped at its head: five `info` toasts made a persistent one wait
+  about 3 s for them to fade, its own budget free. Each budget is now served on its own.
+- **Toast calls return what their contract says.** `GeoLeaf.Notifications.*` return the caller's
+  own toast when it is on screen, `null` when it is not (refused, or waiting for a slot), and
+  `undefined` when nothing can render it. With `modules.toast-renderer.enabled: false` they used
+  to return `null` and pile the message in a queue nothing would drain; they now write it to the
+  console, like `GeoLeaf.notify`, and queue nothing.
+- **A stopped offline download says « cancelled », and only that.** Stopped while its resources
+  were downloading, the download also announced `geoleaf:cache:completed` with a full summary,
+  after `geoleaf:cache:cancelled`; the cache manifest was then rewritten from a stopped run. A stop
+  now emits `geoleaf:cache:cancelled` alone, resolves to `{ cancelled: true }`, and leaves the
+  manifest of an earlier download as it was.
+- **`offline` without `pwa` in the bundle is refused at boot, and said.** The offline engine was
+  started on `modules.pwa.enabled` alone: a hand-written manifest embarking `offline` without
+  `pwa` ran the engine, the banner and the outbox with no service worker — reopened off-network,
+  the page did not exist. The engine is no longer started, and an error names the cause and the
+  remedy: embark `pwa` with `offline`. Switched off by the configuration (`modules.pwa.enabled:
+false`), it stays unstarted silently, as before.
+- **The sync strip no longer says « everything sent » beside a capture set aside.** With nothing
+  owed and one entry in quarantine it read « Tout est envoyé · 1 bloquée(s) »; it now reads
+  « Rien en attente » (new key `ui.sync.none_pending`, six languages).
+- **« Synchroniser » says when the retry delay holds the writes.** A pass that attempted nothing
+  because every owed write was still in its retry delay changed nothing on screen; the strip now
+  says « nouvel essai programmé » (new key `ui.sync.retry_scheduled`, six languages).
+- **The Android install prompt is no longer a second page header.** It declared
+  `role="banner"`, the landmark of the page header; it is now a named `complementary` region, like
+  the iOS sheet.
+- **`getCapabilityStatus()` says what can run.** A capability's `enabled` now also requires
+  every capability it declares in `dependencies` to be embarked and enabled: `offline` read
+  `enabled: true` while `pwa`, switched off or absent, kept its engine down. The reason is read
+  from `pwa`'s own line and from `getCapabilitySchema("offline").dependencies`. Only `offline`
+  declares a dependency today.
+- **A permalink keeps what the page cannot read.** Opened without the `filter` capability, a link
+  carrying a filter lost it in silence, and the first write of the address dropped its
+  parameters: recopied, the link had lost its filter for good. The loss is now logged, like the
+  theme's, and the parameters no capability reads (`gl_f.<id>`, the by-kind filter slots, and
+  `gl_theme` without a theme selector) are carried over by every write of the address — and the
+  address is rewritten with them as soon as the loss is known, so a link copied before any
+  gesture keeps them too.
+- **`GeoLeaf.getPerformanceMetrics()`, `getRuntimeMetrics()` and `resetRuntimeMetrics()` exist.**
+  Documented and shipped, they were mounted by their module at its own evaluation — which the
+  bundle's chunk order runs before the `GeoLeaf` namespace exists — and so were absent from every
+  bundle. They are now mounted with the namespace. `GeoLeaf.boot({ onPerformanceMetrics })` was
+  not affected.
+- **No more empty band across the top of a tilted map with terrain.** Tilted over a continent
+  (zoom 4 or so — a profile framed on a large extent opens there), the engine's terrain drew
+  nothing past a distance, leaving a band of empty background at the top. The terrain is now put
+  on from zoom 6 only, in both activation modes: below, the map stays tilted, flat, and covers the
+  screen; the terrain comes as the camera rests at zoom 6 or deeper, and goes as it comes back.
+
+---
+
 ## `@geoleaf-plugins/connector` 1.5.0 - 2026-11-24
 
 Published without a core release: `@geoleaf/core` stays at 3.20.5.

@@ -97,11 +97,24 @@ describe("config/module-config — Plugin Contract v1", () => {
             expect(target.modules.storage).toBe(storageBlock);
         });
 
-        it("overrides the same module id by reference and creates the bag when absent", () => {
-            const incoming = { print: { format: "A4" } };
-            const target = { modules: { print: { format: "A3" } } };
+        it("merges the same module id key by key — the profile overrides, it does not erase", () => {
+            // Until 3.20.5 the profile's block REPLACED the application's: a profile writing
+            // `{ position }` for branding lost the application's `enabled`, and the capability
+            // switched off without a word. Deep merge, the profile's values winning.
+            const incoming = { branding: { position: "topright" } };
+            const target = {
+                modules: { branding: { enabled: true, text: "A", position: "bottomleft" } },
+            };
             mergeModulesBag(target, incoming);
-            expect(target.modules.print).toBe(incoming.print);
+            expect(target.modules.branding).toEqual({
+                enabled: true,
+                text: "A",
+                position: "topright",
+            });
+        });
+
+        it("creates the bag when absent, holding the incoming block", () => {
+            const incoming = { print: { format: "A4" } };
 
             const empty = {};
             mergeModulesBag(empty, incoming);

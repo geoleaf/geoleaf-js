@@ -125,6 +125,15 @@ describe("desktop panel — a title passed in keeps priority over the default", 
         configure({ "ui.language": "en" });
         const panel = await boot();
         const { initUIPanels } = await import("../../src/app/init-features.js");
+        // The shell draws a tab only for a capability the bundle embarks: declare the two
+        // whose tabs this test reads, in the same module graph as `init-features`.
+        const { CapabilityRegistry } = await import("../../src/kernel/api/capability-registry.js");
+        const { FILTER_CAPABILITY } =
+            await import("../../src/capabilities/filter/filter-capability.js");
+        const { LEGEND_CAPABILITY } =
+            await import("../../src/capabilities/legend/legend-capability.js");
+        CapabilityRegistry.register(FILTER_CAPABILITY);
+        CapabilityRegistry.register(LEGEND_CAPABILITY);
         makeGlMain();
         const cfg = {
             ui: {},

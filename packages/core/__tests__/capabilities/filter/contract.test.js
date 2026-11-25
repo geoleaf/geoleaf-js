@@ -13,9 +13,10 @@ const { applyToSources, applyFromPanel } = vi.hoisted(() => ({
     applyToSources: vi.fn(),
     applyFromPanel: vi.fn(),
 }));
-const { setRadius, toggleToolbar } = vi.hoisted(() => ({
+const { setRadius, toggleToolbar, resetProximity } = vi.hoisted(() => ({
     setRadius: vi.fn(),
     toggleToolbar: vi.fn(() => true),
+    resetProximity: vi.fn(),
 }));
 
 vi.mock("../../../src/kernel/config/config-primitives.js", () => ({
@@ -29,6 +30,7 @@ vi.mock("../../../src/capabilities/filter/panel/proximity/proximity.js", () => (
     FilterPanelProximity: {
         setProximityRadius: (...a) => setRadius(...a),
         toggleProximityToolbar: (...a) => toggleToolbar(...a),
+        resetProximity: (...a) => resetProximity(...a),
     },
 }));
 
@@ -278,6 +280,8 @@ describe("GeoLeaf.Filter — imperative helpers", () => {
         );
         buildPublicApi().reset();
         expect(p.querySelector(".gl-filter-panel__tag-badge.gl-is-selected")).toBeNull();
+        // The proximity placed from the toolbar lives outside the panel: reset clears it too.
+        expect(resetProximity).toHaveBeenCalledTimes(1);
         expect(applyFromPanel).toHaveBeenCalledTimes(1);
     });
 
@@ -289,5 +293,11 @@ describe("GeoLeaf.Filter — imperative helpers", () => {
         const map = {};
         expect(api.proximity.toggle(map, 12)).toBe(true);
         expect(toggleToolbar).toHaveBeenCalledWith(map, 12, undefined);
+    });
+
+    it("proximity.toggle() is inert while the filter is switched off — no filter is set", () => {
+        configGet.mockReturnValue({ ...CONFIG, enabled: false });
+        expect(buildPublicApi().proximity.toggle({}, 12)).toBe(false);
+        expect(toggleToolbar).not.toHaveBeenCalled();
     });
 });

@@ -35,12 +35,18 @@
  */
 
 /**
- * Nodes that can take keyboard focus. `[href]` covers anchors, and the
+ * Nodes that can take keyboard focus. `a[href]` / `area[href]` cover links, and the
  * `:not([disabled])` guards keep unfocusable form controls out of the cycle —
  * calling `focus()` on one is a silent no-op that would strand the caret.
+ *
+ * ⚠️ Not a bare `[href]`: it matched the `<use href>` of an SVG glyph (the taxonomy icon in
+ * the side panel's title), which is not focusable — and became the LAST focusable, so Tab
+ * from the real last control was never wrapped and left the panel. SVG elements are also
+ * filtered out below (`instanceof HTMLElement`): they have no `offsetParent` property at all,
+ * so the visibility filter cannot drop them.
  */
 const FOCUSABLE_SELECTOR =
-    'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    'button:not([disabled]), a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Keeps Tab / Shift+Tab cycling inside `container`.
@@ -48,6 +54,11 @@ const FOCUSABLE_SELECTOR =
  * Non-`Tab` keys return immediately, so callers may hand over every `keydown`
  * without pre-filtering. Focus is only redirected at the two ends of the cycle:
  * anywhere in the middle the browser's native order is left alone.
+ *
+ * A LOST focus — fallen to `<body>` because the focused control was hidden or disabled — is
+ * brought back: Tab to the first focusable, Shift+Tab to the last. A focus held by another
+ * element outside the container is left alone: two traps can be open at once (the lightbox
+ * above the side panel), and the focus another surface owns is not this one's to take.
  *
  * ⚠️ The `offsetParent` visibility filter is carried over verbatim from the
  * three call sites that already had it. It cannot be covered by a test: under
@@ -62,13 +73,20 @@ const FOCUSABLE_SELECTOR =
 export function handleFocusTrap(container: HTMLElement, e: KeyboardEvent): void {
     if (e.key !== "Tab") return;
 
-    const focusable = Array.from(
-        container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-    ).filter((node) => node.offsetParent !== null);
+    const focusable = Array.from(container.querySelectorAll<Element>(FOCUSABLE_SELECTOR)).filter(
+        (node): node is HTMLElement => node instanceof HTMLElement && node.offsetParent !== null
+    );
     // Guarding both ends replaces the length check AND retires a non-null assertion.
     const first = focusable[0];
     const last = focusable.at(-1);
     if (!first || !last) return;
+
+    const active = document.activeElement;
+    if (!active || active === document.body) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+        return;
+    }
 
     if (e.shiftKey) {
         if (document.activeElement === first) {

@@ -202,7 +202,11 @@ export interface FilterPublicApi {
     applyFilter(state: SerializedFilterState): void;
     /** Re-applies the current panel state (e.g. after a proximity radius change). */
     applyNow(): void;
-    /** Clears every panel control and re-applies (reset button). */
+    /**
+     * Clears the whole filter and re-applies — everything visible: every panel control, and
+     * the proximity placed from the toolbar (circle, marker, centre). The toolbar's proximity
+     * button switches off on the pass that follows. Same path as the panel's reset button.
+     */
     reset(): void;
     /** `true` when at least one field is constrained (tab indicator). */
     hasActiveFilters(): boolean;

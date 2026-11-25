@@ -99,8 +99,53 @@ function _captureState(map: IMapAdapter, config: PermalinkConfig): PermalinkStat
     _captureVisibilityFields(state, fields);
     _captureFilterState(state, fields);
     _captureThemeField(state, fields);
+    _keepUnread(state);
 
     return state;
+}
+
+/**
+ * What the opening address carried that no capability of this page can read — kept, so the next
+ * write of the address does not drop it.
+ *
+ * 🛑 A link opened without `filter` lost its filter in silence, and the first write rebuilt the
+ * address from what the page holds: recopied, the link had lost it for good. What no capability
+ * reads is now said once, and carried over by every write. Set by {@link applyState}, emptied by
+ * the next one.
+ */
+let _unread: Partial<PermalinkState> = {};
+
+/**
+ * Asks the running sync for a write of the address — set by {@link startSync}, cleared by its
+ * teardown. Called when {@link _unread} gains a member.
+ *
+ * 🛑 `_unread` is filled by the DEFERRED restore (after `geoleaf:app:ready`, or its grace
+ * period), while the last write of the address already happened — the view set by
+ * {@link applyState} fires its `moveend` at once. Carried over only by the NEXT write, the
+ * unread parameters waited for a gesture: a link copied before any lost them all the same.
+ */
+let _requestWrite: (() => void) | null = null;
+
+/** Records what the page cannot read, and has the address rewritten with it at once. */
+function _markUnread(patch: Partial<PermalinkState>): void {
+    Object.assign(_unread, patch);
+    _requestWrite?.();
+}
+
+/** The filter members of a state, by-kind slots and per-field entries alike. */
+const FILTER_KEYS = ["filter", "categories", "tags", "rating", "fieldFilters"] as const;
+
+/** Carries over what the page cannot read: the filter with no `filter`, the theme with no selector. */
+function _keepUnread(state: PermalinkState): void {
+    const gl = getPermalinkGeoLeaf();
+    if (!gl?.Filter?.getActiveFilter) {
+        for (const key of FILTER_KEYS) {
+            if (_unread[key] !== undefined) Object.assign(state, { [key]: _unread[key] });
+        }
+    }
+    if (_unread.theme !== undefined && !gl?.ThemeSelector?.getCurrentTheme) {
+        state.theme = _unread.theme;
+    }
 }
 
 /** Captures user-overridden hidden (`layers`) and shown (`shownLayers`) layer ids. */
@@ -202,7 +247,18 @@ function _captureThemeField(state: PermalinkState, fields: readonly string[]): v
  */
 function _restoreFilterState(state: PermalinkState, fields: readonly string[]): void {
     const filter = getPermalinkGeoLeaf()?.Filter;
-    if (!filter?.applyFilter || !filter.getConfig) return;
+    if (!filter?.applyFilter || !filter.getConfig) {
+        const carried = FILTER_KEYS.filter((key) => state[key] !== undefined);
+        if (carried.length === 0) return;
+        const patch: Partial<PermalinkState> = {};
+        for (const key of carried) Object.assign(patch, { [key]: state[key] });
+        _markUnread(patch);
+        getLog()?.warn?.(
+            "[Permalink] the `filter` capability is not available — filter restore dropped; " +
+                "the link's filter parameters are kept in the address."
+        );
+        return;
+    }
     const descriptors = filter.getConfig()?.fields ?? [];
     const out: PermalinkFilterField[] = [];
     for (const d of descriptors) {
@@ -289,6 +345,7 @@ export function applyState(
     map: IMapAdapter,
     config: PermalinkConfig = {}
 ): void {
+    _unread = {};
     // Immediate: restore map view
     map.setView({ lat: state.lat, lng: state.lng }, state.zoom);
 
@@ -373,7 +430,13 @@ export function applyState(
                         "[Permalink] geoleaf:themes:ready never fired — theme restore dropped, " +
                             "applying deferred layers/filter without it."
                     );
+                    // No selector to read it back: kept in the address, like the filter.
+                    // Filter first: it may mark more unread parameters, and a single write
+                    // then carries them all.
                     _applyLayersAndFilter();
+                    if (state.theme && !getPermalinkGeoLeaf()?.ThemeSelector?.getCurrentTheme) {
+                        _markUnread({ theme: state.theme });
+                    }
                 }, THEMES_READY_GRACE_MS);
             },
             { once: true }
@@ -445,6 +508,11 @@ export function startSync(map: IMapAdapter, config: PermalinkConfig): () => void
     const writeOnMove = _debounce(_doWrite, SYNC_DEBOUNCE_MS);
     map.on("moveend", writeOnMove);
 
+    // A deferred restore that found parameters the page cannot read rewrites the address with
+    // them — short debounce, so the filter and the theme dropped in the same turn make one write.
+    const writeOnUnread = _debounce(_doWrite, 50);
+    _requestWrite = writeOnUnread;
+
     // Document listeners registered below — kept so the teardown removes the exact refs.
     const docListeners: Array<[string, () => void]> = [];
     if (typeof document !== "undefined") {
@@ -468,6 +536,7 @@ export function startSync(map: IMapAdapter, config: PermalinkConfig): () => void
     // Teardown — symmetric with the registration above. Returned so the facade can stop
     // syncing on re-init / reset and never leak the map + document listeners.
     return function stopSync(): void {
+        if (_requestWrite === writeOnUnread) _requestWrite = null;
         map.off("moveend", writeOnMove);
         for (const [event, handler] of docListeners) {
             document.removeEventListener(event, handler);

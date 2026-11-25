@@ -26,7 +26,7 @@
 import { getFilterConfig } from "./config.js";
 import { renderFilterPanel } from "./panel/render.js";
 import { applyFilterFromPanel, resolveOptionsWithData } from "./apply.js";
-import { resetPanelControls } from "./panel/write.js";
+import { resetFilterControls } from "./panel/write.js";
 import { readActiveFilter } from "./panel/state.js";
 import { Core } from "../../api/geoleaf.core.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
@@ -113,7 +113,7 @@ function _wirePanel(panel: HTMLElement, config: FilterConfig): void {
         const action = target?.closest?.("[data-gl-action]")?.getAttribute("data-gl-action");
         if (action === "filter-apply") apply("filter");
         else if (action === "filter-reset") {
-            resetPanelControls(panel);
+            resetFilterControls(panel);
             apply("filter");
         } else if (action === "filter-close") panel.classList.remove("gl-is-open");
     };

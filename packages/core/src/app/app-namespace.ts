@@ -17,9 +17,13 @@ import { ensureGeoLeaf } from "../utils/general/geoleaf-global.js";
 import type { AppNamespace } from "./app-types.js";
 import { recordLogEntry } from "../utils/log/log-record.js";
 import { notifyPrimitive } from "../utils/notify/notify.primitive.js";
+import { installRuntimeMetrics } from "../utils/performance/runtime-metrics.js";
 import type { GeoLeafConfig } from "../kernel/config/geoleaf-config/config-types.js";
 
 const GeoLeaf = ensureGeoLeaf();
+// The runtime metrics readers: mounted HERE, where the namespace is known to exist — the metrics
+// module is evaluated earlier in the shipped chunk order, and mounting there found no namespace.
+installRuntimeMetrics(GeoLeaf as Parameters<typeof installRuntimeMetrics>[0]);
 
 /**
  * Internal namespace for the Application Bootstrap module.

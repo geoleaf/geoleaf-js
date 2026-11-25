@@ -20,6 +20,7 @@ import type {
 import { asFn, member } from "./app-types.js";
 import type { IMapAdapter } from "../contracts/map-adapter.contract.js";
 import { asObject } from "../utils/general/type-guards.js";
+import { isCapabilityServed } from "./capability-presence.js";
 import type { BasemapConfig, GeoLeafConfig } from "../kernel/config/geoleaf-config/config-types.js";
 
 /**
@@ -266,13 +267,20 @@ function _buildMobileToolbarOptions({ GeoLeaf, cfg, map, glMain }: MobileToolbar
         // `showAddPoi` and `poiAddDefaultPosition` left with the button. The
         // second was a PLUGIN config key (`modules.addpoi.defaultPosition`) read
         // by the kernel; both now live under `modules.editor`, with their reader.
-        // Toolbar geoloc button follows the in-core `geolocation` capability gate (opt-out),
-        // migrated from `ui.showGeolocation`.
-        showGeolocation: cfg.modules?.geolocation?.enabled !== false,
-        showThemeSelector: cfg.modules?.["theme-selector"]?.enabled !== false,
-        showFilterPanel: cfg.modules?.filter?.enabled !== false,
+        // Each button follows the PRESENCE of the capability that serves it — embarked AND
+        // switched on (`capability-presence.ts`) —, never the configuration alone: a bundle
+        // without the capability would otherwise show a button that does nothing.
+        showGeolocation: isCapabilityServed("geolocation", cfg),
+        // `theme-selector` registers when its key is absent but builds its bar only on
+        // `enabled === true` (`theme-selector.ts`, `_createUI`): the button reads that rule.
+        showThemeSelector:
+            isCapabilityServed("theme-selector", cfg) &&
+            cfg.modules?.["theme-selector"]?.enabled === true,
+        showFilterPanel: isCapabilityServed("filter", cfg),
+        // Proximity is a filter: it goes with the filter capability.
+        showProximity: isCapabilityServed("filter", cfg),
         showLayerManager: ui.showLayerManager !== false,
-        showLegend: cfg.modules?.legend?.enabled !== false,
+        showLegend: isCapabilityServed("legend", cfg),
         sheetTitles: _buildSheetTitles(cfg),
         getFilterActiveState: () => GeoLeaf.Filter?.hasActiveFilters?.() ?? false,
         onResetFilters: () => GeoLeaf.Filter?.reset?.(),
@@ -289,9 +297,9 @@ function _buildDesktopPanelOptions({ GeoLeaf, cfg, glMain }: DesktopPanelBuilder
         titleFilters: member(cfg.modules?.filter, "title"),
         titleLayers: member(cfg.layerManagerConfig, "title"),
         titleLegend: member(cfg.modules?.legend, "title"),
-        showFilters: cfg.modules?.filter?.enabled !== false,
+        showFilters: isCapabilityServed("filter", cfg),
         showLayers: ui.showLayerManager !== false,
-        showLegend: cfg.modules?.legend?.enabled !== false,
+        showLegend: isCapabilityServed("legend", cfg),
         showThemeToggle: ui.showPanelThemeToggle !== false,
         getFilterActiveState: () => GeoLeaf.Filter?.hasActiveFilters?.() ?? false,
     };

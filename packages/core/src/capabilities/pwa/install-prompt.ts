@@ -132,7 +132,11 @@ function _buildCloseButton(): HTMLButtonElement {
 function _createBanner(appName: string): HTMLElement {
     const div = document.createElement("div");
     div.id = "gl-install-banner";
-    div.setAttribute("role", "banner");
+    // `complementary`, named — NOT `banner`: that one is the landmark of the PAGE header, unique
+    // by contract, and the prompt listed itself as a second page header. Same role as the iOS
+    // sheet (`ios-banner.ts`).
+    div.setAttribute("role", "complementary");
+    div.setAttribute("aria-label", getLabel("pwa.install.title", appName));
     div.setAttribute("aria-live", "polite");
     applyCssText(
         div,

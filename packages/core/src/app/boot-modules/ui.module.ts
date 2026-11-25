@@ -23,6 +23,7 @@ import { Log } from "../../utils/log/index.js";
 import { ensureGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { initBasemaps, initGeoJSON, initUIPanels } from "../init-features.js";
 import { setupDeferredUIPanels } from "../init-deferred-ui.js";
+import { isCapabilityServed } from "../capability-presence.js";
 import { setupReveal } from "../init-reveal.js";
 import {
     asFn,
@@ -122,10 +123,10 @@ export class UIModule implements ILifecycleModule {
 
         // #13 — Filter panel. Owned by the in-core `filter` capability, which mounts
         // and wires the panel on `geoleaf:app:ready` (capabilities/filter/lifecycle.ts).
-        // Here we only hide the structural toggle/panel when the filter is disabled.
-        const _mf = (cfg as unknown as { modules?: { filter?: { enabled?: boolean } } }).modules
-            ?.filter;
-        if (_mf?.enabled === false) {
+        // Here we only hide the structural toggle/panel when the filter cannot serve them —
+        // switched off, or not in the bundle at all: the toggle is written by the host page,
+        // and only the filter's stylesheet styles it.
+        if (!isCapabilityServed("filter", cfg)) {
             const _toggleBtn = document.getElementById("gl-filter-toggle");
             if (_toggleBtn) _toggleBtn.style.display = "none";
             const _filterPanel = document.getElementById("gl-filter-panel");

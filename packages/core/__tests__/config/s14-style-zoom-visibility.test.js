@@ -21,16 +21,16 @@ import {
 import { REFERENCE_STYLE } from "./_helpers/config-harness.js";
 
 describe("config B6 — labelScale.{minScale,maxScale} → isScaleInRange (scale denominators)", () => {
-    const { minScale, maxScale } = REFERENCE_STYLE.labelScale; // { 50000, 1000 }
+    const { minScale, maxScale } = REFERENCE_STYLE.labelScale; // { 25000, 500 } — halved in 3.20.6 with the true scale
 
     it("fixture range: a scale inside [maxScale ; minScale] is visible", () => {
-        expect(isScaleInRange(20000, minScale, maxScale)).toBe(true);
+        expect(isScaleInRange(10000, minScale, maxScale)).toBe(true);
     });
     it("currentScale > minScale → invisible (too zoomed out)", () => {
-        expect(isScaleInRange(80000, minScale, maxScale)).toBe(false);
+        expect(isScaleInRange(40000, minScale, maxScale)).toBe(false);
     });
     it("currentScale < maxScale → invisible (too zoomed in)", () => {
-        expect(isScaleInRange(500, minScale, maxScale)).toBe(false);
+        expect(isScaleInRange(250, minScale, maxScale)).toBe(false);
     });
     it("boundaries are inclusive", () => {
         expect(isScaleInRange(minScale, minScale, maxScale)).toBe(true);
@@ -83,7 +83,7 @@ describe("config B6 — scaleConfig.{minScale,maxScale} → layer visibility (N-
 
     // profiles/guyane-biodiversite/layers/cours_eau/styles/defaut.json, post-migration.
     // Was `{minZoom: 6, maxZoom: 18}` — zoom levels, read as denominators.
-    const GUYANE = { minScale: 9222148, maxScale: 2252 };
+    const GUYANE = { minScale: 4611074, maxScale: 1126 };
     const scaleAtZoom = (zoom) =>
         calculateMapScale({ getCenter: () => ({ lat: 4 }), getZoom: () => zoom }, { force: true });
 

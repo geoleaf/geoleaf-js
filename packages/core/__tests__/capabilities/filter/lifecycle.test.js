@@ -17,7 +17,7 @@ const h = vi.hoisted(() => ({
     },
     applyFilterFromPanel: vi.fn(),
     resolveOptionsWithData: vi.fn(() => ({})),
-    resetPanelControls: vi.fn(),
+    resetFilterControls: vi.fn(),
     proximityInit: vi.fn(),
     proximityDestroy: vi.fn(),
     getMap: vi.fn(() => null),
@@ -31,7 +31,7 @@ vi.mock("../../../src/capabilities/filter/apply.js", () => ({
     resolveOptionsWithData: h.resolveOptionsWithData,
 }));
 vi.mock("../../../src/capabilities/filter/panel/write.js", () => ({
-    resetPanelControls: h.resetPanelControls,
+    resetFilterControls: h.resetFilterControls,
 }));
 vi.mock("../../../src/api/geoleaf.core.js", () => ({ Core: { getMap: h.getMap } }));
 vi.mock("../../../src/capabilities/filter/panel/proximity/proximity.js", () => ({
@@ -117,7 +117,7 @@ describe("FilterLifecycle — wiring", () => {
         FilterLifecycle.init();
         appReady();
         document.querySelector('[data-gl-action="filter-reset"]').click();
-        expect(h.resetPanelControls).toHaveBeenCalledTimes(1);
+        expect(h.resetFilterControls).toHaveBeenCalledTimes(1);
         expect(h.applyFilterFromPanel).toHaveBeenCalledTimes(1);
     });
 

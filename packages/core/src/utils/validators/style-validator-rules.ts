@@ -315,7 +315,7 @@ export function validateScales(
             message:
                 `'zoomConfig' a été retiré — utiliser 'scaleConfig' avec 'minScale'/'maxScale', ` +
                 `exprimés en DÉNOMINATEURS D'ÉCHELLE (1:X), pas en niveaux de zoom MapLibre ` +
-                `(ex. { "minScale": 9222148, "maxScale": 2252 })`,
+                `(ex. { "minScale": 4611074, "maxScale": 1126 })`,
             context: { availableFields: Object.keys(styleData), ...context },
         });
     }

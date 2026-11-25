@@ -53,6 +53,7 @@ import { Config } from "../../../src/kernel/config/config-primitives.js";
 import { GeoLocationState } from "../../../src/capabilities/geolocation/state.js";
 import { _UINotifications } from "../../../src/capabilities/toast-renderer/notifications.js";
 import { haversineDistance } from "../../../src/utils/geo/haversine.js";
+import { SVG_ALLOWED_TAGS } from "../../../src/adapters/maplibre/maplibre-primitives.js";
 
 function makeMockMap() {
     const container = document.createElement("div");
@@ -169,6 +170,27 @@ describe("capabilities/geolocation — control branch coverage", () => {
             expect(map.setView).toHaveBeenCalledWith({ lat: 48.85, lng: 2.35 }, 16);
             expect(GeoLocationState.active).toBe(true);
             expect(map.createMarker).toHaveBeenCalled();
+        });
+
+        it("the user marker keeps a visible dot once its icon is sanitised like the adapter does", async () => {
+            // The REAL sanitiser: this file mocks DOMSecurity, and a mock would decide the verdict.
+            const { DOMSecurity } = await vi.importActual(
+                "../../../src/kernel/security/dom-security.js"
+            );
+            // The adapter puts the icon through `setSafeHTML(el, icon, SVG_ALLOWED_TAGS)`
+            // (maplibre-markers.ts). The icon was a `<div>`: the SVG allow-list dropped it, the
+            // marker was an empty transparent box, and only the accuracy circle showed. Same
+            // sanitiser, same allow-list here — which is NOT widened to `div`.
+            const map = makeMockMap();
+            initGeolocationControl(map);
+            map.addControl.mock.calls[0][0].querySelector("a").click();
+            const successCb = navigator.geolocation.watchPosition.mock.calls[0][0];
+            successCb({ coords: { latitude: 48.85, longitude: 2.35, accuracy: 50 } });
+            const options = map.createMarker.mock.calls[0][2];
+            const el = document.createElement("div");
+            DOMSecurity.setSafeHTML(el, options.icon, SVG_ALLOWED_TAGS);
+            expect(el.querySelector(".gl-user-location-dot")).not.toBeNull();
+            expect(el.querySelector("circle")).not.toBeNull();
         });
 
         it("does not setView on subsequent fixes", () => {

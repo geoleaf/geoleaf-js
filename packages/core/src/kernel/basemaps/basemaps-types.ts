@@ -160,6 +160,8 @@ export interface NativeMap {
     jumpTo(options: { pitch?: number; bearing?: number }): void;
     /** Camera tilt, in degrees. */
     getPitch(): number;
+    /** Camera zoom. Optional: a map that does not say is taken as deep enough for a terrain. */
+    getZoom?(): number;
     /** Ceiling of the camera tilt, in degrees (`map.maxPitch` of the profile). */
     getMaxPitch?(): number;
     /** True while a gesture or a camera animation is in progress. */

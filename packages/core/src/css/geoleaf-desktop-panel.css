@@ -389,11 +389,15 @@
    Measured in Chromium: without the flag, the credit stayed under the strip. branding.css
    carries the same two flags for the bottom-left corner, for the same reason. */
 @media (min-width: 1440px) {
-    body.gl-right-panel-open .maplibregl-ctrl-bottom-right {
+    /* The top-right corner too: a control placed there (`position: "topright"`) ran under the
+       strip, its end cut off. Same boxes as the bottom-right corner. */
+    body.gl-right-panel-open .maplibregl-ctrl-bottom-right,
+    body.gl-right-panel-open .maplibregl-ctrl-top-right {
         right: 35px !important;
     }
 
-    body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) .maplibregl-ctrl-bottom-right {
+    body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) .maplibregl-ctrl-bottom-right,
+    body.gl-right-panel-open:has(#gl-right-panel.gl-has-active) .maplibregl-ctrl-top-right {
         right: 356px !important;
     }
 }

@@ -17,12 +17,12 @@
     },
     "description": "",
     "scaleConfig": {
-        "minScale": 35000000,
-        "maxScale": 500000
+        "minScale": 17500000,
+        "maxScale": 250000
     },
     "labelScale": {
-        "minScale": 35000000,
-        "maxScale": 2000000
+        "minScale": 17500000,
+        "maxScale": 1000000
     },
     "style": {
         "fillOpacity": 0,

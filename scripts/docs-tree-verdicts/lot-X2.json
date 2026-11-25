@@ -238,6 +238,20 @@
             "confidence": "haute",
             "rationale": "3 fichiers / 176 LOC, 14 importeurs cumulés. Sous-répertoire nommément enraciné par la Charte de `utils/` avec un critère d'entrée opérant (« comportement d'interaction sur un élément déjà existant, réutilisé par ≥ 2 surfaces ») : 2, 4 et 8 consommateurs, le seuil est tenu. Le dossier tient ; c'est un de ses trois fichiers qui déborde du critère"
         },
+        "packages/core/src/utils/controls/choice-popover.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le bouton à liste de choix des capacités language-switcher et theme-palette : aria-expanded et aria-controls, liste en group insérée après le bouton, focus sur l'entrée active, Échap, clic extérieur, une liste à la fois",
+            "confidence": "haute",
+            "rationale": "3 exports, 2 importeurs (language-button.ts, palette-button.ts) ; les deux capacités portaient chacune une copie du même patron, et les copies partageaient leurs défauts (rôle menu sans contrat clavier, géométrie du bureau au téléphone) ; à côté de focus-trap.ts, même famille d'utilitaires de contrôle hors kernel/"
+        },
         "packages/core/src/utils/controls/focus-trap.ts": {
             "kind": "file",
             "name": "ok",

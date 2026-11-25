@@ -251,3 +251,24 @@ export function closeProximityBar(cancel: boolean, skipFilter = false): void {
         refreshFilterButtonState();
     }
 }
+
+/**
+ * Brings the toolbar's proximity button back in line with the filter after a filter pass.
+ *
+ * A reset — `GeoLeaf.Filter.reset()` or the panel's button — disarms the proximity the toolbar
+ * placed, but the toolbar kept its own flag: the button stayed lit, and the next press
+ * « disarmed » a proximity already gone. The filter marks its hidden wrapper while armed; a pass
+ * that finds the flag set and the mark gone switches the button off and folds the bar, without
+ * running the filter again. The id and attribute are the DOM contract with the filter capability,
+ * which `kernel/` may not import.
+ */
+export function syncProximityWithFilter(): void {
+    if (!domState.proximityActive) return;
+    const wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+    if (wrapper?.hasAttribute("data-proximity-armed")) return;
+    domState.proximityActive = false;
+    const proximityBtn = domState.toolbar?.querySelector('[data-gl-sheet="proximity"]');
+    if (proximityBtn instanceof HTMLElement)
+        proximityBtn.classList.remove("gl-map-toolbar__btn--active");
+    closeProximityBar(false, true);
+}

@@ -21,6 +21,16 @@ import type { FeatureLike } from "./types.js";
 import type { TaxonomyCategory } from "../../taxonomy/types.js";
 
 /**
+ * Whether the taxonomy capability is there to answer: its namespace mounted, and not switched
+ * off. Without it, a category field has nothing to read — which is not the same fact as a
+ * taxonomy with no category, and the panel must not say the latter.
+ */
+export function isTaxonomyAvailable(): boolean {
+    const taxonomy = getGeoLeaf()?.Taxonomy as { isEnabled?: () => boolean } | undefined;
+    return !!taxonomy && taxonomy.isEnabled?.() !== false;
+}
+
+/**
  * The category tree for a named taxonomy, read from the in-core taxonomy
  * capability (`GeoLeaf.Taxonomy.getCategories`). Empty `{}` when taxonomy is
  * disabled or the ref is unknown — the filter then degrades to no options.

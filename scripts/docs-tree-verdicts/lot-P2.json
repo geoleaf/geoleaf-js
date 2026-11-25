@@ -155,7 +155,7 @@
             "severity": null,
             "description": "Point d'entrée ESM du plugin : importe les CSS et les modules UI, enregistre les six dictionnaires i18n, le plugin et le slot de barre d'outils",
             "confidence": "haute",
-            "rationale": "Invariant PC-01 (entry.ts present, 13/13 plugins). La norme T5 « public-api.ts absent » s'active mais est surclassee : entry.ts ne fait que 67 LOC et n'exporte rien — la facade GeoLeaf.Storage vit in-core depuis S14 Phase B."
+            "rationale": "Invariant PC-01 (entry.ts present dans chaque plugin). Le plugin ne monte aucun namespace propre : la facade GeoLeaf.Storage vit in-core depuis S14 Phase B. Depuis offline-ui 1.7.4 il porte un public-api.ts, qui ne declare que le membre qu'il ajoute a la facade UI du core (UI.CacheButton.openModal) ; entry.ts reste le point d'entree sans export."
         },
         "packages/plugins/offline-ui/src/cache/download-handler.ts": {
             "kind": "file",

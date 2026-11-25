@@ -39,23 +39,12 @@ const BASELINE = [
     "kernel/ui/ui-api.ts",
     "api/geoleaf.sync.ts",
     "kernel/storage/facade.ts",
-    // ── `utils/performance/runtime-metrics.ts` — entered 2026-08-19 with the widening ──
+    // ── `utils/performance/runtime-metrics.ts` LEFT the baseline (3.20.6) ──
     //
-    // It mounts three FUNCTIONS at the namespace root, under an `if (_g.GeoLeaf)`
-    // guard, outside `globals/`. They were invisible to this gate because its pattern
-    // demanded an uppercase initial; they also are to the surface oracle, which only
-    // knows what `globals/` mounts.
-    //
-    // 🛑 **Why they enter HERE and not the surface oracle.** Adding them there would
-    // freeze them into an exact equality — an irreversible commitment on a published
-    // package — for a VISIBILITY defect, not a contract one. What was missing was not
-    // coverage; it was that nobody had written where the oracle stops. A baseline
-    // entry says exactly that: "known, tolerated, and watched".
-    //
-    // ⚠️ What this entry buys, and it is the whole point: a FOURTH mount outside
-    // `globals/` now goes red. Three members today, and nothing left to let the next
-    // one through in silence.
-    "utils/performance/runtime-metrics.ts",
+    // Its `if (_g.GeoLeaf)` mount ran at the module's evaluation, which the shipped chunk
+    // order places BEFORE the namespace exists: the three members existed in no bundle. The
+    // module now exports `installRuntimeMetrics(gl)`, called by the namespace's assembly, and
+    // writes no global of its own.
     // ── `kernel/geojson/style-resolver.ts` LEFT the baseline ──
     //
     // It mounted `GeoLeaf._StyleRules` at module root level — hence at mere import,

@@ -194,6 +194,10 @@ test("[basemaps] fond vectoriel : la surcouche se place dans le style, suit le c
     const rasterKey = (await relief(page)).active;
     expect(rasterKey, "aucun fond actif au départ : le retour ne mesurerait rien").toBeTruthy();
     expect((await relief(page)).shadings, "une surcouche avant toute demande").toEqual([]);
+    // Zoom 7: no terrain is put on below zoom 6 (the opening framing sits near 4.4).
+    await page.evaluate(() =>
+        /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ zoom: 7 })
+    );
 
     // 1. A vector basemap with BOTH the terrain and the overlay, the overlay before `e2e-water`.
     await register(page, "e2e-shade-a", {

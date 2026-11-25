@@ -495,8 +495,8 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `legend` | object | — | — | — | Legend entry for this style. |
 | `legend.label` | string | — | — | — | — |
 | `scaleConfig` | object | — | — | — | Layer visibility by scale range. Bounds are SCALE DENOMINATORS (the X in 1:X), NOT MapLibre zoom levels — a denominator grows as you zoom OUT, so minScale is the widest view allowed and must be the LARGER number. Optional: omit for no constraint. Consumed by updateLayerVisibilityByZoom via isScaleInRange (scale-utils.ts). Replaces the retired `zoomConfig`, whose minZoom/maxZoom naming led authors to write zoom levels that the engine read as denominators — hiding those layers at every zoom (measured before the rename). |
-| `scaleConfig.maxScale` | number \| null | — | — | — | Closest view allowed, as a scale denominator (e.g. 2252 for 1:2 252 ≈ zoom 18 at lat 4°). Hidden when zoomed in past it. null or 0 = no upper bound. |
-| `scaleConfig.minScale` | number \| null | — | — | — | Widest view allowed, as a scale denominator (e.g. 9222148 for 1:9 222 148 ≈ zoom 6 at lat 4°). Hidden when zoomed out past it. null or 0 = no lower bound. |
+| `scaleConfig.maxScale` | number \| null | — | — | — | Closest view allowed, as a scale denominator (e.g. 1126 for 1:1 126 ≈ zoom 18 at lat 4°). Hidden when zoomed in past it. null or 0 = no upper bound. |
+| `scaleConfig.minScale` | number \| null | — | — | — | Widest view allowed, as a scale denominator (e.g. 4611074 for 1:4 611 074 ≈ zoom 6 at lat 4°). Hidden when zoomed out past it. null or 0 = no lower bound. |
 | `style` | `flatStyle` | — | — | — | — |
 | `style.casing` | object | — | — | — | Double-line casing effect (thick outline rendered behind the main stroke). |
 | `style.casing.color` | string | — | — | — | — |

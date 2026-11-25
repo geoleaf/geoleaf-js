@@ -52,6 +52,15 @@
         box-shadow: var(--gl-shadow-panel, 0 8px 24px rgba(15, 23, 42, 0.18));
     }
 
+    /* The mobile toolbar sits on the LEFT edge of the screen: the desktop anchor
+       (`right: 44px`, to the left of the right-hand tab strip) threw the list off the screen.
+       On the mobile variant it opens to the right of its bar. `data-variant` is copied from
+       the button by the shared disclosure (`utils/controls/choice-popover.ts`). */
+    .gl-palette-popover[data-variant="mobile"] {
+        right: auto;
+        left: calc(100% + 8px);
+    }
+
     .gl-palette-popover__item {
         display: flex;
         align-items: center;

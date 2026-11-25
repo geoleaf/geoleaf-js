@@ -1,9 +1,10 @@
 /**
  * Config-contract Phase C / C2 — B3 ui.json: ui.* flags read OUTSIDE app/init.ts.
  *
- *  - showAddPoi / showGeolocation → initUIPanels forwards them to
- *    GeoLeaf.UI.initMobileToolbar. The theme-selector mobile option is now sourced
- *    from modules.theme-selector.enabled (opt-out, migrated from ui.showThemeSelector, S8/F3).
+ *  - showGeolocation / showThemeSelector → initUIPanels forwards them to
+ *    GeoLeaf.UI.initMobileToolbar, read from the capability registry (embarked AND on):
+ *    geolocation is opt-out; theme-selector registers when its key is absent but builds its
+ *    bar only on `enabled === true`, and the button follows that rule.
  *  - showBaseLayerControls → createBaseLayerControlsUI gates #gl-left-panel via
  *    _computeShowControls (basemaps/ui.ts-176).
  *  - ui.language → initI18n reads Config.get("ui.language","fr") and selects the
@@ -13,6 +14,9 @@
  */
 
 import { initUIPanels } from "../../src/app/init-features.js";
+import { CapabilityRegistry } from "../../src/kernel/api/capability-registry.js";
+import { GEOLOCATION_CAPABILITY } from "../../src/capabilities/geolocation/geolocation-capability.js";
+import { THEME_SELECTOR_CAPABILITY } from "../../src/capabilities/theme-selector/theme-selector-capability.js";
 import { createBaseLayerControlsUI } from "../../src/kernel/basemaps/ui.js";
 import { initI18n, getLabel } from "../../src/utils/i18n/i18n.js";
 import { Config } from "../../src/kernel/config/geoleaf-config/config-core.js";
@@ -25,6 +29,9 @@ describe("config B3 — ui flags via initUIPanels (init-features.ts)", () => {
     beforeEach(() => {
         document.body.innerHTML = '<div class="gl-main"></div>';
         mobileArgs = null;
+        CapabilityRegistry._reset();
+        CapabilityRegistry.register(GEOLOCATION_CAPABILITY);
+        CapabilityRegistry.register(THEME_SELECTOR_CAPABILITY);
         GeoLeaf = {
             UI: {
                 initMobileToolbar: vi.fn((args) => {
@@ -51,8 +58,11 @@ describe("config B3 — ui flags via initUIPanels (init-features.ts)", () => {
             false
         );
     });
-    it("theme-selector → showThemeSelector default true, false when modules.theme-selector.enabled=false", () => {
-        expect(run({}).showThemeSelector).toBe(true);
+    it("theme-selector → showThemeSelector only when modules.theme-selector.enabled=true (opt-in bar)", () => {
+        expect(run({}).showThemeSelector).toBe(false);
+        expect(
+            run({}, { modules: { "theme-selector": { enabled: true } } }).showThemeSelector
+        ).toBe(true);
         expect(
             run({}, { modules: { "theme-selector": { enabled: false } } }).showThemeSelector
         ).toBe(false);

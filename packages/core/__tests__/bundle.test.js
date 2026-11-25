@@ -205,8 +205,15 @@ describe("boot pipeline (app/boot.ts) — structure", () => {
         expect(bootContent).not.toContain("setInterval");
     });
 
-    test("dispatche geoleaf:map:ready", () => {
-        expect(revealContent).toContain("geoleaf:map:ready");
+    test("annonce geoleaf:map:ready — une fois par carte, par kernel/events/map-ready.ts", () => {
+        // Since 3.20.6 the reveal and the adapter both go through `announceMapReady`, which
+        // dispatches once per map; the literal lives there.
+        expect(revealContent).toContain("announceMapReady(");
+        const mapReady = fs.readFileSync(
+            path.join(__dirname, "..", "src", "kernel", "events", "map-ready.ts"),
+            "utf8"
+        );
+        expect(mapReady).toContain('dispatchGeoLeafEvent("geoleaf:map:ready"');
     });
 
     test("masque le #gl-loader", () => {

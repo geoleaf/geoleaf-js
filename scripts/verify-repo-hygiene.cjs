@@ -880,6 +880,7 @@ const OUTSIDE_SCRIPTS_ALLOWLIST = new Set([
     "docs/recette/sprint-01/scripts/15-silences.mjs",
     "docs/recette/sprint-01/scripts/16-profils.mjs",
     "docs/recette/sprint-01/scripts/17-d01-extrusion-langues.mjs",
+    "docs/recette/sprint-01/scripts/18-contre-recette-coquille.mjs",
     "docs/recette/sprint-02/scripts/22-scale.mjs",
     "docs/recette/sprint-02/scripts/23-coordinates.mjs",
     "docs/recette/sprint-02/scripts/24-geolocation.mjs",

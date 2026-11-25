@@ -92,6 +92,19 @@ describe("share-modal", () => {
         expect(isShareModalOpen()).toBe(false);
     });
 
+    test("showing the QR code keeps the focus IN the dialog — on the copy button", async () => {
+        // The QR button, focused by the keyboard, was disabled then hidden: the focus fell to
+        // <body> and the next tabs walked the page behind the modal.
+        openShareModal();
+        const qrBtn = document.querySelector(".gl-share-modal__qr-btn");
+        qrBtn.focus();
+        qrBtn.click();
+        await vi.waitFor(() =>
+            expect(document.querySelector(".gl-share-modal__qr-container svg")).not.toBeNull()
+        );
+        expect(document.activeElement).toBe(document.querySelector(".gl-share-modal__copy"));
+    });
+
     test("copy button calls navigator.clipboard.writeText", async () => {
         const writeText = vi.fn(() => Promise.resolve());
         Object.defineProperty(navigator, "clipboard", {

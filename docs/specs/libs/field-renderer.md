@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: 8015a41a7
+date: 25 novembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -297,6 +297,11 @@ aussi. L'appelant en est le garant.
 
 **Preuve.** `src/__tests__/modal.test.ts` : croix, Échap, fond et `close()` pendant un `onSave` en
 attente — vu rouge sur la croix encore active ; fermeture forcée ; croix rendue après un échec.
+
+⚠️ **Échap n'est pas toujours la touche du formulaire (1.4.5).** Quand une fenêtre de l'hôte est
+ouverte par-dessus et tient le focus, sa touche Échap est laissée à l'hôte : le formulaire reste
+ouvert. La règle et sa limite vivent avec le piège de focus, dans la fiche
+`docs/specs/libs/host-runtime.md`.
 
 ### Deux gestes au doigt rendus le même jour
 

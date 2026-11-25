@@ -76,11 +76,17 @@ describe("config B7 — mergeModulesBag(target, incoming) guards", () => {
         expect(target.modules).toEqual({ addpoi: { x: 1 }, storage: { y: 2 } });
     });
 
-    it("same-id incoming replaces the entry by reference", () => {
-        const target = { modules: { storage: { old: true } } };
-        const next = { fresh: true };
-        mergeModulesBag(target, { storage: next });
-        expect(target.modules.storage).toBe(next);
+    it("same-id incoming merges into the entry, incoming values winning", () => {
+        const target = { modules: { storage: { old: true, shared: 1 } } };
+        mergeModulesBag(target, { storage: { fresh: true, shared: 2 } });
+        expect(target.modules.storage).toEqual({ old: true, fresh: true, shared: 2 });
+    });
+
+    it("a non-object on either side replaces (no merge into or from a scalar or an array)", () => {
+        const target = { modules: { storage: { old: true }, list: { a: 1 } } };
+        mergeModulesBag(target, { storage: false, list: [1, 2] });
+        expect(target.modules.storage).toBe(false);
+        expect(target.modules.list).toEqual([1, 2]);
     });
 
     it("creates target.modules when absent / malformed", () => {

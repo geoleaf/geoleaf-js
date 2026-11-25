@@ -36,9 +36,26 @@ const REQUIRED_KEYS = [
     "ui.filter_panel.reset",
     "format.proximity.radius",
     "format.zoom.level",
+    // labels that used to be hard-coded (filter panel, layer style warning)
+    "toast.layer.style_missing",
+    "ui.filter_panel.expand",
 ];
 
 const LANG_CODES = ["fr", "en", "de", "es", "it", "pt"];
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe("lang-fr — typographie des guillemets", () => {
+    // « followed by an ordinary space can be left alone at the end of a line: the iOS install
+    // sheet showed a lone « with its words on the next line. French guillemets take a narrow
+    // no-break space (U+202F) inside.
+    it("aucun guillemet français suivi ou précédé d'une espace sécable", async () => {
+        const dict = (await import("../../src/lang/lang-fr.js")).default;
+        const bad = Object.entries(dict).filter(
+            ([, v]) => typeof v === "string" && (v.includes("\u00ab ") || v.includes(" \u00bb"))
+        );
+        expect(bad.map(([k]) => k)).toEqual([]);
+    });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 describe("lang files — key completeness", () => {

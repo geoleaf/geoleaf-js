@@ -22,6 +22,7 @@
 import type { RevealDeps } from "./app-types.js";
 import { asFn, buildFitBoundsOptions, member } from "./app-types.js";
 import { dispatchGeoLeafEvent } from "../kernel/events/event-bus.js";
+import { announceMapReady } from "../kernel/events/map-ready.js";
 import { holdReveal } from "./boot-failure.js";
 import { markAppReady } from "../kernel/shared/app-ready.js";
 import { resolveDefaultThemeId } from "../kernel/config/default-theme.js";
@@ -214,7 +215,8 @@ export function setupReveal({
                 void error;
             }
         }
-        dispatchGeoLeafEvent("geoleaf:map:ready", undefined);
+        // Silent when the adapter already announced this map on the engine's `load`.
+        announceMapReady(map);
         // Emit the application initialisation end event
         // (used by boot.js to display the boot toast via GeoLeaf.bootInfo)
         const bootVersion = GeoLeaf._version;

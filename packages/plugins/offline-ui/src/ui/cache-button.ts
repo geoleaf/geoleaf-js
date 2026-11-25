@@ -21,6 +21,7 @@ import { Log, getGeoLeaf } from "@geoleaf/host-runtime";
 import { ButtonControl } from "./cache-button/button-control.js";
 import { ModalManager } from "./cache-button/modal-manager.js";
 import { ExportLogic } from "./cache-button/export-logic.js";
+import { buildPublicApi } from "../public-api.js";
 
 // Wire cross-references via injection (avoids circular imports)
 ModalManager._setExportLogic(ExportLogic);
@@ -28,13 +29,15 @@ ModalManager._setExportLogic(ExportLogic);
 /**
  * CacheButton (Orchestrator)
  * Delegates all functionality to specialized sub-modules via direct ESM imports.
+ *
+ * The public members (`openModal`) come from `buildPublicApi()` (`public-api.ts`), spread in
+ * here so the declared contract and the mounted object cannot drift apart. `init`,
+ * `closeModal` and `Modules` are wiring for the core's UI boot module.
  */
 const CacheButton = {
+    ...buildPublicApi(),
     init(map: unknown, cfg: { ui?: { showCacheButton?: boolean }; [key: string]: unknown }) {
         return ButtonControl.init(map, cfg);
-    },
-    openModal() {
-        return ModalManager.openModal();
     },
     closeModal() {
         return ModalManager.closeModal();

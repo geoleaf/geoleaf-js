@@ -27,6 +27,9 @@ import {
     IMPORT_SURFACE,
     IMPORT_SURFACE_MIN,
     EXPECTED_FACADE_KEYS,
+    EXPECTED_FACADE_MEMBERS,
+    EXPECTED_DEEP_MEMBERS,
+    DEEP_PATHS,
     DEPTH2_FACADES,
 } from "../../../../scripts/lib/namespace-surface.mjs";
 
@@ -63,6 +66,28 @@ describe("walkNamespace — contrat de la marche", () => {
         expect(r.members.trap).toBeUndefined();
         // …and an accessor MET at depth 2 is named without being read.
         expect(r.members.deep).toContain("nested");
+    });
+
+    test("un chemin `deep` lit l'accesseur qu'il nomme, et lui seul", () => {
+        const store = { load() {}, save() {}, _hidden() {} };
+        const read = vi.fn(() => ({ Store: store }));
+        const facade = {};
+        Object.defineProperty(facade, "Cache", { get: read, enumerable: true });
+
+        const r = walkNamespace({ Storage: facade }, { descend: ["Storage"] });
+        // `descend` names the accessor and never reads it…
+        expect(read).not.toHaveBeenCalled();
+        expect(r.members.Storage).toEqual(["Cache"]);
+
+        // …a NAMED deep path reads it, and measures the object at its end.
+        const d = walkNamespace({ Storage: facade }, { deep: ["Storage.Cache.Store"] });
+        expect(read).toHaveBeenCalled();
+        expect(d.members["Storage.Cache.Store"]).toEqual(["load", "save"]);
+    });
+
+    test("un chemin `deep` absent n'enregistre rien — il ne se lit pas comme vide", () => {
+        const r = walkNamespace({ Storage: { Cache: undefined } }, { deep: ["Storage.Cache.X"] });
+        expect(r.members).toEqual({});
     });
 
     test("ne descend que sur demande explicite", () => {
@@ -110,6 +135,20 @@ describe("les trois tiers", () => {
         ]) {
             expect(liste.length, `${nom} est vide`).toBeGreaterThan(20);
             expect(new Set(liste).size, `${nom} contient un doublon`).toBe(liste.length);
+        }
+    });
+
+    test("chaque chemin profond part d'un membre figé de profondeur 2, et n'est pas vide", () => {
+        // Otherwise a deep path could hang below a key the oracle no longer freezes.
+        expect(DEEP_PATHS.length).toBeGreaterThan(0);
+        for (const deepPath of DEEP_PATHS) {
+            const [head, member, ...rest] = deepPath.split(".");
+            expect(rest.length, `${deepPath} n'est pas sous la profondeur 2`).toBeGreaterThan(0);
+            expect(EXPECTED_FACADE_KEYS, deepPath).toContain(head);
+            expect(EXPECTED_FACADE_MEMBERS[head] ?? [], deepPath).toContain(member);
+            const liste = EXPECTED_DEEP_MEMBERS[deepPath];
+            expect(liste.length, `${deepPath} est vide`).toBeGreaterThan(0);
+            expect(new Set(liste).size, `${deepPath} contient un doublon`).toBe(liste.length);
         }
     });
 

@@ -46,6 +46,60 @@ describe("handleFocusTrap", () => {
         expect(document.activeElement).toBe(b);
     });
 
+    it("an SVG `<use href>` is NOT a focusable — Tab from the last button still wraps", () => {
+        // `[href]` matched the `<use href>` of a taxonomy glyph in the side panel's title. An SVG
+        // element has no `offsetParent` property (`undefined`, not `null`), so the visibility
+        // filter kept it, and it became the LAST focusable: Tab from Close was never wrapped,
+        // and the tabulation left the panel on the delivered bundle.
+        const box = mount(
+            '<button id=a></button><button id=b></button><svg><use href="#glyph"></use></svg>'
+        );
+        const [a, b] = [box.querySelector("#a"), box.querySelector("#b")];
+        b.focus();
+
+        const e = tab();
+        handleFocusTrap(box, e);
+
+        expect(e.preventDefault).toHaveBeenCalled();
+        expect(document.activeElement).toBe(a);
+    });
+
+    it("a LOST focus (fallen to <body>) is brought back into the container", () => {
+        // A focused control that disappears (hidden, disabled) drops the focus to <body>; the
+        // next Tab then walked the page behind a modal. The trap takes it back — Tab to the
+        // first focusable, Shift+Tab to the last.
+        const box = mount("<button id=a></button><button id=b></button>");
+        const [a, b] = [box.querySelector("#a"), box.querySelector("#b")];
+        document.activeElement?.blur?.();
+        expect(document.activeElement).toBe(document.body);
+
+        const e = tab();
+        handleFocusTrap(box, e);
+        expect(e.preventDefault).toHaveBeenCalled();
+        expect(document.activeElement).toBe(a);
+
+        a.blur();
+        const s = tab({ shift: true });
+        handleFocusTrap(box, s);
+        expect(document.activeElement).toBe(b);
+    });
+
+    it("a focus held by ANOTHER element outside is left alone — the trap does not steal it", () => {
+        // Two traps can coexist (the lightbox above the side panel). Only a lost focus is taken
+        // back; a focus another surface owns is that surface's business.
+        document.body.innerHTML =
+            '<div id="trap"><button id=a></button></div><div id="other"><button id=o></button></div>';
+        const box = document.getElementById("trap");
+        const o = document.getElementById("o");
+        o.focus();
+
+        const e = tab();
+        handleFocusTrap(box, e);
+
+        expect(e.preventDefault).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(o);
+    });
+
     it("leaves the native order alone in the middle of the cycle", () => {
         const box = mount("<button id=a></button><button id=b></button><button id=c></button>");
         const b = box.querySelector("#b");

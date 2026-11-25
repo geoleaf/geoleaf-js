@@ -109,7 +109,8 @@ const CacheDownloader = {
         }
 
         this._cachingProfiles.add(profileId);
-        this._abortController = new AbortController();
+        const controller = new AbortController();
+        this._abortController = controller;
 
         try {
             Log.info(`[CacheDownloader] Caching profile: ${profileId}`);
@@ -158,6 +159,15 @@ const CacheDownloader = {
                     this._config.tileDownloadDelay,
                     options.onProgress
                 );
+            }
+
+            // 🛑 A stop ends the workers with a `break`, not a throw: the run reached this point
+            // and announced `geoleaf:cache:completed` right after the orchestrator's
+            // `geoleaf:cache:cancelled` — two contradictory signals, and a full summary as the
+            // result. A stopped run says « cancelled », and only that.
+            if (controller.signal.aborted) {
+                Log.info(`[CacheDownloader] Cancelled: ${profileId}`);
+                return { cancelled: true, profileId };
             }
 
             const summary = ProgressTracker.getSummary() as Record<string, unknown>;

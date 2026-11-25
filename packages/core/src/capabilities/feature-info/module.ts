@@ -11,10 +11,11 @@
  * Represents: `GeoLeaf.FeatureInfo` (attribute rendering — tooltip / popup /
  * side-panel). Reclassified from `@geoleaf-plugins/feature-info` (SR0).
  *
- * Registered conditionally in `boot.ts` when `modules.feature-info.enabled` is
- * not `false`. `init()` wires the capability lifecycle (the
- * `geoleaf:feature:click/hover` seam listeners); `destroy()` detaches them and
- * tears down the surfaces.
+ * Always registered; the preset wraps it so that `init()` runs only when
+ * `modules.feature-info.enabled` is not `false` at boot — the gate is read once, there.
+ * `init()` wires the capability lifecycle (the `geoleaf:feature:click/hover` seam
+ * listeners); `destroy()` detaches them and tears down the surfaces. Switched off at boot,
+ * the capability never listens: setting `enabled` back to `true` later does not start it.
  *
  * Note: the former plugin registered an i18n dict via `GeoLeaf.I18n.registerDict`,
  * but the `GeoLeaf.I18n.t` read seam was never mounted (`globals.core.ts` exposes

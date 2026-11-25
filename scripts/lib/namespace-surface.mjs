@@ -53,8 +53,21 @@
  * replay it during the very measurement that is supposed to observe the namespace, not change
  * it. `getOwnPropertyDescriptor` does not fire the accessor; that is why it is used.
  *
+ * `deep` opts into a NAMED path below depth 2 (`"Storage.Cache.Storage"`): the object at the
+ * end of the path is measured like a depth-2 façade, and its members land in `members` under
+ * the dotted path. An absent hop ends the path and records nothing — the caller reads it as
+ * all-missing.
+ *
+ * ⚠️ **A hop of a `deep` path MAY be an accessor, and it is then read** — the one exception
+ * to the rule above, and a deliberate one: `Storage.Cache` is a getter, and the consumer
+ * reaches `Storage.Cache.Storage` through it. The exception is bounded by the caller: only
+ * the closed list {@link EXPECTED_DEEP_MEMBERS} is passed as `deep`, and each path is
+ * admitted there with the statement that every accessor on it is a plain field read.
+ * `descend` and depth 1 still never fire an accessor.
+ *
  * @param {object} root - the namespace object (`globalThis.GeoLeaf`).
- * @param {{ descend?: string[] }} [opts] - `descend` opts INTO depth 2, façade by façade.
+ * @param {{ descend?: string[], deep?: string[] }} [opts] - `descend` opts INTO depth 2,
+ *   façade by façade; `deep` opts into named dotted paths below it.
  * @returns {{ keys: string[], kinds: Record<string,string>, members: Record<string,string[]> }}
  */
 export function walkNamespace(root, opts) {
@@ -103,6 +116,29 @@ export function walkNamespace(root, opts) {
         if (descend.indexOf(k) !== -1 && v && (typeof v === "object" || typeof v === "function")) {
             members[k] = memberNames(v);
         }
+    }
+
+    const deep = (opts && opts.deep) || [];
+    for (let j = 0; j < deep.length; j++) {
+        const hops = String(deep[j]).split(".");
+        let cur = root;
+        let reached = true;
+        for (let h = 0; h < hops.length && reached; h++) {
+            let holder = cur;
+            let hd;
+            while (holder && holder !== Object.prototype && holder !== Function.prototype) {
+                hd = Object.getOwnPropertyDescriptor(holder, hops[h]);
+                if (hd) break;
+                holder = Object.getPrototypeOf(holder);
+            }
+            // Absent: stop here. An accessor is read — the path was named on purpose (see above).
+            if (!hd) reached = false;
+            else cur = typeof hd.get === "function" ? hd.get.call(cur) : hd.value;
+            if (reached && !(cur && (typeof cur === "object" || typeof cur === "function"))) {
+                reached = false;
+            }
+        }
+        if (reached) members[deep[j]] = memberNames(cur);
     }
     return { keys: keys, kinds: kinds, members: members };
 }
@@ -170,7 +206,7 @@ export function diffSurface(expected, actual) {
  *   | ---------------------------------------- | ------------------------------------------------------ | --------------- |
  *   | `kernel/storage/facade.ts`               | `Storage`                                              | ✅ yes          |
  *   | `kernel/ui/ui-api.ts`                    | `UI`                                                   | ✅ yes          |
- *   | `utils/performance/runtime-metrics.ts`   | `getPerformanceMetrics`, `getRuntimeMetrics`, `resetRuntimeMetrics` | ❌ **no** |
+ *   | `utils/performance/runtime-metrics.ts`   | `getPerformanceMetrics`, `getRuntimeMetrics`, `resetRuntimeMetrics` | ❌ **no** (post-boot: ✅ since 3.20.6) |
  *
  * The pool is thus **exactly three members**, and no more — what the founding note
  * suspected without having established it. `Storage` and `UI` are mounted outside
@@ -183,6 +219,12 @@ export function diffSurface(expected, actual) {
  *   ② "mounted **unconditionally**" — no: `runtime-metrics.ts` mounts them under
  *      `if (_g.GeoLeaf) { … }`. A boot where the namespace does not exist yet does not
  *      mount them.
+ *
+ * ✅ **Statement ② bit (3.20.6)**: in the shipped chunk order the namespace did not exist yet,
+ * and the three members existed in no bundle. They are now mounted by `app/app-namespace.ts`,
+ * at IMPORT time, and frozen in this list and in `EXPECTED_FACADE_KEYS` below. The motive of the
+ * decision below has FALLEN: it refused to freeze them for a visibility defect; they are now
+ * documented members that exist, and an exact-equality oracle can only record them.
  *
  * **Decision (2026-08-16): write this perimeter down, do NOT extend the list.** Adding
  * them would freeze three members into a surface oracle — an irreversible commitment —
@@ -247,7 +289,9 @@ export const IMPORT_SURFACE = [
     "getMetrics",
     "getModule",
     "getNamespace",
+    "getPerformanceMetrics",
     "getPerformanceReport",
+    "getRuntimeMetrics",
     "hasModule",
     "init",
     "loadConfig",
@@ -258,6 +302,7 @@ export const IMPORT_SURFACE = [
     "plugins",
     "post",
     "registry",
+    "resetRuntimeMetrics",
     "setTheme",
     "version",
 ];
@@ -331,6 +376,10 @@ export const IMPORT_SURFACE_MIN = [
  * 103 → 102, `Filters` removed with the plural namespace and its route engine.
  * 102 → 89 — 13 `_` keys removed. None had a reader, and none was declared in
  *           `GeoLeafGlobal` (HOST-02 indifferent).
+ * 3.20.6 — `getPerformanceMetrics`, `getRuntimeMetrics`, `resetRuntimeMetrics` enter: documented
+ *           public members that NO bundle had — mounted at their module's evaluation, which the
+ *           shipped chunk order runs before the namespace exists. They are now mounted by the
+ *           namespace's assembly (`app/app-namespace.ts`). Not new members: promised ones, kept.
  */
 export const EXPECTED_FACADE_KEYS = [
     "API",
@@ -420,7 +469,9 @@ export const EXPECTED_FACADE_KEYS = [
     "getMetrics",
     "getModule",
     "getNamespace",
+    "getPerformanceMetrics",
     "getPerformanceReport",
+    "getRuntimeMetrics",
     "hasModule",
     "init",
     "loadConfig",
@@ -431,6 +482,7 @@ export const EXPECTED_FACADE_KEYS = [
     "plugins",
     "post",
     "registry",
+    "resetRuntimeMetrics",
     "setTheme",
     "version",
 ];
@@ -547,6 +599,45 @@ export const DEPTH2_FACADES = [
     "events",
     "plugins",
 ];
+
+/**
+ * Members of NAMED paths below depth 2, keyed by dotted path.
+ *
+ * A closed list, not a third depth: each path is admitted because a consumer calls a member
+ * of it and the depth-2 oracle stops one hop short. `Storage.Cache.Storage` is the layer
+ * selection the offline preparation records (`loadLayerSelection`, read back by a host to
+ * keep the drawn zone). Descending one level under EVERY depth-2 façade instead would freeze
+ * hundreds of internal members at once and turn the first internal refactor red.
+ *
+ * 🛑 **Not measured by the golden master, and that is a measured fact**: its boot does not load
+ * the deferred offline engine, so `Storage._modules` is empty there and every path below reads
+ * as nothing. The measurement lives in
+ * `packages/core/__tests__/capabilities/offline/deep-surface.contract.test.ts`, which wires the
+ * real engine entry into the real `Storage` façade and walks twice, like the golden master.
+ * The first segment of each path must be in {@link EXPECTED_FACADE_KEYS} and the second in its
+ * depth-2 list — the surface contract test locks both. Any other path below depth 2 stays out
+ * of scope for the consumer gate.
+ *
+ * Accessors on the admitted paths (read by `walkNamespace`'s `deep`, see there):
+ * - `Storage.Cache` — `get Cache() { return this._modules.cache; }` (`kernel/storage/facade.ts`).
+ */
+export const EXPECTED_DEEP_MEMBERS = {
+    "Storage.Cache.Storage": [
+        "clearCache",
+        "deleteManifest",
+        "getCacheStatus",
+        "getCachedProfiles",
+        "getCachedUrls",
+        "getManifest",
+        "loadLayerSelection",
+        "loadProfileConfig",
+        "saveLayerSelection",
+        "saveManifest",
+    ],
+};
+
+/** The dotted paths of {@link EXPECTED_DEEP_MEMBERS}, in a stable order. */
+export const DEEP_PATHS = Object.keys(EXPECTED_DEEP_MEMBERS).sort();
 
 /**
  * Depth-2 membership of the façades listed in {@link DEPTH2_FACADES}.

@@ -446,7 +446,8 @@ test("[basemaps] relief à l'inclinaison : il traverse un changement de fond sou
         terrain: followsTilt("tilt"),
     });
     expect(await switchTo(page, "e2e-tilt"), "la bascule ne s'est pas achevée").toBe(true);
-    await jumpTo(page, { pitch: 40, bearing: 25 });
+    // Zoom 10: no terrain is put on below zoom 6 (the opening framing sits near 4.4).
+    await jumpTo(page, { zoom: 10, pitch: 40, bearing: 25 });
     let state = await relief(page);
     expect(state.terrain, "incliné à 40°, le relief n'est pas posé").toBe(TERRAIN_SOURCE);
     expect(state.demTiles).toContain("/tilt/");

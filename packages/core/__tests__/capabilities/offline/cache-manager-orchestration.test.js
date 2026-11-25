@@ -521,6 +521,16 @@ describe("cacheProfile — le rapatriement des entités déclarées (R9)", () =>
             expect(result.cancelled).toBe(true);
         });
 
+        test("🛑 pendant la phase des ressources, le manifeste reste celui d'avant", async () => {
+            // The downloader ends a stopped run with `{ cancelled }` and no list: recorded,
+            // it would have emptied the manifest of everything an earlier download cached.
+            stoppedDuringResources();
+
+            await CacheManager.cacheProfile("tourism");
+
+            expect(saveManifest).not.toHaveBeenCalled();
+        });
+
         test("🛑 le résultat dit que le geste a été arrêté", async () => {
             stoppedDuringResources();
 

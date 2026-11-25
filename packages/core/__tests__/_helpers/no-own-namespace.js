@@ -41,10 +41,15 @@
  * Same pattern as `NO_CONFIG_ACCESSOR`
  * (`__tests__/capabilities/scaffold-taxonomy.test.js`) and
  * `NO_CAPABILITY_CONFIG` (`__tests__/guards/doc-capability-config.guard.test.js`).
+ *
+ * An optional third field, `mountsOn`, names a member the plugin ADDS to a core façade (never
+ * a namespace of its own). It is the one case where an exempt plugin carries a
+ * `src/public-api.ts`: that file must declare `PUBLIC_API_MOUNT` equal to `mountsOn`, whose
+ * first segment must be a core façade key — `doc-plugin-manifest.guard.test.js` verifies both.
  */
 "use strict";
 
-/** @type {Record<string, { motif: string, drives: string, owner: string }>} */
+/** @type {Record<string, { motif: string, drives: string, owner: string, mountsOn?: string }>} */
 export const NO_OWN_NAMESPACE = {
     "offline-ui": {
         motif: "ne monte aucun namespace propre : il PILOTE `GeoLeaf.Storage`, une façade du CORE (capacité `offline`). Son `healthCheck` interroge donc volontairement une surface qu'il n'a pas posée, et son `entry.ts` l'écrit en toutes lettres",
@@ -52,5 +57,7 @@ export const NO_OWN_NAMESPACE = {
         drives: "GeoLeaf.Storage",
         /** Who sets this surface — verified existing on disk. */
         owner: "packages/core/src/kernel/storage/facade.ts",
+        /** The member it adds to the core's `UI` façade — declared in its `public-api.ts`. */
+        mountsOn: "UI.CacheButton",
     },
 };

@@ -25,7 +25,7 @@ vi.mock("../../src/utils/general/di-accessors.js", () => ({
 }));
 import { bindZoomRangeSync } from "../../src/kernel/geojson/layers/zoom-range-sync.js";
 
-const GUYANE = { minScale: 9222148, maxScale: 2252 };
+const GUYANE = { minScale: 4611074, maxScale: 1126 };
 
 describe("geojson/zoom-range-sync", () => {
     let setLayerZoomRange;

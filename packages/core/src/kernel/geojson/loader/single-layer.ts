@@ -15,6 +15,8 @@
 import { GeoJSONShared } from "../shared.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
 import { StorageContract } from "../../shared/index.js";
+import { isOfflineEngineExpected } from "../../api/offline-engine-expected.js";
+import { CapabilityRegistry } from "../../api/capability-registry.js";
 import { fetchOgcApiFeatures, setupAutoRefresh } from "./ogc-api-loader.js";
 import type {
     DefLike,
@@ -34,6 +36,7 @@ import { injectSymbolIds } from "./symbol-injector.js";
 import { buildSingleLayerAdapterOptions } from "./adapter-options.js";
 import { bindFeatureInteractionEvents } from "../feature-interaction.js";
 import { notifyPrimitive } from "../../../utils/notify/notify.primitive.js";
+import { getLabel } from "../../../utils/i18n/i18n.js";
 import { announceTruncation } from "./truncation-notice.js";
 import { reconcileLayerFields } from "../field-reconciliation.js";
 import { whenStyleReady, type StyleReadyMap } from "../../../utils/general/style-ready.js";
@@ -96,8 +99,10 @@ function _readsOffline(def: DefLike): boolean {
  *
  * 3 s: the engine is a deferred chunk, measured at **157 ms** on a warm reload and
  * **905 ms** at first boot on this machine. The bound thus leaves three times the
- * slowest measurement, and only costs that delay on a variant where the engine will
- * not come.
+ * slowest measurement. It is paid only when the engine is EXPECTED
+ * (`isOfflineEngineExpected`): until 3.20.5 it was also paid on every variant where the
+ * engine could not come — 3 s for each such layer, and, the batches being sequential,
+ * for every layer after it.
  */
 const OFFLINE_ENGINE_WAIT_MS = 3000;
 
@@ -117,6 +122,17 @@ const OFFLINE_ENGINE_WAIT_MS = 3000;
  */
 async function _awaitOfflineEngine(layerId: string): Promise<boolean> {
     if (StorageContract.DB) return true;
+
+    // The engine cannot come — `offline` or `pwa` not embarked, or switched off: the network
+    // serves at once, and the real cause is said instead of a timeout.
+    if (!isOfflineEngineExpected()) {
+        getLog()?.warn?.(
+            `[GeoLeaf.GeoJSON] Layer "${layerId}" declares an offline read but the offline ` +
+                `engine is not available (\`offline\` and \`pwa\` must be embarked and enabled) — ` +
+                `loading from network.`
+        );
+        return false;
+    }
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     const timedOut = new Promise<false>((resolve) => {
@@ -282,10 +298,8 @@ function _notifyStyleFail(layerLabel: string): void {
     // former `_deps.getNotifications()` read `GeoLeaf.Notifications`, which was
     // never mounted → this warning was dead. The primitive buffers + console-falls
     // back, and the toast-renderer capability renders it when present.
-    notifyPrimitive.notify(
-        `Default style not found for « ${layerLabel} ». Displaying with neutral style.`,
-        "warning"
-    );
+    // Translated: the message was hard-coded in English in a French interface.
+    notifyPrimitive.notify(getLabel("toast.layer.style_missing", layerLabel), "warning");
 }
 
 function _applyPreloadedStyle(def: DefLike, psd: Record<string, unknown>): void {
@@ -444,6 +458,31 @@ const UNCLUSTERED_POINTS_WARN_THRESHOLD = 1000;
  * Warning only: forcing clustering here would change the rendering without the
  * integrator asking for it.
  */
+/**
+ * What to tell the integrator, by the actual cause. « Enable clustering for this layer » is
+ * the right advice only when the cluster capability can act: absent from the bundle, or
+ * switched off, the keys it names change nothing — and the profile measured in the recipe
+ * already carried both of them.
+ */
+function _unclusteredAdvice(): string {
+    if (CapabilityRegistry.getSchema("cluster") === null) {
+        return (
+            `The cluster capability is not in this bundle: no clustering key can apply. ` +
+            `Embark it in the bundle's manifest to cluster these points.`
+        );
+    }
+    const config = (
+        globalThis as { GeoLeaf?: { Config?: { get(key: string, d?: unknown): unknown } } }
+    ).GeoLeaf?.Config;
+    if (config && !CapabilityRegistry.isEnabled("cluster", config)) {
+        return `Clustering is switched off for the whole map (\`modules.cluster.enabled: false\`).`;
+    }
+    return (
+        `Enable clustering for this layer (\`clustering: { enabled: true }\` in its config) ` +
+        `or globally (\`modules.cluster.clustering: true\`).`
+    );
+}
+
 function _warnOnUnclusteredPointVolume(
     features: unknown[],
     clusterResult: { shouldCluster: boolean },
@@ -464,15 +503,22 @@ function _warnOnUnclusteredPointVolume(
     Log.warn(
         `[GeoLeaf.GeoJSON] ${layerLabel || layerId}: ${features.length} points rendered ` +
             `unclustered (threshold ${UNCLUSTERED_POINTS_WARN_THRESHOLD}). This strains the ` +
-            `WebGL layer budget and can degrade the browser. Enable clustering for this layer ` +
-            `(\`clustering: { enabled: true }\` in its config) or globally ` +
-            `(\`modules.cluster.clustering: true\`).`
+            `WebGL layer budget and can degrade the browser. ${_unclusteredAdvice()}`
     );
 }
 
+/** Name of the error raised when the map is gone while a layer loads — see the profile loader. */
+export const MAP_UNAVAILABLE_ERROR = "MapUnavailableError";
+
 function _resolveSingleLayerAdapter(state: GeoJSONState): MapAdapterLike {
     const adapter = (state.adapter || _deps?.getCore()?.getMap?.()) as MapAdapterLike;
-    if (!adapter) throw new Error("[GeoLeaf.GeoJSON] MapLibre adapter not available");
+    if (!adapter) {
+        // Named: the profile loader tells « the map is gone » (a destroy during the boot, the
+        // loads still in flight) from a real failure by this name, and keeps the former quiet.
+        const err = new Error("[GeoLeaf.GeoJSON] MapLibre adapter not available");
+        err.name = MAP_UNAVAILABLE_ERROR;
+        throw err;
+    }
     return adapter;
 }
 

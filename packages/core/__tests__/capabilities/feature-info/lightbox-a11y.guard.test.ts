@@ -95,6 +95,24 @@ describe("garde a11y — la lightbox est annoncée comme une modale", () => {
         expect((fermer?.getAttribute("aria-label") ?? "").trim().length).toBeGreaterThan(0);
     });
 
+    it("Échap ne ferme QUE la visionneuse — pas la surface ouverte dessous", () => {
+        // The side panel, opened first, listens to `keydown` on `document` too: registered
+        // before the lightbox, it ran first and closed itself on the same Escape.
+        let dessous = 0;
+        const sousjacent = (e: KeyboardEvent) => {
+            if (e.key === "Escape") dessous++;
+        };
+        document.addEventListener("keydown", sousjacent);
+        try {
+            manager.open("https://exemple.test/a.jpg");
+            document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+            expect(conteneur(), "la visionneuse est restée ouverte").toBeNull();
+            expect(dessous, "la surface du dessous a reçu le même Échap").toBe(0);
+        } finally {
+            document.removeEventListener("keydown", sousjacent);
+        }
+    });
+
     it("RESTITUE le focus au déclencheur à la fermeture", () => {
         const declencheur = document.createElement("button");
         document.body.appendChild(declencheur);

@@ -4,8 +4,8 @@ title: host-runtime — l'accès typé au namespace, et les seams que les plugin
 lib_id: host-runtime
 package: "@geoleaf/host-runtime"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: 8015a41a7
+date: 25 novembre 2026
 ---
 
 # host-runtime — l'accès typé au namespace, et les seams que les plugins partagent
@@ -214,6 +214,32 @@ de renoncement aurait donc produit exactement le doublon que le garde existe pou
 (`null` par défaut) sur tout abandon. `confirmDialog` en est devenu le cas à deux actions — même
 DOM, mêmes classes, mêmes tests —, si bien que ses quatre appelants n'ont pas bougé. La **première**
 action prend le focus initial : l'appelant doit donc la garder sûre.
+
+### Le piège de focus laisse à l'hôte les touches qui visent l'hôte (25/11/2026)
+
+`createFocusTrap` écoute `keydown` sur `document` et entend donc toutes les touches de la page.
+Quand un hôte ouvre sa propre fenêtre au-dessus d'un formulaire GeoLeaf (« Rechercher plus » depuis
+un champ, une confirmation), le focus est dans cette fenêtre, et la touche Échap appartient à
+l'hôte. Le piège l'entendait aussi : il fermait le formulaire placé dessous, ou demandait d'en
+abandonner la saisie. Placer les fenêtres sous celles de l'hôte (core 3.20.0, `--gl-z-window` à 1049) n'y changeait rien.
+
+Désormais, une touche dont la cible est un élément **hors du conteneur, hors de ce que GeoLeaf
+dessine** (classe ou id en `gl-`, élément `.maplibregl-map`) et **autre que le `body`** est laissée
+à l'hôte. Échap ferme toujours la fenêtre quand il vient du formulaire, de la carte, ou de la page
+quand rien n'a le focus.
+
+🛑 **La remontée s'arrête sous le `body`.** Le core écrit sa classe de thème (`gl-theme-dark`) sur
+le `body` de l'hôte, et un `closest()` aurait donc trouvé un ancêtre « GeoLeaf » pour tout élément
+de la page, la fenêtre de l'hôte comprise. Le premier correctif avait ce défaut : il était vert en
+test unitaire, sur un `body` sans classe, et rouge sur le bundle livré.
+
+⚠️ **Limite :** le critère de propriété est lexical. Un élément de l'hôte qui porterait une classe
+en `gl-` serait lu comme un élément GeoLeaf.
+
+**Preuve.** `field-renderer/src/__tests__/modal.test.ts` (cible dans une fenêtre d'hôte : rouge sur
+le piège d'avant ; cibles dans le conteneur, dans le `body` et sur la carte : toujours fermées). Côté
+navigateur, `e2e/60-host-page-coexistence.spec.js`, sur le bundle livré : rouge sur le déployé
+d'avant, avec un formulaire fermé par un Échap pressé dans la sonde d'hôte.
 
 ---
 

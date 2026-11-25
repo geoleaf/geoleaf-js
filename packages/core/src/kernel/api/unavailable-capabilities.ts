@@ -24,6 +24,11 @@
  * nothing provided it*. That is what {@link declareUnavailable} records, and it is why the
  * consumer side is a subscription rather than a query.
  *
+ * The measurement holds for capabilities that can register lazily — plugin ones. It does not
+ * reach the IN-CORE capabilities: declared at boot pass 1 or never, a closed list. For them
+ * `configured-absences.ts` does state the absence at boot — but only for an id the merged
+ * configuration names without switching it off, and never for a plugin id.
+ *
  * ## Two properties that are contract, not implementation detail
  *
  * 1. **Late subscribers receive the backlog.** The declaration happens during boot; a host

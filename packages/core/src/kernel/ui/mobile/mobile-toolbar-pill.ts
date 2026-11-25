@@ -147,12 +147,16 @@ function _getToolbarItems() {
     // `apps/geoleaf-app/init.js` declares BEFORE the plugin loads.
     return [
         ..._getNavItems(),
-        {
-            id: "proximity",
-            label: getLabel("aria.toolbar.proximity"),
-            tooltip: getLabel("tooltip.toolbar.proximity"),
-            path: "M12 2v2M12 20v2M2 12h2M20 12h2M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 12m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0",
-        },
+        ...(domState.options?.showProximity !== false
+            ? [
+                  {
+                      id: "proximity",
+                      label: getLabel("aria.toolbar.proximity"),
+                      tooltip: getLabel("tooltip.toolbar.proximity"),
+                      path: "M12 2v2M12 20v2M2 12h2M20 12h2M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 12m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0",
+                  },
+              ]
+            : []),
         ..._getMapToolItems(),
     ];
 }

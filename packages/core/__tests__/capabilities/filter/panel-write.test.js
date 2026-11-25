@@ -10,7 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 const { renderFilterPanel } = await import("../../../src/capabilities/filter/panel/render.ts");
 const { readActiveFilter } = await import("../../../src/capabilities/filter/panel/state.ts");
-const { writePanelControls, resetPanelControls } =
+const { writePanelControls, resetFilterControls } =
     await import("../../../src/capabilities/filter/panel/write.ts");
 const { serializeActiveFilter } = await import("../../../src/capabilities/filter/serialize.ts");
 
@@ -252,7 +252,7 @@ describe("writePanelControls — taxonomy subValues", () => {
     });
 });
 
-describe("resetPanelControls", () => {
+describe("resetFilterControls", () => {
     it("clears every control", () => {
         const p = panel();
         writePanelControls(
@@ -265,7 +265,7 @@ describe("resetPanelControls", () => {
             },
             CONFIG
         );
-        resetPanelControls(p);
+        resetFilterControls(p);
         expect(p.querySelector('[data-gl-filter-id="searchText"] input[type="text"]').value).toBe(
             ""
         );

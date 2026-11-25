@@ -4,8 +4,8 @@ title: theme-selector — la barre de commutation des thèmes de carte
 capability_id: theme-selector
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: cf6f63cd2
+date: 23 novembre 2026
 ---
 
 # theme-selector — la barre de commutation des thèmes de carte
@@ -400,6 +400,13 @@ oublié.** Sous 768 px, le bloc de fin de feuille repose le `top` des deux conte
 sur un téléphone et là seulement : à 375 px les pastilles couvraient le compte des écritures dues.
 Gardé par `e2e/41-sync-banner.spec.js`, qui compare les rectangles et non une valeur de `top` — la
 hauteur de la bande double sous `(pointer: coarse)`.
+
+**Le coin haut droit de MapLibre descend sous la barre secondaire, depuis 3.20.6.** Un contrôle placé
+en `position: "topright"` (une échelle, par exemple) passait dessous. Tant que la barre est
+construite (`#gl-theme-secondary-container.gl-theme-selector-secondary`), la feuille pose le `top` de
+`.maplibregl-ctrl-top-right` sous elle — 56 px, 101 px sous 768 px, jeton de bande haute compris —
+en `!important`, `maplibre-gl.css` déclarant `top: 0` hors couche. La capacité ne nomme pas le
+contrôle : elle dégage le coin qu'elle occupe.
 
 ---
 

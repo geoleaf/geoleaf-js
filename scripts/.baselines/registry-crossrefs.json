@@ -1,7 +1,7 @@
 {
     "_comment": "REGISTRY-CROSSREFS — mentions mortes gelées (RX-02). Ne peut que RÉTRÉCIR. Régénérer avec `node scripts/lib/registry-crossrefs.cjs --update-baseline` UNIQUEMENT après avoir corrigé de la prose, jamais pour faire taire un rouge.",
     "_generated": "node scripts/lib/registry-crossrefs.cjs --update-baseline",
-    "count": 41,
+    "count": 40,
     "entries": [
         "backlog_technique.md:B-01",
         "backlog_technique.md:B-06",
@@ -32,7 +32,6 @@
         "backlog_technique.md:B-89",
         "backlog_technique.md:B-98",
         "backlog_technique.md:D-16",
-        "dette_technique.md:B-04",
         "dette_technique.md:B-09",
         "dette_technique.md:B-13",
         "dette_technique.md:B-15",

@@ -17,11 +17,11 @@
     },
     "description": "",
     "scaleConfig": {
-        "minScale": 7500000,
-        "maxScale": 100000
+        "minScale": 3750000,
+        "maxScale": 50000
     },
     "labelScale": {
-        "minScale": 4500000,
+        "minScale": 2250000,
         "maxScale": 0
     },
     "style": {

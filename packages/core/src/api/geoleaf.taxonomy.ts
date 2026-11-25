@@ -27,7 +27,7 @@
  *
  * | Method | Description |
  * |---|---|
- * | `isEnabled()` | `true` when `modules.taxonomy.enabled` is set |
+ * | `isEnabled()` | `true` unless `modules.taxonomy.enabled` is `false` — opt-out: `true` without the key |
  * | `resolvePoiIcon(poi)` | Resolves the icon a POI point should display |
  * | `getCategories(ref)` | Returns a named taxonomy's `value → style` table |
  * | `resolveTitleIcon(layerId, feature, surface)` | Title icon `symbolId` for a feature on a surface (per-surface `render` flags, priority sub→cat→default) |

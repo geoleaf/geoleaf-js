@@ -29,6 +29,7 @@ import type {
 } from "../../contracts/map-adapter.contract.ts";
 
 import { dispatchGeoLeafEvent } from "../../kernel/events/event-bus.js";
+import { announceMapReady } from "../../kernel/events/map-ready.js";
 import { MaplibreLayerRegistry, SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
 import { applyLayerStyle } from "./maplibre-style-applier.js";
 import { applyLayerZIndex } from "./maplibre-layer-order.js";
@@ -50,6 +51,7 @@ import {
     type StyleTransformOptions,
 } from "./maplibre-style-transform.js";
 import { flushMapCleanups } from "./maplibre-event-subscriptions.js";
+import { watchAttributionClearance } from "./maplibre-attribution-clearance.js";
 import { registerPmtilesProtocol } from "./maplibre-pmtiles.js";
 import {
     attachWrappedHandler,
@@ -123,7 +125,8 @@ export class MaplibreAdapter implements IMapAdapter {
 
     // Named handler refs — stored so destroy() can deregister them explicitly.
     private readonly _handleLoad = (): void => {
-        dispatchGeoLeafEvent("geoleaf:map:ready", undefined);
+        // Once per map: the boot's reveal announces it too (`kernel/events/map-ready.ts`).
+        announceMapReady(this);
     };
     private readonly _handleZoomStart = (): void => {
         if (this._map) this._prevZoom = this._map.getZoom();
@@ -210,6 +213,8 @@ export class MaplibreAdapter implements IMapAdapter {
         }
         // Before any layer exists: the engine asks this before it reports a profile icon missing.
         installSpriteImageResolver(this._map);
+        // On a phone the expanded basemap credit covered the bottom-left controls.
+        watchAttributionClearance(this._map);
         if (options.bounds)
             this._map.fitBounds(toMapLibreBounds(options.bounds), { animate: false });
         this._ready = true;
@@ -896,7 +901,12 @@ export class MaplibreAdapter implements IMapAdapter {
 
     private _resolveControl(control: unknown, _position: GeoLeafControlPosition): MaplibreControl {
         if (control instanceof HTMLElement) {
-            return { onAdd: () => control, onRemove: () => {} };
+            // MapLibre's `removeControl()` only calls `onRemove()`: leaving the DOM is the
+            // control's job. A no-op here left every removed GeoLeaf control on screen, for
+            // each one that relied on `handle.remove()` (branding, theme-toggle, geolocation).
+            // `remove()` on an already-detached element is a no-op, so controls that also
+            // detach their own container (scale, coordinates) stay correct.
+            return { onAdd: () => control, onRemove: () => control.remove() };
         }
         return control as MaplibreControl;
     }

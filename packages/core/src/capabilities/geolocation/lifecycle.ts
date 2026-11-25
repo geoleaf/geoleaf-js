@@ -14,18 +14,32 @@
  * former synchronous mount in `ui-api._initMapControls`.
  */
 
-import { initGeolocationControl } from "./geolocation.js";
+import { initGeolocationControl, disarmGeolocation } from "./geolocation.js";
+import { registerLifecycleTeardown } from "../../kernel/shared/index.js";
 import { getGeolocationConfig } from "./config.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 
 let _started = false;
 let _destroy: (() => void) | undefined;
 
+/**
+ * What `Core.destroy()` runs for this capability, through the lifecycle seam: it DISARMS — the
+ * GPS watch stops and the state reads inactive. Not `_reset()`: the map is already destroyed,
+ * and the control's teardown would touch it (same rule as the scale capability).
+ */
+function _disarmOnDestroy(): void {
+    disarmGeolocation();
+    _destroy = undefined;
+    _started = false;
+}
+
 /** Idempotent mount for the geolocation capability. Safe to call multiple times. */
 export const GeolocationLifecycle = {
     init(map: IMapAdapter): void {
         if (_started) return;
         _started = true;
+        // Registered once: the seam is a Set.
+        registerLifecycleTeardown(_disarmOnDestroy);
         const cfg = getGeolocationConfig();
         if (cfg.enabled === false) return;
         _destroy = initGeolocationControl(map, cfg.position);

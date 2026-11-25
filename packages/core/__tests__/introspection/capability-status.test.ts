@@ -237,3 +237,38 @@ describe("CS-05 — la façade lit la config VIVANTE, elle ne la capture pas", (
     // MUTATION: capture the reader in a module constant at the first call →
     // the first assertion turns red on the second `expect`.
 });
+
+// ── CS-06 ─────────────────────────────────────────────────────────────────────
+
+describe("CS-06 — `enabled` tient compte des dépendances déclarées", () => {
+    // `offline` declares `dependencies: ["pwa"]`, and its engine runs only with `pwa` embarked AND
+    // on. The status used to read its own gate alone: complete bundle, `modules.pwa.enabled:
+    // false` → engine not loaded, yet `offline` reported `enabled: true`. The status now says
+    // what can run; the reason reads from the declaration's `dependencies` and `pwa`'s own line.
+    it("offline allumée, pwa éteinte : offline n'est pas enabled", async () => {
+        const { OFFLINE_INSTALLER } = await import("../../src/capabilities/offline/install.ts");
+        const { PWA_INSTALLER } = await import("../../src/capabilities/pwa/install.ts");
+        embark(PWA_INSTALLER, OFFLINE_INSTALLER);
+
+        const off = CapabilityRegistry.getAllStatuses(
+            toCapConfig({ modules: { offline: { enabled: true }, pwa: { enabled: false } } })
+        );
+        expect(statusOf(off, "pwa")?.enabled).toBe(false);
+        expect(statusOf(off, "offline")?.enabled).toBe(false);
+
+        const on = CapabilityRegistry.getAllStatuses(
+            toCapConfig({ modules: { offline: { enabled: true }, pwa: { enabled: true } } })
+        );
+        expect(statusOf(on, "offline")?.enabled).toBe(true);
+    });
+
+    it("offline allumée, pwa absente du bundle : offline n'est pas enabled", async () => {
+        const { OFFLINE_INSTALLER } = await import("../../src/capabilities/offline/install.ts");
+        embark(OFFLINE_INSTALLER);
+
+        const statuses = CapabilityRegistry.getAllStatuses(
+            toCapConfig({ modules: { offline: { enabled: true }, pwa: { enabled: true } } })
+        );
+        expect(statusOf(statuses, "offline")?.enabled).toBe(false);
+    });
+});

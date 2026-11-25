@@ -151,11 +151,12 @@
         font-size: 0.9rem;
     }
 
-    .gl-share-modal__qr-btn:hover:not([disabled]) {
+    .gl-share-modal__qr-btn:hover:not([aria-disabled="true"]) {
         background: color-mix(in srgb, var(--gl-color-accent, #0a7) 10%, transparent);
     }
 
-    .gl-share-modal__qr-btn[disabled] {
+    /* `aria-disabled`, not `disabled`: a disabled button drops the keyboard focus. */
+    .gl-share-modal__qr-btn[aria-disabled="true"] {
         opacity: 0.6;
         cursor: progress;
     }

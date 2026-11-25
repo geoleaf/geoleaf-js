@@ -4,12 +4,12 @@
     "label": "Défaut",
     "description": "Style de référence (point) — S14 B6",
     "scaleConfig": {
-        "minScale": 50000,
-        "maxScale": 1000
+        "minScale": 25000,
+        "maxScale": 500
     },
     "labelScale": {
-        "minScale": 50000,
-        "maxScale": 1000
+        "minScale": 25000,
+        "maxScale": 500
     },
     "style": {
         "shape": "circle",

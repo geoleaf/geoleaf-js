@@ -12,6 +12,7 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 const { Storage } = await import("../../src/kernel/storage/facade.js");
+const { CapabilityRegistry } = await import("../../src/kernel/api/capability-registry.js");
 
 /** A fake engine, entirely under the test's control. */
 function fakeModules(overrides = {}) {
@@ -55,7 +56,21 @@ beforeEach(() => {
 afterEach(() => {
     Storage.wireModules({});
     delete globalThis.GeoLeaf._OfflineDetector;
+    delete globalThis.GeoLeaf.Config;
+    CapabilityRegistry._reset();
 });
+
+/** `offline` and `pwa` embarked and on: the engine is expected, so its wait is bounded. */
+function expectOfflineEngine() {
+    for (const id of ["offline", "pwa"]) {
+        CapabilityRegistry.register({
+            id,
+            name: id,
+            gate: { configPath: `modules.${id}.enabled`, enableWhenAbsent: false },
+        });
+    }
+    globalThis.GeoLeaf.Config = { get: () => true };
+}
 
 describe("Storage.wireModules — la façade ne tient que des références", () => {
     test("sans câblage, tous les accesseurs rendent undefined", () => {
@@ -337,6 +352,7 @@ describe("Storage.pullLayer — l'attente du moteur est BORNÉE", () => {
         // wait forever on an engineless variant. And unlike the layer read,
         // there is no network fallback here: the refusal must be SAID, not
         // return a mute zero.
+        expectOfflineEngine();
         vi.useFakeTimers();
         Storage.wireModules({});
         const pending = Storage.pullLayer("sites_rosario");
@@ -348,6 +364,24 @@ describe("Storage.pullLayer — l'attente du moteur est BORNÉE", () => {
         expect(report.written).toBe(0);
         // The published type promises a boolean on every report, the degraded one included.
         expect(report.cursorRefused).toBe(false);
+    });
+});
+
+describe("Storage — un moteur qui ne peut pas venir ne s'attend pas", () => {
+    test("pullLayer : offline non embarquée → refus immédiat, pas au bout de 3 s", async () => {
+        Storage.wireModules({});
+        const t0 = Date.now();
+        const report = await Storage.pullLayer("sites_rosario");
+        expect(Date.now() - t0).toBeLessThan(1000);
+        expect(report.refused).toBe("engineUnavailable");
+    });
+
+    test("applyEdit : offline non embarquée → refus immédiat, pas au bout de 3 s", async () => {
+        Storage.wireModules({});
+        const t0 = Date.now();
+        const report = await Storage.applyEdit({ layerId: "sites_rosario", kind: "create" });
+        expect(Date.now() - t0).toBeLessThan(1000);
+        expect(report.refused).toBe("engineUnavailable");
     });
 });
 

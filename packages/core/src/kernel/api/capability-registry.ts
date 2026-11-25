@@ -190,6 +190,32 @@ const _installFacts = new Map<string, ICapabilityInstallFacts>();
 // ─── CapabilityRegistry ───────────────────────────────────────────────────────
 
 /**
+ * A capability's status verdict: its own gate, AND every capability it declares in
+ * `dependencies` both declared (embarked) and enabled, recursively.
+ *
+ * Status only — {@link CapabilityRegistry.isEnabled} stays the capability's OWN gate, the one
+ * the boot reads. `offline` declares `["pwa"]` and runs only with `pwa` embarked and on; its
+ * status read its own gate alone and said `enabled: true` while `pwa` held it back.
+ *
+ * @param decl - The declaration judged.
+ * @param config - The config the gates are read against.
+ * @param seen - Ids already on the path — a dependency cycle answers `false`, not a stack overflow.
+ */
+function _enabledWithDependencies(
+    decl: ICapabilityDeclaration,
+    config: { get(key: string, defaultValue?: unknown): unknown },
+    seen: Set<string>
+): boolean {
+    if (seen.has(decl.id)) return false;
+    if (!evaluateGate(decl.gate, config)) return false;
+    seen.add(decl.id);
+    return (decl.dependencies ?? []).every((id) => {
+        const dep = _declarations.get(id);
+        return dep !== undefined && _enabledWithDependencies(dep, config, seen);
+    });
+}
+
+/**
  * Registry of in-core capabilities, keyed by name.
  *
  * Capabilities register themselves at boot; the registry is what {@link Introspection} reads
@@ -279,7 +305,7 @@ export const CapabilityRegistry: ICapabilityRegistry & { _reset(): void } = {
                 id: decl.id,
                 embarked: facts !== undefined,
                 // Re-evaluated here, never stored: a frozen verdict would be the pre-merge one.
-                enabled: evaluateGate(decl.gate, config),
+                enabled: _enabledWithDependencies(decl, config, new Set()),
                 hasModule: facts?.hasModule ?? false,
                 // Conditional spread: `exactOptionalPropertyTypes` rejects `gate: undefined` on
                 // an optional field, and the distinction matters to the reader — an absent key

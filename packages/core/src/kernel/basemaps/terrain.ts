@@ -50,6 +50,24 @@ const DEFAULT_ACTIVATE_FROM_PITCH = 12;
 /** Ceiling of the engine's camera tilt, in degrees. */
 const MAX_PITCH = 85;
 
+/**
+ * Zoom below which no terrain is put on, in either activation mode.
+ *
+ * 🛑 Tilted at 60° over a continent, the engine's terrain draws nothing past a distance: a band
+ * of empty background across the top of the map, with a cut corner — the demonstration profile
+ * opened that way, at zoom 4.4. Measured in a browser on the phone, at 1440 and at 1920 px: the
+ * band goes with the terrain (the extent has nothing to do with it), it still shows at 5.0 and
+ * 5.2, and it is gone from 5.5. The floor keeps half a zoom of margin. Below it the map stays
+ * tilted, flat, and covers the screen; the terrain comes back once the camera rests above it.
+ */
+const TERRAIN_MIN_ZOOM = 6;
+
+/** True when the camera is deep enough for a terrain — a map that does not say is. */
+function _zoomAllows(map: NativeMap): boolean {
+    const zoom = map.getZoom?.();
+    return typeof zoom !== "number" || zoom >= TERRAIN_MIN_ZOOM;
+}
+
 // ─── State ───────────────────────────────────────────────────────────────────
 
 /**
@@ -159,6 +177,12 @@ function _writeTerrain(map: NativeMap, config: TerrainConfig): boolean {
  * @returns False when another source holds the id and the engine refused to let it go.
  */
 function _poseSelected(binding: SelectionBinding): boolean {
+    // Below the zoom floor the terrain is taken off and nothing is claimed: the map stays tilted
+    // and flat. Nothing refused, so nothing to report.
+    if (!_zoomAllows(binding.map)) {
+        if (binding.map.getTerrain()) binding.map.setTerrain(null);
+        return true;
+    }
     if (!_ensureDemSource(binding.map, binding.config)) {
         Log.warn(
             `[TerrainManager] basemap "${binding.key}": the "${TERRAIN_SOURCE_ID}" source is held by` +
@@ -175,11 +199,27 @@ function _poseSelected(binding: SelectionBinding): boolean {
  * terrain if the style it rebuilt does not declare it, and kept it otherwise — a style replayed
  * as it was, a restored context: the map is read again, and written only if it lost something.
  */
+/**
+ * A movement of a map whose terrain is put on by selection came to rest: the zoom floor may
+ * have been crossed. At rest only, for the reason `_reconcile` gives.
+ */
+function _onSelectedMoveEnd(): void {
+    const binding = _selected;
+    if (!binding || binding.map.isMoving?.()) return;
+    try {
+        _poseSelected(binding);
+    } catch (err) {
+        // A style is being rebuilt: `style.load` puts the terrain back, floor included.
+        Log.debug("[TerrainManager] Terrain write refused at rest, replayed on style.load:", err);
+    }
+}
+
 function _onSelectedStyleLoad(): void {
     const binding = _selected;
     if (!binding) return;
     try {
         if (binding.map.getTerrain() && binding.map.getSource(TERRAIN_SOURCE_ID)) return;
+        if (!_zoomAllows(binding.map)) return;
         if (_poseSelected(binding)) {
             Log.info("[TerrainManager] Terrain 3D put back on a rebuilt style:", binding.key);
         }
@@ -195,6 +235,7 @@ function _forgetSelected(): void {
     if (!binding) return;
     binding.map.off("error", _onTerrainError);
     binding.map.off("style.load", _onSelectedStyleLoad);
+    binding.map.off("moveend", _onSelectedMoveEnd);
 }
 
 /**
@@ -233,6 +274,8 @@ function _applyTerrainToMap(map: NativeMap, config: TerrainConfig, basemapKey: s
     map.on("error", _onTerrainError);
     // The engine drops the terrain of a style it rebuilds without it: put back from there.
     map.on("style.load", _onSelectedStyleLoad);
+    // The zoom floor is crossed by a movement: judged again once it comes to rest.
+    map.on("moveend", _onSelectedMoveEnd);
 
     _selected = binding;
     Log.info("[TerrainManager] Terrain 3D activated for basemap:", basemapKey, {
@@ -319,6 +362,7 @@ export function deactivateTerrain(map: NativeMap | null): void {
             // No binding, or one made on another map: this one is cleared all the same.
             map.off("error", _onTerrainError);
             map.off("style.load", _onSelectedStyleLoad);
+            map.off("moveend", _onSelectedMoveEnd);
         }
 
         map.easeTo({ pitch: 0, bearing: 0 });
@@ -572,7 +616,9 @@ function _reconcile(): void {
         else binding.wanted ??= false;
 
         if (binding.blocked) return;
-        if (binding.wanted) _pose(binding);
+        // The latch says what the tilt wants; the zoom floor can still refuse it (see
+        // `TERRAIN_MIN_ZOOM`). The latch is kept: zooming in over the floor puts it on.
+        if (binding.wanted && _zoomAllows(binding.map)) _pose(binding);
         else _retire(binding);
     } catch (err) {
         // The engine refuses a terrain while it replaces a style. Nothing is lost: the latch is

@@ -109,11 +109,8 @@ describe("_addConfigResources — reads the Files manifest (the v2 layout)", () 
         });
     });
 
-    test("skips the bundle when absent; legacy mapping.json stays optional", () => {
-        const resources = push({});
-
-        expect(resources.some((r) => r.url.includes("bundle"))).toBe(false);
-        expect(resources.find((r) => r.url.endsWith("mapping.json"))?.optional).toBe(true);
+    test("skips the bundle when absent", () => {
+        expect(push({}).some((r) => r.url.includes("bundle"))).toBe(false);
     });
 
     test("ignores non-string manifest entries instead of caching 'undefined'", () => {
@@ -122,6 +119,81 @@ describe("_addConfigResources — reads the Files manifest (the v2 layout)", () 
         );
 
         expect(urls.some((u) => u.includes("null") || u.includes("undefined"))).toBe(false);
+    });
+});
+
+describe("_addConfigResources — the root mapping.json follows the profile loader's rule", () => {
+    // The runtime loader fetches `<profile>/mapping.json` only for a LEGACY profile with a
+    // `normalized: false` layer (kernel/config/profile.ts). Asking for it in any other case
+    // made every offline preparation of a modular profile retry a 404 and log errors.
+    const push = (profile) => {
+        const resources = [];
+        ResourceEnumerator._addConfigResources(resources, profile, "tourism", "../profiles");
+        return resources;
+    };
+    const rootMapping = (resources) =>
+        resources.filter((r) => r.url === "../profiles/tourism/mapping.json");
+
+    test("a modular profile without a mapping file requests no mapping.json", () => {
+        const urls = push(V2_PROFILE).map((r) => r.url);
+
+        expect(urls.some((u) => u.endsWith("mapping.json"))).toBe(false);
+    });
+
+    test("a modular profile with Files.mappingFile caches that file, not the root one", () => {
+        const profile = { ...V2_PROFILE, Files: { ...V2_PROFILE.Files, mappingFile: "m.json" } };
+        const resources = push(profile);
+
+        expect(resources.map((r) => r.url)).toContain("../profiles/tourism/m.json");
+        expect(rootMapping(resources)).toEqual([]);
+    });
+
+    test("a modular profile by version (>= 1.2, no Files) requests no mapping.json", () => {
+        const profile = { version: "1.2.0", layers: [{ id: "a", normalized: false }] };
+
+        expect(rootMapping(push(profile))).toEqual([]);
+    });
+
+    test("a legacy profile with a normalized:false layer caches it, as optional", () => {
+        const profile = { version: "1.1", layers: [{ id: "a" }, { id: "b", normalized: false }] };
+
+        expect(rootMapping(push(profile))).toEqual([
+            {
+                url: "../profiles/tourism/mapping.json",
+                type: "config",
+                priority: 1,
+                optional: true,
+            },
+        ]);
+    });
+
+    test("a legacy profile whose layers are all normalized requests no mapping.json", () => {
+        expect(rootMapping(push({ layers: [{ id: "a" }, { id: "b", normalized: true }] }))).toEqual(
+            []
+        );
+        expect(rootMapping(push({}))).toEqual([]);
+    });
+
+    test("the local modular predicate agrees with ProfileLoader.isModularProfile", async () => {
+        const { ProfileLoader } = await import("../../../src/kernel/config/profile-loader.js");
+        const cases = [
+            {},
+            { Files: {} },
+            { Files: null },
+            { version: "1.1" },
+            { version: "1.2" },
+            { version: "2.0.0" },
+            { version: "0.9" },
+            { version: "x" },
+            { version: 1.3 },
+        ];
+        for (const profile of cases) {
+            const layers = [{ id: "a", normalized: false }];
+            const requested = rootMapping(push({ ...profile, layers })).length === 1;
+            expect(requested, JSON.stringify(profile)).toBe(
+                !ProfileLoader.isModularProfile(profile)
+            );
+        }
     });
 });
 

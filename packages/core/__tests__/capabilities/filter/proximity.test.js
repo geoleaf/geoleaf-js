@@ -74,11 +74,16 @@ vi.mock("../../../src/capabilities/filter/panel/proximity/proximity-gps-mode.js"
 vi.mock("../../../src/capabilities/filter/panel/proximity/proximity-manual-mode.js", () => ({
     activateManualMode: mockActivateManual,
 }));
-vi.mock("../../../src/capabilities/filter/panel/proximity/proximity-deactivation.js", () => ({
-    cleanupMapElements: mockCleanupMapElements,
-    deactivatePanel: mockDeactivatePanel,
-    resetProximity: mockResetProximity,
-}));
+// Partial: the wrapper helpers and their constants stay real — they only touch the DOM.
+vi.mock(
+    "../../../src/capabilities/filter/panel/proximity/proximity-deactivation.js",
+    async (importOriginal) => ({
+        ...(await importOriginal()),
+        cleanupMapElements: mockCleanupMapElements,
+        deactivatePanel: mockDeactivatePanel,
+        resetProximity: mockResetProximity,
+    })
+);
 
 describe("GeoLeaf.UI.FilterPanel.Proximity", () => {
     let mockMap;

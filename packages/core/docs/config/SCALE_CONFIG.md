@@ -258,13 +258,15 @@ Leaving the block out does not turn the control off — it is active by default.
 The scale is computed with the following formula:
 
 ```javascript
-metersPerPixel = ((156543.03392 * cos((lat * π) / 180)) / 2) ^ zoom;
+metersPerPixel = (78271.51696 * cos((lat * π) / 180)) / 2 ** zoom;
 scale = (metersPerPixel * 96) / 0.0254;
 ```
 
 **Factors:**
 
-- `156543.03392`: size of the world in metres at zoom level 0
+- `78271.51696`: metres per pixel at zoom 0 on the equator, for MapLibre's 512-px tiles
+  (`2·π·6 378 137 / 512`). Until 3.20.5 GeoLeaf used `156543.03392`, the 256-px convention of
+  raster tile servers, and every scale it displayed was twice the scale drawn
 - Latitude of the map centre (cos, for the Web Mercator projection)
 - Screen resolution: 96 DPI
 - Metres → inches conversion: 0.0254 m/inch
@@ -275,7 +277,7 @@ To compute the zoom level required to reach a given scale:
 
 ```javascript
 metersPerPixel = (targetScale * 0.0254) / 96;
-zoom = log2((156543.03392 * cos((lat * π) / 180)) / metersPerPixel);
+zoom = log2((78271.51696 * cos((lat * π) / 180)) / metersPerPixel);
 ```
 
 The zoom is rounded to the nearest integer and clamped between 0 and 22.

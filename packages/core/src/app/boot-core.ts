@@ -50,6 +50,7 @@
 
 import { MaplibreAdapter } from "../adapters/maplibre/maplibre-adapter.js";
 import { CapabilityRegistry } from "../kernel/api/capability-registry.js";
+import { declareConfiguredAbsences } from "../kernel/api/configured-absences.js";
 import {
     getProfileLoadReport,
     resetProfileLoadReport,
@@ -640,6 +641,10 @@ export async function bootWithPreset(
     // the complete merged config (profile JSON included) at init() time.
     const effectiveCfg = await _loadProfileStep(GeoLeaf, baseCfg, AppLog, _pm, _cancelled);
     if (effectiveCfg === null) return;
+
+    // K-12 — an in-core capability the merged config names and the bundle lacks becomes a fact
+    // on `GeoLeaf.Capabilities`: after pass 1 (declarations known) and the profile merge.
+    declareConfiguredAbsences(effectiveCfg);
 
     // ── beforeBoot hook (A.5.1): auth gate before map creation ──────────────
     // Receives the merged profile config. Throwing aborts boot.

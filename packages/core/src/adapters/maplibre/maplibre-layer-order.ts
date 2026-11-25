@@ -21,6 +21,7 @@
  * and never calls the engine without an anchor it has just seen in the style.
  */
 import type { MaplibreLayerRegistry } from "./maplibre-layer-registry.js";
+import { toSubLayerId } from "./maplibre-layer-registry.js";
 import type { MaplibreMap } from "./maplibre-adapter-types.js";
 
 /**
@@ -52,7 +53,11 @@ export function applyLayerZIndex(
     if (entry.isVectorTile) return false;
     if (entry.zIndex === zIndex) return true;
 
-    const present = entry.subLayerIds.filter((subId) => map.getLayer(subId));
+    // Cluster counts stay where they are: they live at the top of the ranked band, above every
+    // circle (maplibre-cluster-builders.ts), whatever the rank of their layer.
+    const present = entry.subLayerIds.filter(
+        (subId) => map.getLayer(subId) && subId !== toSubLayerId(id, "cluster-count")
+    );
     if (present.length === 0) return false;
 
     // The layer leaves itself out of the search: going down, it would otherwise anchor on its

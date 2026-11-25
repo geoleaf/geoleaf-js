@@ -24,6 +24,7 @@ import {
     setupSingleLayerDeps,
 } from "../../src/kernel/geojson/loader/single-layer.js";
 import { StorageContract } from "../../src/kernel/shared/index.js";
+import { CapabilityRegistry } from "../../src/kernel/api/capability-registry.js";
 
 const state = vi.hoisted(() => ({
     layers: new Map(),
@@ -114,6 +115,23 @@ function baseGeoLeaf() {
     };
 }
 
+/**
+ * Declares the offline engine as EXPECTED: `offline` and `pwa` embarked and switched on. Since
+ * 3.20.6 the loader waits for the engine only when it can come — a variant without it takes the
+ * network at once instead of waiting 3 s for nothing.
+ */
+function expectOfflineEngine() {
+    for (const id of ["offline", "pwa"]) {
+        CapabilityRegistry.register({
+            id,
+            name: id,
+            gate: { configPath: `modules.${id}.enabled`, enableWhenAbsent: false },
+        });
+    }
+    globalThis.GeoLeaf.Config.get = (k) =>
+        k === "modules.offline.enabled" || k === "modules.pwa.enabled" ? true : null;
+}
+
 /** Mounts a minimal storage facade behind the contract. */
 function mountStorage(getLayerFeatureCollection) {
     StorageContract.init({ DB: getLayerFeatureCollection ? { getLayerFeatureCollection } : null });
@@ -137,6 +155,7 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         setupSingleLayerDeps(makeDeps({}));
         global.fetch = undefined;
         StorageContract.init({ DB: null });
+        CapabilityRegistry._reset();
     });
 
     const OFFLINE_DEF = {
@@ -233,6 +252,7 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         // Without waiting, `StorageContract.DB` is `null` at the exact
         // moment of the read and the network fallback runs SILENTLY.
         const read = vi.fn().mockResolvedValue(STORED);
+        expectOfflineEngine();
         StorageContract.init({ DB: null }); // moteur pas encore câblé
         StorageContract._resetReady();
 
@@ -259,6 +279,7 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         // — its own TSDoc says so. Without a bound, a layer declared
         // `offline` on an engine-less variant would never load: the map
         // would be empty depending on which variant serves the profile.
+        expectOfflineEngine();
         vi.useFakeTimers();
         StorageContract.init({ DB: null });
         StorageContract._resetReady();
@@ -276,6 +297,20 @@ describe("4.3 — lecture locale par le loader de couche", () => {
         expect(global.fetch).toHaveBeenCalledOnce();
         const fc = state.adapter.addGeoJSONLayer.mock.calls[0][1];
         expect(fc.features[0].properties.id).toBe("net-1");
+    });
+
+    it("⑪ moteur qui NE PEUT PAS venir (offline non embarquée) → réseau tout de suite, sans attendre 3 s", async () => {
+        // The bound of ⑧ cost 3 s per layer on every variant without the engine — and the
+        // loader's batches are sequential, so every following layer waited too. The registry
+        // knows at boot whether the engine can come: no wait when it cannot.
+        StorageContract.init({ DB: null });
+        StorageContract._resetReady();
+
+        const t0 = Date.now();
+        await LoaderSingleLayer._loadSingleLayer("sites_rosario", "Sites", OFFLINE_DEF, {});
+
+        expect(Date.now() - t0).toBeLessThan(1000);
+        expect(global.fetch).toHaveBeenCalledOnce();
     });
 
     it("⑥ `offline` présent mais `enabled: false` → réseau, comme une couche non déclarée", async () => {

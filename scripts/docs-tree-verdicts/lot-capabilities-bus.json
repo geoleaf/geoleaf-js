@@ -20,6 +20,34 @@
             "confidence": "haute",
             "rationale": "Voisin direct de `capability-registry.ts`, qui est son premier appelant : le registre déclare l'absence à l'endroit où il la constate. Il est ici et non dans `capabilities/` parce qu'il ne dépend d'aucune capacité et que toutes peuvent l'atteindre — la règle R.8 interdit l'inverse. Son existence répond à un besoin établi HORS de ce dépôt : le manifeste de consommation aval demande les deux membres nommément. La forme est un BUS et non un détecteur, et le motif est mesuré : les plugins versent dans le même registre et se chargent paresseusement, donc « X est-elle absente ? » n'a de réponse à aucun instant, et une confrontation au boot serait née VERTE (5 clés `modules.*` sur 5 connues dans `profiles/`) tout en étant fausse par construction. Le rattrapage sur abonnement et l'idempotence par id sont du CONTRAT, pas du confort : sans le premier, la déclaration au boot serait émise avant que quiconque puisse l'entendre — le problème d'ordonnancement que cette forme existe pour résoudre, réintroduit d'un cran plus bas. VU ROUGE SUR CINQ MUTATIONS (garde `CU-01…04`), restaurations vérifiées au sha256."
         },
+        "packages/core/src/kernel/api/configured-absences.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "confidence": "haute",
+            "description": "Au boot, déclare indisponible sur le canal Capabilities toute capacité in-core que la configuration fusionnée nomme sans l'éteindre et que le bundle n'embarque pas ; porte la liste fermée des 21 identifiants in-core",
+            "rationale": "2 exports, 1 importeur (app/boot-core.ts) ; à côté du canal qu'il alimente ; la liste est en chaînes et non dérivée du manifeste, dont l'import tirerait tous les installeurs dans chaque bundle — une garde la tient égale au manifeste complet"
+        },
+        "packages/core/src/kernel/api/offline-engine-expected.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "confidence": "haute",
+            "description": "Dit si le moteur hors ligne différé peut être câblé (offline et pwa embarquées et allumées) : la lecture de couche et la façade de stockage n'attendent le moteur que s'il peut venir",
+            "rationale": "1 export, 2 importeurs (kernel/geojson/loader/single-layer.ts, kernel/storage/facade.ts) ; dans kernel/api parce que la réponse vient du registre des capacités, et un module à part évite que le chargeur de couches importe la façade de stockage"
+        },
         "packages/core/src/api/geoleaf.capabilities.ts": {
             "kind": "file",
             "name": "ok",

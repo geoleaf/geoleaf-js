@@ -17,12 +17,12 @@
     },
     "description": "",
     "scaleConfig": {
-        "minScale": 8000000,
-        "maxScale": 10000
+        "minScale": 4000000,
+        "maxScale": 5000
     },
     "labelScale": {
-        "minScale": 3600000,
-        "maxScale": 1000
+        "minScale": 1800000,
+        "maxScale": 500
     },
     "style": {
         "shape": "circle",

@@ -27,6 +27,7 @@ import { events } from "../../utils/general/event-listener-manager.js";
 import type { EventListenerManager } from "../../utils/general/event-listener-manager.js";
 import { TimerManager } from "../../utils/general/timer-manager.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
+import { getToastRendererConfig } from "./config.js";
 import type {
     NotifyType,
     NotifyOptions,
@@ -50,6 +51,16 @@ const PRIORITY = {
     SUCCESS: 1,
     INFO: 1,
 };
+
+/**
+ * Console fallback of a switched-off renderer — the same channel, prefix and levels as the
+ * `GeoLeaf.notify` primitive's own fallback (`utils/notify/notify.primitive.ts`).
+ */
+function _consoleFallback(type: string, message: string): void {
+    if (type === "error") console.error("[GeoLeaf]", message);
+    else if (type === "warning") console.warn("[GeoLeaf]", message);
+    else console.info("[GeoLeaf]", message);
+}
 
 class NotificationSystem {
     container: HTMLElement | null;
@@ -167,8 +178,9 @@ class NotificationSystem {
      * @param typeOrOptions - Notification type (`"success" | "error" | "warning" | "info"`)
      *   or an options object.
      * @param duration - Auto-dismiss duration (ms); ignored when `typeOrOptions` is an object.
-     * @returns The toast element, `null` when the queue rejected it, or `undefined` when
-     *   the system is not initialised.
+     * @returns The caller's toast element when it is on screen; `null` when it is not
+     *   (refused by a full queue, or waiting for a slot); `undefined` when nothing can render
+     *   it (not initialised yet, or the capability is switched off — then it goes to the console).
      *
      * @example
      * ```js
@@ -311,15 +323,27 @@ class NotificationSystem {
      * Adds a notification to the priority queue, evicting a lower-priority entry when
      * the queue is full, then processes the queue.
      *
+     * Switched off (`modules.toast-renderer.enabled: false`), nothing will ever render the
+     * queue: the message goes to the console, as the `GeoLeaf.notify` primitive does, and
+     * nothing is queued. It used to be queued for good, silently, and the call returned
+     * `null` — the value that means « refused ».
+     *
      * @param message - Text to display.
      * @param options - Partially resolved display options.
-     * @returns The toast element, or `null` when the entry was rejected.
+     * @returns The toast element when it is on screen; `null` when it is not — refused by a
+     *   full queue, or waiting for a free slot (it will show later, with no handle returned);
+     *   `undefined` when there is nothing to render it yet (not initialised — it is kept for
+     *   `init()`) or ever (capability switched off — it went to the console).
      */
     _enqueue(
         message: string,
         options: Partial<INotificationQueueEntry["options"]> & { type?: string }
     ): HTMLElement | null | undefined {
         const type = options.type ?? "info";
+        if (getToastRendererConfig().enabled === false) {
+            _consoleFallback(type, message);
+            return undefined;
+        }
         const priority = PRIORITY[type.toUpperCase() as keyof typeof PRIORITY] ?? PRIORITY.INFO;
 
         const item: INotificationQueueEntry = {
@@ -368,7 +392,8 @@ class NotificationSystem {
             return a.timestamp - b.timestamp; // FIFO within the same priority
         });
 
-        return this._processQueue();
+        if (!this.container) return undefined; // kept for init(), which drains the queue
+        return this._processQueue(item);
     }
 
     /**
@@ -407,11 +432,18 @@ class NotificationSystem {
     }
 
     /**
-     * Drains as much of the queue as the visible-toast budget allows.
+     * Drains as much of the queue as the visible-toast budgets allow — each budget on its own.
      *
-     * @returns The last toast displayed by this pass, or `null` when none was.
+     * An entry whose budget is full is SKIPPED, not waited on: the pass goes on to the next
+     * one. It used to stop at the head of the queue, so a persistent toast queued behind
+     * temporaries waited for them to fade although its own budget was free. Within one budget
+     * the order is unchanged — an entry skipped there blocks the same budget for the next ones.
+     *
+     * @param target - The entry the caller just queued: its toast is the one returned.
+     * @returns The `target`'s toast when this pass showed it, `null` when it did not; without
+     *   a `target`, the last toast this pass showed, or `null`.
      */
-    _processQueue(): HTMLElement | null {
+    _processQueue(target?: INotificationQueueEntry): HTMLElement | null {
         if (!this.container || !this.config.enabled || this._queue.length === 0) {
             return null;
         }
@@ -427,8 +459,10 @@ class NotificationSystem {
         const persistentToasts = Array.from(visibleToasts).filter((t) => t.dataset.persistent);
 
         let lastToast: HTMLElement | null = null;
-        while (this._queue.length > 0) {
-            const nextItem = this._queue[0];
+        let targetToast: HTMLElement | null = null;
+        let index = 0;
+        while (index < this._queue.length) {
+            const nextItem = this._queue[index];
             if (!nextItem) break;
             const isPersistent = nextItem.options.persistent;
 
@@ -436,15 +470,16 @@ class NotificationSystem {
                 ? persistentToasts.length < this.maxPersistent
                 : temporaryToasts.length < this.maxVisible;
 
-            if (!canShow) {
-                // An error may evict a visible toast to get through; anything else waits.
-                if (!this._makeSpaceForPriority(nextItem, temporaryToasts)) {
-                    break;
-                }
+            // An error may evict a visible toast to get through; anything else waits — and
+            // the pass moves on to the entries of the other budget.
+            if (!canShow && !this._makeSpaceForPriority(nextItem, temporaryToasts)) {
+                index++;
+                continue;
             }
 
-            const item = this._queue.shift()!;
-            lastToast = this._showImmediate(item.message, item.options);
+            this._queue.splice(index, 1);
+            lastToast = this._showImmediate(nextItem.message, nextItem.options);
+            if (nextItem === target) targetToast = lastToast;
 
             if (isPersistent) {
                 persistentToasts.push(lastToast);
@@ -453,7 +488,7 @@ class NotificationSystem {
             }
         }
 
-        return lastToast;
+        return target ? targetToast : lastToast;
     }
 
     /**

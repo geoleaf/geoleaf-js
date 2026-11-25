@@ -28,6 +28,7 @@
 
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { normalizeSubValues } from "../serialize.js";
+import { FilterPanelProximity } from "./proximity/proximity.js";
 import type {
     FilterConfig,
     SerializedFilterField,
@@ -215,7 +216,7 @@ export function writePanelMatchStatus(
 }
 
 /** Clears every control of the panel back to its unconstrained state (reset). */
-export function resetPanelControls(panel: HTMLElement | null): void {
+function resetPanelControls(panel: HTMLElement | null): void {
     if (!panel) return;
     panel
         .querySelectorAll<HTMLInputElement>("input[type='checkbox'], input[type='radio']")
@@ -234,4 +235,17 @@ export function resetPanelControls(panel: HTMLElement | null): void {
     panel.querySelectorAll(".gl-filter-panel__tag-badge.gl-is-selected").forEach((el) => {
         el.classList.remove("gl-is-selected");
     });
+}
+
+/**
+ * Resets the whole filter, not only the panel: the panel's controls, and the proximity placed
+ * from the toolbar — which lives outside the panel, so a panel-only reset left it applied and
+ * the map filtered after « reset everything ». The one reset path of the façade's `reset()` and
+ * of the panel's reset button, so the two cannot drift apart again.
+ *
+ * @param panel - The mounted filter panel, or `null` — the proximity is reset either way.
+ */
+export function resetFilterControls(panel: HTMLElement | null): void {
+    resetPanelControls(panel);
+    FilterPanelProximity.resetProximity();
 }

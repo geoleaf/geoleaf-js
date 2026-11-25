@@ -9,10 +9,11 @@
  */
 import { describe, it, expect, afterEach, vi } from "vitest";
 
-const { configGet, coreGetMap, layersGetFeatures } = vi.hoisted(() => ({
+const { configGet, coreGetMap, layersGetFeatures, layersIsVisible } = vi.hoisted(() => ({
     configGet: vi.fn(),
     coreGetMap: vi.fn(),
     layersGetFeatures: vi.fn(),
+    layersIsVisible: vi.fn(() => true),
 }));
 
 vi.mock("../../../src/kernel/config/config-primitives.js", () => ({
@@ -22,14 +23,18 @@ vi.mock("../../../src/api/geoleaf.core.js", () => ({
     Core: { getMap: (...a) => coreGetMap(...a) },
 }));
 vi.mock("../../../src/api/geoleaf.layers.js", () => ({
-    Layers: { getFeatures: (...a) => layersGetFeatures(...a) },
+    Layers: {
+        getFeatures: (...a) => layersGetFeatures(...a),
+        isVisible: (...a) => layersIsVisible(...a),
+    },
 }));
 
 const { getRouteConfig } = await import("../../../src/capabilities/route/config.ts");
 const { resolveLayerBinding, resolveEndpointConfig } =
     await import("../../../src/capabilities/route/resolver.ts");
 const { deriveEndpoints } = await import("../../../src/capabilities/route/endpoint-deriver.ts");
-const { applyToLayer, endpointsLayerId } = await import("../../../src/capabilities/route/apply.ts");
+const { applyToLayer, endpointsLayerId, followVisibility } =
+    await import("../../../src/capabilities/route/apply.ts");
 const { RouteLifecycle } = await import("../../../src/capabilities/route/lifecycle.ts");
 
 const CONFIG = {
@@ -180,6 +185,50 @@ describe("deriveEndpoints", () => {
     });
 });
 
+describe("applyToLayer — rang, visibilité, identifiant de la sous-couche", () => {
+    // Recipe of the data rendering: markers that stayed over a hidden layer, drawn under every
+    // GeoLeaf layer (rank 0, the layer's own points covering them), and `gl-` twice in the id.
+    it("l'identifiant ne porte pas `gl-` — l'adaptateur l'ajoute lui-même", () => {
+        expect(endpointsLayerId("parcours")).toBe("route-parcours-endpoints");
+    });
+
+    it("prend le rang de sa couche, pour être dessinée juste au-dessus", () => {
+        const { adapter, added } = makeAdapter();
+        adapter.getLayerRegistry = () => ({
+            get: (id) => (id === "routes" ? { zIndex: 14 } : undefined),
+        });
+        layersGetFeatures.mockReturnValue(oneLine());
+        applyToLayer(adapter, CONFIG, "routes", ["LineString"]);
+        expect(added[0].style.zIndex).toBe(14);
+    });
+
+    it("naît masquée quand sa couche l'est", () => {
+        const { adapter, added } = makeAdapter();
+        layersGetFeatures.mockReturnValue(oneLine());
+        layersIsVisible.mockReturnValueOnce(false);
+        applyToLayer(adapter, CONFIG, "routes", ["LineString"]);
+        expect(added[0].style.visible).toBe(false);
+    });
+
+    it("suit le basculement de sa couche, et ne touche à rien sans sous-couche", () => {
+        const calls = [];
+        const adapter = {
+            showLayer: (id) => calls.push(["show", id]),
+            hideLayer: (id) => calls.push(["hide", id]),
+            getLayerRegistry: () => ({
+                get: (id) => (id === endpointsLayerId("routes") ? { zIndex: 14 } : undefined),
+            }),
+        };
+        followVisibility(adapter, "routes", false);
+        followVisibility(adapter, "routes", true);
+        followVisibility(adapter, "autre", false);
+        expect(calls).toEqual([
+            ["hide", endpointsLayerId("routes")],
+            ["show", endpointsLayerId("routes")],
+        ]);
+    });
+});
+
 describe("applyToLayer", () => {
     // Start and end share ONE layer, and therefore one MapLibre source. The
     // two kinds are told apart by `properties.role` and styled by a data-driven rule.
@@ -297,6 +346,21 @@ describe("RouteLifecycle", () => {
         const added = installAdapter(["routes"], { routes: ["LineString"] });
         RouteLifecycle.init();
         document.dispatchEvent(new CustomEvent("geoleaf:map:ready"));
+        expect(added.map((a) => a.id)).toContain(endpointsLayerId("routes"));
+    });
+
+    it("sweeps existing layers on geoleaf:app:ready — the moment the boot's layers are loaded", () => {
+        // `geoleaf:map:ready` fires once per map since 3.20.6, on the engine's load, BEFORE the
+        // boot's layers: the sweep that decorates them is the app:ready one.
+        layersGetFeatures.mockReturnValue([
+            line("r1", [
+                [0, 0],
+                [2, 2],
+            ]),
+        ]);
+        const added = installAdapter(["routes"], { routes: ["LineString"] });
+        RouteLifecycle.init();
+        document.dispatchEvent(new CustomEvent("geoleaf:app:ready"));
         expect(added.map((a) => a.id)).toContain(endpointsLayerId("routes"));
     });
 

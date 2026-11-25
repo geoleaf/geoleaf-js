@@ -80,12 +80,41 @@ export function deactivatePanel(btn: HTMLElement, container: HTMLElement, map: I
     Log.info("[GeoLeaf.Proximity] Proximity mode disabled (panel)");
 }
 
+/** Id of the hidden wrapper the toolbar fills and the filter engine reads. */
+export const TOOLBAR_WRAPPER_ID = "gl-proximity-toolbar-wrapper";
+
 /**
- * Resets proximity mode from the outside (e.g. a "Reset" button).
- * Touches the map-side elements only, never the panel DOM.
+ * Attribute the wrapper carries while the toolbar's proximity is armed — from the button press,
+ * before any point is placed. The toolbar reads it after a filter pass to learn that a reset
+ * disarmed it.
+ */
+export const TOOLBAR_ARMED_ATTR = "data-proximity-armed";
+
+/**
+ * Drops the toolbar wrapper's centre and armed state, so the filter engine no longer reads a
+ * proximity from it. The radius stays: it is the slider's setting, not a filter.
+ */
+export function clearToolbarWrapper(): void {
+    const wrapper = document.getElementById(TOOLBAR_WRAPPER_ID);
+    if (!wrapper) return;
+    wrapper.removeAttribute("data-proximity-active");
+    wrapper.removeAttribute("data-proximity-lat");
+    wrapper.removeAttribute("data-proximity-lng");
+    wrapper.removeAttribute(TOOLBAR_ARMED_ATTR);
+}
+
+/**
+ * Resets proximity mode from the outside — the filter's `reset()` and the panel's reset button.
+ *
+ * Clears the map-side elements (circle, marker, click handler, cursor) and the toolbar
+ * wrapper the filter engine reads, and disarms the mode. It used to stop at the map: the
+ * wrapper kept its centre, so the next filter pass still applied the proximity it had just
+ * « reset ». Never touches the panel DOM; the toolbar resyncs its button on the filter pass
+ * that follows.
  */
 export function resetProximity(): void {
-    if (!ProximityState.map) return;
-    cleanupMapElements(ProximityState.map);
+    if (ProximityState.map) cleanupMapElements(ProximityState.map);
     ProximityState.mode = false;
+    ProximityState.pendingRadius = null;
+    clearToolbarWrapper();
 }

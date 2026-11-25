@@ -127,6 +127,29 @@ describe("capabilities/coordinates", () => {
         vi.useRealTimers();
     });
 
+    it("sans `scale` dans le bundle, le mode classique est pris tout de suite — sans attendre 5 s", () => {
+        // `coordinates` waited 5 s for a scale wrapper that the bundle could not produce, then
+        // warned. The introspection says at boot whether `scale` is embarked and on.
+        globalThis.GeoLeaf = {
+            Introspection: {
+                getCapabilityStatus: () => [{ id: "scale", embarked: false, enabled: false }],
+            },
+        };
+        try {
+            const map = {
+                on: vi.fn(),
+                off: vi.fn(),
+                addControl: vi.fn(() => ({ remove: vi.fn() })),
+            };
+            CoordinatesDisplay.init(map);
+            expect(CoordinatesDisplay._controlHandle).toBeTruthy();
+            expect(CoordinatesDisplay._coordsElement).toBeTruthy();
+        } finally {
+            CoordinatesDisplay.destroy();
+            delete globalThis.GeoLeaf;
+        }
+    });
+
     // ─── Teardown leaks fixed ─────────────────────────────────────────────────
 
     it("destroy annule le timeout d'attente — sinon il ressuscite le contrôle", () => {

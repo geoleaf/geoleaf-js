@@ -20,6 +20,11 @@ import { domCreate } from "../../utils/general/dom-helpers.js";
 import { getLabel, getActiveLang } from "../../utils/i18n/i18n.js";
 import { getLanguageSwitcherConfig, getOfferedLanguages, type LanguageEntry } from "./config.js";
 import { switchToLanguage } from "./language-switch.js";
+import {
+    closeChoicePopover,
+    initChoiceButton,
+    toggleChoicePopover,
+} from "../../utils/controls/choice-popover.js";
 
 /** Marker + idempotency class of the button. */
 export const LANG_BUTTON_CLASS = "gl-rp-lang-btn";
@@ -28,29 +33,17 @@ const LANG_POPOVER_CLASS = "gl-lang-popover";
 /** One row of the popover. */
 const LANG_POPOVER_ITEM_CLASS = "gl-lang-popover__item";
 
-let _openPopover: HTMLElement | null = null;
-let _outsideHandler: ((e: Event) => void) | null = null;
-
 /** Renders a language as flag or code, per `display`. */
 function _glyphFor(lang: LanguageEntry, display: "flag" | "code"): string {
     return display === "code" ? lang.code.toUpperCase() : lang.flag;
 }
 
-/** Closes the popover and releases its document-level listener. Module-local. */
-function closeLanguagePopover(): void {
-    if (_outsideHandler && typeof document !== "undefined") {
-        document.removeEventListener("click", _outsideHandler, true);
-        document.removeEventListener("keydown", _outsideHandler, true);
-    }
-    _outsideHandler = null;
-    _openPopover?.remove();
-    _openPopover = null;
-}
-
-/** Builds the popover listing the offered languages. */
-function _buildPopover(anchor: HTMLElement, display: "flag" | "code"): HTMLElement {
+/**
+ * Builds the list of languages — plain buttons, the active one marked `aria-current`. Placed,
+ * opened and closed by the shared disclosure (`utils/controls/choice-popover.ts`).
+ */
+function _buildPopover(display: "flag" | "code"): HTMLElement {
     const popover = domCreate("div", LANG_POPOVER_CLASS);
-    popover.setAttribute("role", "menu");
     popover.setAttribute("aria-label", getLabel("aria.language.select"));
 
     const active = getActiveLang();
@@ -58,7 +51,6 @@ function _buildPopover(anchor: HTMLElement, display: "flag" | "code"): HTMLEleme
     for (const lang of getOfferedLanguages()) {
         const item = domCreate("button", LANG_POPOVER_ITEM_CLASS, popover);
         item.type = "button";
-        item.setAttribute("role", "menuitem");
         item.setAttribute("data-gl-lang", lang.code);
         // textContent, never innerHTML — the label is data, and the glyph is an emoji.
         item.textContent = `${_glyphFor(lang, display)} ${lang.label}`;
@@ -66,37 +58,12 @@ function _buildPopover(anchor: HTMLElement, display: "flag" | "code"): HTMLEleme
         item.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
-            closeLanguagePopover();
+            closeChoicePopover();
             switchToLanguage(lang.code);
         });
     }
 
-    anchor.parentElement?.appendChild(popover);
     return popover;
-}
-
-/** Opens the popover, wiring outside-click and Escape to close it. */
-function _openFor(btn: HTMLElement, display: "flag" | "code"): void {
-    if (_openPopover) {
-        closeLanguagePopover();
-        return;
-    }
-    const popover = _buildPopover(btn, display);
-    _openPopover = popover;
-
-    _outsideHandler = (e: Event) => {
-        if (e.type === "keydown") {
-            if ((e as KeyboardEvent).key !== "Escape") return;
-            closeLanguagePopover();
-            btn.focus(); // returning focus is what makes Escape usable by keyboard
-            return;
-        }
-        if (popover.contains(e.target as Node) || btn.contains(e.target as Node)) return;
-        closeLanguagePopover();
-    };
-    // Capture phase: the map swallows bubbling clicks on some surfaces.
-    document.addEventListener("click", _outsideHandler, true);
-    document.addEventListener("keydown", _outsideHandler, true);
 }
 
 /** Builds the language button (desktop tab strip or mobile toolbar variant). */
@@ -111,13 +78,13 @@ export function buildLanguageButton(variant: "desktop" | "mobile"): HTMLButtonEl
 
     const label = getLabel("ui.language.button");
     btn.setAttribute("aria-label", label);
-    btn.setAttribute("aria-haspopup", "menu");
+    initChoiceButton(btn);
     btn.title = label;
 
     btn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        _openFor(btn, display);
+        toggleChoicePopover(btn, () => _buildPopover(display));
     });
 
     return btn;
@@ -146,6 +113,6 @@ export function appendLanguageButtonToTabs(tabs: HTMLElement): void {
  */
 export function removeLanguageButtonsFromDocument(): void {
     if (typeof document === "undefined") return;
-    closeLanguagePopover();
+    closeChoicePopover();
     document.querySelectorAll(`.${LANG_BUTTON_CLASS}`).forEach((btn) => btn.remove());
 }

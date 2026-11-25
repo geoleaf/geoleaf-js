@@ -94,6 +94,43 @@ describe("createFocusTrap", () => {
         trap.deactivate();
     });
 
+    // A host dialog opened over the form holds the focus: its Escape is the host's key.
+    it("Escape aimed at a host dialog outside GeoLeaf is left to the host", () => {
+        const onEscape = vi.fn();
+        const trap = createFocusTrap(container, onEscape);
+        trap.activate();
+        // The core writes its theme class on the host's <body> (`gl-theme-dark`): the body is
+        // the host's even when it carries a GeoLeaf class. Seen red when it counted as ours.
+        document.body.classList.add("gl-theme-dark");
+        const hostDialog = document.createElement("div");
+        hostDialog.className = "modal";
+        const hostBtn = document.createElement("button");
+        hostDialog.appendChild(hostBtn);
+        document.body.appendChild(hostDialog);
+        hostBtn.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        expect(onEscape).not.toHaveBeenCalled();
+        hostDialog.remove();
+        document.body.classList.remove("gl-theme-dark");
+        trap.deactivate();
+    });
+
+    it("Escape from inside the container, the page body or a GeoLeaf element still closes", () => {
+        const onEscape = vi.fn();
+        const trap = createFocusTrap(container, onEscape);
+        trap.activate();
+        const map = document.createElement("div");
+        map.className = "maplibregl-map";
+        const canvas = document.createElement("canvas");
+        map.appendChild(canvas);
+        document.body.appendChild(map);
+        for (const target of [btns[1]!, document.body, canvas]) {
+            target.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        }
+        expect(onEscape).toHaveBeenCalledTimes(3);
+        map.remove();
+        trap.deactivate();
+    });
+
     it("deactivate() restores previously focused element", () => {
         const outside = document.createElement("button");
         document.body.appendChild(outside);

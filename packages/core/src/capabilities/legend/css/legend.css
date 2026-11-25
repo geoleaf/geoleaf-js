@@ -467,4 +467,16 @@
         border-radius: 0.5rem !important;
         border: 1px solid var(--gl-color-border-soft) !important;
     }
+
+    /* The sheet carries the title: the legend's header would repeat it, and its toggle
+       has nothing to fold there — same treatment as the right panel. */
+    .gl-sheet-panel__body .gl-map-legend__header {
+        display: none !important;
+    }
+
+    /* Force it open even when collapsedByDefault is true: folded, the sheet showed a
+       title and nothing under it until a second tap. */
+    .gl-sheet-panel__body .gl-map-legend--collapsed .gl-map-legend__body {
+        display: block !important;
+    }
 }

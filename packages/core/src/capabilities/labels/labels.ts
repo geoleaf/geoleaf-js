@@ -13,6 +13,7 @@
 
 import { Log } from "../../utils/log/index.js";
 import { LabelRenderer } from "./label-renderer.js";
+import { getLabelsConfig } from "./config.js";
 import {
     isScaleInRange as _isScaleInRange,
     calculateMapScale as _calculateMapScale,
@@ -374,6 +375,10 @@ const Labels: LabelsApi = {
 
     initializeLayerLabels(layerId: string): void {
         if (!layerId) return;
+        // The capability's switch holds here: the GeoJSON and vector-tile loaders reach this
+        // method through the namespace, mounted whatever `enabled` says — so until 3.20.6
+        // `modules.labels.enabled: false` left every label painted.
+        if (getLabelsConfig().enabled === false) return;
         const layerData = this._getLayerData(layerId);
         if (!layerData) return;
         this._hideLabelsForLayer(layerId);

@@ -29,7 +29,7 @@ import { readActiveFilter } from "./panel/state.js";
 import { applyActiveFilterToSources, applyFilterFromPanel } from "./apply.js";
 import { expandActiveFilter } from "./taxonomy-options.js";
 import { serializeActiveFilter, deserializeActiveFilter } from "./serialize.js";
-import { writePanelControls, resetPanelControls, writePanelMatchStatus } from "./panel/write.js";
+import { writePanelControls, resetFilterControls, writePanelMatchStatus } from "./panel/write.js";
 import { FilterPanelProximity } from "./panel/proximity/proximity.js";
 import type { IMapAdapter } from "../../contracts/map-adapter.contract.js";
 import type { FilterProximityApi, FilterPublicApi, SerializedFilterState } from "./types.js";
@@ -43,11 +43,16 @@ function _panel(): HTMLElement | null {
 /** Proximity sub-API delegating to the capability's proximity module. */
 const _proximity: FilterProximityApi = {
     setRadius: (radiusKm: number): void => FilterPanelProximity.setProximityRadius(radiusKm),
+    // Switched off, the filter filters nothing — proximity included: a caller that still holds
+    // a button (a host page, an older shell) gets `false`, "not active", and no filter is set.
     toggle: (
         map: IMapAdapter,
         radiusKm?: number,
         options?: { onPointPlaced?: () => void }
-    ): boolean => FilterPanelProximity.toggleProximityToolbar(map, radiusKm, options),
+    ): boolean =>
+        getFilterConfig().enabled === false
+            ? false
+            : FilterPanelProximity.toggleProximityToolbar(map, radiusKm, options),
 };
 
 /** Builds the object mounted on `GeoLeaf.Filter`. */
@@ -75,7 +80,7 @@ export function buildPublicApi(): FilterPublicApi {
 
         reset: (): void => {
             const panel = _panel();
-            resetPanelControls(panel);
+            resetFilterControls(panel);
             applyFilterFromPanel(panel, getFilterConfig());
         },
 

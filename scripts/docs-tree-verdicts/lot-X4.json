@@ -367,6 +367,20 @@
             "confidence": "haute",
             "rationale": "72 LOC, 1 export, 1 importeur (ui.module.ts) ; X2b non déclenché — la règle d'ouverture face à ses 2 frères tient en une phrase (avant la révélation / la révélation / après elle)"
         },
+        "packages/core/src/app/capability-presence.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Dit à la coquille si une capacité est embarquée ET allumée (registre des capacités + configuration fusionnée) : un contrôle de la barre mobile, du panneau desktop ou de la page hôte ne se dessine que si sa capacité peut le servir",
+            "confidence": "haute",
+            "rationale": "1 export, 2 importeurs (init-features.ts, boot-modules/ui.module.ts) ; dans app/ et non dans kernel/api/ : la question est celle de la coquille, qui lit la configuration fusionnée, le registre ne fait que répondre ; un fichier à part évite que ui.module importe init-features pour une aide qui n'en relève pas"
+        },
         "packages/core/src/app/module-registry.ts": {
             "kind": "file",
             "name": "ok",

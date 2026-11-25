@@ -386,6 +386,12 @@
     display: none !important;
 }
 
+/* The sheet carries the title: the layer manager's own header would repeat it
+   (« Couches » then « COUCHES »). The filter panel hides its header the same way. */
+.gl-sheet-panel__body .gl-layer-manager .gl-layer-manager__header-wrapper {
+    display: none !important;
+}
+
 /* Wrapper interne : hauteur auto, pas de max-height bloquant */
 .gl-sheet-panel__body .gl-layer-manager .gl-layer-manager__main-wrapper {
     max-height: none !important;

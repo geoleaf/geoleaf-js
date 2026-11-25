@@ -17,6 +17,8 @@ const lang_de: LangDict = {
     "toast.init.loading": "Daten werden geladen, bitte warten.",
     "toast.layer.truncated.known":
         "{0}: {1} von {2} Objekten angezeigt — die Ebene ist abgeschnitten.",
+    "toast.layer.style_missing":
+        "Standardstil f\u00fcr „{0}“ nicht gefunden – neutrale Darstellung.",
     "toast.layer.truncated.unknown": "{0}: {1} Objekte angezeigt, die Ebene enthält mehr.",
     "toast.theme.applied": 'Thema "{0}" geladen ({1} sichtbare Ebenen)',
     "boot.failure.title": "Der Start ist fehlgeschlagen",
@@ -164,6 +166,7 @@ const lang_de: LangDict = {
     "ui.filter_panel.tags_title_fallback": "Tags anzeigen",
     "ui.filter_panel.no_categories": "Keine Kategorien in sichtbaren Ebenen vorhanden",
     "ui.filter_panel.no_tags": "Keine Tags in sichtbaren Ebenen vorhanden",
+    "ui.filter_panel.expand": "Aufklappen",
     "ui.filter_panel.no_match": "Kein Objekt entspricht den Filtern",
     "ui.filter_panel.loading": "Laden...",
     "ui.notification.close_char": "\u00d7",
@@ -181,8 +184,10 @@ const lang_de: LangDict = {
     "ui.sync.pending_one": "1 ausstehend",
     "ui.sync.pending_many": "{0} ausstehend",
     "ui.sync.all_sent": "Alles gesendet",
+    "ui.sync.none_pending": "Nichts ausstehend",
     "ui.sync.quarantined": "{0} blockiert",
     "ui.sync.session_required": "Anmeldung erforderlich",
+    "ui.sync.retry_scheduled": "neuer Versuch geplant",
     "ui.sync.last_never": "nie synchronisiert",
     "ui.sync.last_at": "synchronisiert {0}",
     "ui.sync.unit_day": "{0} Tg.",

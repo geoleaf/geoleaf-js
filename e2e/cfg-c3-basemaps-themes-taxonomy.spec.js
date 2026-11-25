@@ -135,6 +135,12 @@ test.describe("cfg-c3 — basemaps/themes/taxonomy (état map/DOM réel)", () =>
 
         test("terrain 3D: le relief est activé pour le basemap par défaut", async ({ page }) => {
             await bootMapStyleReady(page);
+            // Zoom 7: no terrain is put on below zoom 6, and the profile opens near 4.4. After the
+            // reveal, which re-frames the profile extent and would bring the zoom back down.
+            await expect(page.locator("#gl-loader")).toBeHidden({ timeout: 15000 });
+            await page.evaluate(() =>
+                /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap().jumpTo({ zoom: 7 })
+            );
             // terrain-terrarium has default3D:true → setTerrain + raster-dem source "terrain-dem".
             await page.waitForFunction(
                 () => {

@@ -56,6 +56,9 @@ const { ROOT } = require("./lib/packages.cjs");
  * one of the cited sites.
  */
 const RUNTIME_SET = {
+    // Through a constant (`ATTRIB_CLEARANCE_VAR`), hence invisible to a literal grep.
+    "--gl-attrib-clearance":
+        "packages/core/src/adapters/maplibre/maplibre-attribution-clearance.ts:71",
     "--gl-measure-top": "packages/plugins/measure/src/floating-menu.ts:206",
     "--gl-measure-left": "packages/plugins/measure/src/floating-menu.ts:207",
     "--gl-measure-max-h": "packages/plugins/measure/src/floating-menu.ts:337",

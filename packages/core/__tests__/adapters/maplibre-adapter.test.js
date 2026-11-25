@@ -420,6 +420,19 @@ describe("MaplibreAdapter", () => {
             expect(removeFn).toHaveBeenCalled();
         });
 
+        it("wrapped IControl onRemove DETACHES the element — a removed control leaves the DOM", () => {
+            // MapLibre's `removeControl()` only calls `onRemove()`: it is the control's job to
+            // leave the DOM. A no-op here kept every removed GeoLeaf control on screen.
+            const corner = document.createElement("div");
+            const el = document.createElement("div");
+            corner.appendChild(el);
+            adapter.addControl(el, "bottomleft");
+            const wrapped = mockMapInstance.addControl.mock.calls[0][0];
+            wrapped.onRemove();
+            expect(el.parentNode).toBeNull();
+            expect(() => wrapped.onRemove()).not.toThrow();
+        });
+
         it("wrapped IControl onAdd returns the element", () => {
             const el = document.createElement("div");
             adapter.addControl(el, "topright");

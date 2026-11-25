@@ -74,6 +74,10 @@
         grid-row: 2;
         margin: 0;
         align-self: end;
+        /* The `> *` rule below turns the pointer off for every child of the corner; the
+       overlay blocks map propagation (BR-07), which it cannot do without receiving the
+       pointer. (0,2,0) outranks `> *` (0,1,0) in the same layer. */
+        pointer-events: auto;
     }
 
     /* S9 — three rules placing the scale control were removed here: they targeted

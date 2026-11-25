@@ -13,11 +13,15 @@
  *   - `theme-toggle` — light / dark mode (`gl-theme-*` class on `<body>`);
  *   - `theme-selector` — MAP themes (layer/style sets from `themes.json`).
  *
- * Config gate: `modules.theme-palette.enabled`, `enableWhenAbsent: true` for module
- * registration only; the user-facing default is OFF (late gate in the lifecycle).
- * NOTE: the configured `default` palette applies even when the SELECTOR is disabled —
- * that is the majority production case (integrator fixes a brand colour, offers no
- * choice).
+ * ## No `gate` — deliberately
+ *
+ * The capability has two halves and only the second is opt-in: it always applies the
+ * configured `default` palette — the majority production case, an integrator fixing a brand
+ * colour and offering no choice — and mounts the selector button only on
+ * `modules.theme-palette.enabled: true` (read by the lifecycle). A declaration gate on that
+ * same key turned `enabled: false` into « do not register the module »: the first half never
+ * ran, and the interface stayed orange. Embarked, the capability is always active; `enabled`
+ * governs the button alone.
  */
 
 import type { ICapabilityDeclaration } from "../../contracts/capability.contract.js";
@@ -27,12 +31,6 @@ export const THEME_PALETTE_CAPABILITY: ICapabilityDeclaration = {
     id: "theme-palette",
     label: "Theme palette",
     description: "Accent-colour palette selector (orange / green / blue).",
-    gate: {
-        configPath: "modules.theme-palette.enabled",
-        // Registration-only: the module must register so the configured `default`
-        // palette is applied even when the selector itself stays hidden.
-        enableWhenAbsent: true,
-    },
     configSchema: {
         enabled: {
             type: "boolean",
@@ -52,5 +50,5 @@ export const THEME_PALETTE_CAPABILITY: ICapabilityDeclaration = {
                 "Offered palettes ({ id, label, swatch }). Empty/absent uses the three built-ins.",
         },
     },
-    // No loader: inline (eager with the UI bundle). Gated via config.
+    // No loader: inline (eager with the UI bundle). No gate: see the header.
 };

@@ -85,6 +85,12 @@ interface OfflineLifecycleConfig {
     enabled?: boolean;
     /** `modules.pwa.enabled` — the `offline → pwa` dependency, guarded manually here. */
     pwaEnabled?: boolean;
+    /**
+     * Whether the bundle embarks the `pwa` capability at all. `false` with `enabled` refuses
+     * the engine at boot, with an error; absent (a caller that does not know) keeps the
+     * configuration-only decision.
+     */
+    pwaEmbarked?: boolean;
     /** `modules.offline.cache` — what to cache into IndexedDB on profile download. */
     cache?: Record<string, unknown>;
     /** `modules.pwa.offlineDetector.enabled` — the connectivity badge toggle. */
@@ -122,7 +128,17 @@ export const OfflineLifecycle = {
         // enforced by CapabilityRegistry). `ensureLoaded` dynamically imports the engine
         // chunk — the engine-entry wires `Storage` — then we initialise it. Fire-and-forget
         // ordered chain (this runs inside the synchronous `shared.module` #8 step).
-        if (cfg.enabled === true && cfg.pwaEnabled === true && storage) {
+        // 🛑 `offline` without `pwa` in the bundle is REFUSED, and said. Started anyway, the
+        // engine, the banner and the outbox ran with no service worker: reopened off-network
+        // the page did not exist — the very promise of the capability — and nothing said so.
+        // Only the generated entries refused that list; a hand-written manifest went through.
+        if (cfg.enabled === true && cfg.pwaEmbarked === false) {
+            Log.error(
+                "[Offline] `offline` is embarked without `pwa`: the offline engine is not " +
+                    "started — without its service worker the application does not reopen " +
+                    "off-network. Embark `pwa` with `offline`."
+            );
+        } else if (cfg.enabled === true && cfg.pwaEnabled === true && storage) {
             void CapabilityRegistry.ensureLoaded("offline")
                 .then(() => {
                     const result = storage.init({

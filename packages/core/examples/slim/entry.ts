@@ -28,12 +28,26 @@
  * - `pwa` — a hard dependency of `offline`; the generator refuses the list without it.
  * - `toast-renderer` — opt-out, and `ui.notify.*` reads it optionally: every call becomes a
  *   silent no-op, including failure reports.
- * - `cluster` — absent, it is read as `enabled: false` with no message.
+ * - `cluster` — absent, a profile that does not name it gets every point drawn unclustered,
+ *   and nothing says why.
  *
  * 🛑 **The last three are the interesting ones.** Nothing in any contract asks for them. They
- * are here because their ABSENCE degrades in silence — and a bundle that degrades in silence
- * is the defect this whole line of work exists to remove. The rule is therefore: leave out
- * only what produces a VISIBLE error when missing.
+ * are here because, when the configuration does not name them, their ABSENCE leaves a surface
+ * that looks like it works — a `Storage` with no engine, a `notify` that says nothing, points
+ * that never group. The rule is therefore: **leave out only what is visibly absent.** Since
+ * 3.20.6 the core makes an absence visible in two ways, and this list relies on both:
+ *
+ * - **the shell draws no control for a capability that is not embarked** — without
+ *   `geolocation` there is no « My position » button at all (it used to be drawn, and inert);
+ *   without `scale`, no scale bar;
+ * - **a capability the configuration NAMES (`modules.<id>`) but the bundle leaves out is
+ *   declared at boot** — a console warning, and `GeoLeaf.Capabilities.onUnavailable`, which
+ *   replays it to a late subscriber. On the demonstration profile `tourism` that is `branding`,
+ *   `language-switcher`, `profile-switcher`, `route` and `theme-palette`.
+ *
+ * ⚠️ One consequence a reader would not guess: `filter` is embarked and `geolocation` is not,
+ * so the proximity filter cannot use a position the device already granted — it asks for a
+ * click on the map, which its instruction says.
  *
  * **Left out:** `branding`, `coordinates`, `geolocation`, `language-switcher`, `permalink`,
  * `profile-switcher`, `route`, `scale`, `theme-palette`, `theme-toggle`,

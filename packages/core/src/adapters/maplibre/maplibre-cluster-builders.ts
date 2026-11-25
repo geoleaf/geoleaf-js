@@ -13,7 +13,7 @@
  */
 import { trackMapCleanup } from "./maplibre-event-subscriptions.js";
 import { toClusterCirclePaint } from "./maplibre-style-converter.js";
-import { toSubLayerId } from "./maplibre-layer-registry.js";
+import { SENTINEL_POI, toSubLayerId } from "./maplibre-layer-registry.js";
 import { isExclusiveMode } from "../../kernel/shared/map-cursor.js";
 import { buildZoomProps } from "./maplibre-primitives.js";
 import type {
@@ -75,7 +75,11 @@ export function addClusterSubLayers(
             paint: { "text-color": "#333333" },
             ...zoomProps,
         } as MaplibreLayerSpec,
-        beforeId
+        // Counts go to the TOP of the ranked band (just under the POI sentinel), not at their
+        // layer's rank: each layer clusters on its own, and a higher layer's circle covered a
+        // lower layer's count — « 589 » drawn over « 1.xk » on a phone. The circle keeps its
+        // rank; only the number it carries is lifted above every circle.
+        map.getLayer(SENTINEL_POI) ? SENTINEL_POI : beforeId
     );
 
     return [clustersId, clusterCountId];

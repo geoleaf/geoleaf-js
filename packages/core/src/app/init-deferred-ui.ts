@@ -14,6 +14,21 @@
 
 import type { DeferredUIDeps } from "./app-types.js";
 import { asFn, member } from "./app-types.js";
+import { registerLifecycleTeardown } from "../kernel/shared/lifecycle.js";
+
+/** The pending boot's listener, removed by {@link _cancelDeferredUIPanels}. */
+let _cancelPending: (() => void) | null = null;
+
+/**
+ * Runs on `Core.destroy()` (lifecycle seam): a map destroyed before `geoleaf:app:ready` — from a
+ * listener of that very event, laid before this one — let the deferred panels mount on it:
+ * `LayerManager.init()` failed with « map is not ready ». A listener removed during the dispatch
+ * is not called. One stable function: the seam is a Set, and a closure per boot would pile up.
+ */
+function _cancelDeferredUIPanels(): void {
+    _cancelPending?.();
+    _cancelPending = null;
+}
 
 /**
  * Defers LayerManager, desktop panel activation, Scale and CoordinatesDisplay to
@@ -71,5 +86,8 @@ export function setupDeferredUIPanels({
         _pm("geoleaf:init:deferredUI:end");
     };
     document.addEventListener("geoleaf:app:ready", onAppReady, { once: true });
-    return () => document.removeEventListener("geoleaf:app:ready", onAppReady);
+    const cancel = () => document.removeEventListener("geoleaf:app:ready", onAppReady);
+    _cancelPending = cancel;
+    registerLifecycleTeardown(_cancelDeferredUIPanels);
+    return cancel;
 }

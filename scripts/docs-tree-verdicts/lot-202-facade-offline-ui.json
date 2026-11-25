@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "202-facade-offline-ui",
+    "scope": ["packages/plugins/offline-ui/src/public-api.ts"],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/public-api.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Façade publique d'offline-ui : le seul membre qu'il ajoute à la façade UI du core (UI.CacheButton.openModal) et son point de montage",
+            "confidence": "haute",
+            "rationale": "Le nom et l'emplacement sont ceux des quinze autres façades de plugin (`src/public-api.ts`), lus par check-facade-purity et par la gate du contrat consommateur. Il existe parce qu'un hôte ouvre la fenêtre de préparation depuis son propre bouton et ne pouvait pas déclarer cet appel : `buildPublicApi()` le nomme, `PUBLIC_API_MOUNT` dit où il est monté (le plugin n'a toujours pas de namespace propre). `ui/cache-button.ts` étale `buildPublicApi()` dans l'objet monté, donc le fichier n'est pas une coquille : la déclaration EST le montage, et `src/__tests__/public-api.test.ts` le vérifie."
+        }
+    }
+}

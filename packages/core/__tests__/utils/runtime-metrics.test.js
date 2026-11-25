@@ -3,15 +3,17 @@
  * Full test coverage for runtime-metrics.ts
  *
  *
- * NOTE: runtime-metrics.ts uses `export {}` (no named exports).
- * Functions are registered on globalThis.GeoLeaf when that object exists at module load time.
- * Strategy: set globalThis.GeoLeaf = {} before each require, then use globalThis.GeoLeaf.*
+ * NOTE: the readers are mounted by `installRuntimeMetrics(gl)`, which the namespace's assembly
+ * (`app/app-namespace.ts`) calls. They used to be mounted at the module's own evaluation, when
+ * `globalThis.GeoLeaf` existed then — this file pre-created it, which hid that the shipped chunk
+ * order evaluates the module BEFORE the namespace (`runtime-metrics-mounted.test.ts`).
  */
 
 async function loadModule() {
-    // Ensure GeoLeaf namespace exists so the module registers functions on it
     if (!globalThis.GeoLeaf) globalThis.GeoLeaf = {};
-    await import("../../src/utils/performance/runtime-metrics.js");
+    const { installRuntimeMetrics } =
+        await import("../../src/utils/performance/runtime-metrics.js");
+    installRuntimeMetrics(globalThis.GeoLeaf);
     return globalThis.GeoLeaf;
 }
 

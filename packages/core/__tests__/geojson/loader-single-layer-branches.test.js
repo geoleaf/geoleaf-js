@@ -10,6 +10,7 @@ import {
     applyOgcRefreshedData,
 } from "../../src/kernel/geojson/loader/single-layer.js";
 import { notifyPrimitive } from "../../src/utils/notify/notify.primitive.js";
+import { getLabel } from "../../src/utils/i18n/i18n.js";
 
 const state = vi.hoisted(() => ({
     layers: new Map(),
@@ -318,6 +319,12 @@ describe("geojson/loader/single-layer — branch coverage", () => {
         const result = await LoaderSingleLayer._loadSingleLayer("lyrE", "Error Layer", def, {});
         expect(result.id).toBe("lyrE");
         expect(notifySpy).toHaveBeenCalledWith(expect.stringContaining("Error Layer"), "warning");
+        // The message speaks the page's language — it was hard-coded in English.
+        expect(notifySpy).toHaveBeenCalledWith(
+            getLabel("toast.layer.style_missing", "Error Layer"),
+            "warning"
+        );
+        expect(notifySpy.mock.calls[0][0]).not.toMatch(/Default style not found/);
         notifySpy.mockRestore();
     });
 

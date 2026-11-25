@@ -73,6 +73,20 @@
             "confidence": "haute",
             "rationale": "133 LOC, 11 importeurs — le plus importé du dossier, tous internes. T5 §5 arbitre explicitement le cas « dossier plat partagé » et liste `adapters/maplibre/` parmi les 12 `-types.ts` À CONSERVER préfixés. E5 ne s'applique pas : ce n'est pas un `.contract.ts` (types moteur, pas contrat de frontière) et son en-tête énonce l'INTERDIT `import type` seul"
         },
+        "packages/core/src/adapters/maplibre/maplibre-attribution-clearance.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Tant que le crédit du fond de carte, déplié, chevauche le coin bas gauche (téléphone, au chargement), pose sur le conteneur de la carte la hauteur à dégager ; la feuille des contrôles remonte le coin d'autant",
+            "confidence": "haute",
+            "rationale": "1 export, 1 importeur (maplibre-adapter.ts) ; dans adapters/maplibre/ parce que le crédit est un contrôle MapLibre et que l'adaptateur crée la carte ; nettoyé par trackMapCleanup avec les autres écouteurs de la carte"
+        },
         "packages/core/src/adapters/maplibre/maplibre-cluster-builders.ts": {
             "kind": "file",
             "name": "ok",

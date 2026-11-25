@@ -174,7 +174,13 @@ export class LightboxManager implements Lightbox {
         const initialFocusBtn = lightbox.querySelector<HTMLElement>(".gl-poi-lightbox__close");
         if (initialFocusBtn) initialFocusBtn.focus();
 
+        // ⚠️ CAPTURE phase, and the keys it handles stop there: the lightbox opens ABOVE the
+        // side panel, whose own `document` listener was registered first and therefore ran
+        // first — one Escape closed both surfaces. The top surface answers, alone.
         this.keyHandler = (e: KeyboardEvent) => {
+            if (["Escape", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) {
+                e.stopImmediatePropagation();
+            }
             if (e.key === "Escape") {
                 this.close();
             } else if (e.key === "ArrowLeft") {
@@ -188,7 +194,7 @@ export class LightboxManager implements Lightbox {
                 handleFocusTrap(this.currentLightbox, e);
             }
         };
-        document.addEventListener("keydown", this.keyHandler);
+        document.addEventListener("keydown", this.keyHandler, true);
     }
 
     /**
@@ -277,7 +283,7 @@ export class LightboxManager implements Lightbox {
         }
 
         if (this.keyHandler) {
-            document.removeEventListener("keydown", this.keyHandler);
+            document.removeEventListener("keydown", this.keyHandler, true);
             this.keyHandler = null;
         }
 
@@ -309,7 +315,8 @@ type GalleryPanelElement = HTMLElement & { _galleryEventsAttached?: boolean };
  * Wires gallery navigation on a rendered side panel: thumbnail clicks swap the
  * main image and move the active marker, and clicking the main image opens the
  * lightbox over the whole gallery with two-way synchronization back to the
- * thumbnails. Guarded by a one-shot `_galleryEventsAttached` flag so repeated
+ * thumbnails. A one-photo gallery has no thumbnails: clicking its image opens the
+ * lightbox on that image alone (« 1 / 1 », no navigation). Guarded by a one-shot `_galleryEventsAttached` flag so repeated
  * calls on the same panel are no-ops.
  *
  * @param sidePanelElement The side-panel root containing the gallery, or `null`.
@@ -328,7 +335,17 @@ export function attachGalleryEvents(
     const thumbs = panel.querySelectorAll(".gl-poi-gallery__thumb");
     const mainImg = panel.querySelector<HTMLImageElement>(".gl-poi-gallery__main img");
 
-    if (!mainImg || thumbs.length === 0) return;
+    if (!mainImg) return;
+
+    // ⚠️ One photo, no thumbnails — `media.ts` draws the strip only past one. This used to
+    // return here, so the magnifier showed on the image and a click opened nothing: every
+    // one-photo gallery had an unreachable viewer. The main image alone is the gallery.
+    if (thumbs.length === 0) {
+        mainImg.addEventListener("click", () => {
+            lightboxManager?.open(mainImg.src, [mainImg.src], 0);
+        });
+        return;
+    }
 
     // Collect every gallery image URL from the thumbnails.
     //

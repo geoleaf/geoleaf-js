@@ -27,6 +27,11 @@
  *   - `vector-tiles` declares NO module gate at all: activation is decided per LAYER
  *     (`data.vectorTiles` on the layer definition), which is the honest shape — there is no
  *     meaningful map-wide answer to "use tiles?". Its capability sheet records the same fact.
+ *   - `theme-palette` declares NO module gate either: its first half — applying the configured
+ *     `default` palette — is unconditional (a brand colour fixed by the integrator, no choice
+ *     offered), and `modules.theme-palette.enabled` governs only the selector button, read by
+ *     the lifecycle. A gate on that key left the module unregistered on `false`, and the
+ *     palette the integrator fixed was never applied.
  *
  * ## The rules
  *
@@ -69,7 +74,6 @@ const INTERFACE = new Set([
     "route",
     "scale",
     "taxonomy",
-    "theme-palette",
     "theme-selector",
     "theme-toggle",
     "toast-renderer",
@@ -82,6 +86,7 @@ const CONSUMER = new Set(["offline", "pwa"]);
 const EXCEPTIONS = new Set([
     "branding", // additive content, not presentation → opt-in despite being UI-shaped
     "vector-tiles", // no module gate at all — activation is per layer, by design
+    "theme-palette", // no module gate — `enabled` governs the button, the palette always applies
 ]);
 
 /**

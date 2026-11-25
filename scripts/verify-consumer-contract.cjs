@@ -22,7 +22,8 @@
  * ## Three resolvers, because one alone would be green on what it did not read
  *
  *   • `provider: "core"`        → l'oracle post-boot (`EXPECTED_FACADE_KEYS` en profondeur 1,
- *                                 `EXPECTED_FACADE_MEMBERS` at depth 2)
+ *                                 `EXPECTED_FACADE_MEMBERS` at depth 2, and below it only the
+ *                                 closed list of named paths `EXPECTED_DEEP_MEMBERS`)
  *   • `provider: "plugin:<pkg>"` → the object returned by the package's `buildPublicApi()`, read at the AST;
  *                                 the package is resolved by `requireByDirName`, which **throws**
  *   • `dom_contract`             → a selector placed in the sources of the entry's `provider`
@@ -47,7 +48,8 @@
  *   CC-06  MEASURED scope — an out-of-scope path exits 2, never green
  *   CC-07  every `required.events` is typed, emitted as a literal, and on the DOM bus
  *   CC-08  `dom_contract` — `library` is placed by its provider's sources, `host` is a host obligation
- *   CC-09  anti-tautology — the oracle read here is still confronted with a real boot
+ *   CC-09  anti-tautology — the oracle read here is still confronted with a real boot (and the
+ *          named deep paths with a real wiring of the offline engine)
  *   CC-10  DEPRECATION ratchet — an entry only leaves `required.public` / `required.events`
  *          under an announcement, and a `@deprecated` tag does not live undated
  *   CC-11  `installed_by_host` — what the host WRITES does NOT resolve here (CC-01's symmetric)
@@ -202,10 +204,7 @@ function resolveCore(p, surf) {
         return { verdict: ABSENT, why: `la clé de tête \`${head}\` est absente de l'oracle` };
     }
     if (rest.length > 0) {
-        return {
-            verdict: OUT_OF_SCOPE,
-            why: `profondeur ${parts.length} — l'oracle s'arrête à la profondeur 2`,
-        };
+        return resolveDeep(p, parts, surf);
     }
     if (!surf.DEPTH2_FACADES.includes(head)) {
         return {
@@ -223,6 +222,41 @@ function resolveCore(p, surf) {
     return members.includes(member)
         ? { verdict: OK, why: `profondeur 2, dans EXPECTED_FACADE_MEMBERS.${head}` }
         : { verdict: ABSENT, why: `absent d'EXPECTED_FACADE_MEMBERS.${head}` };
+}
+
+/**
+ * Resolves a path below depth 2 against the closed list `EXPECTED_DEEP_MEMBERS`.
+ *
+ * Only the NAMED paths of that list are measured (by
+ * `capabilities/offline/deep-surface.contract.test.ts`, locked by CC-09); any other path
+ * below depth 2 stays OUT_OF_SCOPE and feeds CC-06 — a third depth is not opened wholesale.
+ *
+ * @returns {{ verdict: string, why: string }}
+ */
+function resolveDeep(p, parts, surf) {
+    const deep = surf.EXPECTED_DEEP_MEMBERS ?? {};
+    if (Object.hasOwn(deep, p)) {
+        return { verdict: OK, why: "chemin profond nommé, dans EXPECTED_DEEP_MEMBERS" };
+    }
+    const prefix = parts.slice(0, -1).join(".");
+    const member = parts[parts.length - 1];
+    if (!Object.hasOwn(deep, prefix)) {
+        return {
+            verdict: OUT_OF_SCOPE,
+            why:
+                `profondeur ${parts.length} — sous la profondeur 2, seuls les chemins de ` +
+                "EXPECTED_DEEP_MEMBERS sont mesurés",
+        };
+    }
+    if (member.charAt(0) === "_") {
+        return {
+            verdict: OUT_OF_SCOPE,
+            why: `\`${member}\` est \`_\`-préfixé — \`walkNamespace\` le filtre par construction`,
+        };
+    }
+    return deep[prefix].includes(member)
+        ? { verdict: OK, why: `dans EXPECTED_DEEP_MEMBERS["${prefix}"]` }
+        : { verdict: ABSENT, why: `absent d'EXPECTED_DEEP_MEMBERS["${prefix}"]` };
 }
 
 /**
@@ -259,7 +293,25 @@ function pluginApiMembers(pkgDirName) {
         true
     );
     let members = null;
+    // `PUBLIC_API_MOUNT` — where the facade is mounted when the plugin adds a member to a
+    // CORE façade instead of owning a namespace (`offline-ui` → `"UI.CacheButton"`). Absent
+    // for the others: their first path segment is their own namespace, read as before.
+    let mount = null;
     const visit = (node) => {
+        if (
+            ts.isVariableDeclaration(node) &&
+            ts.isIdentifier(node.name) &&
+            node.name.text === "PUBLIC_API_MOUNT"
+        ) {
+            const init = node.initializer;
+            if (!init || !ts.isStringLiteral(init)) {
+                cm.refuse(
+                    `\`PUBLIC_API_MOUNT\` de \`${pkgDirName}\` n'est pas un littéral de chaîne — ` +
+                        "la gate ne peut pas lire un point de montage calculé.",
+                    "CC-03"
+                );
+            } else mount = init.text;
+        }
         if (
             (ts.isFunctionDeclaration(node) || ts.isVariableDeclaration(node)) &&
             node.name &&
@@ -302,14 +354,16 @@ function pluginApiMembers(pkgDirName) {
             "CC-03"
         );
     }
-    pluginApiCache.set(pkgDirName, members);
-    return members;
+    const api = { members, mount };
+    pluginApiCache.set(pkgDirName, api);
+    return api;
 }
 
 /** Resolves a path against a plugin's facade. `provider: "plugin:<dirName>"`. */
 function resolvePlugin(p, provider) {
     const pkgDirName = provider.slice("plugin:".length);
-    const members = pluginApiMembers(pkgDirName);
+    const { members, mount } = pluginApiMembers(pkgDirName);
+    if (mount !== null) return resolvePluginMount(p, pkgDirName, members, mount);
     const parts = p.split(".");
     if (parts.length === 1) {
         // The namespace itself: it exists as soon as the package has a non-empty facade.
@@ -320,6 +374,40 @@ function resolvePlugin(p, provider) {
     }
     return members.includes(parts[1])
         ? { verdict: OK, why: `membre de buildPublicApi() de \`${pkgDirName}\`` }
+        : { verdict: ABSENT, why: `absent de buildPublicApi() de \`${pkgDirName}\`` };
+}
+
+/**
+ * Resolves a path against a plugin facade mounted on a CORE façade (`PUBLIC_API_MOUNT`).
+ *
+ * The path must name the mount point itself, or the mount point and one member of
+ * `buildPublicApi()`. The mounted object's real carriage of those members is the plugin's own
+ * witness test, not this read.
+ *
+ * @returns {{ verdict: string, why: string }}
+ */
+function resolvePluginMount(p, pkgDirName, members, mount) {
+    if (p === mount) {
+        return {
+            verdict: OK,
+            why: `point de montage de \`${pkgDirName}\` (${members.length} membres)`,
+        };
+    }
+    if (!p.startsWith(`${mount}.`)) {
+        return {
+            verdict: ABSENT,
+            why: `\`${pkgDirName}\` est monté sur \`${mount}\`, pas sous ce chemin`,
+        };
+    }
+    const rest = p.slice(mount.length + 1).split(".");
+    if (rest.length > 1) {
+        return { verdict: OUT_OF_SCOPE, why: `plus d'un niveau sous \`${mount}\`` };
+    }
+    return members.includes(rest[0])
+        ? {
+              verdict: OK,
+              why: `membre de buildPublicApi() de \`${pkgDirName}\`, monté sur \`${mount}\``,
+          }
         : { verdict: ABSENT, why: `absent de buildPublicApi() de \`${pkgDirName}\`` };
 }
 
@@ -699,25 +787,14 @@ function annoncesOrphelines(tags, annonces) {
  * gate would go blind. The read thus bears on the PROPERTY NAME accessed in
  * `expect(…)`'s first argument, whatever the name of the variable carrying it.
  */
-function checkAntiTautology() {
-    const file = path.join(
-        registry.requireByDirName("core").absDir,
-        "__tests__",
-        "app",
-        "boot-golden-master.test.js"
-    );
-    if (!fs.existsSync(file)) {
-        cm.refuse(
-            `le golden master est introuvable (${path.relative(ROOT, file)}). Sans lui, ` +
-                "`EXPECTED_FACADE_MEMBERS` n'est plus confronté à aucun boot : cette gate " +
-                "comparerait une liste écrite à la main avec elle-même.",
-            "CC-09"
-        );
-    }
-    const text = fs.readFileSync(file, "utf8");
+/**
+ * Property names passed as 1st argument of an `expect(...)` in a test file, COUNTED — read
+ * at the AST, so renaming the variable that carries the diff does not blind the lock.
+ *
+ * @returns {Map<string, number>}
+ */
+function countExpectArgs(file, text) {
     const sf = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
-
-    /** Property names passed as 1st argument of an `expect(...)`, COUNTED. */
     const seen = new Map();
     const bump = (n) => seen.set(n, (seen.get(n) ?? 0) + 1);
     const visit = (node) => {
@@ -734,6 +811,78 @@ function checkAntiTautology() {
         ts.forEachChild(node, visit);
     };
     ts.forEachChild(sf, visit);
+    return seen;
+}
+
+/**
+ * CC-09, second half — the NAMED deep paths (`EXPECTED_DEEP_MEMBERS`) are confronted with a
+ * real wiring of the offline engine, not with themselves.
+ *
+ * The golden master cannot carry them (its boot does not load the deferred engine, so
+ * `Storage.Cache` is empty there), hence a dedicated test, locked here on the same three
+ * properties: a member that DISAPPEARS, one that APPEARS, and the stability of two reads.
+ * Without it, `resolveDeep` would believe a hand-written list.
+ *
+ * @returns {{ assertions: number }}
+ */
+function checkDeepAntiTautology() {
+    const file = path.join(
+        registry.requireByDirName("core").absDir,
+        "__tests__",
+        "capabilities",
+        "offline",
+        "deep-surface.contract.test.ts"
+    );
+    if (!fs.existsSync(file)) {
+        cm.refuse(
+            `la mesure des chemins profonds est introuvable (${path.relative(ROOT, file)}). ` +
+                "Sans elle, `EXPECTED_DEEP_MEMBERS` n'est confronté à aucun câblage réel.",
+            "CC-09"
+        );
+    }
+    const text = fs.readFileSync(file, "utf8");
+    const seen = countExpectArgs(file, text);
+    /** @type {Array<[string, number]>} */
+    const REQUIRED = [
+        ["missing", 1],
+        ["extra", 1],
+        ["membersAgain", 1],
+    ];
+    const perdus = REQUIRED.filter(([n, min]) => (seen.get(n) ?? 0) < min);
+    if (perdus.length > 0) {
+        cm.refuse(
+            "le verrou des chemins profonds est incomplet — assertion(s) disparue(s) : " +
+                perdus.map(([n]) => `expect(…${n}…)`).join(", "),
+            "CC-09"
+        );
+    }
+    if (!/namespace-surface\.mjs/.test(text) || !/DEEP_PATHS/.test(text)) {
+        cm.refuse(
+            "la mesure des chemins profonds ne lit plus `lib/namespace-surface.mjs` / " +
+                "`DEEP_PATHS` — elle ne confronte donc plus l'oracle que CETTE gate croit.",
+            "CC-09"
+        );
+    }
+    return { assertions: REQUIRED.reduce((a, [, min]) => a + min, 0) };
+}
+
+function checkAntiTautology() {
+    const file = path.join(
+        registry.requireByDirName("core").absDir,
+        "__tests__",
+        "app",
+        "boot-golden-master.test.js"
+    );
+    if (!fs.existsSync(file)) {
+        cm.refuse(
+            `le golden master est introuvable (${path.relative(ROOT, file)}). Sans lui, ` +
+                "`EXPECTED_FACADE_MEMBERS` n'est plus confronté à aucun boot : cette gate " +
+                "comparerait une liste écrite à la main avec elle-même.",
+            "CC-09"
+        );
+    }
+    const text = fs.readFileSync(file, "utf8");
+    const seen = countExpectArgs(file, text);
 
     // 🛑 **The MULTIPLICITIES are load-bearing, and a mutation established it.**
     //
@@ -753,6 +902,7 @@ function checkAntiTautology() {
     // per depth), **1** for `membersAgain`. They re-measure by reading the
     // file, and the message says the count found — not merely that
     // something is missing.
+    /** @type {Array<[string, number, string]>} */
     const REQUIRED = [
         [
             "missing",
@@ -849,7 +999,8 @@ async function main() {
     }
     console.log(
         `${C.d}   oracle : ${surf.EXPECTED_FACADE_KEYS.length} clés · ` +
-            `${surf.DEPTH2_FACADES.length} façades en profondeur 2 · ${memberTotal} membres` +
+            `${surf.DEPTH2_FACADES.length} façades en profondeur 2 · ${memberTotal} membres · ` +
+            `${surf.DEEP_PATHS.length} chemin(s) profond(s) nommé(s)` +
             `${C.x}\n`
     );
 
@@ -1616,6 +1767,7 @@ async function main() {
 
     // ── CC-09 ────────────────────────────────────────────────────────────────────────
     const tauto = checkAntiTautology();
+    const tautoDeep = checkDeepAntiTautology();
 
     // The THIRD oracle's floor. Same function as CC-00's two floors:
     // distinguish "nothing to resolve through this path" from "this path
@@ -1668,7 +1820,8 @@ async function main() {
     console.log(
         `${C.g}✓${C.x}  ${checked} engagement(s) du contrat inverse vérifiés sur ` +
             `${read.manifests.length} manifeste(s) — dont ${pluginResolved} par le troisième ` +
-            `oracle (façades de plugin) ; ${tauto.assertions} verrous anti-tautologie en ` +
+            `oracle (façades de plugin) ; ${tauto.assertions + tautoDeep.assertions} ` +
+            "verrous anti-tautologie en " +
             "place ; aucune régression."
     );
     process.exit(0);

@@ -15,6 +15,7 @@ import { GeoJSONCore, resolveLayerLabelConfig } from "../../kernel/geojson/index
 import { Labels } from "./labels.js";
 import { getLabel } from "../../utils/i18n/i18n.js";
 import { domCreate } from "../../utils/general/dom-helpers.js";
+import { getLabelsConfig } from "./config.js";
 import type {
     LabelButtonManagerApi,
     LabelButtonSyncState,
@@ -142,6 +143,9 @@ const LabelButtonManager: LabelButtonManagerApi = {
 
     syncImmediate(layerId: string): void {
         if (!layerId) return;
+        // Switched off, no 🏷️ button — this call creates one when it is missing, and the kernel
+        // makes it on every visibility, style or theme change.
+        if (getLabelsConfig().enabled === false) return;
         this._doSync(layerId);
     },
 

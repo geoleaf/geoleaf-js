@@ -1,4 +1,4 @@
 {
-    "_comment": "S8/F3 — modules.theme-selector (in-core capability capabilities/theme-selector). Capability gate only (opt-out) ; migrated from ui.showThemeSelector.",
+    "_comment": "S8/F3 — modules.theme-selector (in-core capability capabilities/theme-selector). OPT-IN: the theme bar is built only when enabled is exactly true. Double gate, on purpose: the module registers when the key is absent (the boot gate runs before the profile is merged), and the late gate on the merged config decides. Migrated from ui.showThemeSelector.",
     "enabled": true
 }

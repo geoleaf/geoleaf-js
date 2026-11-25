@@ -26,6 +26,7 @@ import { domCreate } from "../../utils/general/dom-helpers.js";
 import { Helpers } from "../../utils/general/helpers-namespace.js";
 import { blockMapPropagation } from "../../utils/controls/propagation-blocker.js";
 import { DEFAULT_COORDINATES_DECIMALS } from "./constants.js";
+import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import type {
     CoordinatesControl,
     CoordinatesMapLike,
@@ -37,6 +38,34 @@ const CONTEXT = "[GeoLeaf.Coordinates]";
 const DEFAULT_COORDS_TEXT = "Lat: --, Lng: --";
 /** Fallback delay (ms) after which the standalone control is created if the scale wrapper never appears. */
 const WRAPPER_FALLBACK_TIMEOUT_MS = 5000;
+
+/**
+ * Whether the `scale` capability can still produce its wrapper.
+ *
+ * `false` only on a positive answer of the introspection: `scale` not embarked, or switched
+ * off. The wait for the wrapper (bounded by {@link WRAPPER_FALLBACK_TIMEOUT_MS}) used to be
+ * paid in full on a bundle without `scale`, followed by a warning; it is now skipped. Without
+ * an introspection to ask (an isolated mount), the answer is unknown and the wait is kept.
+ */
+function _scaleCanCome(): boolean {
+    const introspection = (
+        getGeoLeaf() as
+            | {
+                  Introspection?: {
+                      getCapabilityStatus?(): readonly {
+                          id: string;
+                          embarked: boolean;
+                          enabled: boolean;
+                      }[];
+                  };
+              }
+            | undefined
+    )?.Introspection;
+    const statuses = introspection?.getCapabilityStatus?.();
+    if (!statuses) return true;
+    const scale = statuses.find((s) => s.id === "scale");
+    return !!scale && scale.embarked && scale.enabled;
+}
 
 /**
  * The visual separator inserted before the coordinates in the scale wrapper.
@@ -118,6 +147,10 @@ const CoordinatesDisplay: CoordinatesControl = {
 
             if (scaleWrapper) {
                 this._attachToScaleWrapper(scaleWrapper as HTMLElement);
+            } else if (!_scaleCanCome()) {
+                // No `scale` to wait for: the classic control at once, no timeout, no warning —
+                // the absence is the configuration's or the bundle's, and the boot says it.
+                this._createStandaloneControl();
             } else {
                 // Wrapper not yet in DOM: observe body until it appears. Both the observer
                 // and its timeout are stored so `destroy()` can cancel them — otherwise the

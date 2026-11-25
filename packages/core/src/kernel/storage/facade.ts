@@ -33,6 +33,7 @@
 import { Log } from "../../utils/log/index.js";
 import { StorageContract } from "../shared/storage-contract.js";
 import { mayEditLayer } from "../shared/edition-permissions.js";
+import { isOfflineEngineExpected } from "../api/offline-engine-expected.js";
 import type {
     CacheProfileOptions,
     CacheProfileResult,
@@ -292,9 +293,17 @@ interface StorageLayerPullReport {
  *
  * Same value and same motive as `OFFLINE_ENGINE_WAIT_MS` in
  * `kernel/geojson/loader/single-layer.ts`: the chunk wires in ~85 ms at measured
- * boot, and `whenReady()` never resolves without `modules.offline`.
+ * boot, and `whenReady()` never resolves without `modules.offline`. Paid only when the
+ * engine is expected (`isOfflineEngineExpected`); otherwise the refusal is immediate.
  */
 const PULL_ENGINE_WAIT_MS = 3000;
+
+/** Why the engine is missing, in the words of the actual cause. */
+function _engineMissing(): string {
+    return isOfflineEngineExpected()
+        ? `moteur hors-ligne non câblé après ${PULL_ENGINE_WAIT_MS} ms.`
+        : "moteur hors-ligne indisponible : `offline` et `pwa` doivent être embarquées et allumées.";
+}
 
 /**
  * The engine as this façade drives it. Its lifecycle members are written here — they are
@@ -564,7 +573,7 @@ const Storage = {
         layerId: string,
         options?: { bbox?: [number, number, number, number]; signal?: AbortSignal }
     ): Promise<StorageLayerPullReport> {
-        if (!this._modules.pull) {
+        if (!this._modules.pull && isOfflineEngineExpected()) {
             let timer: ReturnType<typeof setTimeout> | undefined;
             const timedOut = new Promise<void>((resolve) => {
                 timer = setTimeout(resolve, PULL_ENGINE_WAIT_MS);
@@ -575,9 +584,7 @@ const Storage = {
 
         const pull = this._modules.pull;
         if (!pull) {
-            Log.warn(
-                `[GeoLeaf.Storage] pullLayer("${layerId}") — moteur hors-ligne non câblé après ${PULL_ENGINE_WAIT_MS} ms.`
-            );
+            Log.warn(`[GeoLeaf.Storage] pullLayer("${layerId}") — ${_engineMissing()}`);
             return {
                 layerId,
                 fetched: 0,
@@ -630,7 +637,7 @@ const Storage = {
         feature?: unknown;
         baseVersion?: { kind: "etag" | "timestamp"; value: string } | null;
     }): Promise<StorageEditReport> {
-        if (!this._modules.edit) {
+        if (!this._modules.edit && isOfflineEngineExpected()) {
             let timer: ReturnType<typeof setTimeout> | undefined;
             const timedOut = new Promise<void>((resolve) => {
                 timer = setTimeout(resolve, PULL_ENGINE_WAIT_MS);
@@ -641,9 +648,7 @@ const Storage = {
 
         const edit = this._modules.edit;
         if (!edit) {
-            Log.warn(
-                `[GeoLeaf.Storage] applyEdit("${input.layerId}") — moteur hors-ligne non câblé après ${PULL_ENGINE_WAIT_MS} ms.`
-            );
+            Log.warn(`[GeoLeaf.Storage] applyEdit("${input.layerId}") — ${_engineMissing()}`);
             return {
                 layerId: input.layerId,
                 localId: input.localId ?? "",

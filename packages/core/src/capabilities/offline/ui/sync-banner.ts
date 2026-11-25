@@ -114,6 +114,8 @@ let _dismissed: {
  * yesterday says nothing about today's session.
  */
 let _sessionRequired = false;
+/** The last pass attempted nothing: every owed entry was still in its retry delay. */
+let _retryScheduled = false;
 
 /** Where the strip goes: the app shell, else the map's own parent, else nowhere. */
 function _host(): HTMLElement | null {
@@ -199,6 +201,31 @@ function _worseThanDismissed(status: SyncStatus): boolean {
     return !status.online && !_dismissed.offline;
 }
 
+/**
+ * What the strip says of the owed writes. Nothing owed is « everything sent » only when nothing
+ * was set aside either: a capture in quarantine has not left, and « Tout est envoyé · 1
+ * bloquée(s) » said the opposite.
+ */
+function _pendingLabel(owed: number, quarantined: number): string {
+    if (owed === 0) {
+        return getLabel(quarantined > 0 ? "ui.sync.none_pending" : "ui.sync.all_sent");
+    }
+    return owed === 1
+        ? getLabel("ui.sync.pending_one")
+        : getLabel("ui.sync.pending_many", String(owed));
+}
+
+/**
+ * Why an owed write does not leave, without being an error — waiting for a session, or for the
+ * end of its retry delay — or `""`. One slot for both: the session wins, it is the one the user
+ * can act on.
+ */
+function _waitNote(): string {
+    if (_sessionRequired) return getLabel("ui.sync.session_required");
+    if (_retryScheduled) return getLabel("ui.sync.retry_scheduled");
+    return "";
+}
+
 /** Writes the five facts, the action's state, and whether the strip takes any room. */
 function _paint(status: SyncStatus): void {
     if (!_root || !_els) return;
@@ -211,20 +238,15 @@ function _paint(status: SyncStatus): void {
     // would have hidden the same coupling behind a regex.
     _root.setAttribute("data-network", online ? "online" : "offline");
     _els.net.textContent = getLabel(online ? "ui.sync.online" : "ui.sync.offline");
-    _els.pending.textContent =
-        owed === 0
-            ? getLabel("ui.sync.all_sent")
-            : owed === 1
-              ? getLabel("ui.sync.pending_one")
-              : getLabel("ui.sync.pending_many", String(owed));
+    _els.pending.textContent = _pendingLabel(owed, quarantined);
     _els.quarantine.textContent =
         quarantined > 0 ? getLabel("ui.sync.quarantined", String(quarantined)) : "";
     _els.quarantine.hidden = quarantined === 0;
     // Shown only while something is owed: the mention is a fact about a write that waits, and
     // with nothing owed there is no write for it to be about.
-    const sessionRequired = _sessionRequired && owed > 0;
-    _els.session.textContent = sessionRequired ? getLabel("ui.sync.session_required") : "";
-    _els.session.hidden = !sessionRequired;
+    const waitNote = owed > 0 ? _waitNote() : "";
+    _els.session.textContent = waitNote;
+    _els.session.hidden = waitNote === "";
     _els.last.textContent =
         lastSyncAt === null ? getLabel("ui.sync.last_never") : _ago(lastSyncAt, Date.now());
     // Offered only when there is something to send AND a network to send it on: a button
@@ -361,8 +383,18 @@ export function mountSyncBanner(options: { enabled?: boolean } = {}): void {
     // plugin to know that a write had happened.
     _on(document, "geoleaf:offline:outbox-queued", () => void refreshSyncBanner());
     _on(document, "geoleaf:offline:outbox-drained", (event) => {
-        const detail = (event as CustomEvent<{ heldForSession?: number } | null>).detail;
+        const detail = (
+            event as CustomEvent<{
+                heldForSession?: number;
+                attempted?: number;
+                deferred?: number;
+            } | null>
+        ).detail;
         _sessionRequired = (detail?.heldForSession ?? 0) > 0;
+        // A pass that attempted nothing because every owed entry was still in its delay: the
+        // drain walks past, it never waits. « Synchroniser » then changed nothing on screen and
+        // said nothing — the delay is now said.
+        _retryScheduled = (detail?.attempted ?? 0) === 0 && (detail?.deferred ?? 0) > 0;
         void refreshSyncBanner();
     });
     // And the third: an entry set aside left — requeued or discarded. The count of entries set
@@ -415,4 +447,5 @@ export function unmountSyncBanner(): void {
     _again = false;
     _dismissed = null;
     _sessionRequired = false;
+    _retryScheduled = false;
 }

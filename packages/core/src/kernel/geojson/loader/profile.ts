@@ -11,6 +11,7 @@
  */
 
 import { GeoJSONShared } from "../shared.js";
+import { MAP_UNAVAILABLE_ERROR } from "./single-layer.js";
 import { resolveClusteringNormalization } from "./clustering-normalize.js";
 import { getLog } from "../../../utils/general/di-accessors.js";
 import { resolveDefaultThemeId } from "../../config/default-theme.js";
@@ -297,6 +298,13 @@ async function _processLayerDef(
         const loadLayer = _deps?.getLoader()?._loadSingleLayer;
         return (await loadLayer?.(layerId, layerLabel, normalizedDef, baseOptions)) ?? null;
     } catch (err) {
+        // The map was destroyed while this layer loaded (a `Core.destroy()` during the boot):
+        // the load is interrupted, not failed — 5 to 19 « Failed to load layer » errors per
+        // destroy until 3.20.6, one per layer still in flight.
+        if ((err as Error | undefined)?.name === MAP_UNAVAILABLE_ERROR) {
+            Log.debug("[GeoLeaf.GeoJSON] Layer load interrupted, the map is gone :", layerId);
+            return null;
+        }
         Log.error("[GeoLeaf.GeoJSON] Failed to load layer :", {
             layerId,
             url: layerUrl,

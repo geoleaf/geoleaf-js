@@ -35,6 +35,19 @@ describe("capabilities/branding", () => {
         expect(map.addControl).not.toHaveBeenCalled();
     });
 
+    it("init twice keeps ONE overlay: the first is removed before the second is added", () => {
+        Config.get.mockReturnValue({ enabled: true, text: "Powered by X" });
+        const first = { remove: vi.fn() };
+        const second = { remove: vi.fn() };
+        const map = { addControl: vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second) };
+        Branding.init(map);
+        Branding.init(map);
+        expect(map.addControl).toHaveBeenCalledTimes(2);
+        expect(first.remove).toHaveBeenCalledOnce();
+        expect(second.remove).not.toHaveBeenCalled();
+        Branding.destroy();
+    });
+
     it("init with text and position creates control", () => {
         Config.get.mockReturnValue({
             enabled: true,

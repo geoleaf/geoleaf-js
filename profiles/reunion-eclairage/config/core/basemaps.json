@@ -5,7 +5,7 @@
             "label": "Street",
             "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
             "attribution": "Tiles © Esri — Source: Esri, DeLorme, NAVTEQ",
-            "minZoom": 3,
+            "minZoom": 0,
             "maxZoom": 16,
             "defaultBasemap": true,
             "offline": false
@@ -15,7 +15,7 @@
             "label": "Satellite",
             "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             "attribution": "Tiles © Esri — Source: Esri, Maxar, GeoEye, Earthstar Geographics",
-            "minZoom": 3,
+            "minZoom": 0,
             "maxZoom": 18,
             "offline": false
         },
@@ -24,7 +24,7 @@
             "label": "Topographique",
             "url": "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
             "attribution": "Map data: © OpenStreetMap contributors, SRTM | Map style: © OpenTopoMap (CC-BY-SA)",
-            "minZoom": 5,
+            "minZoom": 0,
             "maxZoom": 17,
             "offline": false
         },
@@ -50,7 +50,7 @@
             "label": "Satellite 3D",
             "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             "attribution": "Tiles © Esri — Source: Esri, Maxar, GeoEye, Earthstar Geographics",
-            "minZoom": 3,
+            "minZoom": 0,
             "maxZoom": 18,
             "offline": false,
             "terrain": {

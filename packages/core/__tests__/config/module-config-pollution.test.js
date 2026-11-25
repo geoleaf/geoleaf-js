@@ -78,11 +78,22 @@ describe("@security mergeModulesBag — a profile cannot re-parent the modules b
         const t = { modules: { poi: { a: 1 }, filters: { keep: true } } };
         mergeModulesBag(t, { filters: { b: 2 }, basemaps: { c: 3 } });
 
+        // Same id: merged key by key since 3.20.6 (the profile overrides, it does not erase).
         expect(t.modules).toEqual({
             poi: { a: 1 },
-            filters: { b: 2 },
+            filters: { keep: true, b: 2 },
             basemaps: { c: 3 },
         });
+    });
+
+    it("a __proto__ nested INSIDE a block is dropped by the deep merge, nothing re-parented", () => {
+        // The deep merge walks into the profile's block: the guard has to hold one level down.
+        const t = { modules: { filters: { keep: true } } };
+        mergeModulesBag(t, JSON.parse('{"filters":{"__proto__":{"pwned":true},"b":2}}'));
+
+        expect(t.modules.filters).toEqual({ keep: true, b: 2 });
+        expect(Object.getPrototypeOf(t.modules.filters)).toBe(Object.prototype);
+        expect({}.pwned).toBeUndefined();
     });
 });
 

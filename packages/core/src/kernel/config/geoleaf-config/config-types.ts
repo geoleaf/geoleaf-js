@@ -719,8 +719,9 @@ export interface ConfigFacade {
      * configuration, which is merged over it key by key. Then it loads the active profile. A
      * modular profile (the kind the repository ships) REPLACES, whole, each top-level section
      * it carries (`ui` among them). Two exceptions: `layers`, `themes` and `mapping` stay on
-     * the profile, and the `modules` bag is merged module by module. So a value that the
-     * profile also declares does not survive the boot.
+     * the profile, and the `modules` bag is merged module by module — each `modules.<id>` block
+     * deep-merged, the profile's keys winning (since 3.20.6; before, it replaced the application's
+     * block whole). So a value that the profile also declares does not survive the boot.
      *
      * To override a value that the profile declares, call `set` from the `beforeBoot` hook.
      * It runs after both loads, and before any module reads the configuration.

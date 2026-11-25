@@ -17,14 +17,14 @@ const build = (styleData, refLat) =>
 describe("adapter-options — scaleConfig → zoom natif (N-1b)", () => {
     it("convertit les bornes réelles de guyane (lat 4°N)", () => {
         // profiles/guyane-biodiversite/layers/cours_eau/styles/defaut.json
-        const opts = build({ scaleConfig: { minScale: 9222148, maxScale: 2252 } }, 4);
+        const opts = build({ scaleConfig: { minScale: 4611074, maxScale: 1126 } }, 4);
         expect(opts.minZoom).toBeCloseTo(6, 2);
         expect(opts.maxZoom).toBeCloseTo(18, 2);
     });
 
     it("préserve l'ordre : minScale (vue large) → minZoom (zoom bas)", () => {
         // The subject's trap: minScale is the LARGEST number but the SMALLEST zoom.
-        const opts = build({ scaleConfig: { minScale: 9222148, maxScale: 2252 } }, 4);
+        const opts = build({ scaleConfig: { minScale: 4611074, maxScale: 1126 } }, 4);
         expect(opts.minZoom).toBeLessThan(opts.maxZoom);
     });
 
@@ -50,7 +50,7 @@ describe("adapter-options — scaleConfig → zoom natif (N-1b)", () => {
         // Better no constraint than one computed at a guessed latitude.
         const opts = buildSingleLayerAdapterOptions(
             {},
-            { scaleConfig: { minScale: 9222148, maxScale: 2252 } },
+            { scaleConfig: { minScale: 4611074, maxScale: 1126 } },
             NO_CLUSTER,
             "lyr",
             Log
@@ -61,7 +61,7 @@ describe("adapter-options — scaleConfig → zoom natif (N-1b)", () => {
 
     it("n'écrase pas visible/zIndex et laisse le style tranquille", () => {
         const opts = build(
-            { scaleConfig: { minScale: 9222148 }, defaultStyle: { fillColor: "#abc" } },
+            { scaleConfig: { minScale: 4611074 }, defaultStyle: { fillColor: "#abc" } },
             4
         );
         expect(opts.visible).toBe(true);

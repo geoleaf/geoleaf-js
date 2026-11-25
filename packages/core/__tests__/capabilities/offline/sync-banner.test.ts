@@ -131,6 +131,19 @@ describe("bandeau de synchronisation", () => {
         expect(action()!.disabled).toBe(true);
     });
 
+    test("une quarantaine seule ne se dit pas « envoyée »", async () => {
+        // A capture set aside is not sent: « Tout est envoyé · 1 bloquée(s) » told the
+        // technician the opposite of the second half — and a layer with no write target, the
+        // case of every editable layer of a shipped variant, ends exactly there.
+        entries = [{ state: "quarantined" }];
+        mountSyncBanner();
+        await repaint();
+
+        expect(text("pending")).not.toMatch(/envoy/i);
+        expect(text("pending")).toBe("Rien en attente");
+        expect(text("quarantine")).toContain("1");
+    });
+
     test("la quarantaine est comptée À PART, et masquée quand elle est vide", async () => {
         entries = [{ state: "pending" }, { state: "quarantined" }];
         mountSyncBanner();
@@ -399,6 +412,39 @@ describe("bandeau de synchronisation", () => {
             await repaint();
 
             expect(shown()).toBe(true);
+        });
+    });
+
+    describe("une saisie en temporisation", () => {
+        /** A pass ended having attempted nothing: every owed entry was still in its delay. */
+        const drainedDeferred = async (deferred: number, attempted = 0) => {
+            document.dispatchEvent(
+                new CustomEvent("geoleaf:offline:outbox-drained", {
+                    detail: { attempted, deferred, heldForSession: 0, haltedBy: null },
+                })
+            );
+            await settle();
+            await settle();
+        };
+        const session = () => banner()!.querySelector<HTMLElement>(".gl-sync-banner__session")!;
+
+        test("🛑 « Synchroniser » sur une saisie en temporisation : le bandeau dit le nouvel essai", async () => {
+            // The pass walks past an entry whose delay has not elapsed — it does not wait.
+            // Pressing « Synchroniser » then changed nothing on screen, and said nothing.
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drainedDeferred(1);
+
+            expect(session().hidden).toBe(false);
+            expect(session().textContent).toBe("nouvel essai programmé");
+        });
+
+        test("une passe qui a tenté quelque chose ne parle pas de temporisation", async () => {
+            entries = [{ state: "pending" }];
+            mountSyncBanner();
+            await drainedDeferred(1, 1);
+
+            expect(session().hidden).toBe(true);
         });
     });
 

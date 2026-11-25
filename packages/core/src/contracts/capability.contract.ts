@@ -210,9 +210,15 @@ export interface ICapabilityStatus {
     readonly embarked: boolean;
 
     /**
-     * Verdict of {@link ICapabilityStatus.gate} against the config **at call time**.
-     * Re-read on every call, never frozen: the profile's config arrives after the preset
+     * Verdict of {@link ICapabilityStatus.gate} against the config **at call time**, AND of every
+     * capability the declaration names in `dependencies` — each one embarked and enabled, in
+     * turn. Re-read on every call, never frozen: the profile's config arrives after the preset
      * passes have run, so a value captured at registration would be the pre-merge one.
+     *
+     * A capability whose own gate is open but whose dependency is closed or absent reads
+     * `false`: the reason is the dependency's own line (or its absence) in the same list, and
+     * the declaration's `dependencies` (`getCapabilitySchema(id)`). Until 3.20.5 the own gate
+     * alone decided, and `offline` read `true` while `pwa`, switched off, kept its engine down.
      *
      * ⚠️ "Enabled", not "currently running".
      */

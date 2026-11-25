@@ -175,11 +175,17 @@ function _updateGeoMarkers(
 
     // User position marker (DOM-based via adapter)
     // SAFE: icon HTML is static hardcoded string
+    // ⚠️ SVG, not a `<div>`: the adapter sanitises marker icons against an SVG-only allow-list
+    // (`SVG_ALLOWED_TAGS`), which dropped the `<div>` — the marker was an empty box and the user
+    // saw no dot, only the accuracy circle (until 3.20.6). The list is not widened to `div`;
+    // `class` survives on SVG elements, so the dot keeps its stylesheet.
     map.createMarker(
         MARKER_ID,
         { lat, lng },
         {
-            icon: '<div class="gl-user-location-dot gl-user-location-dot--active"></div>',
+            icon:
+                '<svg class="gl-user-location-dot gl-user-location-dot--active" ' +
+                'viewBox="0 0 22 22" width="22" height="22"><circle cx="11" cy="11" r="8"/></svg>',
             iconSize: [USER_MARKER_ICON_SIZE_PX, USER_MARKER_ICON_SIZE_PX] as const,
             iconAnchor: [USER_MARKER_ICON_ANCHOR_PX, USER_MARKER_ICON_ANCHOR_PX] as const,
             className: "gl-user-location-marker gl-user-location-marker--active",
@@ -425,4 +431,22 @@ function initGeolocationControl(map: IMapAdapter, position = "topleft"): (() => 
     return fullDestroy;
 }
 
-export { initGeolocationControl };
+/**
+ * Stops the GPS watch and marks the state inactive, WITHOUT touching the map.
+ *
+ * What `Core.destroy()` runs for this capability (through its lifecycle): the map is already
+ * destroyed when the seam runs, so the control's own teardown — which removes a marker and a
+ * layer from the map — would throw. Until 3.20.6 nothing ran: the watch kept firing after the
+ * map was gone, `getState().active` stayed `true`, and the next position raised « map is not
+ * ready ».
+ */
+function disarmGeolocation(): void {
+    if (GeoLocationState.watchId !== null && typeof navigator !== "undefined") {
+        navigator.geolocation?.clearWatch(GeoLocationState.watchId);
+    }
+    GeoLocationState.watchId = null;
+    GeoLocationState.active = false;
+    GeoLocationState.userPosition = null;
+}
+
+export { initGeolocationControl, disarmGeolocation };

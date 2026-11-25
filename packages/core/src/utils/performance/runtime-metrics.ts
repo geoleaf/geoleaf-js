@@ -147,8 +147,18 @@ function resetRuntimeMetrics(): void {
     cachedMetrics = null;
 }
 
-if (_g.GeoLeaf) {
-    _g.GeoLeaf.getPerformanceMetrics = getRuntimeMetrics;
-    _g.GeoLeaf.getRuntimeMetrics = getRuntimeMetrics;
-    _g.GeoLeaf.resetRuntimeMetrics = resetRuntimeMetrics;
+/**
+ * Mounts the three readers on the namespace — called by the namespace's own assembly
+ * (`app/app-namespace.ts`), which every entry imports.
+ *
+ * 🛑 It used to run at this module's evaluation, `if (GeoLeaf) …`. In the shipped bundle this
+ * module sits in an earlier chunk than the one that creates the namespace: the condition was
+ * false, and `GeoLeaf.getPerformanceMetrics()` existed in no bundle although the code shipped.
+ *
+ * @param gl - The `GeoLeaf` namespace object.
+ */
+export function installRuntimeMetrics(gl: GeoLeafGlobal): void {
+    gl.getPerformanceMetrics = getRuntimeMetrics;
+    gl.getRuntimeMetrics = getRuntimeMetrics;
+    gl.resetRuntimeMetrics = resetRuntimeMetrics;
 }

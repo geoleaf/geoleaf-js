@@ -34,7 +34,9 @@ const LINE_TYPES = new Set(["LineString", "MultiLineString"]);
  * data-driven `styleRules` on a single layer rather than as two layers.
  */
 export function endpointsLayerId(layerId: string): string {
-    return `gl-route-${layerId}-endpoints`;
+    // No `gl-` here: the adapter prefixes every engine sub-layer id with it. Built
+    // `gl-route-…` until 3.20.6, the style read `gl-gl-route-<id>-endpoints-circle`.
+    return `route-${layerId}-endpoints`;
 }
 
 /** Maps an endpoint style to the adapter's circle-layer style bag. */
@@ -134,9 +136,37 @@ export function applyToLayer(
               ];
     if (endpoints.length === 0) return;
 
+    // Rank and visibility of the DECORATED layer. With no `zIndex` the adapter ranked the
+    // sub-layer 0 — under every GeoLeaf layer, so the layer's own points covered the coloured
+    // markers; the same rank puts it right above its layer (equal ranks stack in insertion
+    // order). And created visible over a hidden layer, it showed markers without a line.
+    const zIndex = adapter.getLayerRegistry?.()?.get?.(layerId)?.zIndex;
     adapter.addGeoJSONLayer(
         endpointsLayerId(layerId),
         { type: "FeatureCollection", features: endpoints },
-        toEndpointStyleOptions(cfg)
+        {
+            ...toEndpointStyleOptions(cfg),
+            ...(typeof zIndex === "number" && { zIndex }),
+            visible: Layers.isVisible(layerId),
+        }
     );
+}
+
+/**
+ * Shows or hides the endpoint sub-layer of `layerId` with its layer — wired on
+ * `geoleaf:layer:toggle`, which fires for every source (user, theme, zoom, system).
+ *
+ * @param adapter - The map adapter.
+ * @param layerId - The decorated layer whose visibility changed.
+ * @param visible - Its new visibility.
+ */
+export function followVisibility(
+    adapter: RouteMapAdapter,
+    layerId: string,
+    visible: boolean
+): void {
+    const id = endpointsLayerId(layerId);
+    if (!adapter.getLayerRegistry?.()?.get?.(id)) return;
+    if (visible) adapter.showLayer?.(id);
+    else adapter.hideLayer?.(id);
 }

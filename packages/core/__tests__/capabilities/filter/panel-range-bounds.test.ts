@@ -16,7 +16,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { renderFilterPanel } from "../../../src/capabilities/filter/panel/render.js";
 import { readActiveFilter } from "../../../src/capabilities/filter/panel/state.js";
 import {
-    resetPanelControls,
+    resetFilterControls,
     writePanelControls,
 } from "../../../src/capabilities/filter/panel/write.js";
 import { serializeActiveFilter } from "../../../src/capabilities/filter/serialize.js";
@@ -153,7 +153,7 @@ describe("a range filter that declares both bounds", () => {
         drag(sliders(p).min, 500);
         drag(sliders(p).max, 1500);
 
-        resetPanelControls(p);
+        resetFilterControls(p);
 
         expect(sliders(p).min?.value).toBe("0");
         expect(sliders(p).max?.value).toBe("3000");
@@ -196,7 +196,7 @@ describe("a range filter that declares nothing keeps its single slider", () => {
         drag(p.querySelector<HTMLInputElement>('input[type="range"]'), 500);
         expect(shown(p)).toEqual(["500"]);
 
-        resetPanelControls(p);
+        resetFilterControls(p);
 
         expect(shown(p)).toEqual(["0"]);
     });

@@ -6,6 +6,7 @@
  */
 
 import { isUnsafeKey } from "../../../utils/general/object-path-guard.js";
+import { ConfigStore } from "../storage.js";
 
 /** Minimal reader contract — satisfied by the Config ConfigStore. */
 interface ConfigReader {
@@ -50,12 +51,21 @@ function _modulesBag(target: Record<string, unknown>): Record<string, unknown> {
     return target.modules as Record<string, unknown>;
 }
 
+/** True when the value is a plain (non-array) object a block can be merged into or from. */
+function _isBlock(v: unknown): v is Record<string, unknown> {
+    return !!v && typeof v === "object" && !Array.isArray(v);
+}
+
 /**
- * Merges an incoming `modules` bag into `target.modules` entry by entry
- * (incoming entries override existing ones for the same module id, by
- * reference). A wholesale `target.modules = incoming` assignment would drop
- * bag entries owned by other plugins and declared elsewhere (e.g. in the
- * boot config when the incoming bag comes from a profile).
+ * Merges an incoming `modules` bag into `target.modules` entry by entry. A wholesale
+ * `target.modules = incoming` assignment would drop bag entries owned by other plugins and
+ * declared elsewhere (e.g. in the boot config when the incoming bag comes from a profile).
+ *
+ * For the same module id, the two blocks are DEEP-MERGED, the incoming values winning
+ * (`ConfigStore.deepMerge`; arrays and scalars replace). Until 3.20.5 the incoming block
+ * replaced the existing one whole: a profile writing `modules.branding = { position }` lost
+ * the application's `enabled`, and the capability switched off without a word. A block on
+ * one side only is taken as is.
  */
 export function mergeModulesBag(target: Record<string, unknown>, incoming: unknown): void {
     if (!target || typeof target !== "object" || Array.isArray(target)) return;
@@ -69,6 +79,8 @@ export function mergeModulesBag(target: Record<string, unknown>, incoming: unkno
         // Skip the entry rather than abort: a profile mixing a hostile id with real
         // ones still has to configure the real ones.
         if (isUnsafeKey(moduleId)) continue;
-        bag[moduleId] = value;
+        const existing = bag[moduleId];
+        bag[moduleId] =
+            _isBlock(existing) && _isBlock(value) ? ConfigStore.deepMerge(existing, value) : value;
     }
 }

@@ -121,15 +121,26 @@ function _createQrSection(url: string): HTMLElement {
     container.className = "gl-share-modal__qr-container";
     container.setAttribute("aria-live", "polite");
 
+    // ⚠️ The button is never `disabled` while loading, and the focus leaves it BEFORE it is
+    // hidden: a focused control that becomes disabled or hidden drops the focus to <body>,
+    // and the next tabs walked the page behind the modal. `aria-disabled` + a flag block a
+    // second click instead; once the code is drawn, the focus goes to the copy button.
+    let loading = false;
     const showQr = async () => {
-        showBtn.disabled = true;
+        if (loading) return;
+        loading = true;
+        showBtn.setAttribute("aria-disabled", "true");
         showBtn.textContent = getLabel("share.modal.qr_loading");
         try {
             const svg = await generateQrSvg(url);
             DOMSecurity.setSafeHTML(container, svg, QR_ALLOWED_TAGS);
+            if (document.activeElement === showBtn) {
+                section.parentElement?.querySelector<HTMLElement>(".gl-share-modal__copy")?.focus();
+            }
             showBtn.style.display = "none";
         } catch {
-            showBtn.disabled = false;
+            loading = false;
+            showBtn.removeAttribute("aria-disabled");
             showBtn.textContent = getLabel("share.modal.qr_failed");
         }
     };

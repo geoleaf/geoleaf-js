@@ -341,6 +341,32 @@ const registry = require("./lib/packages.cjs");
 const PLUGIN_FACTORY = "buildPublicApi";
 
 /**
+ * The one data constant a plugin facade may export: where its object is mounted, when the
+ * plugin adds a member to a CORE façade instead of owning a namespace (`offline-ui` →
+ * `"UI.CacheButton"`). Read at the AST by `verify-consumer-contract.cjs`; a string literal
+ * only — anything computed would be logic, and the gate could no longer read it.
+ */
+const PLUGIN_MOUNT_CONST = "PUBLIC_API_MOUNT";
+
+/** @returns {boolean} `stmt` is exactly `export const PUBLIC_API_MOUNT = "<literal>"`. */
+function isMountDeclaration(stmt) {
+    if (!ts.isVariableStatement(stmt)) return false;
+    const exported = (ts.getModifiers(stmt) || []).some(
+        (m) => m.kind === ts.SyntaxKind.ExportKeyword
+    );
+    if (!exported || !(stmt.declarationList.flags & ts.NodeFlags.Const)) return false;
+    const decls = stmt.declarationList.declarations;
+    if (decls.length !== 1) return false;
+    const d = decls[0];
+    return (
+        ts.isIdentifier(d.name) &&
+        d.name.text === PLUGIN_MOUNT_CONST &&
+        !!d.initializer &&
+        ts.isStringLiteral(d.initializer)
+    );
+}
+
+/**
  * @returns {string|null} reason the statement violates the plugin facade contract.
  * Everything outside the factory allowance falls through to the shared core grammar.
  */
@@ -367,6 +393,7 @@ function pluginViolationOf(stmt, ctx) {
         }
         return null;
     }
+    if (isMountDeclaration(stmt)) return null;
     return violationOf(stmt, ctx);
 }
 

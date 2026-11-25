@@ -283,6 +283,20 @@
             "confidence": "haute",
             "rationale": "96 LOC, 9 importeurs repartis sur adapters/, app/ et quatre sous-systemes du kernel — la cohesion E1 ne designe aucun dossier unique. Les types viennent de contracts/event-bus.contract.ts (gate check-contracts-pure) et ne sont ici que re-exportes l.22-37, donc le nom ne ment pas (N2)."
         },
+        "packages/core/src/kernel/events/map-ready.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Annonce geoleaf:map:ready une seule fois par carte : l'adaptateur (au load du moteur) et la révélation du boot l'appellent, le premier émet, le second se tait pour cette carte",
+            "confidence": "haute",
+            "rationale": "1 export, 2 importeurs (adapters/maplibre/maplibre-adapter.ts, app/init-reveal.ts) ; à côté du bus qu'elle emprunte ; un ensemble faible par carte et non un drapeau de page, plusieurs cartes pouvant coexister"
+        },
         "packages/core/src/kernel/events/facade.ts": {
             "kind": "file",
             "name": "ok",

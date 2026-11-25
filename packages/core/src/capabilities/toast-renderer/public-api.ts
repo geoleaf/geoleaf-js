@@ -60,7 +60,7 @@ export const Notifications = {
      * @param message - Text to display.
      * @param typeOrOptions - Notification type (`"info"` | `"success"` | `"warning"` | `"error"`) or options object.
      * @param duration - Auto-dismiss duration in ms (only when `typeOrOptions` is a string).
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      */
     notify(
         message: string,
@@ -81,7 +81,7 @@ export const Notifications = {
      * @param message - Text to display.
      * @param typeOrOptions - Notification type or options object.
      * @param duration - Auto-dismiss duration in ms (only when `typeOrOptions` is a string).
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      *
      * @example
      * GeoLeaf.Notifications.show("Feature is stale", { type: "warning" });
@@ -99,7 +99,7 @@ export const Notifications = {
      *
      * @param message - Text to display.
      * @param options - Optional duration (ms) or options object.
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      *
      * @example
      * Notifications.success("Sauvegarde réussie");
@@ -114,7 +114,7 @@ export const Notifications = {
      *
      * @param message - Text to display.
      * @param options - Optional duration (ms) or options object.
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      *
      * @example
      * Notifications.error("Erreur réseau", { persistent: true, dismissible: true });
@@ -128,7 +128,7 @@ export const Notifications = {
      *
      * @param message - Text to display.
      * @param options - Optional duration (ms) or options object.
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      *
      * @example
      * Notifications.warning("Connexion instable", { duration: 6000 });
@@ -142,7 +142,7 @@ export const Notifications = {
      *
      * @param message - Text to display.
      * @param options - Optional duration (ms) or options object.
-     * @returns The toast element (`null` if rejected, `undefined` if uninitialised).
+     * @returns The toast element (`null` if refused or waiting, `undefined` if nothing renders it).
      *
      * @example
      * Notifications.info("3 nouvelles alertes disponibles");

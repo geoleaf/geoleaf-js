@@ -52,6 +52,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { NO_OWN_NAMESPACE } from "../_helpers/no-own-namespace.js";
+import { EXPECTED_FACADE_KEYS } from "../../../../scripts/lib/namespace-surface.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, "../../../..");
@@ -390,10 +391,33 @@ describe("test-garde — le manifeste des fiches specs/plugins/ dit vrai", () =>
                         ),
                         `${fiche.id} est exempté dans NO_OWN_NAMESPACE alors que ${relEntry} MONTE une façade — retirer l'entrée`
                     ).toBe(false);
+                    // A `public-api.ts` is admitted on ONE condition: it declares a member the
+                    // plugin adds to a CORE façade (`PUBLIC_API_MOUNT`), named by the entry's
+                    // `mountsOn`. Its first segment must be a core façade key — a mount on a
+                    // name of its own would BE an own namespace, and the exemption would lie.
+                    const apiFile = path.join(pluginDir, "src/public-api.ts");
+                    if (!exempt.mountsOn) {
+                        expect(
+                            fs.existsSync(apiFile),
+                            `${fiche.id} est exempté alors qu'il porte un src/public-api.ts sans \`mountsOn\` — retirer l'entrée, ou déclarer le membre posé sur une façade du core`
+                        ).toBe(false);
+                        return;
+                    }
+                    const mount = /export const PUBLIC_API_MOUNT = "([^"]+)";/.exec(
+                        fs.existsSync(apiFile) ? fs.readFileSync(apiFile, "utf8") : ""
+                    )?.[1];
+                    expect(mount, `${fiche.id} : PUBLIC_API_MOUNT ≠ mountsOn`).toBe(
+                        exempt.mountsOn
+                    );
+                    const [head, ...rest] = exempt.mountsOn.split(".");
                     expect(
-                        fs.existsSync(path.join(pluginDir, "src/public-api.ts")),
-                        `${fiche.id} est exempté alors qu'il porte un src/public-api.ts — retirer l'entrée`
-                    ).toBe(false);
+                        EXPECTED_FACADE_KEYS,
+                        `${exempt.mountsOn} : tête hors des façades du core`
+                    ).toContain(head);
+                    expect(
+                        rest.length,
+                        `${exempt.mountsOn} : un membre SOUS une façade du core`
+                    ).toBeGreaterThan(0);
                 });
 
                 it("écrit `—` dans sa ligne `namespace`, et nomme la surface qu'il pilote", () => {

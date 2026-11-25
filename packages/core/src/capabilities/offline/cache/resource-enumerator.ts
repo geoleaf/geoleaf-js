@@ -67,11 +67,42 @@ interface ProfileLike {
         type?: string;
         configFile?: string;
         inlineConfig?: Record<string, unknown>;
+        /** `false` marks a legacy layer whose POIs need the profile's root `mapping.json`. */
+        normalized?: boolean;
     }>;
     /** Resolved from `Files.modules.taxonomy` by loadProfileConfig — never inlined. */
     icons?: { spriteUrl?: string };
     Files?: Record<string, unknown>;
     bundleFile?: string;
+    /** Profile format version — `>= 1.2` marks a modular profile even without `Files`. */
+    version?: unknown;
+}
+
+/**
+ * Whether the profile is MODULAR — the same rule as `ProfileLoader.isModularProfile`
+ * (kernel/config/profile-loader.ts): a `Files` object, or a `version` of 1.2 or later.
+ *
+ * Restated here because a capability may not import deep under `kernel/**`; the
+ * enumerator's test suite locks the two predicates together, case by case.
+ */
+function _isModularProfile(profile: ProfileLike): boolean {
+    if (profile.Files && typeof profile.Files === "object") return true;
+    if (!profile.version) return false;
+    const match = /^(\d+)\.(\d+)/.exec(String(profile.version));
+    if (!match) return false;
+    const major = Number.parseInt(match[1] ?? "", 10);
+    const minor = Number.parseInt(match[2] ?? "", 10);
+    return major > 1 || (major === 1 && minor >= 2);
+}
+
+/**
+ * Whether the runtime loader would fetch `<profile>/mapping.json` for this profile: only a
+ * LEGACY profile with a `normalized: false` layer (kernel/config/profile.ts). A modular
+ * profile declares its mapping in `Files.mappingFile`, already cached with the manifest.
+ */
+function _requiresRootMapping(profile: ProfileLike): boolean {
+    if (_isModularProfile(profile) || !Array.isArray(profile.layers)) return false;
+    return profile.layers.some((layer) => layer?.normalized === false);
 }
 
 /** The zone a preparation trace records — the vector download zone, or `null`. */
@@ -312,7 +343,9 @@ const ResourceEnumerator = {
      * Adds configuration resources: profile.json, the pre-built bundle when
      * declared, and every file referenced by the Files manifest (sections +
      * plugin configs, profile layout v2). Paths are never assumed — they come
-     * from the manifest, so legacy and v2 layouts are both covered.
+     * from the manifest, so legacy and v2 layouts are both covered. The root
+     * `mapping.json` is added only when the runtime loader would fetch it: a
+     * legacy profile with a `normalized: false` layer.
      * @private
      */
     _addConfigResources(
@@ -350,8 +383,10 @@ const ResourceEnumerator = {
             }
         }
 
-        // Legacy profiles only: mapping.json at the profile root.
-        pushConfig("mapping.json", true);
+        // Root mapping.json: only where the runtime loader asks for it (legacy profile with
+        // a `normalized: false` layer). Requested unconditionally, it cost every modular
+        // profile a retried 404 and console errors on each preparation.
+        if (_requiresRootMapping(profile)) pushConfig("mapping.json", true);
     },
 
     /**

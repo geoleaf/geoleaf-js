@@ -5,11 +5,25 @@
 
 ---
 
-## This plugin has no API of its own
+## This plugin has no namespace of its own
 
-`@geoleaf-plugins/offline-ui` mounts **no namespace** and exports no function. It is an
-interface: loading it registers a toolbar button, a window and six dictionaries, and nothing is
-called on it afterwards.
+`@geoleaf-plugins/offline-ui` mounts **no namespace**. It is an interface: loading it registers
+a toolbar button, a window and six dictionaries. It adds a single public member to the core's
+`UI` façade.
+
+### `GeoLeaf.UI.CacheButton.openModal()`
+
+Opens the offline preparation window: the same call as the toolbar action, for a host that
+offers its own button.
+
+```js
+document.querySelector("#my-offline-button").addEventListener("click", () => {
+    GeoLeaf.UI.CacheButton.openModal();
+});
+```
+
+The other members of `GeoLeaf.UI.CacheButton` (`init`, `closeModal`, `Modules`) are wiring for
+the core and are not part of the contract.
 
 `GeoLeaf.Storage`, which earlier versions of this page documented as the plugin's namespace, is a
 facade of **`@geoleaf/core`**. It exists without this plugin, and its reference is the core's:

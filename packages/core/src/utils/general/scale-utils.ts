@@ -33,12 +33,17 @@ const _scaleCache: ScaleCache = {
 };
 
 /**
- * Metres covered by one screen pixel at zoom 0, on the equator (Web Mercator):
- * the exact `2·π·6_378_137 / 256`. Kept exact (was rounded to `156543.04`) so this module
- * is the single, most-precise source of the scale math — the scale control consumed a
- * private copy of this constant before S6 and now imports {@link scaleAtZoom} instead.
+ * Metres covered by one screen pixel at zoom 0, on the equator (Web Mercator), for MapLibre's
+ * zoom: the exact `2·π·6_378_137 / 512`. MapLibre's zoom levels follow **512-px** tiles.
+ *
+ * ⚠️ Until 3.20.5 this was `2·π·6_378_137 / 256` — the 256-px convention of raster tile
+ * servers — and every scale denominator came out TWICE the scale actually drawn: the scale
+ * control read « 1:2 000 000 » over a 1:1 000 000 map (measured at six zooms, ratio 2.00),
+ * and the `minScale` / `maxScale` bounds of the layers switched one zoom level away from what
+ * their figure said. Single source of the scale math: the scale control imports
+ * {@link scaleAtZoom} rather than carrying a copy of this constant.
  */
-const METERS_PER_PIXEL_AT_ZOOM_0 = 156543.03392;
+const METERS_PER_PIXEL_AT_ZOOM_0 = 78271.51696;
 const METERS_PER_INCH = 0.0254;
 const DPI = 96;
 

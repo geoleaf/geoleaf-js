@@ -50,6 +50,10 @@ const Branding: BrandingControl = {
                 throw new Error("A map instance is required.");
             }
 
+            // Idempotent: a second `init()` (the public API exposes it) replaces the overlay
+            // instead of stacking another one on top — same rule as coordinates.
+            if (this._controlHandle) this.destroy();
+
             this._map = map;
             this._options = Object.assign({}, this._options, options);
 

@@ -21,7 +21,7 @@
  * seam, which is the single writer of the layer filter.
  */
 
-import { expandCategorySelection, getCategoryTree } from "./engine/options.js";
+import { expandCategorySelection, getCategoryTree, isTaxonomyAvailable } from "./engine/options.js";
 import type { ActiveField } from "./engine/types.js";
 import type { FilterConfig } from "./types.js";
 import type { FieldOptions, OptionsByField } from "./panel/render.js";
@@ -56,7 +56,10 @@ export function resolveFieldOptions(config: FilterConfig): OptionsByField {
     const out: OptionsByField = {};
     for (const field of config.fields ?? []) {
         if (field.kind === "taxonomy") {
-            out[field.id] = { categories: getCategoryTree(field.taxonomyRef) };
+            // No taxonomy capability: no `categories` key at all, and the field keeps silent.
+            out[field.id] = isTaxonomyAvailable()
+                ? { categories: getCategoryTree(field.taxonomyRef) }
+                : {};
         } else if (field.kind === "tag" && Array.isArray(field.options)) {
             const values: FieldOptions["values"] = field.options.map((v) => ({ value: v }));
             out[field.id] = { values };

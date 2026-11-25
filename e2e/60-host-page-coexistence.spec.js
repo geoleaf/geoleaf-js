@@ -217,3 +217,64 @@ for (const [name, viewport] of /** @type {const} */ ([
         }
     });
 }
+
+/**
+ * Opens the editor's field form the way the placement callback does, at the map's centre.
+ * @param {import("@playwright/test").Page} page
+ */
+async function openEditorForm(page) {
+    await page.evaluate(() => /** @type {any} */ (window).GeoLeaf.plugins.load("editor"));
+    await page.waitForFunction(
+        () => typeof (/** @type {any} */ (window).GeoLeaf?.Editor?.AddForm) === "object",
+        null,
+        { timeout: 15_000 }
+    );
+    await page.evaluate(() => {
+        const G = /** @type {any} */ (window).GeoLeaf;
+        const { lat, lng } = G.Core.getMap().getNativeMap().getCenter();
+        return G.Editor.AddForm.openAddForm({ lat, lng });
+    });
+    await expect(page.locator(".gl-form-modal-panel")).toBeVisible({ timeout: 10_000 });
+}
+
+// A host opens its own dialog FROM the field form — a many2one's "Search more", a confirmation.
+// The form is a GeoLeaf window, and a window stays under the host's dialogs like every other
+// surface. The boot-time sweep above never had the form open: this one does.
+for (const [name, viewport] of /** @type {const} */ ([
+    ["desktop", { width: 1400, height: 900 }],
+    ["mobile", { width: 390, height: 800 }],
+])) {
+    test(`a host dialog at 1055 covers the editor's open field form — ${name}`, async ({
+        page,
+    }) => {
+        await page.setViewportSize(viewport);
+        await bootMapUntilLoaded(page);
+        await openEditorForm(page);
+        expect(await surfacesOverHostDialog(page), "field form open").toEqual([]);
+    });
+}
+
+// 🛑 THE STACKING IS NOT THE WHOLE CONTRACT. The form's focus trap listens on `document`: with a
+// host dialog opened over the form and holding the focus, Escape is the HOST's key — it closes the
+// host's dialog, and must not also close (or ask to discard) the GeoLeaf form under it.
+test("Escape in a host dialog over the field form leaves the form open", async ({ page }) => {
+    await bootMapUntilLoaded(page);
+    await openEditorForm(page);
+    await page.evaluate(() => {
+        const dialog = document.createElement("div");
+        dialog.id = "host-dialog-probe";
+        dialog.setAttribute("role", "dialog");
+        Object.assign(dialog.style, { position: "fixed", inset: "0", zIndex: "1055" });
+        const button = document.createElement("button");
+        button.textContent = "host";
+        dialog.appendChild(button);
+        document.body.appendChild(dialog);
+        button.focus();
+    });
+    await expect(page.locator("#host-dialog-probe button")).toBeFocused();
+    await page.keyboard.press("Escape");
+    // Let a discard confirmation, if any, be created before judging.
+    await page.waitForTimeout(300);
+    await expect(page.locator(".gl-form-modal-panel")).toHaveCount(1);
+    await expect(page.locator(".gl-form-modal-panel")).toBeVisible();
+});

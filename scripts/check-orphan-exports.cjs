@@ -580,6 +580,16 @@ const ALLOWLIST = {
     // protocol lives as long as the page — so no production caller will ever appear.
     "adapters/maplibre/maplibre-pmtiles.ts": ["_resetPmtilesProtocolForTests"],
 
+    // ── A closed list exported FOR ITS GUARD, which holds it equal to the full manifest ──
+    //
+    // `IN_CORE_CAPABILITY_IDS` is read in production by its own module only
+    // (`declareConfiguredAbsences`). It is kept as strings, not derived from the manifest,
+    // because importing the manifest would pull every installer into every bundle. Its
+    // consumer is `__tests__/api/configured-absences.test.ts`, which compares it with the
+    // manifest in both directions: without the export, a capability added to the manifest
+    // and forgotten here would never be declared absent, and nothing would say so.
+    "kernel/api/configured-absences.ts": ["IN_CORE_CAPABILITY_IDS"],
+
     // ── The terrain put on by the SELECTION of its basemap: its primitives, kept for the harness ──
     //
     // `activateTerrain`, `deactivateTerrain`, `isTerrainActive` and `resolveTerrainConfig` had

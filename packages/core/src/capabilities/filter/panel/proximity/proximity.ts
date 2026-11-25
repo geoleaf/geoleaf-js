@@ -25,8 +25,11 @@ import { activateGPSMode, hasRecentGPS } from "./proximity-gps-mode.js";
 import { activateManualMode } from "./proximity-manual-mode.js";
 import {
     cleanupMapElements,
+    clearToolbarWrapper,
     deactivatePanel,
     resetProximity as _resetProximity,
+    TOOLBAR_ARMED_ATTR,
+    TOOLBAR_WRAPPER_ID,
 } from "./proximity-deactivation.js";
 import { kmToMetres } from "../../units.js";
 
@@ -261,15 +264,16 @@ FilterPanelProximity.toggleProximityToolbar = function (
     const effectiveRadius = ProximityState.pendingRadius ?? effectiveDefaultRadius;
 
     // Virtual wrapper the filter engine can read, standing in for the panel DOM
-    let wrapper = document.getElementById("gl-proximity-toolbar-wrapper");
+    let wrapper = document.getElementById(TOOLBAR_WRAPPER_ID);
     if (!wrapper) {
         wrapper = document.createElement("div");
-        wrapper.id = "gl-proximity-toolbar-wrapper";
+        wrapper.id = TOOLBAR_WRAPPER_ID;
         wrapper.setAttribute("data-gl-filter-id", "proximity");
         wrapper.style.display = "none";
         document.body.appendChild(wrapper);
     }
     wrapper.setAttribute("data-proximity-radius", String(effectiveRadius));
+    wrapper.toggleAttribute(TOOLBAR_ARMED_ATTR, ProximityState.mode);
 
     if (ProximityState.mode) {
         if (hasRecentGPS()) {
@@ -286,12 +290,7 @@ FilterPanelProximity.toggleProximityToolbar = function (
         // Toolbar deactivation
         ProximityState.pendingRadius = null;
         cleanupMapElements(map);
-        const existingWrapper = document.getElementById("gl-proximity-toolbar-wrapper");
-        if (existingWrapper) {
-            existingWrapper.removeAttribute("data-proximity-active");
-            existingWrapper.removeAttribute("data-proximity-lat");
-            existingWrapper.removeAttribute("data-proximity-lng");
-        }
+        clearToolbarWrapper();
         Log.info("[GeoLeaf.Toolbar] Proximity disabled");
     }
 

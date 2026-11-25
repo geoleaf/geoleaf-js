@@ -4,8 +4,8 @@ title: editor — le plugin d'édition UNIQUE : géométries, capture de POI, pe
 plugin_id: editor
 package: "@geoleaf-plugins/editor"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: 8015a41a7
+date: 25 novembre 2026
 ---
 
 # editor — le plugin d'édition UNIQUE

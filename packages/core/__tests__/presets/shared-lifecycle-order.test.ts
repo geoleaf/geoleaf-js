@@ -181,6 +181,14 @@ async function run(installers: readonly unknown[], cfg: Record<string, unknown>)
         _OfflineDetector,
     };
 
+    // Pass 1 of the real boot: every installer's declaration is registered before any
+    // lifecycle runs. The offline installer reads `pwa`'s PRESENCE from it.
+    for (const inst of installers) {
+        const decl = (inst as { declaration?: Parameters<typeof CapabilityRegistry.register>[0] })
+            .declaration;
+        if (decl) CapabilityRegistry.register(decl);
+    }
+
     // Wrapper: traces WHO ran, without changing what the installer does.
     const traced = installers.map((inst) => {
         const i = inst as { declaration?: { id?: string }; sharedLifecycle?: (c: unknown) => void };

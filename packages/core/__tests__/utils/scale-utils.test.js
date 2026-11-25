@@ -7,6 +7,7 @@ import {
     calculateMapScale,
     isScaleInRange,
     scaleToZoom,
+    scaleAtZoom,
     clearScaleCache,
 } from "../../src/utils/general/scale-utils.js";
 
@@ -41,6 +42,27 @@ describe("scale-utils", () => {
     // scaleToZoom is what lets the ENGINE carry a constraint the profile expresses in the
     // user's unit (scale denominators). It must be the exact inverse of calculateMapScale:
     // if the two drift, layers hide at the wrong zoom — the N-1 failure mode all over again.
+    // The scale displayed must be the scale DRAWN. Judged against MapLibre's own definition of a
+    // pixel's ground size — 512-px tiles: circumference × cos(lat) / 2^(zoom + 9) — never against
+    // this module's formula, which is the thing under test. Until 3.20.5 the module used the
+    // 256-px convention: every denominator was twice the truth (ratio 2.00 measured in a browser
+    // at six zooms, by unprojecting two screen points), and these cases are red on that code.
+    describe("scaleAtZoom — the scale actually drawn by MapLibre", () => {
+        const CIRCUMFERENCE = 40075016.686;
+        const drawn = (zoom, lat) =>
+            ((CIRCUMFERENCE * Math.cos((lat * Math.PI) / 180)) / 2 ** (zoom + 9)) * (96 / 0.0254);
+
+        it("ratio displayed / drawn is 1.00 at the six zooms of the recipe", () => {
+            for (const lat of [0, -32.95, 46.2]) {
+                for (const zoom of [0, 5, 10, 14, 17, 22]) {
+                    const ratio = scaleAtZoom(zoom, lat) / drawn(zoom, lat);
+                    expect(ratio).toBeGreaterThan(0.99);
+                    expect(ratio).toBeLessThan(1.01);
+                }
+            }
+        });
+    });
+
     describe("scaleToZoom", () => {
         beforeEach(() => clearScaleCache());
 
@@ -64,9 +86,12 @@ describe("scale-utils", () => {
 
         it("maps the real guyane bounds back to their intended zooms", () => {
             // profiles/guyane-biodiversite (lat ~4°N) — the values N-1 converted.
-            expect(scaleToZoom(9222148, 4)).toBeCloseTo(6, 2);
-            expect(scaleToZoom(2252, 4)).toBeCloseTo(18, 2);
-            expect(scaleToZoom(18444296, 4)).toBeCloseTo(5, 2);
+            // Denominators of the TRUE scale (MapLibre zooms follow 512-px tiles). Until 3.20.5 the
+            // scale math used the 256-px convention and doubled every denominator: the same intended
+            // zooms (6 → 18, 5) were then written 9222148 / 2252 / 18444296.
+            expect(scaleToZoom(4611074, 4)).toBeCloseTo(6, 2);
+            expect(scaleToZoom(1126, 4)).toBeCloseTo(18, 2);
+            expect(scaleToZoom(9222148, 4)).toBeCloseTo(5, 2);
         });
 
         it("depends on latitude, not on zoom", () => {
@@ -81,7 +106,7 @@ describe("scale-utils", () => {
         });
 
         it("preserves order: a larger denominator yields a lower zoom", () => {
-            expect(scaleToZoom(9222148, 4)).toBeLessThan(scaleToZoom(2252, 4));
+            expect(scaleToZoom(4611074, 4)).toBeLessThan(scaleToZoom(1126, 4));
         });
 
         it("returns null for a disabled or invalid bound", () => {

@@ -37,6 +37,8 @@ export interface MobileToolbarOptions {
     showGeolocation?: boolean;
     showThemeSelector?: boolean;
     showFilterPanel?: boolean;
+    /** Proximity button; drawn unless `false`. The shell sets it from the filter capability. */
+    showProximity?: boolean;
     showLayerManager?: boolean;
     showLegend?: boolean;
 }

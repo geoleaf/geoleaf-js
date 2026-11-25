@@ -15,6 +15,11 @@
  * - `onUnavailable(cb)` subscribes, and **replays** what is already recorded — subscribing
  *   after `GeoLeaf.boot()` therefore loses nothing.
  *
+ * What the core itself declares: at boot, every in-core capability that the merged
+ * configuration names (`modules.<id>`, not `enabled: false`) and the bundle does not embark;
+ * and a capability asked for at run time that nothing provides (`offline`, for one). A plugin
+ * capability is never declared absent at boot — it may still register later.
+ *
  * @remarks
  * **Thin re-export** — no inline logic (pattern A, enforced by
  * `scripts/check-facade-purity.cjs`). The bus, and the measurement explaining why it is a

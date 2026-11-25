@@ -4,8 +4,8 @@ title: offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contie
 plugin_id: offline-ui
 package: "@geoleaf-plugins/offline-ui"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: c7423a1ec
-date: 19 novembre 2026
+verifie_contre: e154092aa
+date: 25 novembre 2026
 ---
 
 # offline-ui — l'interface du hors-ligne, sur un moteur qu'elle ne contient pas
@@ -216,7 +216,18 @@ avoir corrigé, voir §La seule voie.
 
 **Ce que le plugin expose tout de même** : des **types**, ré-exportés par son entrée. Et
 `GeoLeaf.UI.CacheButton`, écrit par son module de bouton et relu par son enregistrement de barre
-d'outils — un aller-retour **interne**, pas une API publique.
+d'outils, dont **un** membre est public depuis la 1.7.4 : `openModal()`, qu'un hôte appelle
+depuis son propre bouton. Ce membre, et lui seul, est déclaré dans `src/public-api.ts` avec son
+point de montage (`PUBLIC_API_MOUNT = "UI.CacheButton"`), une clé de la façade `UI` du **core** :
+le plugin ne s'approprie toujours aucun namespace. L'objet monté étale `buildPublicApi()`, si bien
+que la déclaration et le montage ne peuvent pas diverger, et `src/__tests__/public-api.test.ts` le
+vérifie. `init`, `closeModal` et `Modules` restent du câblage pour le core. C'est ce qui permet à
+un manifeste consommateur de déclarer `provider: "plugin:offline-ui"`, `path:
+"UI.CacheButton.openModal"`, que la gate du contrat inverse résout contre ce point de montage.
+
+⚠️ L'exemption `NO_OWN_NAMESPACE` porte donc un champ `mountsOn` : un plugin exempté n'admet un
+`public-api.ts` que si son `PUBLIC_API_MOUNT` vaut ce champ, et que sa tête est une façade du core.
+Ce n'est pas la coquille refusée plus haut : le fichier déclare un membre réellement posé.
 
 ---
 

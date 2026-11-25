@@ -19,9 +19,10 @@
  */
 
 import { getRouteConfig } from "./config.js";
-import { applyToLayer, clearEndpoints } from "./apply.js";
+import { applyToLayer, clearEndpoints, followVisibility } from "./apply.js";
 import type { RouteMapAdapter } from "./types.js";
 import { Core } from "../../api/geoleaf.core.js";
+import { whenAppReady } from "../../kernel/shared/index.js";
 
 /** Detail payload of `geoleaf:layer:added` (mirrors the core contract). */
 interface LayerAddedDetail {
@@ -57,6 +58,14 @@ function onLayerAdded(e: Event): void {
 }
 
 /** Re-applies endpoint markers across every currently-registered layer. */
+/** `geoleaf:layer:toggle` — the endpoint markers follow their layer's visibility. */
+function onLayerToggle(e: Event): void {
+    const detail = (e as CustomEvent<{ layerId?: string; visible?: boolean }>).detail;
+    if (!detail || typeof detail.layerId !== "string") return;
+    const adapter = getAdapter();
+    if (adapter) followVisibility(adapter, detail.layerId, detail.visible === true);
+}
+
 function sweep(): void {
     const config = getRouteConfig();
     if (!config.enabled) return;
@@ -77,7 +86,15 @@ export const RouteLifecycle = {
         if (_started || typeof document === "undefined") return;
         _started = true;
         document.addEventListener("geoleaf:layer:added", onLayerAdded);
+        document.addEventListener("geoleaf:layer:toggle", onLayerToggle);
         document.addEventListener("geoleaf:map:ready", sweep);
+        // ⚠️ The sweep that decorates the boot's layers is THIS one. `geoleaf:map:ready` fires on
+        // the engine's `load`, before the layers are loaded, and the `layer:added` path runs
+        // before the layer's features reach the store. Until 3.20.6 the boot dispatched
+        // `geoleaf:map:ready` a second time at the reveal, and that duplicate is what decorated
+        // the layers; announced once per map since, the route lost its markers — measured, no
+        // spec covered it. `geoleaf:app:ready` comes after every layer of the boot.
+        whenAppReady(sweep);
     },
 
     /** Detaches listeners and clears derived endpoint layers (destroy / test). */
@@ -88,7 +105,9 @@ export const RouteLifecycle = {
         try {
             if (typeof document !== "undefined") {
                 document.removeEventListener("geoleaf:layer:added", onLayerAdded);
+                document.removeEventListener("geoleaf:layer:toggle", onLayerToggle);
                 document.removeEventListener("geoleaf:map:ready", sweep);
+                document.removeEventListener("geoleaf:app:ready", sweep);
             }
             const adapter = getAdapter();
             const registry = adapter?.getLayerRegistry?.();

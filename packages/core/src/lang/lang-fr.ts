@@ -28,6 +28,8 @@ const lang_fr: LangDict = {
     "toast.init.loading": "Chargement des donn\u00e9es\u2026",
     "toast.layer.truncated.known":
         "{0} : {1} entit\u00e9s affich\u00e9es sur {2} \u2014 la couche est tronqu\u00e9e.",
+    "toast.layer.style_missing":
+        "Style par d\u00e9faut introuvable pour « {0} » : affichage en style neutre.",
     "toast.layer.truncated.unknown":
         "{0} : {1} entit\u00e9s affich\u00e9es, la couche en contient davantage.",
     "toast.theme.applied":
@@ -117,7 +119,7 @@ const lang_fr: LangDict = {
     "pwa.ios.close": "Fermer",
     "pwa.ios.instructions_pre": "Appuyez sur l'icône ",
     "pwa.ios.instructions_mid": " de partage, puis sélectionnez ",
-    "pwa.ios.home_screen": "« Sur l'écran d'accueil »",
+    "pwa.ios.home_screen": "« Sur l'écran d'accueil »",
     "pwa.ios.aria": "Ajouter {0} à l'écran d'accueil",
 
     // ── Aria / Search bar ────────────────────────────────────────────────────
@@ -229,8 +231,9 @@ const lang_fr: LangDict = {
     "ui.filter_panel.range_max": "Maximum",
     "ui.filter_panel.categories_title_fallback": "Afficher les cat\u00e9gories",
     "ui.filter_panel.tags_title_fallback": "Afficher les tags",
-    "ui.filter_panel.no_categories": "Aucune cat\u00e9gorie disponible sur les layers visibles",
-    "ui.filter_panel.no_tags": "Aucun tag disponible sur les layers visibles",
+    "ui.filter_panel.no_categories": "Aucune cat\u00e9gorie disponible sur les couches visibles",
+    "ui.filter_panel.no_tags": "Aucun tag disponible sur les couches visibles",
+    "ui.filter_panel.expand": "D\u00e9plier",
     "ui.filter_panel.no_match": "Aucune entit\u00e9 ne correspond aux filtres",
     "ui.filter_panel.loading": "Chargement...",
 
@@ -257,8 +260,10 @@ const lang_fr: LangDict = {
     "ui.sync.pending_one": "1 en attente",
     "ui.sync.pending_many": "{0} en attente",
     "ui.sync.all_sent": "Tout est envoyé",
+    "ui.sync.none_pending": "Rien en attente",
     "ui.sync.quarantined": "{0} bloquée(s)",
     "ui.sync.session_required": "connexion requise",
+    "ui.sync.retry_scheduled": "nouvel essai programmé",
     "ui.sync.last_never": "jamais synchronisé",
     "ui.sync.last_at": "synchro {0}",
     "ui.sync.unit_day": "{0} j",

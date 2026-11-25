@@ -18,6 +18,8 @@ import {
     LoaderSingleLayer,
     setupSingleLayerDeps,
 } from "../../src/kernel/geojson/loader/single-layer.js";
+import { CapabilityRegistry } from "../../src/kernel/api/capability-registry.js";
+import { CLUSTER_CAPABILITY } from "../../src/capabilities/cluster/cluster-capability.js";
 
 const warn = vi.hoisted(() => vi.fn());
 vi.mock("../../src/utils/general/di-accessors.js", () => ({
@@ -99,10 +101,14 @@ describe("geojson/loader — avertissement volume non clusterisé (P-1)", () => 
             getNativeMap: () => state.map,
         };
         globalThis.GeoLeaf = { Config: { get: () => null, getActiveProfileId: () => null } };
+        // The cluster capability is embarked and on unless a case says otherwise.
+        CapabilityRegistry._reset();
+        CapabilityRegistry.register(CLUSTER_CAPABILITY);
     });
 
     afterEach(() => {
         globalThis.GeoLeaf = undefined;
+        CapabilityRegistry._reset();
     });
 
     const volumeWarnings = () =>
@@ -136,6 +142,30 @@ describe("geojson/loader — avertissement volume non clusterisé (P-1)", () => 
     it("reste muet quand la couche EST clusterisée — c'est déjà la parade", async () => {
         await load(5000, { shouldCluster: true });
         expect(volumeWarnings()).toHaveLength(0);
+    });
+
+    // The advice named a fix that could not work: without the cluster capability — absent from
+    // the bundle, or switched off — « enable clustering for this layer » changes nothing, and the
+    // profile measured in the recipe already carried both keys it suggested.
+    it("capacité absente du bundle : le message le dit, et ne conseille pas une clé inopérante", async () => {
+        CapabilityRegistry._reset();
+        await load(1001);
+        const message = volumeWarnings()[0][0];
+        expect(message).toMatch(/cluster capability is not in this bundle/);
+        expect(message).not.toContain("clustering: { enabled: true }");
+    });
+
+    it("capacité éteinte : le message nomme `modules.cluster.enabled`", async () => {
+        globalThis.GeoLeaf = {
+            Config: {
+                get: (k) => (k === "modules.cluster.enabled" ? false : null),
+                getActiveProfileId: () => null,
+            },
+        };
+        await load(1001);
+        const message = volumeWarnings()[0][0];
+        expect(message).toContain("modules.cluster.enabled");
+        expect(message).not.toContain("clustering: { enabled: true }");
     });
 
     it("ignore les polygones : le clustering ne vise que les points", async () => {

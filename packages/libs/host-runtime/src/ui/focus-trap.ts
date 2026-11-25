@@ -43,6 +43,35 @@ const FOCUSABLE_SELECTOR =
     'textarea:not([disabled]),[tabindex]:not([tabindex="-1"]),[contenteditable="true"]';
 
 /**
+ * What GeoLeaf draws: its own classes and ids, and the engine's map element it mounts in.
+ */
+const GEOLEAF_OWNED = '[class^="gl-"],[class*=" gl-"],[id^="gl-"],.maplibregl-map';
+
+/**
+ * True when a key event was aimed at the HOST, not at GeoLeaf.
+ *
+ * 🛑 The listener sits on `document`, so it hears every key of the page. A host that opens its
+ * own dialog over a GeoLeaf window (a "Search more" from a field, a confirmation) holds the focus
+ * in that dialog, and its Escape is the host's: heard here too, it also closed — or asked to
+ * discard — the GeoLeaf form under it. Stacking the window under the host's dialogs did not
+ * settle that; this does. A key from the page body (nothing focused) or from anything GeoLeaf
+ * draws is still ours, so Escape keeps closing a window whose focus was lost to the map.
+ */
+function isAimedAtHost(container: HTMLElement, target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false;
+    if (container.contains(target)) return false;
+    const { body, documentElement } = document;
+    if (target === body || target === documentElement) return false;
+    // ⚠️ The walk stops BELOW <body>: the core writes its theme class on the host's body
+    // (`gl-theme-dark`), so `closest()` would find a "GeoLeaf" ancestor for every element of
+    // the page — the host's dialog included. Seen in the delivered bundle, Escape still closing.
+    for (let el: Element | null = target; el && el !== body; el = el.parentElement) {
+        if (el.matches(GEOLEAF_OWNED)) return false;
+    }
+    return true;
+}
+
+/**
  * A keyboard focus trap that can be switched on and off.
  *
  * While active, Tab and Shift+Tab cycle within the container and Escape fires the configured
@@ -56,7 +85,9 @@ export interface FocusTrap {
 
 /**
  * Traps keyboard focus within `container`.
- * Tab / Shift+Tab cycle through focusable children; Escape fires `onEscape`.
+ * Tab / Shift+Tab cycle through focusable children; Escape fires `onEscape`. A key whose target
+ * is a host element outside the container and outside anything GeoLeaf draws — a host dialog
+ * opened over this one — is left to the host.
  */
 export function createFocusTrap(container: HTMLElement, onEscape?: () => void): FocusTrap {
     let previousFocus: Element | null = null;
@@ -68,6 +99,7 @@ export function createFocusTrap(container: HTMLElement, onEscape?: () => void): 
     }
 
     function onKeyDown(e: KeyboardEvent): void {
+        if (isAimedAtHost(container, e.target)) return;
         if (e.key === "Escape") {
             e.preventDefault();
             onEscape?.();

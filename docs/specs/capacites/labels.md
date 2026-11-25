@@ -4,8 +4,8 @@ title: labels — les étiquettes de texte par couche
 capability_id: labels
 package: "@geoleaf/core"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: b8058dab8
-date: 7 octobre 2026
+verifie_contre: e29c1f263
+date: 23 novembre 2026
 ---
 
 # labels — les étiquettes de texte par couche
@@ -121,19 +121,15 @@ C'est la nuance qui compte pour un intégrateur, et elle n'est pas dans la table
 | **Configuration d'étiquette, par couche** | Clé `label` du fichier de **style de couche** — à défaut, bloc `labels` de la **configuration de couche** (3.7.0), même objet | Si CETTE couche est étiquetée, et à quoi ça ressemble                                                 |
 
 Un profil qui laisse `modules.labels` absent obtient la capacité, et **aucune étiquette** tant
-qu'aucun style ni aucune configuration de couche ne porte `enabled: true`. 🛑 **L'inverse n'éteint PAS tout, et cette ligne l'a affirmé.** Avec `modules.labels.enabled: false`,
-seul le cycle de vie du module est court-circuité — le seam du bouton 🏷️ et le rattrapage des
-couches déjà rendues. Le namespace, lui, est monté **sans condition** à la passe 1 des installeurs,
-et c'est par lui que le chargeur GeoJSON atteint `initializeLayerLabels` (dépendance injectée
-`getLabels()`, qui relit `GeoLeaf.Labels`) — le chargeur de tuiles vectorielles aussi, en lisant
-`GeoLeaf.Labels` directement. Les étiquettes continuent donc d'être peintes, et le
-bouton finit par apparaître dès qu'un changement de visibilité, de style ou de thème appelle
-`syncImmediate` — qui crée le bouton s'il manque. Rien dans le core ne lit `Labels.isEnabled()` :
-
-```bash
-grep -rn "getLabels\b" packages/core/src --include=*.ts
-grep -rn "isEnabled()" packages/core/src --include=*.ts | grep -i label
-```
+qu'aucun style ni aucune configuration de couche ne porte `enabled: true`. **L'inverse éteint tout, depuis 3.20.6.** Avec `modules.labels.enabled: false`, le cycle de vie
+du module est court-circuité (le seam du bouton 🏷️ et le rattrapage des couches déjà rendues), et
+les deux entrées par lesquelles le noyau atteint la capacité refusent aussi :
+`initializeLayerLabels` ne construit rien, `syncImmediate` ne crée aucun bouton. Le namespace,
+lui, reste monté **sans condition** à la passe 1 des installeurs : c'est par lui que le chargeur
+GeoJSON (dépendance injectée `getLabels()`) et celui des tuiles vectorielles atteignent
+`initializeLayerLabels`, et c'est pourquoi l'interrupteur se tient à cette entrée-là. 🛑 Jusqu'en
+3.20.5 il ne tenait qu'au cycle de vie : les étiquettes restaient peintes, et le bouton
+réapparaissait au premier changement de visibilité, de style ou de thème.
 
 Les clés lues dans le style de couche :
 

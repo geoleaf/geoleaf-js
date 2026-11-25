@@ -66,6 +66,7 @@ import { OFFLINE_CAPABILITY } from "./offline-capability.js";
 import { Sync } from "../../api/geoleaf.sync.js";
 import { OfflineLifecycle } from "./lifecycle.js";
 import { asObject } from "../../utils/general/type-guards.js";
+import { CapabilityRegistry } from "../../kernel/api/index.js";
 
 /** Self-sufficient installer for the Offline capability (IndexedDB engine, loaded on demand). */
 export const OFFLINE_INSTALLER: CapabilityInstaller = {
@@ -95,6 +96,10 @@ export const OFFLINE_INSTALLER: CapabilityInstaller = {
             {
                 enabled: offlineCfg.enabled === true,
                 pwaEnabled: pwaCfg.enabled === true,
+                // Presence, not configuration: a declaration is registered only for a
+                // capability the bundle embarks. `modules.pwa.enabled` alone answered `true`
+                // for a hand-written manifest that left `pwa` out.
+                pwaEmbarked: CapabilityRegistry.getSchema("pwa") !== null,
                 ...(cacheCfg && { cache: cacheCfg }),
                 offlineDetectorEnabled: detector.enabled === true,
                 ...(typeof detector.badgePosition === "string" && {

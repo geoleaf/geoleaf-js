@@ -3,7 +3,7 @@
     "label": "défaut",
     "description": "",
     "scaleConfig": {
-        "minScale": 7500000,
+        "minScale": 3750000,
 
         "maxScale": 0
     },

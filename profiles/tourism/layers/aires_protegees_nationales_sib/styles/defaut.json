@@ -2,7 +2,7 @@
     "id": "defaut",
     "description": "",
     "scaleConfig": {
-        "minScale": 20000000,
+        "minScale": 10000000,
         "maxScale": 0
     },
     "label": {
@@ -21,7 +21,7 @@
         }
     },
     "labelScale": {
-        "minScale": 3000000,
+        "minScale": 1500000,
         "maxScale": 0
     },
     "style": {

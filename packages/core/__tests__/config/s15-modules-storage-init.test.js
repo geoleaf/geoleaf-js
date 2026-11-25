@@ -111,6 +111,9 @@ describe("config B7 — modules.offline @ OfflineLifecycle seam (@anomaly ANO-07
      */
     async function runStorageInit(offlineCache) {
         vi.spyOn(CapabilityRegistry, "ensureLoaded").mockResolvedValue(undefined);
+        // Pass 1 of the real boot: the declarations are registered before any lifecycle
+        // runs. The offline installer reads `pwa`'s PRESENCE from the registry.
+        for (const inst of APP_GLOBAL) CapabilityRegistry.register(inst.declaration);
         const Storage = {
             init: vi.fn().mockResolvedValue(undefined),
             DB: {},

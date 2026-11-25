@@ -54,13 +54,14 @@ afterEach(() => {
 });
 
 describe("THEME_PALETTE_CAPABILITY declaration", () => {
-    it("has id 'theme-palette' and gates on modules.theme-palette.enabled", () => {
+    it("has id 'theme-palette' and declares NO gate — `enabled` governs the button only", () => {
         expect(THEME_PALETTE_CAPABILITY.id).toBe("theme-palette");
-        expect(THEME_PALETTE_CAPABILITY.gate.configPath).toBe("modules.theme-palette.enabled");
+        // A gate on `modules.theme-palette.enabled` left the module unregistered on `false`,
+        // and the configured `default` palette was never applied.
+        expect(THEME_PALETTE_CAPABILITY.gate).toBeUndefined();
     });
 
-    it("registers when absent but declares a user-facing default of OFF", () => {
-        expect(THEME_PALETTE_CAPABILITY.gate.enableWhenAbsent).toBe(true);
+    it("declares a user-facing default of OFF for the button", () => {
         expect(THEME_PALETTE_CAPABILITY.configSchema.enabled.default).toBe(false);
     });
 });

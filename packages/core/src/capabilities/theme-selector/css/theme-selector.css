@@ -40,6 +40,14 @@
         pointer-events: auto;
     }
 
+    /* A control placed in MapLibre's top-right corner (`position: "topright"`) ran under the
+       secondary bar. While the bar is built, the corner starts below it: the bar's top (10 px)
+       + its height (38 px) + a gap. `!important` because maplibre-gl.css, unlayered, declares
+       `top: 0` on the corner. */
+    body:has(#gl-theme-secondary-container.gl-theme-selector-secondary) .maplibregl-ctrl-top-right {
+        top: calc(56px + var(--gl-map-top-inset, 0px)) !important;
+    }
+
     /* ========================================
    Primary themes (pill buttons)
    ======================================== */
@@ -259,6 +267,11 @@
         #gl-theme-secondary-container {
             top: calc(55px + var(--gl-map-top-inset, 0px));
             right: 10px;
+        }
+
+        body:has(#gl-theme-secondary-container.gl-theme-selector-secondary)
+            .maplibregl-ctrl-top-right {
+            top: calc(101px + var(--gl-map-top-inset, 0px)) !important;
         }
 
         .gl-theme-selector-primary {

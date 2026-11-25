@@ -43,6 +43,10 @@
     border-radius: 0 !important;
     overflow: visible !important;
     margin: 0 !important;
+    /* MapLibre turns the pointer off on its control corners and back on only for
+       `.maplibregl-ctrl` children; the adapter adds GeoLeaf controls bare, so without this
+       a click or a tap on them fell through to the map (the keyboard still worked). */
+    pointer-events: auto;
 }
 
 /* Chrome standard du bouton */
@@ -108,4 +112,13 @@ body.gl-theme-dark .geoleaf-ctrl a:hover {
     .geoleaf-offline-badge-control {
         top: 56px;
     }
+}
+
+/* The bottom-left corner (scale, coordinates, legend, branding) clears the basemap credit
+   while it is expanded over the same edge — on a phone, at load. The height is measured and
+   set on the map container by the adapter (`maplibre-attribution-clearance.ts`); absent, the
+   corner stays put. `transform`, not `bottom`: branding.css pins `bottom` with `!important`. */
+.maplibregl-ctrl-bottom-left {
+    transform: translateY(calc(-1 * var(--gl-attrib-clearance, 0px)));
+    transition: transform 160ms ease-out;
 }

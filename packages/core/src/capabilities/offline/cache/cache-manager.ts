@@ -169,39 +169,7 @@ const CacheManager = {
                 throw new Error(`Profile ${profileId} configuration not found`);
             }
 
-            // ── Quota pre-check ─────────────────────────────────────────────────────────
-            //
-            // 🛑 IT COMES FROM `Storage.downloadProfileForOffline()`, AND IT ARRIVED
-            // BEFORE THE SHELL LEFT. That function was dead — zero callers in the whole
-            // repo — but its body carried the download's ONLY quota pre-check, and
-            // `cacheProfile()`, the LIVE path, had none. Deleting it first would have
-            // removed the guard believing it removed dead code: the "dead ≠ disposable"
-            // counter-example of the deletions inventory.
-            //
-            // ⚠️ AND THE MOTIVE IS STRONGER HERE THAN IT WAS THERE. The 02/08 reading
-            // shows the origin in `bestEffort` on a fresh profile (~800 MB, persistence
-            // refused): exceeding the quota does not return an error, it EVICTS — and
-            // an origin eviction takes the sync queue away with the cache. A download
-            // known to be too big is not attempted.
-            const estimated = await this.estimateProfileSize(profileId);
-            const quota = await this.getStorageQuota();
-            // ⚠️ `estimated?.` despite a return type that forbids it — and this is not
-            // caution on principle: `estimateProfileSize` RETURNS `undefined` whenever
-            // `CacheMetrics.estimateProfileSize` does, because it relays unchecked and
-            // its `try/catch` only catches an exception, not an absent value. The hole
-            // already existed in the dead facade; it was just executed by nothing.
-            const estimatedSize = estimated?.totalSize ?? 0;
-            const available = quota?.available ?? 0;
-            // Both guards say the same thing: NEVER refuse on a measurement we do not
-            // have. `available` is 0 when `navigator.storage.estimate` is absent,
-            // `estimatedSize` is 0 when estimation failed — a mute browser is not a
-            // full browser, and a missing estimate is not a huge one.
-            if (available > 0 && estimatedSize > 0 && estimatedSize > available) {
-                const mb = (n: number) => (n / 1024 / 1024).toFixed(2);
-                throw new Error(
-                    `Not enough storage: need ${mb(estimatedSize)} MB, available ${mb(available)} MB`
-                );
-            }
+            await this._assertStorageFor(profileId);
 
             // What the enumeration leaves out is RECORDED, not only logged — see `_saveManifest`.
             const trace: TilePreparationTrace = {
@@ -231,6 +199,14 @@ const CacheManager = {
                 await this._keepOptionLists(resources),
                 options as { onProgress?: (p: Record<string, unknown>) => void }
             );
+
+            // A stop pressed DURING the resources: same rule as before them — no entities
+            // pulled, no manifest written over the one an earlier download left. The
+            // downloader says `cancelled` with no list, and recording that would have
+            // emptied the manifest of everything already cached.
+            if ((result as { cancelled?: boolean }).cancelled || controller.signal.aborted) {
+                return { cancelled: true, profileId };
+            }
 
             // ── The download's other half: the ENTITIES ─────────────────────────────
             //
@@ -272,6 +248,48 @@ const CacheManager = {
         } finally {
             this._cachingProfiles.delete(profileId);
             if (this._downloadController === controller) this._downloadController = null;
+        }
+    },
+
+    /**
+     * Refuses a download known to be too big for the storage left — see the note inside.
+     *
+     * @param profileId - The profile about to be downloaded.
+     * @throws Error when both measurements exist and the estimate exceeds what is available.
+     */
+    async _assertStorageFor(profileId: string): Promise<void> {
+        // ── Quota pre-check ─────────────────────────────────────────────────────────
+        //
+        // 🛑 IT COMES FROM `Storage.downloadProfileForOffline()`, AND IT ARRIVED
+        // BEFORE THE SHELL LEFT. That function was dead — zero callers in the whole
+        // repo — but its body carried the download's ONLY quota pre-check, and
+        // `cacheProfile()`, the LIVE path, had none. Deleting it first would have
+        // removed the guard believing it removed dead code: the "dead ≠ disposable"
+        // counter-example of the deletions inventory.
+        //
+        // ⚠️ AND THE MOTIVE IS STRONGER HERE THAN IT WAS THERE. The 02/08 reading
+        // shows the origin in `bestEffort` on a fresh profile (~800 MB, persistence
+        // refused): exceeding the quota does not return an error, it EVICTS — and
+        // an origin eviction takes the sync queue away with the cache. A download
+        // known to be too big is not attempted.
+        const estimated = await this.estimateProfileSize(profileId);
+        const quota = await this.getStorageQuota();
+        // ⚠️ `estimated?.` despite a return type that forbids it — and this is not
+        // caution on principle: `estimateProfileSize` RETURNS `undefined` whenever
+        // `CacheMetrics.estimateProfileSize` does, because it relays unchecked and
+        // its `try/catch` only catches an exception, not an absent value. The hole
+        // already existed in the dead facade; it was just executed by nothing.
+        const estimatedSize = estimated?.totalSize ?? 0;
+        const available = quota?.available ?? 0;
+        // Both guards say the same thing: NEVER refuse on a measurement we do not
+        // have. `available` is 0 when `navigator.storage.estimate` is absent,
+        // `estimatedSize` is 0 when estimation failed — a mute browser is not a
+        // full browser, and a missing estimate is not a huge one.
+        if (available > 0 && estimatedSize > 0 && estimatedSize > available) {
+            const mb = (n: number) => (n / 1024 / 1024).toFixed(2);
+            throw new Error(
+                `Not enough storage: need ${mb(estimatedSize)} MB, available ${mb(available)} MB`
+            );
         }
     },
 

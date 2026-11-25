@@ -87,6 +87,8 @@ export function createStyleEngine() {
     let rebuilding = false;
     let pitch = 0;
     let moving = false;
+    // Deep enough that the terrain's zoom floor never decides a test that is not about it.
+    let zoom = 10;
     const errors: string[] = [];
 
     const clone = <T>(value: T): T => structuredClone(value);
@@ -202,6 +204,7 @@ export function createStyleEngine() {
         }),
         getTerrain: vi.fn(() => (terrain ? clone(terrain) : null)),
         getPitch: vi.fn(() => pitch),
+        getZoom: vi.fn(() => zoom),
         getMaxPitch: vi.fn(() => 60),
         isMoving: vi.fn(() => moving),
         setStyle: vi.fn((target: StyleJSON | string, options?: SetStyleOptions) => {
@@ -268,6 +271,16 @@ export function createStyleEngine() {
         rest(value: number): void {
             this.move(value);
             this.stop();
+        },
+        /** A whole zoom movement that ends at `value`: `moveend` fires, the tilt unchanged. */
+        zoomTo(value: number): void {
+            moving = true;
+            zoom = value;
+            this.stop();
+        },
+        /** Sets the zoom with NO event — a camera a test finds as it is. */
+        setZoom(value: number): void {
+            zoom = value;
         },
         /** Sets the tilt and the moving flag with NO event — a camera a test finds as it is. */
         setCamera(value: number, isMoving = false): void {

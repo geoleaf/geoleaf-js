@@ -28,6 +28,7 @@ import {
     openProximityBar,
     closeProximityBar,
     proximityDefaultRadiusKm,
+    syncProximityWithFilter,
 } from "./mobile-toolbar-proximity.js";
 import {
     createSheetDom,
@@ -245,6 +246,7 @@ function _onGeolocStateChange(e: Event): void {
 function _setupDocumentListeners(): void {
     if (typeof document === "undefined") return;
     document.addEventListener("fullscreenchange", _onFullscreenChange);
+    document.addEventListener("geoleaf:filters:applied", syncProximityWithFilter);
 }
 
 function _setupGeolocListener(): void {
@@ -397,6 +399,7 @@ export function destroyMobileToolbar(): void {
     // skipped and nothing would say so.
     if (typeof document !== "undefined") {
         document.removeEventListener("fullscreenchange", _onFullscreenChange);
+        document.removeEventListener("geoleaf:filters:applied", syncProximityWithFilter);
     }
     domState.geolocTarget?.removeEventListener(
         "geoleaf:geolocation:statechange",

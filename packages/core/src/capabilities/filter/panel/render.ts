@@ -177,9 +177,10 @@ function _controlText(field: FilterFieldDescriptor): HTMLElement {
     };
     const handles = createPillSearchInput({
         placeholder: field.placeholder ?? "",
-        ariaLabel: field.label ?? "Recherche",
-        submitAriaLabel: "Rechercher",
-        clearAriaLabel: "Effacer",
+        // The dictionary's labels — they were hard-coded in French for every language.
+        ariaLabel: field.label ?? getLabel("aria.search.bar"),
+        submitAriaLabel: getLabel("aria.search.submit"),
+        clearAriaLabel: getLabel("aria.search.clear"),
         extraClass: "gl-filter-panel__search",
         onSubmit: reapply,
         onClear: reapply,
@@ -188,7 +189,10 @@ function _controlText(field: FilterFieldDescriptor): HTMLElement {
     return root;
 }
 
-function _controlTaxonomy(opts: FieldOptions): HTMLElement {
+function _controlTaxonomy(opts: FieldOptions): HTMLElement | null {
+    // No `categories` at all: the taxonomy capability is not there to read them. The field
+    // keeps silent rather than tell the user the layers carry none — the wrong cause.
+    if (opts.categories === undefined) return null;
     const wrap = domCreate("div", "gl-filter-panel__tree");
     const entries = Object.entries(opts.categories ?? {});
     if (entries.length === 0) {
@@ -217,7 +221,11 @@ function _categoryItem(catId: string, cat: RenderCategoryNode): HTMLElement {
             ? createElement("span", {
                   className: "gl-filter-tree__arrow",
                   textContent: "▶",
-                  attributes: { role: "button", tabindex: "0", "aria-label": "Déplier" },
+                  attributes: {
+                      role: "button",
+                      tabindex: "0",
+                      "aria-label": getLabel("ui.filter_panel.expand"),
+                  },
               })
             : domCreate("span", "gl-filter-tree__spacer")
     );
