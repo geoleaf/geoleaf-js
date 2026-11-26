@@ -31,25 +31,33 @@ features:
       details: "@geoleaf/core and the @geoleaf-plugins/* packages are all MIT licensed."
 ---
 
-## Release v3.20.5 <Badge type="tip" text="2026-11-19" />
+## Release v3.20.6 <Badge type="tip" text="2026-11-25" />
 
-A patch release of `@geoleaf/core`, published with `@geoleaf-plugins/offline-ui` 1.7.3: an
-update applied while the page still boots no longer reloads it minutes later, and « See more »
-is offered only when the side panel has something to show.
+A patch release of `@geoleaf/core`, published with `@geoleaf-plugins/offline-ui` 1.7.4,
+`@geoleaf-plugins/editor` 1.6.4 and `@geoleaf/field-renderer` 1.4.5: the fixes of a full
+review of the in-core capabilities, each one alone, removed and switched off.
 
 **Highlights:**
 
-- **Fixed** — `GeoLeaf.PWA.applyUpdate()` called within a fraction of a second of the update
-  announcement sometimes left the new service worker waiting, in Chromium: the browser
-  activated it about five minutes later, and the page reloaded by itself. The gesture is now
-  held back until three seconds after the announcement. And a page taken over more than ten
-  seconds after the gesture is no longer reloaded: the update is announced again.
-- **Fixed** — `@geoleaf-plugins/offline-ui` 1.7.3: the update banner enables its « Reload »
-  button again when the same update is announced again.
-- **Fixed** — the popup no longer offers « See more » when no field is sent to the side panel:
-  the link opened an empty drawer.
+- **Changed** — the scale denominator is now the scale actually drawn. Layer scale bounds
+  (`minScale`, `maxScale`) switch one zoom level later: divide them by 2 to keep the zooms at
+  which your layers appear.
+- **Changed** — a profile's `modules.<id>` block completes the application's instead of
+  replacing it.
+- **Fixed** — the shell no longer shows a control that nothing can serve, and the absence of an
+  in-core capability becomes a fact (`GeoLeaf.Capabilities.onUnavailable`).
+- **Fixed** — a link opened without the `filter` capability keeps its filter parameters in the
+  address, from the first write.
+- **Fixed** — an offline preparation no longer requests a `mapping.json` the profile does not
+  have; Escape in a host dialog no longer closes the GeoLeaf window under it.
+- **Added** — `GeoLeaf.UI.CacheButton.openModal()` is a declared public member of
+  `@geoleaf-plugins/offline-ui`.
 
 See the [changelog](CHANGELOG) for the complete list.
+
+Release v3.20.5 (2026-11-19) — a patch release of `@geoleaf/core`, published with
+`@geoleaf-plugins/offline-ui` 1.7.3: an update applied while the page still boots no longer
+reloads it minutes later.
 
 Release v3.20.4 (2026-11-19) — a patch release of `@geoleaf/core`: a profile mounted again after
 its styles changed paints the new styles.
