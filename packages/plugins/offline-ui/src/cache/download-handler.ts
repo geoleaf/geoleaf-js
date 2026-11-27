@@ -9,28 +9,18 @@
  * @description Cache download and clear management
  */
 
+import { formatSize } from "../utils/size-format.js";
 import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet } from "@geoleaf/host-runtime";
 import { StorageContract } from "../shared/storage-contract.js";
+import { LayerSelectorCore } from "./layer-selector/core.js";
+// Mounts `refreshCacheIcons` on the selector this handler refreshes.
+import "./layer-selector/selection-cache.js";
 import { ensureEngineReady } from "../core/engine-ready.js";
 import { getUINotifications } from "@geoleaf/host-runtime";
 import { confirmDialog } from "@geoleaf/host-runtime";
 import { toMB, toGB } from "../utils/core-utils.js";
 import { tLabel as t } from "@geoleaf/host-runtime";
-
-/**
- * ⚠️ `formatBytes` STAYS LOCAL — it is not the core's `formatFileSize`.
- * It has no KB tier and ignores precision, so the two render differently
- * (already documented on `core-utils.formatFileSize`). Only `toMB`/`toGB`
- * were true duplicates and they now come from the core namespace.
- */
-const FormatUtils = {
-    formatBytes: (bytes: number) => {
-        if (!bytes) return "0 B";
-        const mb = bytes / 1024 / 1024;
-        return mb >= 1024 ? `${(mb / 1024).toFixed(2)} GB` : `${mb.toFixed(2)} MB`;
-    },
-};
 
 /**
  * The core accessors return an EMPTY STRING when no core is on the page, which
@@ -49,7 +39,8 @@ interface DownloadHandlerElements {
     progressFill: HTMLElement;
     progressText: HTMLElement;
     downloadBtn: HTMLButtonElement;
-    clearBtn: HTMLButtonElement;
+    /** `null` in the simple body, which builds no purge button. */
+    clearBtn: HTMLButtonElement | null;
 }
 
 /**
@@ -67,6 +58,21 @@ function _refusedOrigins(result: unknown): string[] {
         .map((entry: unknown) => (entry as { origin?: unknown } | null)?.origin)
         .filter((origin): origin is string => typeof origin === "string" && origin !== "");
     return [...new Set(origins)];
+}
+
+/**
+ * How many zoom levels the core's preparation skipped — too many tiles at that zoom. Kept by the
+ * core in its result (`preparation.skippedZooms`), and said: a « profile downloaded » over levels
+ * left out reads as a complete zone.
+ */
+function _skippedZoomCount(result: unknown): number {
+    const list = (result as { preparation?: { skippedZooms?: unknown } } | null)?.preparation
+        ?.skippedZooms;
+    if (!Array.isArray(list)) return 0;
+    const zooms = list
+        .map((entry: unknown) => (entry as { zoom?: unknown } | null)?.zoom)
+        .filter((z): z is number => typeof z === "number");
+    return new Set(zooms).size;
 }
 
 /** One progress tick emitted by `CacheManager.cacheProfile`. */
@@ -124,12 +130,15 @@ const DownloadHandler = {
 
             if (!(await this._checkQuota(totalSize))) return;
 
-            this._downloadBtn!.disabled = true;
-            const btnText = this._downloadBtn!.querySelector(".gl-btn__text");
+            // Guarded, not asserted: every other reference of this handler is, and an element a
+            // body did not build must not turn a download into « Cannot set properties of null ».
+            if (this._downloadBtn) this._downloadBtn.disabled = true;
+            const btnText = this._downloadBtn?.querySelector(".gl-btn__text");
             if (btnText) btnText.textContent = t("storage.download.inProgress");
-            this._progressEl!.style.display = "block";
-            this._progressFill!.style.width = "0%";
-            this._progressText!.textContent = `${t("storage.download.inProgress")} ${totalSizeMB} MB`;
+            if (this._progressEl) this._progressEl.style.display = "block";
+            if (this._progressFill) this._progressFill.style.width = "0%";
+            if (this._progressText)
+                this._progressText.textContent = `${t("storage.download.inProgress")} ${totalSizeMB} MB`;
 
             if (Log)
                 Log.info(
@@ -163,10 +172,7 @@ const DownloadHandler = {
                 await this._control._updateStatus();
             }
 
-            const layerSelector = StorageContract.Cache?.LayerSelector;
-            if (layerSelector) {
-                await layerSelector.refreshCacheIcons();
-            }
+            await this._refreshCacheIcons();
         } catch (error: unknown) {
             const errorMsg = this._formatDownloadError(error);
 
@@ -190,6 +196,17 @@ const DownloadHandler = {
     },
 
     /**
+     * Re-reads the manifest into the « Cache » column of the window's layer table.
+     *
+     * 🛑 The plugin's OWN selector, called directly: the core wires `Cache` with its `Storage`
+     * alone, so a refresh routed through the cache namespace was skipped without a word — every
+     * row kept its ✗ until the window reopened.
+     */
+    async _refreshCacheIcons(): Promise<void> {
+        await LayerSelectorCore.refreshCacheIcons();
+    },
+
+    /**
      * Shows a completed download: the bar at 100 %, the resource count, a success notice.
      *
      * @param result - What `CacheManager.cacheProfile` resolved with.
@@ -202,10 +219,15 @@ const DownloadHandler = {
             (result as { total?: number }).total ??
             (result as { cached?: unknown[] }).cached?.length ??
             0;
+        // Nothing left to fetch: the zone was already on the device. « 12 ressources
+        // téléchargées » over a run that fetched nothing said the opposite of what happened.
+        const upToDate = (result as { upToDate?: boolean }).upToDate === true;
         if (this._progressText)
-            this._progressText.textContent = `✅ ${resourceCount} ${t("storage.download.done")}`;
+            this._progressText.textContent = upToDate
+                ? `✅ ${t("storage.notif.download.upToDate")}`
+                : `✅ ${resourceCount} ${t("storage.download.done")}`;
 
-        const sizeStr = FormatUtils.formatBytes((result as { totalSize?: number }).totalSize ?? 0);
+        const sizeStr = formatSize((result as { totalSize?: number }).totalSize ?? 0);
         // 🛑 WHAT THE ORIGIN RULE LEFT OUT IS SAID, AND IT IS NOT A SUCCESS. The core keeps it
         // in its result (`preparation.refusedOrigins`, core ≥ 3.15.0); a plain "profile
         // downloaded" over a skipped basemap told the user it was prepared. Longer on screen
@@ -218,11 +240,19 @@ const DownloadHandler = {
                 ? label.replace("{0}", String(refused.length))
                 : `${label} : ${refused.length}`;
             getUINotifications()?.warning(`${said} (${refused.join(", ")}) — ${sizeStr}`, 9000);
+        } else if (_skippedZoomCount(result) > 0) {
+            const label = t("storage.notif.download.skippedZooms");
+            const count = String(_skippedZoomCount(result));
+            // A language that misses the key gets the key back: the count is said anyway.
+            const said = label.includes("{0}")
+                ? label.replace("{0}", count)
+                : `${label} : ${count}`;
+            getUINotifications()?.warning(`${said} — ${sizeStr}`, 9000);
         } else {
-            getUINotifications()?.success(
-                `${t("storage.notif.download.success")} : ${sizeStr}`,
-                4000
-            );
+            const said = upToDate
+                ? t("storage.notif.download.upToDate")
+                : t("storage.notif.download.success");
+            getUINotifications()?.success(`${said} : ${sizeStr}`, 4000);
         }
 
         setTimeout(() => {
@@ -278,10 +308,7 @@ const DownloadHandler = {
                 await this._control._updateStatus();
             }
 
-            // Refresh cache icons
-            if (StorageContract.Cache?.LayerSelector) {
-                await StorageContract.Cache.LayerSelector.refreshCacheIcons();
-            }
+            await this._refreshCacheIcons();
         } catch (error: unknown) {
             if (Log) Log.error(`[DownloadHandler] Clear failed: ${(error as Error).message}`);
 

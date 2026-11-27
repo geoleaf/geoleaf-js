@@ -7,6 +7,7 @@
 const langPrintEn = {
     "print.toolbar.button": "Print / Export",
     "print.emprise.hint": "Click and drag to define the print area",
+    "print.emprise.hint.touch": "Drag your finger to set the print area",
     "print.emprise.hint.adjust": "Adjust handles then click OK",
     "print.modal.title": "Print / Export",
     "print.modal.field.title": "Title",
@@ -30,8 +31,6 @@ const langPrintEn = {
     "print.error.serverEndpoint": "The render server URL is invalid.",
     "print.error.serverFailed": "The render server returned an error.",
     "print.spinner.rendering": "Rendering…",
-    "print.orientation.portrait": "Portrait",
-    "print.orientation.landscape": "Landscape",
     "print.aria.scaleLocked": "Scale locked at",
     "print.aria.toolbar.print": "Print / Export the map",
 } satisfies Record<string, string>;

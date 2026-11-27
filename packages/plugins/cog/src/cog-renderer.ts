@@ -48,15 +48,28 @@ function normalizeValue(value: number, min: number, max: number): number {
 }
 
 /**
- * Computes min/max of a TypedArray for normalisation purposes.
+ * Tells whether a raw value is the nodata value. A GDAL nodata of `"nan"` reaches us as `NaN`,
+ * which no `===` ever matches, hence the dedicated branch.
  */
-function computeMinMax(band: ArrayLike<number>): { min: number; max: number } {
+function isNodata(value: number, nodata: number | null): boolean {
+    if (nodata === null) return false;
+    return Number.isNaN(nodata) ? Number.isNaN(value) : value === nodata;
+}
+
+/**
+ * Computes min/max of a TypedArray for normalisation purposes. Nodata pixels are left out:
+ * counted, a nodata of 0 or -9999 would stretch the range and wash the valid values out.
+ */
+function computeMinMax(
+    band: ArrayLike<number>,
+    nodata: number | null
+): { min: number; max: number } {
     let min = Infinity;
     let max = -Infinity;
     // ArrayLike is not iterable, so the index stays — only the read is guarded.
     for (let i = 0; i < band.length; i++) {
         const v = band[i];
-        if (v === undefined) continue;
+        if (v === undefined || isNodata(v, nodata)) continue;
         if (v < min) min = v;
         if (v > max) max = v;
     }
@@ -126,16 +139,16 @@ function writePixelsToImageData(
     // Hoisted out of the loop: the alpha band never varied per pixel, it was simply re-read
     // width × height times.
     const aBand = bi.alphaIdx >= 0 ? rasters[bi.alphaIdx] : undefined;
-    const rRange = computeMinMax(rBand);
-    const gRange = bi.isSingleBand ? rRange : computeMinMax(gBand);
-    const bRange = bi.isSingleBand ? rRange : computeMinMax(bBand);
+    const rRange = computeMinMax(rBand, nodata);
+    const gRange = bi.isSingleBand ? rRange : computeMinMax(gBand, nodata);
+    const bRange = bi.isSingleBand ? rRange : computeMinMax(bBand, nodata);
 
     for (let i = 0; i < width * height; i++) {
         const rRaw = rBand[i];
         // Short band: nothing to normalise, leave the pixel transparent like nodata does.
         if (rRaw === undefined) continue;
         // Nodata → leave pixel as [0,0,0,0] (createImageData initialises to 0)
-        if (nodata !== null && rRaw === nodata) continue;
+        if (isNodata(rRaw, nodata)) continue;
 
         _writePixel(pixels, i * 4, rRaw, {
             i,
@@ -206,6 +219,10 @@ function _writePixel(pixels: Uint8ClampedArray, pi: number, rRaw: number, ctx: P
  * - 3 bands: RGB → RGBA (A=255 or 0 on nodata)
  * - 4 bands: RGBA direct (A=0 on nodata)
  * - colorMap: LUT applied for single-band rendering (256 entries)
+ *
+ * `opts.nodata` is the value to treat as "no data" — the caller resolves it (explicit option,
+ * else the file's own value); absent, every pixel is painted. Nodata pixels stay fully
+ * transparent and are left out of the min/max used for normalisation.
  */
 export function rastersToCanvas(
     data: CogRasterData,
@@ -232,18 +249,89 @@ export function rastersToCanvas(
 }
 
 /**
- * Converts a canvas to a data URL string (PNG).
+ * Converts a canvas to a data URL string (PNG) — the path for a host without MapLibre's
+ * protocol registry (see {@link canvasToImageUrl}).
  * Handles both HTMLCanvasElement and OffscreenCanvas.
  */
-export async function canvasToDataUrl(
-    canvas: OffscreenCanvas | HTMLCanvasElement
-): Promise<string> {
+async function canvasToDataUrl(canvas: OffscreenCanvas | HTMLCanvasElement): Promise<string> {
     if (canvas instanceof HTMLCanvasElement) {
         return canvas.toDataURL("image/png");
     }
     // OffscreenCanvas
     const blob = await canvas.convertToBlob({ type: "image/png" });
     return URL.createObjectURL(blob);
+}
+
+// ─── The image protocol ───────────────────────────────────────────────────────
+
+/**
+ * Scheme under which drawn rasters are handed to MapLibre.
+ *
+ * 🛑 WHY A PROTOCOL, AND NOT A URL. MapLibre 6 loads an `image` source through `fetch()` —
+ * a `blob:` URL as much as a `data:` one — so both fall under the page's `connect-src`.
+ * The shipped policy is `'self' https:`: the drawn raster was refused, the source never
+ * loaded, and the tile simply did not show. A registered protocol answers the engine with the
+ * image itself, and no request is made at all — nothing for the policy to refuse, and nothing
+ * to widen it for.
+ */
+const PROTOCOL = "geoleaf-cog";
+
+/** Images handed out under {@link PROTOCOL}, by key (`<layerId>/<n>`). */
+const _images = new Map<string, ImageBitmap>();
+let _seq = 0;
+let _protocolRegistered = false;
+
+/** The part of the `maplibregl` global this module reads. */
+interface ProtocolRegistry {
+    addProtocol?(
+        name: string,
+        handler: (params: { url: string }) => Promise<{ data: ImageBitmap }>
+    ): void;
+}
+
+/** Registers {@link PROTOCOL} once; `false` when the host exposes no protocol registry. */
+function _ensureProtocol(): boolean {
+    if (_protocolRegistered) return true;
+    const registry = (globalThis as { maplibregl?: ProtocolRegistry }).maplibregl;
+    if (typeof registry?.addProtocol !== "function") return false;
+    registry.addProtocol(PROTOCOL, async (params) => {
+        const image = _images.get(params.url.slice(PROTOCOL.length + 3));
+        if (!image) throw new Error(`[GeoLeaf COG] No drawn image under ${params.url}`);
+        return { data: image };
+    });
+    _protocolRegistered = true;
+    return true;
+}
+
+/**
+ * Hands a drawn canvas to the engine under an URL it can load whatever the page's CSP.
+ *
+ * Through MapLibre's protocol registry when the host exposes it (the application does, through
+ * the `maplibregl` global its shim sets); otherwise through {@link canvasToDataUrl}, as before.
+ *
+ * @param canvas - The drawn raster.
+ * @param layerId - The layer the image belongs to — its images are released with it.
+ * @returns The URL to give the `image` source.
+ */
+export async function canvasToImageUrl(
+    canvas: OffscreenCanvas | HTMLCanvasElement,
+    layerId: string
+): Promise<string> {
+    if (typeof createImageBitmap !== "function" || !_ensureProtocol()) {
+        return canvasToDataUrl(canvas);
+    }
+    const key = `${layerId}/${++_seq}`;
+    _images.set(key, await createImageBitmap(canvas));
+    return `${PROTOCOL}://${key}`;
+}
+
+/** Releases the images a layer was given — its bitmaps are closed, not left to the collector. */
+function _releaseImages(layerId: string): void {
+    for (const [key, image] of _images) {
+        if (!key.startsWith(`${layerId}/`)) continue;
+        image.close?.();
+        _images.delete(key);
+    }
 }
 
 // ─── MapLibre injection ───────────────────────────────────────────────────────
@@ -256,7 +344,7 @@ export async function canvasToDataUrl(
  *
  * @param map - MapLibre Map instance
  * @param layerId - Unique id for the source and layer
- * @param dataUrl - PNG data URL or Blob URL from canvasToDataUrl()
+ * @param dataUrl - The image URL from canvasToImageUrl()
  * @param bounds - Geographic bounds [west, south, east, north] in WGS84
  * @param opts - Display options (opacity)
  */
@@ -307,6 +395,7 @@ function _styleOwner(layerId: string): string {
  */
 export function removeImageSource(map: MapLike, layerId: string): void {
     declareOwnedStyleIds(map, _styleOwner(layerId), null);
+    _releaseImages(layerId);
     try {
         if (map.getLayer(layerId)) {
             map.removeLayer(layerId);

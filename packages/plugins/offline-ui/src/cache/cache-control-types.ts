@@ -42,6 +42,11 @@ export interface CacheControlOptions {
     position?: string;
     collapsed?: boolean;
     collapsible?: boolean;
+    /**
+     * `"simple"`: the field window — zone, download, progress and stop, the state in one line,
+     * the storage warning. `"full"` (default): everything, quota, layers, import and purge.
+     */
+    mode?: "simple" | "full";
 }
 
 /**

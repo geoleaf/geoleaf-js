@@ -38,6 +38,11 @@ export async function loadFgb(url: string, options: FgbLoadOptions = {}): Promis
         throw new Error(`[GeoLeaf.FlatGeobuf] HTTP ${response.status} from "${safeUrl}"`);
     }
 
-    const iter = deserialize(response.body as ReadableStream) as AsyncIterable<Feature>;
-    return collectFeatures(iter, options);
+    // 🛑 The header comes through `deserialize`'s callback: the library sets no `header` on the
+    // iterator, so reading it there always found nothing, and `onHeader` received `{}` (FG-01).
+    let header: Record<string, unknown> | undefined;
+    const iter = deserialize(response.body as ReadableStream, undefined, (meta) => {
+        header = { ...meta };
+    }) as AsyncIterable<Feature>;
+    return collectFeatures(iter, options, () => header);
 }

@@ -17,6 +17,9 @@ const langConnectorIt = {
     "connector.error.noEndpoint": "Configurazione non valida: endpoint mancante.",
     "connector.error.invalidCredentials": "Nome utente o password errati.",
     "connector.error.networkUnavailable": "Server irraggiungibile. Controlla la connessione.",
+    "connector.error.invalidResponse":
+        "Il server ha risposto senza token di sessione. Contatta l'amministratore.",
+    "connector.session.hostManaged": "La sessione è gestita dall'applicazione.",
     "connector.error.generic": "Errore: ",
     "connector.error.unexpected": "Si è verificato un errore imprevisto.",
     "connector.error.tooManyAttempts": "Troppi tentativi. Riprova tra {seconds} s.",

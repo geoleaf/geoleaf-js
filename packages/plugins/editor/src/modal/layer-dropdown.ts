@@ -63,6 +63,16 @@ export function createLayerDropdown(cfg: EditorConfig, geometryType?: string): L
         }
     }
 
+    // The menu is bounded in width beside the form's title, so a long layer name is cut by the
+    // select's own box: its title carries the chosen layer's full label — none while the prompt
+    // shows. Kept in step on a pick and on `setValue()`, which fires no `change`.
+    const syncTitle = (): void => {
+        const chosen = select.value ? select.selectedOptions[0] : undefined;
+        select.title = chosen?.textContent ?? "";
+    };
+    syncTitle();
+    select.addEventListener("change", syncTitle);
+
     wrapper.appendChild(label);
     wrapper.appendChild(select);
 
@@ -74,6 +84,7 @@ export function createLayerDropdown(cfg: EditorConfig, geometryType?: string): L
         setValue(layerId: string): void {
             if (Array.from(select.options).some((o) => o.value === layerId)) {
                 select.value = layerId;
+                syncTitle();
             }
         },
         destroy(): void {

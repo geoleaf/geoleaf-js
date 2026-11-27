@@ -70,10 +70,21 @@ const ExportLogic = {
 
     /**
      * Initialize cache content in modal (Import tab)
+     *
+     * @param mode - `"simple"` builds the field window, `"full"` (default) the whole one. A body
+     *   built for the other mode is released and rebuilt: the singleton modal keeps its body
+     *   between openings, and an opening in another mode must not show the previous one.
      */
-    initializeCacheContent() {
+    initializeCacheContent(mode: "simple" | "full" = "full") {
         const body = document.getElementById("gl-cache-modal-body");
         if (!body) return;
+
+        if (body.hasAttribute("data-initialized") && body.getAttribute("data-mode") !== mode) {
+            // Released BEFORE the body is cleared: its listeners are on `document`.
+            _releaseCacheControl(body);
+            body.removeAttribute("data-initialized");
+            DOMSecurity.clearElementFast(body);
+        }
 
         // Check if already initialized
         if (body.hasAttribute("data-initialized")) {
@@ -120,6 +131,7 @@ const ExportLogic = {
                 position: "topright",
                 collapsed: false,
                 collapsible: false,
+                mode,
             });
 
             if (!cacheControl) {
@@ -156,6 +168,7 @@ const ExportLogic = {
             DOMSecurity.clearElementFast(body);
             body.appendChild(cacheElement);
             body.setAttribute("data-initialized", "true");
+            body.setAttribute("data-mode", mode);
 
             // Store control reference for future updates
             (body as HTMLElement & { _cacheControl?: unknown })._cacheControl = cacheControl;

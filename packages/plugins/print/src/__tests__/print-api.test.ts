@@ -141,7 +141,8 @@ describe("print-api", () => {
             registerExporter("png", fn as never);
             registerPageFormat("A2", { w: 1 } as never);
             registerSlot({ id: "s" } as never);
-            expect(mocks.registerExporter).toHaveBeenCalledWith("png", fn);
+            // The third argument is what the exporter declares (extension, label) — absent here.
+            expect(mocks.registerExporter).toHaveBeenCalledWith("png", fn, undefined);
             expect(mocks.registerPageFormat).toHaveBeenCalledWith("A2", { w: 1 });
             expect(mocks.registerSlot).toHaveBeenCalledWith({ id: "s" });
         });

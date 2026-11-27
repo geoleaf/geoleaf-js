@@ -112,10 +112,11 @@ describe("list.formRender — édition", () => {
         expect(el.querySelector(".gl-form-list__add")!.textContent).toBe("Ajouter un lieu");
     });
 
-    it("sans addLabel le bouton porte « + Add »", () => {
+    it("sans addLabel le bouton porte « + Ajouter », traduit", () => {
         const el = listComponent.formRender!([], field(), vi.fn(), CTX);
 
-        expect(el.querySelector(".gl-form-list__add")!.textContent).toBe("+ Add");
+        // Translated now — « + Add » stayed in English in a French form. French without a host.
+        expect(el.querySelector(".gl-form-list__add")!.textContent).toBe("+ Ajouter");
     });
 
     it("en lecture seule : rien n'est déplaçable, saisissable, supprimable ni ajoutable", () => {

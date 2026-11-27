@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 import { startEmission, stopEmission, toggleEmission, isEmitting } from "../emitter.js";
 import { registerTransport } from "../transports/registry.js";
+import { isIndicatorVisible } from "../indicator.js";
 import type { PluginConfig } from "../config.js";
 
 /** Installs a fake `GeoLeaf.Geolocation` reporting the given state. */
@@ -153,5 +154,59 @@ describe("stop and toggle", () => {
         startEmission(cfg());
         expect(toggleEmission()).toBe(false);
         expect(isEmitting()).toBe(false);
+    });
+});
+
+describe("startEmission refuses what it cannot carry out, and says so", () => {
+    /** Installs introspection rows on the fake global, and a notifications double. */
+    function withCapabilities(rows: { id: string; embarked: boolean; enabled: boolean }[]) {
+        const g = (globalThis as Record<string, any>).GeoLeaf;
+        g.Introspection = { getCapabilityStatus: () => rows };
+        const warning = vi.fn();
+        g._UINotifications = { warning, error: vi.fn(), info: vi.fn(), success: vi.fn() };
+        return warning;
+    }
+
+    it("without the geolocation capability, the button is refused on screen and nothing starts", () => {
+        const warning = withCapabilities([{ id: "legend", embarked: true, enabled: true }]);
+        expect(startEmission(cfg(), { fromUser: true })).toBe(false);
+        expect(isEmitting()).toBe(false);
+        expect(warning).toHaveBeenCalledTimes(1);
+    });
+
+    it("with the websocket transport and no connected channel, nothing starts", () => {
+        const warning = withCapabilities([{ id: "geolocation", embarked: true, enabled: true }]);
+        registerTransport("websocket", () => ({ send: async () => {} }));
+        expect(
+            startEmission(cfg({ transport: "websocket", channel: "pos" }), { fromUser: true })
+        ).toBe(false);
+        expect(isEmitting()).toBe(false);
+        expect(warning).toHaveBeenCalledTimes(1);
+    });
+
+    it("the button starts what `enabled: false` keeps from starting at boot", () => {
+        // For this plugin `enabled` means « emit from the boot »; the button is the switch.
+        expect(startEmission(cfg({ enabled: false }))).toBe(false);
+        expect(startEmission(cfg({ enabled: false }), { fromUser: true })).toBe(true);
+        expect(isEmitting()).toBe(true);
+    });
+
+    it("mode off refuses the button too", () => {
+        const warning = withCapabilities([{ id: "geolocation", embarked: true, enabled: true }]);
+        expect(startEmission(cfg({ mode: "off" }), { fromUser: true })).toBe(false);
+        expect(warning).toHaveBeenCalledTimes(1);
+    });
+
+    it("the badge waits for a fix — a watch still off announces nothing", async () => {
+        setGeolocation(false, null);
+        startEmission(cfg());
+        await vi.advanceTimersByTimeAsync(0);
+        expect(isIndicatorVisible()).toBe(false);
+        stopEmission();
+        // Witness: with a fix, the same start raises it.
+        setGeolocation(true, { lat: 48.85, lng: 2.35 });
+        startEmission(cfg());
+        await vi.advanceTimersByTimeAsync(0);
+        expect(isIndicatorVisible()).toBe(true);
     });
 });

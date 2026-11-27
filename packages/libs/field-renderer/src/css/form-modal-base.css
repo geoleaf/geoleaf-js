@@ -80,10 +80,13 @@
     font-family: inherit;
 }
 
+/* The layer menu takes the room its label needs, up to half the header: a fixed 180 px cut a
+   layer name of ordinary length while the title kept room to spare. The title (`flex: 1`) is the
+   side that yields; the menu's `title` names a layer still too long in full. */
 .gl-form-modal__layer {
     flex-shrink: 0;
     min-width: 0;
-    max-width: 180px;
+    max-width: min(50%, 20rem);
     margin-bottom: 0;
 }
 
@@ -174,8 +177,6 @@
 .gl-form-input {
     width: 100%;
     padding: 7px 10px;
-    background: var(--gl-color-bg-surface-muted, #f9fafb);
-    color: var(--gl-color-text-main, #0f172a);
     border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.18));
     border-radius: var(--gl-border-radius, 6px);
     font-size: var(--gl-font-size-base, 0.875rem);
@@ -185,6 +186,18 @@
     transition:
         border-color 0.12s ease,
         box-shadow 0.12s ease;
+}
+
+/* The field's colours, under the field wrapper every field type renders: (0,2,0). This sheet
+   is adopted outside the cascade layers, and the core's host guard (`geoleaf-host-guard.css`,
+   unlayered too) writes `color` and `background: revert-layer` on every `gl-*` input, select
+   and textarea at (0,1,1). At a single class the guard won and dropped them; no `gl.*` layer
+   styles these fields, so the browser's white field and black text came back — in the dark
+   theme too. Only the colours move here, and BEFORE `:disabled` below, which keeps its
+   background at the same specificity by coming later. */
+.gl-form-field .gl-form-input {
+    background: var(--gl-color-bg-surface-muted, #f9fafb);
+    color: var(--gl-color-text-main, #0f172a);
 }
 
 .gl-form-input:focus {

@@ -120,12 +120,14 @@ export class WsConfigError extends Error {
 export function validateConfig(config: WsPluginConfig): void {
     const transport = config.transport ?? "unknown";
 
-    // Rule 1 — TLS required in production
-    if (
-        typeof process !== "undefined" &&
-        process.env["NODE_ENV"] === "production" &&
-        config.url?.startsWith("ws://")
-    ) {
+    // Rule 1 — TLS required in production, and on any page served over https.
+    // ⚠️ The `process` test is inert in a browser bundle (no `process` there): alone, it never
+    // refused anything where it mattered. A `ws://` endpoint under an https page is refused by
+    // the browser anyway, or silently upgraded by the page's `upgrade-insecure-requests` — said
+    // here, with the reason, instead.
+    const httpsPage = typeof location !== "undefined" && location.protocol === "https:";
+    const production = typeof process !== "undefined" && process.env["NODE_ENV"] === "production";
+    if ((production || httpsPage) && config.url?.startsWith("ws://")) {
         throw new WsConfigError(
             "CONNECTION_REFUSED",
             "TLS required in production. Use wss:// URL.",

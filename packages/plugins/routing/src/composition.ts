@@ -80,6 +80,29 @@ export function addWaypoint(
 }
 
 /**
+ * Inserts a waypoint just before the last one — the destination stays last.
+ *
+ * The role of a stop is DERIVED from its position (`roleAt`): appended after a destination opened
+ * from a feature, a typed stop became the arrival and the feature the departure — the itinerary
+ * left from the place one wanted to reach.
+ *
+ * @param waypoints The current list; with fewer than one entry, the point is simply appended.
+ * @param waypoint The point to insert.
+ * @param cap The maximum length. Defaults to the configured one.
+ * @returns The new list, or the refusal.
+ */
+export function insertBeforeLast(
+    waypoints: readonly Waypoint[],
+    waypoint: Waypoint,
+    cap: number = maxWaypoints()
+): CompositionResult {
+    if (waypoints.length >= cap) return { ok: false, reason: "cap-reached", limit: cap };
+    const destination = waypoints[waypoints.length - 1];
+    if (destination === undefined) return { ok: true, waypoints: [waypoint] };
+    return { ok: true, waypoints: [...waypoints.slice(0, -1), waypoint, destination] };
+}
+
+/**
  * Removes the waypoint at `index`.
  *
  * ⚠️ Removing down to one waypoint, or to none, is ALLOWED. A one-point itinerary is not a route

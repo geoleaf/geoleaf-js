@@ -195,3 +195,20 @@ describe("loadFgb", () => {
         expect(coreValidate).toHaveBeenCalledWith("https://example.com/data.fgb");
     });
 });
+
+describe("the header, through deserialize's callback (FG-01)", () => {
+    it("hands onHeader the header the library reports — not the iterator's absent `header`", async () => {
+        mockFetchOk();
+        mockDeserialize.mockImplementation(
+            (_body: unknown, _rect: unknown, headerFn?: (h: unknown) => void) => {
+                headerFn?.({ featuresCount: 2, title: "Éco-régions" });
+                return asyncIterator([makeFeature(1), makeFeature(2)]);
+            }
+        );
+        const onHeader = vi.fn();
+        await loadFgb("https://example.com/data.fgb", { onHeader });
+        expect(onHeader).toHaveBeenCalledWith(
+            expect.objectContaining({ featuresCount: 2, title: "Éco-régions" })
+        );
+    });
+});

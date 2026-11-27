@@ -245,6 +245,13 @@ function hitRow(hit: AddressHit, onChoose: (waypoint: Waypoint) => void): HTMLLI
     // `textContent`: the label comes from a geocoding provider — data from outside this package
     // and outside the integrator's control.
     choose.textContent = hit.label;
+    // Two « Saint-Denis » were indistinguishable: the detail the geocoder gave, under the label.
+    if (hit.detail) {
+        const detail = document.createElement("span");
+        detail.className = "gl-routing-add__result-detail";
+        detail.textContent = hit.detail;
+        choose.append(detail);
+    }
     choose.addEventListener("click", () => {
         onChoose({ coordinates: [hit.lng, hit.lat], name: hit.label });
     });

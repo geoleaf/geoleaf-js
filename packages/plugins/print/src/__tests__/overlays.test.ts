@@ -225,6 +225,40 @@ describe("drawLegendInline", () => {
         expect(ctx.arc).not.toHaveBeenCalled();
     });
 
+    it("draws a layer the STORE says is visible, even when Legend says it is not", async () => {
+        // `Legend` starts every layer at `visible: false`: the plate's legend came out empty on a
+        // map whose layers were all showing. Visibility is read at its source.
+        const layerInfo = {
+            visible: false,
+            legendData: {
+                sections: [{ title: "", items: [{ symbol: { type: "circle" }, label: "Sites" }] }],
+            },
+        };
+        (globalThis as any).GeoLeaf = {
+            Legend: { getAllLayers: () => new Map([["l1", layerInfo]]) },
+            Layers: { isVisible: (id: string) => id === "l1" },
+        };
+        const ctx = makeCtx();
+        await drawLegendInline(ctx, makeLegendZone(), 300);
+        expect(ctx.arc).toHaveBeenCalled();
+    });
+
+    it("leaves out a layer the store says is hidden, whatever Legend says", async () => {
+        const layerInfo = {
+            visible: true,
+            legendData: {
+                sections: [{ title: "", items: [{ symbol: { type: "circle" }, label: "Off" }] }],
+            },
+        };
+        (globalThis as any).GeoLeaf = {
+            Legend: { getAllLayers: () => new Map([["l1", layerInfo]]) },
+            Layers: { isVisible: () => false },
+        };
+        const ctx = makeCtx();
+        await drawLegendInline(ctx, makeLegendZone(), 300);
+        expect(ctx.arc).not.toHaveBeenCalled();
+    });
+
     it("calls ctx.arc for a circle symbol", async () => {
         (globalThis as any).GeoLeaf = {
             Legend: {

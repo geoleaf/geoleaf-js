@@ -366,6 +366,25 @@ describe("showLoginModal", () => {
             expect(getPasswordInput().value).toBe("");
         });
 
+        it("a response without a token is said in the window's language, not in English", async () => {
+            // « Erreur : Invalid server response: missing token or expiresIn » in a French window.
+            const { AuthClient, AuthError } = await import("../auth-client.js");
+            (AuthClient.login as ReturnType<typeof vi.fn>).mockRejectedValue(
+                new AuthError("Invalid server response: missing token or expiresIn")
+            );
+
+            promise = showLoginModal(BASE_CONFIG);
+            await vi.waitFor(() => expect(getOverlay()).not.toBeNull());
+
+            getLoginInput().value = "user@example.com";
+            getPasswordInput().value = "pw";
+            getForm().dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+
+            await vi.waitFor(() => expect(getError().hidden).toBe(false));
+            expect(getError().textContent).toContain("sans jeton de session");
+            expect(getError().textContent).not.toContain("Invalid server response");
+        });
+
         it("shows network error message on AuthError Network unavailable", async () => {
             const { AuthClient, AuthError } = await import("../auth-client.js");
             (AuthClient.login as ReturnType<typeof vi.fn>).mockRejectedValue(

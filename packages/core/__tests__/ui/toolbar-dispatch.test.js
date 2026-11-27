@@ -8,6 +8,8 @@
  * a regression there would silently drop the action for every lazy plugin.
  */
 import { dispatchToolbarAction } from "../../src/kernel/ui/toolbar-dispatch.js";
+import { notifyPrimitive } from "../../src/utils/notify/notify.primitive.js";
+import { getLabel } from "../../src/utils/i18n/i18n.js";
 
 /** Installs a minimal `GeoLeaf.plugins` with the lazy-resolution surface. */
 function stubPlugins(plugins) {
@@ -122,6 +124,29 @@ describe("dispatchToolbarAction", () => {
             const captured = captureAction(300);
             dispatchToolbarAction("measure", btn);
             expect(await captured).toBeNull();
+        });
+
+        it("tells the user when the bundle fails to load — offline, with what to do", async () => {
+            // A click that loaded nothing looked like a dead button: the failure was only in
+            // the console. The message differs offline, where the cause is a plugin the
+            // preparation did not keep.
+            const renderer = vi.fn();
+            notifyPrimitive.registerRenderer(renderer);
+            stubPlugins({
+                isLazyAction: () => true,
+                ensureLoadedForAction: () => Promise.reject(new Error("offline")),
+            });
+            const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+            dispatchToolbarAction("editor", btn);
+            // The LAST call: registering the renderer flushes what earlier cases queued.
+            await vi.waitFor(() =>
+                expect(renderer).toHaveBeenLastCalledWith(
+                    getLabel("toast.plugin.load_failed_offline"),
+                    "error"
+                )
+            );
+            onLine.mockRestore();
+            notifyPrimitive.unregisterRenderer(renderer);
         });
 
         it("does not throw when the load rejects (unhandled rejection guard)", async () => {

@@ -127,17 +127,16 @@ export interface StorageContractCacheStorage {
     saveLayerSelection(profileId: string, selection: unknown): Promise<void>;
 }
 
-/** Cache-icon / selection refresher surface (`Storage.Cache.LayerSelector`). */
-export interface StorageContractLayerSelector {
-    refreshCacheIcons(): Promise<void>;
-    saveSelection?(): Promise<void>;
-    updateWarning?(): Promise<void>;
-}
-
-/** Cache namespace (`Storage.Cache`). */
+/**
+ * Cache namespace (`Storage.Cache`) — exactly what the core's offline engine wires:
+ * `{ Storage }`, nothing else.
+ *
+ * 🛑 No layer-selector member: the selector is this package's own UI (`LayerSelectorCore`)
+ * and is called directly. A refresher declared here was never filled by the core, so every
+ * call routed through it was skipped without a word.
+ */
 export interface StorageContractCache {
     Storage: StorageContractCacheStorage;
-    LayerSelector: StorageContractLayerSelector;
 }
 
 /**

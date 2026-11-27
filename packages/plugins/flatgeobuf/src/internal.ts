@@ -56,7 +56,8 @@ export function validateLoadPreconditions(url: string, signal?: AbortSignal): st
  */
 export async function collectFeatures(
     iter: AsyncIterable<Feature>,
-    options: FgbLoadOptions
+    options: FgbLoadOptions,
+    readHeader?: () => Record<string, unknown> | undefined
 ): Promise<FgbLoadResult> {
     const maxFeatures = options.maxFeatures ?? DEFAULT_MAX_FEATURES;
     const features: Feature[] = [];
@@ -67,7 +68,7 @@ export async function collectFeatures(
         if (options.signal?.aborted) break;
 
         if (!headerFired && options.onHeader) {
-            headerMeta = extractHeaderMeta(iter);
+            headerMeta = readHeader?.() ?? extractHeaderMeta(iter);
             options.onHeader(headerMeta ?? {});
             headerFired = true;
         }

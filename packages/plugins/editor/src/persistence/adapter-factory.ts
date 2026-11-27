@@ -13,7 +13,9 @@ import { createCollectionRestAdapter } from "./collection-rest-adapter.js";
 import { createStorageQueueAdapter } from "./storage-queue-adapter.js";
 import { createQueueFirstAdapter } from "./queue-first-adapter.js";
 import { withEditionPermissions } from "./permission-gate.js";
+import { PersistenceError } from "./adapter-interface.js";
 import type { ConflictEventDetail, EditorPersistenceAdapter } from "./adapter-interface.js";
+import { _getLabel } from "../internal.js";
 
 /** Hooks injected by entry.ts (e.g. the conflict-event dispatcher). */
 interface PersistenceHooks {
@@ -47,6 +49,13 @@ function createOnlineAdapter(
     cfg: EditorConfig,
     hooks: PersistenceHooks = {}
 ): EditorPersistenceAdapter {
+    // 🛑 NO BASE DECLARED = NO TARGET, and the write is refused before it leaves. An absent
+    // `api.baseUrl` used to become `""`, so the write went to `/features` relative to the page —
+    // a 404 from a server nobody named, told to the user as « Erreur serveur ». Measured on a
+    // bundle without the offline engine, where every write takes this path. An EXPLICIT `""`
+    // stays what it says: the root of the page's own origin.
+    if (cfg.api?.baseUrl === undefined) return createNoTargetAdapter();
+
     const base = _buildApiOptions(cfg);
 
     // Collection dialect: flat `POST {baseUrl}/{layerId} { ...props, geom }` (OGC/PostgREST).
@@ -62,6 +71,17 @@ function createOnlineAdapter(
         ...base,
         ...(hooks.onConflict && { onConflict: hooks.onConflict }),
     });
+}
+
+/**
+ * The online adapter of an editor with nowhere to write: every write refuses, naming why.
+ *
+ * @returns An adapter whose writes reject with a `"no-target"` {@link PersistenceError}.
+ */
+function createNoTargetAdapter(): EditorPersistenceAdapter {
+    const refuse = (): Promise<never> =>
+        Promise.reject(new PersistenceError("no-target", _getLabel("editor.error.noWriteTarget")));
+    return { save: refuse, update: refuse, delete: refuse, isOnline: () => true };
 }
 
 /**

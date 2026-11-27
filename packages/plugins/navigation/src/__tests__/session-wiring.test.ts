@@ -45,7 +45,7 @@ vi.mock("@geoleaf/host-runtime", () => ({
     // `session.ts` reads the configuration at start; the profile default
     // suffices here, what is exercised is the wiring and not the thresholds,
     // which have their own suite.
-    coreConfigGet: () => ({}),
+    coreConfigGet: () => (globalThis as { __navConfig?: unknown }).__navConfig ?? {},
     // ⚠️ Reached by `ui/immersive.ts` and `ui/position-arrow.ts`, both pulled in by
     // `session-view.ts`. A factory missing a symbol the graph imports fails at RESOLUTION —
     // the file goes red about the mock, never about the behaviour under test.
@@ -113,6 +113,17 @@ describe("le verrou d'écran — pris avec la session, rendu avec elle", () => {
             continueToNextLeg: vi.fn(),
             onView: vi.fn(() => vi.fn()),
         }));
+    });
+
+    it("`enabled: false` ne démarre aucune session — pour un appel d'API aussi", () => {
+        (globalThis as { __navConfig?: unknown }).__navConfig = { enabled: false };
+        try {
+            startSession(ROUTE, [], DEPS);
+            expect(createRuntimeMock).not.toHaveBeenCalled();
+            expect(createLockMock).not.toHaveBeenCalled();
+        } finally {
+            delete (globalThis as { __navConfig?: unknown }).__navConfig;
+        }
     });
 
     it("prend un verrou au démarrage, et le rend à l'arrêt", () => {

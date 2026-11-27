@@ -15,7 +15,11 @@
 .gl-map-toolbar-wrapper {
     position: absolute;
     top: 8px;
-    bottom: 80px; /* dégage la zone scale + branding + marge de confort */
+    /* Dégage la zone scale + branding + marge de confort — et la suit quand le crédit déplié ou
+       l'en-tête de la feuille réduite la relèvent (`--gl-attrib-clearance`,
+       `--gl-sheet-peek-clearance`, posés sur l'hôte de la carte ; le plus grand l'emporte) : à
+       80 px fixes, le chevron du bas recouvrait l'échelle remontée au téléphone. */
+    bottom: calc(80px + max(var(--gl-attrib-clearance, 0px), var(--gl-sheet-peek-clearance, 0px)));
     left: 0.5rem;
     z-index: var(--gl-z-control);
     display: flex;
@@ -309,6 +313,25 @@
 
 .gl-sheet-overlay.open .gl-sheet-panel {
     transform: translateY(0);
+}
+
+/* Hauteur réduite (`GeoLeaf.UI.setPaneSize("peek")`) : seul l'en-tête reste à l'écran, et la
+   feuille cesse d'être modale — le fond ne grise plus et laisse passer les gestes vers la carte ;
+   seul le panneau reçoit encore le pointeur. La hauteur de l'en-tête est mesurée et posée par le
+   script sur le panneau ; le repli vaut l'en-tête sur une ligne. */
+.gl-sheet-overlay.open.gl-sheet-overlay--peek {
+    background: transparent;
+    pointer-events: none;
+}
+
+.gl-sheet-overlay.open.gl-sheet-overlay--peek .gl-sheet-panel {
+    pointer-events: auto;
+    transform: translateY(calc(100% - var(--gl-sheet-peek-height, 3.5rem)));
+}
+
+.gl-sheet-overlay--peek .gl-sheet-panel__header {
+    cursor: pointer;
+    border-bottom-color: transparent;
 }
 
 .gl-sheet-panel__header {

@@ -192,6 +192,9 @@ function _notifyError(err: unknown): void {
         // right and the user deceived: the half of the defect that does not fit
         // in the label.
         else if (err.kind === "capability") key = "editor.error.operationNotSupported";
+        // No write target declared: nothing was sent, and retrying will not help until the
+        // profile names one.
+        else if (err.kind === "no-target") key = "editor.error.noWriteTarget";
         else if (err.kind === "client" && (err.status === 401 || err.status === 403)) {
             key = "editor.error.permissionDenied";
         }

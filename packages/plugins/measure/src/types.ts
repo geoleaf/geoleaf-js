@@ -201,4 +201,8 @@ export interface MeasureMap {
     addLayer(layer: Record<string, unknown>): void;
     dragPan?: { enable?(): void; disable?(): void };
     doubleClickZoom?: { enable?(): void; disable?(): void };
+    /** Moves the camera — used by the GPS tool when no core control centres the map. */
+    easeTo?(options: { center: [number, number]; zoom?: number }): void;
+    /** Current zoom — read by the GPS tool so that centring never zooms out. */
+    getZoom?(): number;
 }

@@ -9,6 +9,7 @@
  * https://geoleaf.dev
  */
 
+import { frameZonesIfUnreadable } from "./frame-zones.js";
 import { AttributionNote } from "./attribution.js";
 import { durationLimitExceeded, requestInBatches } from "./compute.js";
 import { getPluginConfig, isColour, isDuration, isTravelMode } from "./config.js";
@@ -204,6 +205,11 @@ export async function computeIsochrone(options: ComputeOptions): Promise<Compute
         if (area) drawZone(map, layer, area, ranks.get(layer.id) ?? config.zIndex);
     }
     syncDecorations(map);
+    // Framed when they are not readable — out of view, or a few pixels at the current scale.
+    frameZonesIfUnreadable(
+        map,
+        contours.map((c) => c.geometry)
+    );
     notify();
     return { ok: true, ids: layers.map((l) => l.id) };
 }

@@ -220,6 +220,10 @@ export function createEmpriseSelector(
         overlay.style.cursor = "default";
         _setHandleDisplay("block");
         okBtn.style.display = "block";
+        // The second instruction — it existed in the six dictionaries and was never shown.
+        hintEl.textContent =
+            getGeoLeaf()?.I18n?.getLabel?.("print.emprise.hint.adjust") ??
+            "Adjust the handles, then click OK";
     }
 
     function _reset() {
@@ -384,8 +388,13 @@ export function createEmpriseSelector(
         okBtn.style.display = "none";
 
         const gl = getGeoLeaf();
-        hintEl.textContent =
-            gl?.I18n?.getLabel?.("print.emprise.hint") ?? "Click and drag to set the print area";
+        // On a touch screen « click and drag » is not the gesture: the finger has its own words.
+        const touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+        hintEl.textContent = touch
+            ? (gl?.I18n?.getLabel?.("print.emprise.hint.touch") ??
+              "Drag your finger to set the print area")
+            : (gl?.I18n?.getLabel?.("print.emprise.hint") ??
+              "Click and drag to set the print area");
 
         overlay.style.display = "block";
         overlay.style.cursor = "crosshair";

@@ -10,8 +10,8 @@
  * @version 3.0.1
  */
 
+import { formatSize } from "../../utils/size-format.js";
 import { Log } from "@geoleaf/host-runtime";
-import { toMB, toGB } from "../../utils/core-utils.js";
 import { LS } from "./core.js";
 import { getLayerConfig } from "./config-cache.js";
 import type {
@@ -248,8 +248,7 @@ Object.assign(LS, {
         this.estimateLayerSize(layer)
             .then((size) => {
                 if (size > 0) {
-                    const sizeMB = toMB(size) || (size / 1024 / 1024).toFixed(2);
-                    td5.textContent = `${sizeMB} MB`;
+                    td5.textContent = formatSize(size);
                 }
             })
             // Estimation is best-effort: on failure the "~" placeholder set above
@@ -357,20 +356,9 @@ Object.assign(LS, {
                 `[LayerSelector] Estimate result: ${estimate.tileCount} tiles, ${estimate.estimatedSize} bytes`
             );
             if (estimate.estimatedSize > 0) {
-                const sizeMB =
-                    toMB(estimate.estimatedSize, 1) ||
-                    (estimate.estimatedSize / 1024 / 1024).toFixed(1);
-                const sizeGB =
-                    toGB(estimate.estimatedSize) ||
-                    (estimate.estimatedSize / 1024 / 1024 / 1024).toFixed(2);
-                const sizeGBNum = parseFloat(sizeGB);
-                if (sizeGBNum >= 1) {
-                    td5.textContent = `~${sizeGB} GB`;
-                } else {
-                    td5.textContent = `~${sizeMB} MB`;
-                }
+                const sizeFormatted = formatSize(estimate.estimatedSize, 1);
+                td5.textContent = `~${sizeFormatted}`;
                 const tileCountFormatted = estimate.tileCount.toLocaleString();
-                const sizeFormatted = sizeGBNum >= 1 ? `${sizeGB} GB` : `${sizeMB} MB`;
                 td5.title = `${tileCountFormatted} ${t("storage.zone.tiles")}\n${sizeFormatted}\nZoom ${basemap.cacheMinZoom}-${basemap.cacheMaxZoom}`;
             } else {
                 td5.textContent = "-";

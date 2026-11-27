@@ -3,6 +3,7 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
+import { getEditorConfig } from "../config.js";
 import type { HexColor } from "terra-draw";
 
 // ---------------------------------------------------------------------------
@@ -120,6 +121,9 @@ export function buildPolygonStyles(c: ThemeColors) {
 
 /** Styles for TerraDrawSelectMode (vertex handles, midpoints, selected features). */
 export function buildSelectStyles(c: ThemeColors) {
+    // The handle sizes the profile sets (`vertexHandleSize`, `midpointHandleSize`): bounded in
+    // `config.ts`, and read NOWHERE — the sizes were literals, and ED-06 called them adjustable.
+    const cfg = getEditorConfig();
     return {
         selectedLineStringColor: c.accent,
         selectedLineStringWidth: 3,
@@ -135,12 +139,12 @@ export function buildSelectStyles(c: ThemeColors) {
         selectedPointOutlineWidth: 2,
         selectedPointOpacity: 1,
         selectionPointColor: c.white,
-        selectionPointWidth: 8,
+        selectionPointWidth: cfg.vertexHandleSize ?? 8,
         selectionPointOutlineColor: c.accent,
         selectionPointOutlineWidth: 2,
         selectionPointOpacity: 1,
         midPointColor: c.white,
-        midPointWidth: 5,
+        midPointWidth: cfg.midpointHandleSize ?? 5,
         midPointOutlineColor: c.accent,
         midPointOutlineWidth: 2,
         midPointOpacity: 1,

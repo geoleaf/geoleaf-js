@@ -4,8 +4,8 @@ title: field-renderer — les composants de champ, la modale et le pont de formu
 lib_id: field-renderer
 package: "@geoleaf/field-renderer"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8015a41a7
-date: 25 novembre 2026
+verifie_contre: 3ebac4025
+date: 27 novembre 2026
 ---
 
 # field-renderer — les composants de champ, la modale et le pont de formulaire
@@ -89,20 +89,20 @@ ligne — **sans cloner le composant**. Il remplace le patron de surcharge que `
 et qui coûtait **229 lignes pour changer 4 appels**. ⚠️ **Un seul stratège à la fois** : deux
 hôtes qui en poseraient un chacun se donneraient un résultat dépendant de l'ordre de chargement.
 
-| Groupe               | Contenu                                                                                                                                                                                                           |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Contrats** (types) | `FieldConfig` · `RenderCtx` · `MapLayerHint` · `ComponentDefinition`                                                                                                                                              |
-| **Registre**         | `ComponentRegistry` · `registerBuiltinComponents()` · `builtinComponentIds()`                                                                                                                                     |
-| **Composants**       | **23**, du `text` au `gallery` — voir ci-dessous                                                                                                                                                                  |
-| **Validateurs**      | Un espace `validators`, rendant chacun une chaîne d'erreur **ou `null`**                                                                                                                                          |
-| **Modale**           | `createResponsiveModal(...)` + ses types                                                                                                                                                                          |
-| **⚠️ Retirés**       | `createFocusTrap` et `confirmDialog` ne sont **plus exportés** — déplacés dans `@geoleaf/host-runtime` le 06/08/2026, **sans ré-export de compatibilité** ; la rupture est assumée et motivée dans `src/index.ts` |
-| **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                                                                                                                  |
-| **Téléversement**    | `setImageUploadStrategy(fn \| null)` · `setImagePreviewResolver(fn \| null)` + les types `ImageUploadStrategy`, `ImagePreviewResolver` — 5.1-d, puis le passage par jeton du 04/09/2026                           |
-| **Listes de choix**  | `setOptionsResolver(fn \| null)` + les types `OptionsResolver`, `DropdownOption` — 1.3.0 : l'hôte répond au `fetchOptions` d'un menu déroulant avant le réseau                                                    |
-| **Libellés**         | Catalogue **interne** `src/lang/` — 43 clés `form.*` × 6 locales (5.1c, **D6**). Aucun export : c'est `_getLabel` qui le sert                                                                                     |
-| **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                                                                                                         |
-| **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                           |
+| Groupe               | Contenu                                                                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Contrats** (types) | `FieldConfig` · `RenderCtx` · `MapLayerHint` · `ComponentDefinition`                                                                                                                                                                                                                                          |
+| **Registre**         | `ComponentRegistry` · `registerBuiltinComponents()` · `builtinComponentIds()`                                                                                                                                                                                                                                 |
+| **Composants**       | **23**, du `text` au `gallery` — voir ci-dessous                                                                                                                                                                                                                                                              |
+| **Validateurs**      | Un espace `validators`, rendant chacun une chaîne d'erreur **ou `null`**                                                                                                                                                                                                                                      |
+| **Modale**           | `createResponsiveModal(...)` + ses types                                                                                                                                                                                                                                                                      |
+| **⚠️ Retirés**       | `createFocusTrap` et `confirmDialog` ne sont **plus exportés** — déplacés dans `@geoleaf/host-runtime` le 06/08/2026, **sans ré-export de compatibilité** ; la rupture est assumée et motivée dans `src/index.ts`                                                                                             |
+| **Pont**             | `createFieldRendererBridge(schema, values, ctx)`                                                                                                                                                                                                                                                              |
+| **Téléversement**    | `setImageUploadStrategy(fn \| null)` · `setImagePreviewResolver(fn \| null)` + les types `ImageUploadStrategy`, `ImagePreviewResolver` — 5.1-d, puis le passage par jeton du 04/09/2026                                                                                                                       |
+| **Listes de choix**  | `setOptionsResolver(fn \| null)` + les types `OptionsResolver`, `DropdownOption` — 1.3.0 : l'hôte répond au `fetchOptions` d'un menu déroulant avant le réseau                                                                                                                                                |
+| **Libellés**         | Catalogue **interne** `src/lang/` — les clés `form.*`, dans six locales (5.1c, **D6**) ; le compte se lit dans le fichier. Aucun export : c'est `_getLabel` qui le sert. Le bouton d'ajout d'une liste lit `form.list.add` quand le champ ne déclare pas `addLabel` (1.4.6 ; « + Add » en dur jusqu'en 1.4.5) |
+| **Aides DOM**        | `_el(tag, className?)` · `_getLabel(key)`                                                                                                                                                                                                                                                                     |
+| **Sécurité**         | `escapeHtml(...)` · `validateUrl(...)` · `safeUrl(...)`                                                                                                                                                                                                                                                       |
 
 ⚠️ **Deux aides publiques portent un préfixe `_`** — `_el` et `_getLabel`. Le préfixe est la
 convention du dépôt pour « interne », et elles sont pourtant exportées **et** consommées hors de

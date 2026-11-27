@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "simple-mode-block",
+    "scope": [
+        "packages/plugins/offline-ui/src/cache/simple-mode-block.ts",
+        "packages/plugins/offline-ui/src/css/cache-simple.css"
+    ],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/cache/simple-mode-block.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ligne d'état et avertissement de stockage de la fenêtre hors-ligne en mode simple",
+            "confidence": "haute",
+            "rationale": "Un appelant mesuré : `packages/plugins/offline-ui/src/cache/cache-control-dom.ts`, qui le monte en tête du corps quand `openModal({ mode: \"simple\" })` ouvre la fenêtre de terrain. Il dit l'état de la zone en une phrase et l'avertissement de stockage non garanti, que le bloc de pré-départ, absent de ce mode, portait. Il prend la place du rafraîchissement de pré-départ que `updateStatus` appelle après chaque changement du cache. Suite `simple-mode-block.test.js`. Place canonique : `cache/`, avec les autres blocs de la fenêtre."
+        },
+        "packages/plugins/offline-ui/src/css/cache-simple.css": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Feuille de la fenêtre hors-ligne en mode simple",
+            "confidence": "haute",
+            "rationale": "Un importeur mesuré : `packages/plugins/offline-ui/src/entry.ts`. Fichier à part pour le motif de `cache-quarantine.css` : `cache-control.css` est au plafond de taille du contrat de plugin (PC-08). Les classes sont celles que `cache/simple-mode-block.ts`, `cache/cache-control-dom.ts` et `ui/cache-button/modal-manager.ts` écrivent ou masquent."
+        }
+    }
+}

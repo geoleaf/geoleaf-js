@@ -125,6 +125,21 @@ export class PollingSource implements IRealtimeSource {
     }
 
     /**
+     * The body as the decoder needs it: bytes for GTFS-RT, parsed JSON for the JSON decoder and
+     * for any JSON response, raw TEXT otherwise.
+     *
+     * ⚠️ A third-party decoder used to receive only parsed JSON, which made the « proprietary
+     * format » `registerDecoder` advertises impossible over polling. A JSON response still
+     * arrives parsed, so a decoder written for JSON keeps working.
+     */
+    private async _readBody(resp: Response): Promise<unknown> {
+        if (this._decoder === "gtfs-rt") return resp.arrayBuffer();
+        const type = resp.headers?.get?.("content-type") ?? "";
+        if (this._decoder === "json" || type.includes("json") || type === "") return resp.json();
+        return resp.text();
+    }
+
+    /**
      * Fetch a single URL, decode the payload and forward it to the handler.
      *
      * @returns `true` when the fetch returned 2xx and the handler was invoked.
@@ -141,8 +156,7 @@ export class PollingSource implements IRealtimeSource {
                 console.warn(`[realtime-layer][polling]${tag} ${url} — HTTP ${resp.status}`);
                 return false;
             }
-            const data: unknown =
-                this._decoder === "gtfs-rt" ? await resp.arrayBuffer() : await resp.json();
+            const data = await this._readBody(resp);
             // 🛑 SECOND GUARD, AND IT IS NOT REDUNDANT WITH THE SIGNAL. Between
             // the response and this line there are TWO `await`s — reading the
             // body is itself asynchronous. `stop()` can land in that gap, and

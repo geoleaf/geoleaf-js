@@ -15,7 +15,7 @@
  */
 import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
-import { CacheStorage } from "../../../src/capabilities/offline/cache/storage.js";
+import { CacheStorage, readCachedBytes } from "../../../src/capabilities/offline/cache/storage.js";
 // Same instance storage.ts receives through the setup.js redirect.
 import { IndexedDB, clearMockStore } from "../../__mocks__/indexeddb.js";
 
@@ -136,6 +136,27 @@ describe("getCachedUrls", () => {
 
     test("aucune couche → set vide", async () => {
         expect((await CacheStorage.getCachedUrls("vide")).size).toBe(0);
+    });
+});
+
+// ── readCachedBytes (the profileId index of the "layers" store) ─────────────────────────
+
+describe("readCachedBytes", () => {
+    beforeEach(() => vi.stubGlobal("IDBKeyRange", { only: (v) => ({ only: v }) }));
+    afterEach(() => vi.unstubAllGlobals());
+
+    test("additionne la taille des enregistrements du profil, et seulement les siens", async () => {
+        // The size lives on each record (written by `cacheLayer`); the manifest has none, and
+        // summing it made a first preparation over cached resources announce « 0.00 MB ».
+        await IndexedDB.cacheLayer("url-1", { a: 1 }, pid(), { size: 1000 });
+        await IndexedDB.cacheLayer("url-2", { b: 2 }, pid(), { size: 2500 });
+        await IndexedDB.cacheLayer("autre", { c: 3 }, "autre-profil", { size: 9999 });
+
+        expect(await readCachedBytes(pid())).toBe(3500);
+    });
+
+    test("aucun enregistrement → 0", async () => {
+        expect(await readCachedBytes("vide")).toBe(0);
     });
 });
 

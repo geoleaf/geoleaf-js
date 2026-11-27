@@ -1,0 +1,37 @@
+{
+    "schemaVersion": 2,
+    "lot": "host-guard-reach",
+    "scope": ["scripts/check-host-guard-reach.cjs", "packages/plugins/measure/src/unit-labels.ts"],
+    "verdicts": {
+        "scripts/check-host-guard-reach.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "HGR — une règle hors couche d'un greffon ou d'une lib qui colore un champ gl-* doit battre la garde d'hôte du cœur, sans quoi le champ retombe sur les couleurs du navigateur",
+            "confidence": "haute",
+            "rationale": "Seule gate qui calcule une cascade entre deux feuilles hors couche : les feuilles des greffons sont adoptées sans couche, la garde d'hôte (0,1,1) écrit revert-layer sur color et background, et aucune couche ne reprend ces propriétés. Lit la garde réelle (témoin), dérive des sources les classes posées sur un champ. Vue rouge sur dix règles à la pose (dont une que le recensement à la main n'avait pas), et sur une mutation de la règle de table. Câblée dans ci:local (produit).",
+            "generatedBy": null
+        },
+        "packages/plugins/measure/src/unit-labels.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Cycle, texte et nom accessible des deux boutons d'unité du menu de mesure — « ~ m » et « ~ m² » en automatique, la grandeur et l'unité courante au nom",
+            "confidence": "haute",
+            "rationale": "Extrait de floating-menu.ts, au-dessus du plafond souple, pour que le correctif des boutons indiscernables n'en fasse pas croître le compte ; module pur, testable sans DOM. Tenu par floating-menu.test.ts, vu rougir.",
+            "generatedBy": null
+        }
+    }
+}

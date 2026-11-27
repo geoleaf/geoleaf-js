@@ -223,8 +223,16 @@
     padding: 0;
     border: 1px solid var(--gl-color-border-soft, #e5e7eb);
     border-radius: 4px;
-    background: transparent;
     cursor: pointer;
+}
+
+/* The swatch's transparent background, scoped under its row on purpose: (0,2,0). This sheet
+   is adopted outside the cascade layers, and the core's host guard (`geoleaf-host-guard.css`,
+   unlayered too) writes `background: revert-layer` on every `gl-*` input at (0,1,1). At a
+   single class the guard won, and the colour input got the browser's grey button face around
+   its colour. Only the background moves here. */
+.gl-isochrone__row .gl-isochrone__swatch {
+    background: transparent;
 }
 
 .gl-isochrone__opacity {
@@ -298,12 +306,24 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Small screen — the window keeps a gutter on both sides, and goes over the toolbar
+   Small screen — the window stands BESIDE the toolbar, and above the bottom band
 --------------------------------------------------------------------------- */
 @media (max-width: 480px) {
-    /* Too wide to stand beside the toolbar (1000): the open window goes over it. */
+    /* It went over the toolbar's column, and down to the bottom of the screen: the last button
+       cut, the toolbar hidden under it. It now starts right of the column (0.5rem + its 56 px +
+       a gap), and stops where the toolbar's own wrapper stops (80 px above the bottom). */
     .gl-isochrone {
-        left: var(--gl-isochrone-left, 16px);
+        left: max(var(--gl-isochrone-left, 16px), 72px);
         z-index: var(--gl-z-control-raised, 1001);
+    }
+
+    .gl-isochrone__panel {
+        width: calc(100vw - 72px - 12px);
+        max-height: calc(100dvh - var(--gl-isochrone-top, 10px) - 96px);
+    }
+
+    /* « 10 min · À p… »: the zone's name wraps rather than being cut to a few letters. */
+    .gl-isochrone__name {
+        white-space: normal;
     }
 }

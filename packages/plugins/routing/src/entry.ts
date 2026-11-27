@@ -6,6 +6,7 @@
  * https://geoleaf.dev
  */
 
+import { isRoutingOffered } from "./offered.js";
 import "./css/geoleaf-routing.css";
 
 import { buildPublicApi } from "./public-api.js";
@@ -97,10 +98,14 @@ getGeoLeaf()?.plugins?.register?.("routing", {
     healthCheck: () => typeof getGeoLeaf()?.Routing === "object",
 });
 
-// Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity.
+// Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity. A route between two
+// stops: it was a bare circle, the same SVG as geocoding's, and the two buttons could not be told
+// apart in the bar.
 const _ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
-    ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/>' +
+    '<path d="M8 19h6.5a3.5 3.5 0 0 0 0-7h-5a3.5 3.5 0 0 1 0-7H16"/></svg>';
 
 // 4 & 5 — Register toolbar slot + wire the action event listener.
 //
@@ -141,6 +146,9 @@ if (getGeoLeaf()?.registry?.isInitialized?.() !== true) {
             destroyPanel();
         },
         ui: {
+            // Read at render, when the profile exists: `enabled: false`, or a profile without
+            // the route layer, withholds the slot (`offered.ts`).
+            isAvailable: isRoutingOffered,
             mobileIcon: {
                 icon: _ICON,
                 labelKey: "routing.toolbar.button",
@@ -188,6 +196,8 @@ function declarePane(): boolean {
         // there. Matching on the class rather than an id keeps the selector the same one the
         // stylesheet uses, so the two cannot drift apart.
         selector: ".gl-routing-panel",
+        // The same verdict as the slot's: no tab and no sheet entry when routing is not offered.
+        isAvailable: isRoutingOffered,
     });
 }
 
@@ -223,6 +233,6 @@ if (typeof document !== "undefined") {
 // meaning; being taken to a destination does.
 if (typeof document !== "undefined") {
     wireEntryPoint((destination) => {
-        openPanel([destination]);
+        openPanel([destination], { asDestination: true });
     });
 }

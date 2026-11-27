@@ -1295,7 +1295,8 @@ See [PLUGIN_CONFIGURATION_GUIDE.md](PLUGIN_CONFIGURATION_GUIDE.md) → the "Plug
 1. Check `label.enabled: true` in the layer style file
 2. Check that the zoom falls inside the `labelScale` range
 3. Enable the label button in the layer manager
-4. Make sure `label.visibleByDefault` is present in the style file
+4. To show them on load, set `label.visibleByDefault: true` in the style file — absent, they stay
+   hidden until the labels button is pressed, unless a plugin asks for them
 
 #### 9.5 Cache not working
 

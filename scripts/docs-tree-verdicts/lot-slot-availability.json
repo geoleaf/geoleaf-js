@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "slot-availability",
+    "scope": ["packages/core/src/kernel/ui/slot-availability.ts"],
+    "verdicts": {
+        "packages/core/src/kernel/ui/slot-availability.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Si un créneau de barre d'outils ou un volet hébergeable peut être offert : la capacité qu'il nomme (`requiresCapability`) est embarquée et allumée, et le prédicat `isAvailable()` de son propriétaire ne le refuse pas",
+            "confidence": "haute",
+            "rationale": "Partagé par `ui-slot-builder.ts` (créneaux) et `panel-panes.ts` (volets), qui ne s'importent pas l'un l'autre : un troisième module évite de doubler la règle « inconnu = offert ». Lit le registre des capacités au rendu, jamais à l'enregistrement, qui précède la fusion du profil. Né d'un défaut mesuré : sans moteur hors ligne ni géolocalisation, des boutons offerts ne pouvaient qu'échouer, et un plugin enregistré avant le boot n'avait aucun moyen de dire `enabled: false`. Tenu par `__tests__/ui/ui-slot-builder.test.js` et `__tests__/ui/panel-panes.test.ts`, vus rougir sur deux mutations"
+        }
+    }
+}

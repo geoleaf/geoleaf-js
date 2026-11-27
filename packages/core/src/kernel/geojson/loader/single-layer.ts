@@ -913,48 +913,38 @@ async function _loadFromOgcApi(
 
 /**
  * Renders a plugin-backed layer (e.g. flatgeobuf) by delegating to the loader the
- * plugin registered via `GeoLeaf.plugins.registerLayerLoader`. Returns a
- * `LoadedLayerResult` shape so theme / LayerManager callers treat it like any loaded
- * layer. On failure (or no registered loader) the layer is reported with 0 features.
+ * plugin registered via `GeoLeaf.plugins.registerLayerLoader`. Resolves to a
+ * `LoadedLayerResult` shape so theme / LayerManager callers treat it like any loaded layer.
+ * REJECTS when no loader is registered or the loader fails, as an ordinary layer whose data
+ * cannot be fetched does: every caller reports it the same way, and the layer manager leaves
+ * the toggle off. A 0-feature placeholder made the failure indistinguishable from a success.
  */
 function _dispatchPluginLayer(
     pluginId: string,
     def: DefLike,
     layerId: string,
-    layerLabel: string,
-    Log: GeoJSONLoaderLog
+    layerLabel: string
 ): Promise<{ id: string; label: string; featureCount: number }> {
-    const fallback = { id: layerId, label: layerLabel, featureCount: 0 };
     // Resolution is SYNCHRONOUS, yet a lazily-registered plugin has not run its
     // `registerLayerLoader()` yet. Without this prerequisite, rendering a `plugin:`
-    // layer lazily always amounts to skipping it at 0 features. The seam loads first
+    // layer lazily always amounts to failing it. The seam loads first
     // when a resolver exists for this id, and does nothing otherwise — the core
     // keeps naming no plugin.
-    return Promise.resolve(_deps?.ensurePluginLoaded?.(pluginId))
-        .then(() => {
-            const loader = _deps?.getPluginLayerLoader?.(pluginId);
-            if (!loader) {
-                Log.warn(
-                    `[GeoLeaf.GeoJSON] Layer "${layerId}" declares plugin "${pluginId}" but no loader is registered; skipped.`
-                );
-                return fallback;
-            }
-            // `def` already carries `_profileId` (set by the theme/profile loader) — the plugin
-            // uses it to resolve a profile-relative data URL.
-            return loader({ ...(def as Record<string, unknown>) }).then((id: string) => ({
-                id: id || layerId,
-                label: layerLabel,
-                featureCount: 0,
-            }));
-        })
-        .catch((err: unknown) => {
-            Log.error("[GeoLeaf.GeoJSON] Plugin layer load failed :", {
-                plugin: pluginId,
-                id: layerId,
-                error: err,
-            });
-            return fallback;
-        });
+    return Promise.resolve(_deps?.ensurePluginLoaded?.(pluginId)).then(() => {
+        const loader = _deps?.getPluginLayerLoader?.(pluginId);
+        if (!loader) {
+            throw new Error(
+                `[GeoLeaf.GeoJSON] Layer "${layerId}" declares plugin "${pluginId}" but no loader is registered.`
+            );
+        }
+        // `def` already carries `_profileId` (set by the theme/profile loader) — the plugin
+        // uses it to resolve a profile-relative data URL.
+        return loader({ ...(def as Record<string, unknown>) }).then((id: string) => ({
+            id: id || layerId,
+            label: layerLabel,
+            featureCount: 0,
+        }));
+    });
 }
 
 Loader._loadSingleLayer = function (
@@ -972,7 +962,7 @@ Loader._loadSingleLayer = function (
     // loads. The core stays plugin-agnostic (lookup by id, never by name).
     const pluginId = (def as Record<string, unknown>).plugin;
     if (typeof pluginId === "string" && pluginId) {
-        return _dispatchPluginLayer(pluginId, def, layerId, layerLabel, Log);
+        return _dispatchPluginLayer(pluginId, def, layerId, layerLabel);
     }
 
     // Vector tiles early exit

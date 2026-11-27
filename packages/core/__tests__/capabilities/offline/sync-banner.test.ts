@@ -123,12 +123,22 @@ describe("bandeau de synchronisation", () => {
         expect(text("pending")).toContain("3");
     });
 
-    test("file vide → « tout est envoyé », et le bouton est éteint", async () => {
+    test("file vide APRÈS une synchronisation → « tout est envoyé », et le bouton est éteint", async () => {
+        prefs[LAST_SYNC_PREFERENCE] = Date.now() - 60_000;
         mountSyncBanner();
         await repaint();
 
         expect(text("pending")).toBe("Tout est envoyé");
         expect(action()!.disabled).toBe(true);
+    });
+
+    test("file vide sans aucune synchronisation → « rien en attente », pas « tout est envoyé »", async () => {
+        // « Tout est envoyé » beside « jamais synchronisé » said two contrary things.
+        mountSyncBanner();
+        await repaint();
+
+        expect(text("pending")).toBe("Rien en attente");
+        expect(text("last")).toBe("jamais synchronisé");
     });
 
     test("une quarantaine seule ne se dit pas « envoyée »", async () => {
@@ -200,6 +210,8 @@ describe("bandeau de synchronisation", () => {
     });
 
     test("🛑 se rafraîchit sur les DEUX événements du core", async () => {
+        // A device that has synchronised before: « Tout est envoyé » is then the truth.
+        prefs[LAST_SYNC_PREFERENCE] = Date.now() - 60_000;
         mountSyncBanner();
         await repaint();
         expect(text("pending")).toBe("Tout est envoyé");

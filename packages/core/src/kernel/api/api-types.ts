@@ -116,6 +116,14 @@ export interface PluginLazyUI {
      * `init.js` **before** the profile loads. It is therefore read at RENDER time.
      */
     gateOnModuleEnabled?: boolean;
+    /**
+     * In-core capability the plugin cannot work without — same semantics as
+     * `IModuleUISlot.requiresCapability`, read at render time: the slot is not drawn when the
+     * bundle does not embark the capability or the profile switches it off.
+     *
+     * @example `"geolocation"`
+     */
+    requiresCapability?: string;
 }
 
 /** A lazy-plugin UI slot stored by action name and surfaced to toolbar renderers. */

@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "framing",
+    "scope": [
+        "packages/libs/host-runtime/src/ui/map-occlusion.ts",
+        "packages/plugins/isochrone/src/frame-zones.ts"
+    ],
+    "verdicts": {
+        "packages/libs/host-runtime/src/ui/map-occlusion.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Ce que les surfaces de l'application (panneau latéral, feuille mobile, barre des thèmes, barre d'outils, crédit du fond) recouvrent de la carte, bord par bord, pour que le cadrage d'un tracé ou de zones vise la partie visible",
+            "confidence": "haute",
+            "rationale": "Né d'un défaut mesuré : l'arrivée d'un tracé cadré avec une marge uniforme tombait sous le panneau latéral, puis sous la feuille du téléphone. Né dans routing, partagé ici quand isochrone a eu le même défaut : deux copies faisaient trois clones jscpd et une re-définition PSF-01. Lit le DOM de l'application, le jugement des appelants reste testable sans lui. Tenu par `src/__tests__/map-occlusion.test.ts` et par les gardes de `fit-route.test.ts` (routing) et `frame-zones.test.ts` (isochrone), vues rougir"
+        },
+        "packages/plugins/isochrone/src/frame-zones.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Cadre les zones calculées quand elles sortent de la vue ou n'y font que quelques pixels, et laisse la carte sinon",
+            "confidence": "haute",
+            "rationale": "Né d'un défaut mesuré : « Zones ajoutées : 3 » et une carte qui ne montrait que le marqueur. La règle est celle du tracé de `routing`, lue sur la géométrie et non sur une clé de configuration. À part de `controller.ts`, qui n'a qu'un appel à y faire. Tenu par `src/__tests__/frame-zones.test.ts`, vu rougir"
+        }
+    }
+}

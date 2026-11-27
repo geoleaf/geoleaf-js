@@ -50,6 +50,12 @@ export {
     type GeolocationSeam,
     type UserPosition,
 } from "./geolocation-seam.js";
+export {
+    capabilityAvailability,
+    isCapabilityOn,
+    warnCapabilityMissing,
+    type CapabilityAvailability,
+} from "./capability-seam.js";
 export { Log } from "./log-seam.js";
 export { tLabel, getActiveLang } from "./i18n-seam.js";
 export {
@@ -74,6 +80,8 @@ export { wireDrag } from "./ui/drag.js";
 export { wireTouchDrag } from "./ui/touch-drag.js";
 export { wireTooltips, showTooltip, hideTooltip } from "./ui/tooltip.js";
 export { positionMenuNear, type MenuPositionOptions } from "./ui/menu-position.js";
+// What covers the map — the visible part a framing must aim at, shared by routing and isochrone.
+export { coveredInsets, paddingClearOf, type Insets } from "./ui/map-occlusion.js";
 // ── The UI plumbing belongs to host-runtime ──────────────────────────────
 // Arrived from `field-renderer` on 06/08/2026. The decision dated itself "at
 // the merge commit"; that commit (`ddc08fae`) happened without it, and it

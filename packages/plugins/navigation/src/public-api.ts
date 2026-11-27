@@ -28,7 +28,7 @@ export type { GuidanceDeps };
  *
  * ⚠️ Guidance is entered from the ROUTE, never from a toolbar button: there is nothing to
  * guide along until a route exists, so a button would be a control that does nothing most of
- * the time. `modules.navigation.showButton` stays `false` for exactly that reason, and the
+ * the time. There is no toolbar slot for exactly that reason, and the
  * entry point lives where the route does — in the panel of `@geoleaf-plugins/routing`.
  */
 export interface NavigationPublicApi {
@@ -69,7 +69,7 @@ export interface NavigationPublicApi {
      * Whether the platform can speak at all.
      *
      * An interface should hide its toggle on `false` rather than offer a dead control — the same
-     * reasoning that keeps `showButton` at `false` while there is no panel to open.
+     * reasoning that keeps guidance out of the toolbar while there is no route to follow.
      */
     isVoiceAvailable(): boolean;
 }

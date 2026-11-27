@@ -4,8 +4,8 @@ title: isochrone — les zones atteignables depuis un point, demandées à un mo
 plugin_id: isochrone
 package: "@geoleaf-plugins/isochrone"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 51ff3c920
-date: 17 novembre 2026
+verifie_contre: b90eefa3c
+date: 27 novembre 2026
 ---
 
 # isochrone — les zones atteignables depuis un point, demandées à un moteur de routage
@@ -92,10 +92,11 @@ son créneau de barre d'outils par `registerLazyForAction` : le bouton est dessi
 le bundle n'est téléchargé qu'au premier clic, que le cœur rejoue une fois le plugin chargé. Le
 bundle part dans toutes les variantes.
 
-- **Visible par défaut.** Le bouton obéit à `modules.isochrone.showButton` seul — ni
-  `gateOnModuleEnabled`, ni drapeau hérité `ui.show*` : c'est ce que déclare `entry.ts`, et
-  SLOT-01 (`scripts/check-slot-declarations.cjs`) refuse que les deux déclarations divergent. Un
-  profil qui ne dit rien de l'isochrone a donc le bouton.
+- **Visible par défaut.** Le bouton obéit à `modules.isochrone.showButton`, sans drapeau hérité
+  `ui.show*` : c'est ce que déclare `entry.ts`, et SLOT-01 (`scripts/check-slot-declarations.cjs`)
+  refuse que les deux déclarations divergent. `modules.isochrone.enabled: false` le retire aussi :
+  `gateOnModuleEnabled` sur le créneau paresseux d'`init.js`, `isAvailable()` sur celui
+  d'`entry.ts`. Un profil qui ne dit rien de l'isochrone a donc le bouton.
 - **Libellé déclaré dans l'application**, en six langues, aux valeurs du dictionnaire du paquet :
   ce dictionnaire n'est chargé qu'au premier clic, et un libellé inconnu au démarrage ferait du
   nom accessible du bouton la clé brute.
@@ -458,7 +459,33 @@ marqueurs et crédit, puis ferme. Ce que `configure()` a réglé et les fourniss
 
 ---
 
+## Le cadrage des zones — seulement quand elles ne sont pas lisibles (1.0.4)
+
+Cinq à quinze minutes à pied font quelques pixels à l'échelle où la carte s'ouvre : « Zones
+ajoutées : 3 », et la carte ne montrait que le marqueur. `src/frame-zones.ts` cadre les zones
+calculées (`fitBounds` de l'adaptateur, marge de 48 px) quand leur emprise sort de la vue, ou y
+occupe moins de 15 % de la largeur ET de la hauteur ; sinon la carte ne bouge pas — la règle que
+`routing` applique à un tracé. `getBounds` et `fitBounds` sont optionnels sur la tranche
+d'adaptateur du plugin : un cœur qui ne les a pas ne cadre pas, sans refuser le calcul.
+
+🛑 **« La vue » est la partie de la carte que rien ne recouvre.** Cadrées avec une marge uniforme,
+l'ouest de la zone de 15 min restait sous la fenêtre de l'isochrone au bureau, le haut des zones sous
+la fenêtre réduite et le bord ouest sous la barre d'outils au téléphone. `coveredInsets`
+(`@geoleaf/host-runtime`, la mesure de `routing`) compte la fenêtre du plugin (`.gl-isochrone__panel`)
+avec les surfaces de l'application — panneau latéral, feuille mobile, barre des thèmes, barre
+d'outils, crédit ; l'emprise est projetée à l'écran (`latLngToPoint`) contre la zone non recouverte,
+et chaque bord du cadrage prend son retrait plus 48 px. La fenêtre réduite du téléphone, bande large
+et basse à 12 px du bord droit, compte sur le bord haut : une surface occupe le bord où elle cache la
+plus petite part de la carte. Sans projection ni conteneur, la vue
+géographique et la marge uniforme s'appliquent ; si les retraits ne laissent pas de place, la marge
+uniforme aussi.
+
 ## La fenêtre
+
+📱 **Au téléphone (≤ 480 px), la fenêtre se tient À CÔTÉ de la barre d'outils (1.0.4).** Elle passait
+sur la colonne de la barre et descendait jusqu'au bas de l'écran, dernier bouton coupé : elle
+commence désormais à droite de la colonne, s'arrête au-dessus de la bande du bas, fait défiler son
+corps, et le nom d'une zone passe à la ligne au lieu d'être tronqué.
 
 `src/ui/floating-window.ts` : une fenêtre flottante **non modale** (`role="dialog"`, sans `aria-modal`),
 posée dans le conteneur de la carte par `openIsochrone()` (`src/isochrone-api.ts`), dans la page
@@ -552,20 +579,20 @@ Le plugin lit **une seule branche** du profil, `modules.isochrone`, par `src/con
 schéma de profil nomme ce bloc, ouvert (`profiles/schemas/profile.schema.json`) : ni le cœur ni le
 plugin ne signalent une clé inconnue.
 
-| Clé           | Type              | Défaut                                                                                     | Règle                                                                                                              |
-| ------------- | ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| `enabled`     | booléen           | `true`                                                                                     | `false` : le plugin reste chargé et n'ouvre rien                                                                   |
-| `showButton`  | booléen           | `true`                                                                                     | Lue par le registre du cœur, à travers la `profileKey` du créneau                                                  |
-| `provider`    | chaîne            | `"valhalla"`                                                                               | Moteur à interroger. Un nom inconnu est **refusé**, jamais remplacé. Vide ou non textuelle : retombe sur le défaut |
-| `endpoint`    | chaîne            | `""`                                                                                       | Adresse du moteur. Vide : celle du fournisseur. Hors `https://` : **refusée**, sans repli                          |
-| `timeoutMs`   | nombre            | `10000`                                                                                    | Par requête. Une valeur nulle, négative ou non finie retombe sur le défaut                                         |
-| `mode`        | chaîne            | `"car"`                                                                                    | Mode proposé d'abord, parmi `car`, `foot`, `bike`. Inconnu : `car` ; absent de `modes` : le premier proposé        |
-| `modes`       | liste             | `["car", "foot", "bike"]`                                                                  | Modes proposés. Un nom inconnu est écarté ; liste vide : les trois                                                 |
-| `durations`   | liste de nombres  | `[5, 10, 15]`                                                                              | Minutes proposées : entières, positives, sans doublon, triées. Liste vide : le défaut                              |
-| `maxLayers`   | nombre            | `8`                                                                                        | Plafond de zones affichées. Entier, de 1 à 99                                                                      |
-| `zIndex`      | nombre            | `50`                                                                                       | Rang de base des zones parmi les couches du profil                                                                 |
-| `palette`     | liste de couleurs | `["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]` | `#rrggbb`. Toute autre écriture est écartée ; liste vide : le défaut                                               |
-| `fillOpacity` | nombre            | `0.25`                                                                                     | Opacité initiale du fond d'une zone, de 0 à 1, bornes comprises                                                    |
+| Clé           | Type              | Défaut                                                                                     | Règle                                                                                                                                                                          |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enabled`     | booléen           | `true`                                                                                     | `false` : ni créneau (garde `gateOnModuleEnabled` du créneau paresseux, `isAvailable()` du créneau eager), ni fenêtre — `docs/specs/contrats/APP_SHELL.md`, table de `enabled` |
+| `showButton`  | booléen           | `true`                                                                                     | Lue par le registre du cœur, à travers la `profileKey` du créneau                                                                                                              |
+| `provider`    | chaîne            | `"valhalla"`                                                                               | Moteur à interroger. Un nom inconnu est **refusé**, jamais remplacé. Vide ou non textuelle : retombe sur le défaut                                                             |
+| `endpoint`    | chaîne            | `""`                                                                                       | Adresse du moteur. Vide : celle du fournisseur. Hors `https://` : **refusée**, sans repli                                                                                      |
+| `timeoutMs`   | nombre            | `10000`                                                                                    | Par requête. Une valeur nulle, négative ou non finie retombe sur le défaut                                                                                                     |
+| `mode`        | chaîne            | `"car"`                                                                                    | Mode proposé d'abord, parmi `car`, `foot`, `bike`. Inconnu : `car` ; absent de `modes` : le premier proposé                                                                    |
+| `modes`       | liste             | `["car", "foot", "bike"]`                                                                  | Modes proposés. Un nom inconnu est écarté ; liste vide : les trois                                                                                                             |
+| `durations`   | liste de nombres  | `[5, 10, 15]`                                                                              | Minutes proposées : entières, positives, sans doublon, triées. Liste vide : le défaut                                                                                          |
+| `maxLayers`   | nombre            | `8`                                                                                        | Plafond de zones affichées. Entier, de 1 à 99                                                                                                                                  |
+| `zIndex`      | nombre            | `50`                                                                                       | Rang de base des zones parmi les couches du profil                                                                                                                             |
+| `palette`     | liste de couleurs | `["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]` | `#rrggbb`. Toute autre écriture est écartée ; liste vide : le défaut                                                                                                           |
+| `fillOpacity` | nombre            | `0.25`                                                                                     | Opacité initiale du fond d'une zone, de 0 à 1, bornes comprises                                                                                                                |
 
 **Chaque clé retombe seule sur son défaut.** Une `fillOpacity` mal écrite ne coûte pas au profil
 ses `durations`. Le lecteur rend une liste neuve à chaque appel : un appelant ne peut pas

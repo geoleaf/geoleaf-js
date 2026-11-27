@@ -2,7 +2,6 @@
     "id": "defaut",
     "label": {
         "enabled": true,
-        "visibleByDefault": false,
         "field": "step",
         "font": {
             "sizePt": 8

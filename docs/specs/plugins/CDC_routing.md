@@ -4,8 +4,8 @@ title: routing — le calcul d'itinéraire, utilisable sans le guidage
 plugin_id: routing
 package: "@geoleaf-plugins/routing"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8e5c93ae8
-date: 31 octobre 2026
+verifie_contre: 7060afad9
+date: 27 novembre 2026
 ---
 
 # routing — le calcul d'itinéraire, utilisable sans le guidage
@@ -207,17 +207,17 @@ est correct contre un fournisseur et blanc contre l'autre.
 
 Le plugin lit **`modules.routing`**, et cette branche est la seule (INV-CONFIG).
 
-| Clé            | Type                 | Défaut            | Rôle                                                                                                                        |
-| -------------- | -------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `enabled`      | `boolean`            | `true`            | active le plugin                                                                                                            |
-| `showButton`   | `boolean`            | `false`           | affiche le point d'entrée dans la barre                                                                                     |
-| `provider`     | `string`             | `"valhalla"`      | moteur à interroger, résolu dans le registre                                                                                |
-| `endpoint`     | `string`             | `""`              | base URL du moteur ; vide = défaut du fournisseur                                                                           |
-| `timeoutMs`    | `number`             | `10000`           | délai accordé au moteur avant **abandon** de la requête                                                                     |
-| `maxWaypoints` | `number`             | `10`              | plafond d'étapes ; au-delà, l'ajout est **refusé avec la limite nommée**                                                    |
-| `profile`      | `string`             | `"car"`           | mode de déplacement — `car`, `foot` ou `bike`. Un jeton inconnu **retombe** sur `car`, il n'est jamais transmis au moteur   |
-| `layerId`      | `string`             | `"routing-route"` | couche du profil où la géométrie est publiée                                                                                |
-| `labelField`   | `string \| string[]` | `"name"`          | propriété(s) du POI portant son libellé — **aussi nommée(s) dans `payloadFields`** ; la première présente et non vide gagne |
+| Clé            | Type                 | Défaut            | Rôle                                                                                                                                                     |
+| -------------- | -------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enabled`      | `boolean`            | `true`            | `false` : ni créneau ni volet (`isAvailable()`, `offered.ts`), et pas de « Démarrer le guidage » ; un profil sans la couche `layerId` est traité de même |
+| `showButton`   | `boolean`            | `false`           | affiche le point d'entrée dans la barre                                                                                                                  |
+| `provider`     | `string`             | `"valhalla"`      | moteur à interroger, résolu dans le registre                                                                                                             |
+| `endpoint`     | `string`             | `""`              | base URL du moteur ; vide = défaut du fournisseur                                                                                                        |
+| `timeoutMs`    | `number`             | `10000`           | délai accordé au moteur avant **abandon** de la requête                                                                                                  |
+| `maxWaypoints` | `number`             | `10`              | plafond d'étapes ; au-delà, l'ajout est **refusé avec la limite nommée**                                                                                 |
+| `profile`      | `string`             | `"car"`           | mode de déplacement — `car`, `foot` ou `bike`. Un jeton inconnu **retombe** sur `car`, il n'est jamais transmis au moteur                                |
+| `layerId`      | `string`             | `"routing-route"` | couche du profil où la géométrie est publiée                                                                                                             |
+| `labelField`   | `string \| string[]` | `"name"`          | propriété(s) du POI portant son libellé — **aussi nommée(s) dans `payloadFields`** ; la première présente et non vide gagne                              |
 
 ⚠️ **Le délai est tenu par un `AbortController`, pas par une promesse en course.** Une course
 laisse la requête vivre : un moteur lent garde une connexion et une place de quota pour une
@@ -269,14 +269,14 @@ et c'est l'hôte vivant qui l'adopte : le **panneau latéral droit** au-dessus d
 même raison : un itinéraire se compose **à côté** de la carte, puisqu'on regarde le tracé pendant
 qu'on modifie les étapes.
 
-| Pièce                     | Où                                                                 |
-| ------------------------- | ------------------------------------------------------------------ |
-| Déclaration               | `src/entry.ts` → `registerPane` (`src/ui-seam.ts`)                 |
-| Identifiant               | `routing` — aussi `gl-rp-tab-routing` / `gl-rp-pane-routing`       |
-| Élément adopté            | `.gl-routing-panel`, monté sur `document.body`, masqué par son CSS |
-| Construction à la demande | `onOpen` du pane → `ensurePanel()`                                 |
-| Icône de l'onglet         | `icon: _ICON` — le même glyphe que le `mobileIcon`                 |
-| Ouverture                 | `GeoLeaf.UI.openPane("routing")`, jamais `openPanel`               |
+| Pièce                     | Où                                                                                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Déclaration               | `src/entry.ts` → `registerPane` (`src/ui-seam.ts`)                                                                   |
+| Identifiant               | `routing` — aussi `gl-rp-tab-routing` / `gl-rp-pane-routing`                                                         |
+| Élément adopté            | `.gl-routing-panel`, monté sur `document.body`, masqué par son CSS                                                   |
+| Construction à la demande | `onOpen` du pane → `ensurePanel()`                                                                                   |
+| Icône de l'onglet         | `icon: _ICON` — le même glyphe que le `mobileIcon` : un tracé entre deux étapes, distinct de la loupe de `geocoding` |
+| Ouverture                 | `GeoLeaf.UI.openPane("routing")`, jamais `openPanel`                                                                 |
 
 🛑 **Il était bâti sur `createModalShell`, et il était INVISIBLE.** Ce helper écrit
 `.gl-form-modal-overlay` / `.gl-form-modal-panel`, dont les règles ne vivent que dans
@@ -465,6 +465,14 @@ ne l'a pas au lieu de le dégrader.
 recherche ici » et « la recherche n'a rien trouvé » appellent des phrases opposées, et les
 confondre dirait à quelqu'un sans le plugin que son adresse n'existe pas.
 
+**Les propositions d'adresse forment une liste encadrée** (bordure et fond lus sur les jetons du
+cœur), masquée tant qu'elle est vide. Sous chaque libellé, le complément que `geocoding` rend
+(`detail` : code postal, type, contexte) s'affiche en texte seul, quand le fournisseur en donne un.
+Sans lui, deux homonymes ne se distinguaient pas. Le nom de l'étape reste le libellé seul.
+
+**Vider la liste vide aussi le message.** « Aucun itinéraire entre ces points. » restait sous une
+liste vidée : le message parlait d'une composition qui n'existait plus.
+
 ## Ce que le moteur répond quand il n'y a pas d'itinéraire
 
 🛑 **Valhalla le dit par une erreur HTTP 400, pas par un `status` dans une réussite.** Mesuré sur une
@@ -477,6 +485,12 @@ clé refusée. `fetchRouteJson` accepte donc un `classify` qui lit le corps de l
 plus proche, à n'importe quelle distance, et rend les coordonnées qu'on lui a données. Seule la
 géométrie le montre : `stop-gap.ts` compare les étapes à la ligne, et au-delà du seuil le panneau
 l'écrit à la place du total. Le tracé reste affiché, il peut être ce que l'utilisateur voulait.
+
+🛑 **Une réponse de forme fausse n'est pas « aucun itinéraire » (1.1.1).** Tout corps que la
+normalisation ne savait pas lire tombait sur `no-route`, et l'utilisateur déplaçait ses points pour
+une panne qui n'était pas la sienne. Seul un `status` NUMÉRIQUE non nul (Valhalla) ou `code: "NoRoute"`
+(OSRM) dit l'absence d'itinéraire ; un corps sans `trip`, sans `status`, ou `code: "Ok"` sans route
+utilisable rend `malformed`.
 
 ## L'auto-hébergement d'une instance — critère tenu
 
@@ -514,6 +528,14 @@ déclare `"widget": "action"` avec `"actionId": "routing.destination"` (mesuré 
 ⚠️ La recherche qui aurait dû le trouver cherchait `"type": "action"` : la clé du schéma est
 **`widget`**. Un inventaire de ce chemin qui grepperait `type` conclurait qu'il n'est pas utilisé.
 
+## « Votre position » n'est offert qu'avec la capacité `geolocation` (1.1.1)
+
+Le panneau posait le bouton sans condition, et `origin.ts` refusait ensuite « indisponible » : un
+bouton qui ne pouvait qu'échouer, sur une variante sans géolocalisation. Il n'est posé que si
+`isCapabilityOn("geolocation")` (`@geoleaf/host-runtime`), lu à la construction du panneau — toujours
+après le boot. C'est la règle qu'`isochrone` appliquait déjà à « Ma position ». Le refus de
+`origin.ts` reste en filet, et l'absence se dit en console une fois.
+
 ## Composition — le numéro et le rôle sont DÉRIVÉS, jamais stockés
 
 L'exigence dit qu'une suppression « renumérote les suivants », et un réordonnancement aussi. Cette
@@ -535,6 +557,15 @@ sans quoi le message ne peut pas dire combien.
 inchangée : un appelant qui redessine sur `ok` repeindrait à chaque glisser terminé sur place.
 
 ---
+
+## La destination ouverte depuis une fiche reste la destination (1.1.1)
+
+Le rôle d'une étape se déduit de sa position (`roleAt`) : ajoutée en fin de liste, une étape tapée
+après la destination d'une fiche devenait l'arrivée, et le POI le départ — l'itinéraire partait du
+lieu où l'on voulait aller. L'entrée depuis une fiche ouvre le panneau avec `asDestination`
+(`ItineraryPanel.setDestination`) : tant que la dernière étape est encore ce POI, un ajout s'insère
+avant elle (`insertBeforeLast`, `composition.ts`). L'épingle suit l'OBJET : déplacée ou retirée par
+l'utilisateur, la destination cesse d'être tenue, et l'ajout reprend en fin de liste.
 
 ## Publication — le plugin ne DESSINE pas
 
@@ -606,8 +637,9 @@ Ajouté le 21/08/2026. Le panneau porte un bouton
 « Démarrer le guidage » qui charge `@geoleaf-plugins/navigation` puis lui remet l'itinéraire.
 
 🛑 **Le bouton n'existe que si le guidage est joignable, et le garde est l'ABSENCE du handler** :
-le contrôleur ne fournit `onStartGuidance` que lorsque le plugin est là, et le panneau ne crée alors
-rien du tout. Un bouton désactivé dirait « ça existe, mais pas pour vous », ce qui est faux pour un
+le contrôleur ne fournit `onStartGuidance` que lorsque le plugin est là, que
+`modules.navigation.enabled` n'est pas `false` et que la capacité `geolocation` est embarquée — le
+guidage suit le GPS. Sinon le panneau ne crée rien du tout. Un bouton désactivé dirait « ça existe, mais pas pour vous », ce qui est faux pour un
 intégrateur qui ne l'a pas installé.
 
 ⚠️ **La disponibilité se teste par `isLazyAvailable`, JAMAIS par `isLoaded`.** `navigation` est
@@ -673,6 +705,9 @@ Le panneau se ferme ; le tracé reste. Créditer depuis le panneau mettrait la m
 pendant qu'on regarde les contrôles, et l'enlèverait pendant qu'on regarde ce qui doit être crédité.
 **ODbL n'a pas de période de grâce pour « le panneau était fermé ».**
 
+⚠️ **Le démontage retire la mention.** Après un `unmount()`, le crédit restait dans le conteneur de
+carte, pour un tracé que plus personne ne verrait. `destroyPanel()` l'enlève avec le reste.
+
 ### Pourquoi le plugin dessine la sienne plutôt que d'utiliser le contrôle de la carte
 
 Le contrôle d'attribution du moteur de rendu affiche ce que ses **sources** déclarent, et la couture
@@ -701,6 +736,15 @@ cœur les rend, à qui le lui demande :
 ```ts
 GeoLeaf?.Labels?.enableLabels(layerId, { enabled: true, labelId: "step" }, true);
 ```
+
+🛑 **La règle de priorité, et ce qu'elle a coûté.** Le style de la couche a le dernier mot : un
+`label.visibleByDefault` posé dans le style **prime** sur le `true` que ce plugin passe
+(`_resolveLabelEffectiveShow`, `packages/core/src/capabilities/labels/labels.ts`) ; absent, c'est la
+demande du plugin qui s'applique. Le profil `tourism` posait `visibleByDefault: false` sur
+`routing-route` : les étapes n'étaient jamais numérotées, témoin compris. Le profil est corrigé ; et
+le chargeur de styles du cœur, qui réécrivait la clé absente en `false` (avec un avertissement à
+chaque chargement), la laisse désormais absente — sans quoi le retrait du profil restait sans effet.
+**Un style de `routing-route` qui veut les numéros ne pose pas la clé**, ou la pose à `true`.
 
 ⚠️ **Les deux `?.` ne sont pas de la prudence d'écriture, et c'est la gate qui l'a rappelé.** Cet
 exemple était d'abord écrit sans eux ; `typecheck-docs-examples` a rendu deux `TS18048` — _`GeoLeaf`
@@ -758,10 +802,53 @@ un fait.
 ⚠️ **Aucune marge de confort dans le test d'inclusion.** Un tracé qui touche le bord de la vue EST à
 l'écran, et inventer une marge rendrait la règle imprévisible depuis ce qu'on voit.
 
-⚠️ **La boîte est construite sur les POINTS, pas sur la ligne décodée.** Un fournisseur accroche les
+🛑 **« À l'écran » veut dire dans la partie de la carte qu'on VOIT (1.1.1).** Jugé contre toute la
+toile, un tracé passé sous le panneau latéral ou la barre des thèmes comptait comme visible ; cadré
+avec une marge uniforme, l'arrivée tombait sous le panneau (mesuré : x = 1334 sur 1440, le panneau
+couvrant depuis x ≈ 1084, caméra inclinée à 60°). `coveredInsets` (`@geoleaf/host-runtime`, partagé
+avec `isochrone`) mesure ce que le panneau latéral (`#gl-right-panel`), la feuille mobile
+(`.gl-sheet-panel`), la barre des thèmes (`#gl-theme-primary-container`), la barre d'outils
+(`.gl-map-toolbar`) et le crédit du fond de carte (`.maplibregl-ctrl-attrib`) recouvrent, bord par
+bord ; le test d'inclusion projette les étapes à l'écran (`map.project`, juste sous une caméra
+inclinée) contre la zone non recouverte, et la marge du cadrage ajoute ces retraits. Sans projection
+lisible, la règle d'avant s'applique.
+
+🛑 **Une surface occupe le bord dont le retrait qu'elle impose est la plus petite part de la carte
+sur cet axe.** Rangée au contact ou à la profondeur brute, la feuille mobile allait à gauche (412 px)
+plutôt qu'en bas (503 px), et la fenêtre réduite de l'isochrone, à 12 px du bord droit, à droite
+(340 px sur 412) plutôt qu'en haut (300 sur 839) : deux retraits latéraux remplissaient la largeur et
+le cadrage revenait à la marge uniforme. En proportion, le panneau latéral va sur son côté, la
+feuille en bas, le crédit d'un coin sur le bord qu'il recouvre à peine, la barre d'outils à gauche, et
+une bande large et basse en haut ou en bas, qu'elle touche un bord ou flotte.
+
+🛑 **Caméra inclinée : le cadrage se corrige une fois, après l'atterrissage.** Le moteur cadre la
+boîte au sol comme vue d'en haut, puis garde l'inclinaison : à 60°, le côté proche de la boîte
+s'élargit à l'écran. Rejoué sur le code de caméra du moteur, l'étape de Buenos Aires tombait à
+x = 1075, à 9 px du panneau, là où une caméra à plat la laisse à 96 px. Au `moveend` du cadrage, si
+la caméra est bien celle que `cameraForBounds` annonçait, les étapes sont projetées : chaque bord où
+l'une d'elles est à moins de 48 px de la zone non recouverte reçoit deux fois le manque en marge
+(un retrait asymétrique ne décale la boîte que de sa demi-différence), et le tracé est recadré une
+seule fois. Un vol interrompu par l'utilisateur n'atterrit pas où annoncé : rien n'est corrigé.
+
+🛑 **Caméra retenue par les bornes, sheet mobile ouvert : le sheet descend à son en-tête.** Sous
+`positionFixed`, les bornes de caméra du profil interdisent un zoom qui montrerait plus que leur
+emprise : au téléphone, la bande libre au-dessus du sheet est trop basse, et la caméra s'arrête plus
+près que demandé — mesuré sur Pixel 7, Saint-Denis → Saint-Pierre : zoom 8,04 visé, 8,58 obtenu,
+l'arrivée sous le sheet. Plus de marge ne demanderait qu'un zoom plus bas encore. Au `moveend`, si le
+zoom obtenu dépasse le zoom annoncé et qu'une étape reste hors de la zone non recouverte,
+`routing` appelle `GeoLeaf.UI.setPaneSize?.("peek")` (par `GeoLeaf`, jamais par import du core),
+remesure les surfaces une fois le sheet arrêté, et recadre une seule fois. Sans sheet ouvert (le
+bureau) ou sous un core qui n'a pas le membre, l'appel rend `false` et l'atterrissage reste tel
+quel. Un zoom obtenu plus BAS que l'annoncé est un geste de l'utilisateur : rien ne bouge.
+
+⚠️ **La boîte est construite sur les POINTS ET sur la ligne décodée.** Un fournisseur accroche les
 étapes au réseau, donc un point peut se trouver à quelques mètres de la ligne qu'il a produite :
 cadrer sur la seule ligne laisse parfois un marqueur juste hors champ — la première chose qu'on
-cherche.
+cherche. Et une ligne qui longe une côte sort loin de la boîte de ses étapes : cadrée sur les seuls
+points, Saint-Denis → Saint-Pierre laissait 364 de ses 1417 sommets sous la barre d'outils du
+téléphone. Le déficit de marge qui déclenche la correction d'une caméra inclinée ignore moins d'un
+demi-pixel : un cadrage à plat laisse une étape à 48 px moins un arrondi, et un second cadrage
+identique partait pour lui.
 
 ⚠️ **Ce qui n'est PAS traité, nommé plutôt que faux en silence** : un itinéraire franchissant
 l'antiméridien. Sa boîte englobante dégénère en une boîte planétaire et le cadrage dézoomerait sur

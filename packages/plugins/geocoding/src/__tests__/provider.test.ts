@@ -10,6 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AddokProvider, NominatimProvider, PhotonProvider, CustomProvider } from "../provider.js";
 import { createProvider } from "../provider-registry.js";
+import langFr from "../lang/lang-fr.js";
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -341,5 +342,113 @@ describe("_parseGeoJSON edge cases", () => {
         fetchMock.mockResolvedValueOnce({ ok: true, json: async () => fc });
         const results = await new AddokProvider().search("x", 5);
         expect(results[0].raw).toEqual(feature);
+    });
+});
+
+describe("the detail that tells two same-named results apart", () => {
+    // The kind is looked up through the core i18n facade, as the control does; this table stands in
+    // for the merged French dictionary.
+    beforeEach(() => {
+        vi.stubGlobal("GeoLeaf", {
+            I18n: { getLabel: (key: string) => (langFr as Record<string, string>)[key] ?? key },
+        });
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    // « Saint-Denis » came back twice, and nothing told the two apart.
+    it("is built from postcode, translated kind and context — what the label does not already say", async () => {
+        const fc = _makeFeatureCollection([
+            _makeFeature(55.45, -20.88, {
+                label: "Saint-Denis",
+                postcode: "97400",
+                type: "municipality",
+                context: "974, La Réunion",
+            }),
+            _makeFeature(2.36, 48.93, {
+                label: "Saint-Denis",
+                postcode: "93200",
+                type: "municipality",
+                context: "93, Seine-Saint-Denis, Île-de-France",
+            }),
+        ]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => fc }));
+        const [a, b] = await new AddokProvider().search("Saint-Denis", 5);
+        expect(a!.detail).toBe("97400 · commune · 974, La Réunion");
+        expect(b!.detail).not.toBe(a!.detail);
+    });
+
+    it("leaves out a kind the dictionaries do not translate, never shows it raw", async () => {
+        const fc = _makeFeatureCollection([
+            _makeFeature(2.3, 48.8, { label: "Tour", postcode: "75007", type: "tower_of_sorts" }),
+        ]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => fc }));
+        const [r] = await new AddokProvider().search("Tour", 5);
+        expect(r!.detail).toBe("75007");
+    });
+
+    it("is absent when the provider says nothing beyond the label", async () => {
+        const fc = _makeFeatureCollection([_makeFeature(2.3, 48.8, { label: "Paris" })]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => fc }));
+        const [r] = await new AddokProvider().search("Paris", 5);
+        expect(r!.detail).toBeUndefined();
+    });
+
+    // Nominatim answers « Saint-Pierre » with two relations, the commune (admin level 8) and the
+    // arrondissement (level 7), under the same label and the same kind: only `geocoding.admin` differs.
+    it("tells two Nominatim relations apart by their named administrative level", async () => {
+        const relation = (lng: number, lat: number, admin: Record<string, string>) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lng, lat] },
+            properties: {
+                geocoding: {
+                    type: "city",
+                    label: "Saint-Pierre, Réunion, France",
+                    name: "Saint-Pierre",
+                    state: "Réunion",
+                    country: "France",
+                    admin,
+                },
+            },
+        });
+        const fc = _makeFeatureCollection([
+            relation(55.478, -21.339, {
+                level2: "France",
+                level4: "Réunion",
+                level7: "Saint-Pierre",
+                level8: "Saint-Pierre",
+            }),
+            relation(55.5, -21.25, { level2: "France", level4: "Réunion", level7: "Saint-Pierre" }),
+        ]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => fc }));
+        const [a, b] = await new NominatimProvider().search("Saint-Pierre", 5);
+        expect(a!.label).toBe(b!.label);
+        expect(a!.detail).toBeDefined();
+        expect(b!.detail).toBeDefined();
+        expect(a!.detail).not.toBe(b!.detail);
+        // No English word from the provider reaches the user.
+        expect(`${a!.detail} ${b!.detail}`).not.toMatch(/\bcity\b/);
+        expect(a!.detail).toContain("ville");
+        // The level is named, not numbered: « niveau administratif 8 » was jargon.
+        expect(a!.detail).toContain("commune");
+        expect(b!.detail).toContain("arrondissement");
+        expect(`${a!.detail} ${b!.detail}`).not.toMatch(/niveau administratif/);
+    });
+
+    it("falls back to the numbered level when the dictionaries do not name it", async () => {
+        const relation = (lng: number, admin: Record<string, string>) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [lng, 45] },
+            properties: {
+                geocoding: { type: "city", label: "Homonym, France", name: "Homonym", admin },
+            },
+        });
+        const fc = _makeFeatureCollection([
+            relation(1, { level2: "France", level9: "Homonym" }),
+            relation(2, { level2: "France", level10: "Homonym" }),
+        ]);
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, json: async () => fc }));
+        const [a, b] = await new NominatimProvider().search("Homonym", 5);
+        expect(a!.detail).toContain("niveau administratif 9");
+        expect(b!.detail).toContain("niveau administratif 10");
     });
 });

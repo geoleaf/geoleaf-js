@@ -42,6 +42,23 @@ const REQUESTED_KEYS = [
     "geocoding.control.submitAriaLabel",
     "geocoding.control.clearAriaLabel",
     "geocoding.control.noResults",
+    // `provider.ts` builds `geocoding.kind.<kind>` from the provider's own kind word, and leaves a
+    // kind without a key out of the result detail: these are the kinds it can show — the ones an
+    // ADDRESS search returns (BAN, Nominatim); the boot budget leaves no room for the others.
+    ...[
+        "housenumber",
+        "street",
+        "locality",
+        "municipality",
+        "city",
+        "town",
+        "village",
+        "suburb",
+    ].map((kind) => `geocoding.kind.${kind}`),
+    "geocoding.detail.adminLevel",
+    // `provider.ts` builds `geocoding.detail.adminLevel<N>` to name the level two homonyms stand
+    // at; a level without a key falls back to the numbered `geocoding.detail.adminLevel`.
+    ...[8, 7, 6].map((level) => `geocoding.detail.adminLevel${level}`),
 ] as const;
 
 const DICTS: Array<[string, Record<string, unknown>]> = [
@@ -69,6 +86,10 @@ describe("geocoding i18n dictionaries (C-5)", () => {
 
     it.each(DICTS)("lang-%s declares no key beyond what the code requests", (_code, dict) => {
         expect(Object.keys(dict).sort()).toEqual([...REQUESTED_KEYS].sort());
+    });
+
+    it.each(DICTS)("lang-%s keeps the {level} slot of the administrative level", (_code, dict) => {
+        expect(dict["geocoding.detail.adminLevel"]).toContain("{level}");
     });
 
     it("English is actually English — the C-5 symptom was French leaking into en", () => {

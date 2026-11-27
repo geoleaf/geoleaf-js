@@ -34,7 +34,30 @@ export interface ImportLayerOptions {
     visible?: boolean;
     /** Enable clustering. Defaults to false. */
     cluster?: boolean;
+    /**
+     * How the layer is painted — the core's flat style keys (`color`, `weight`, `fillColor`,
+     * `fillOpacity`, `radius`…), merged over {@link IMPORT_DEFAULT_STYLE}.
+     *
+     * @example `{ color: "#1d4ed8", fillColor: "#3b82f6" }`
+     */
+    style?: Record<string, unknown>;
 }
+
+/**
+ * What an imported layer looks like when the caller says nothing.
+ *
+ * 🛑 Without it the adapter's own default applied — `#cccccc`, 5 px, no outline —, near
+ * invisible on a light basemap: the user imported a file and saw nothing. A contrasted fill with
+ * an outline, readable on light and dark maps alike.
+ */
+const IMPORT_DEFAULT_STYLE: Readonly<Record<string, unknown>> = {
+    color: "#c2410c",
+    weight: 2,
+    opacity: 1,
+    fillColor: "#f97316",
+    fillOpacity: 0.35,
+    radius: 6,
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -144,6 +167,8 @@ export async function importAsLayer(file: File, options?: ImportLayerOptions): P
 
     const layerId = options?.layerId ?? `fileimport-${(_layerSeq += 1)}`;
     adapter.addGeoJSONLayer(layerId, result.data, {
+        ...IMPORT_DEFAULT_STYLE,
+        ...(options?.style ?? {}),
         layerName: options?.layerName ?? file.name,
         visible: options?.visible ?? true,
         cluster: options?.cluster ?? false,

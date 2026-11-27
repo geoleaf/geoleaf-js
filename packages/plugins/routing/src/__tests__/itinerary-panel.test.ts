@@ -193,6 +193,14 @@ describe("the three plain buttons", () => {
         expect(handlers.onChange).toHaveBeenLastCalledWith([]);
     });
 
+    it("clearing the itinerary clears the message about it too", () => {
+        // « Aucun itinéraire entre ces points. » stayed under an emptied list.
+        const { panel } = open([wp("A"), wp("B")]);
+        panel.showFailure("no-route");
+        q<HTMLButtonElement>(".gl-routing-panel__clear").click();
+        expect(q<HTMLElement>(".gl-routing-panel__message").textContent).toBe("");
+    });
+
     it("asks the host for the position rather than reading it itself", () => {
         // Reading it here would open a second watch beside the one the core already holds.
         const { handlers } = open();
@@ -200,10 +208,53 @@ describe("the three plain buttons", () => {
         expect(handlers.onUseMyPosition).toHaveBeenCalled();
     });
 
+    it("does not offer « Votre position » without the geolocation capability", () => {
+        // Offered, it could only refuse. Same rule as isochrone's « Ma position ».
+        const g = globalThis as { GeoLeaf?: Record<string, unknown> };
+        const previous = g.GeoLeaf?.Introspection;
+        g.GeoLeaf = {
+            ...(g.GeoLeaf ?? {}),
+            Introspection: {
+                getCapabilityStatus: () => [{ id: "legend", embarked: true, enabled: true }],
+            },
+        };
+        open();
+        expect(panelRoot().querySelector(".gl-routing-panel__my-position")).toBeNull();
+        expect(panelRoot().querySelector(".gl-routing-panel__clear")).not.toBeNull();
+        if (g.GeoLeaf) g.GeoLeaf.Introspection = previous;
+    });
+
     it("closes through the shell and tells the host", () => {
         const { handlers } = open();
         q<HTMLButtonElement>(".gl-routing-panel__close").click();
         expect(closed).toBe(1);
         expect(handlers.onClose).toHaveBeenCalled();
+    });
+});
+
+describe("la destination ouverte depuis une fiche reste la destination", () => {
+    // Opened from a feature, the POI is where one wants to GO. Appended after it, a typed stop
+    // became the arrival and the POI the departure.
+    it("une étape ajoutée ensuite s'insère AVANT la destination", () => {
+        const { panel, handlers } = open();
+        const dest = wp("Reserva");
+        panel.setDestination(dest);
+        panel.addWaypoint(wp("Départ"));
+        panel.addWaypoint(wp("Étape"));
+        const last = (handlers.onChange as ReturnType<typeof vi.fn>).mock
+            .lastCall![0] as Waypoint[];
+        expect(last.map((w) => w.name)).toEqual(["Départ", "Étape", "Reserva"]);
+    });
+
+    it("une fois la destination déplacée par l'utilisateur, l'ajout reprend en fin de liste", () => {
+        const { panel, handlers } = open();
+        const dest = wp("Reserva");
+        panel.setDestination(dest);
+        panel.addWaypoint(wp("Départ"));
+        panel.setWaypoints([dest, wp("Départ")]);
+        panel.addWaypoint(wp("Après"));
+        const last = (handlers.onChange as ReturnType<typeof vi.fn>).mock
+            .lastCall![0] as Waypoint[];
+        expect(last.map((w) => w.name)).toEqual(["Reserva", "Départ", "Après"]);
     });
 });

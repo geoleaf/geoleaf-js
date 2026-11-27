@@ -171,15 +171,17 @@ describe("bboxPolygon", () => {
 // formatDistance
 // ---------------------------------------------------------------------------
 
+// ⚠️ Formatted in the ACTIVE language (French without a host): grouped thousands and a decimal
+// comma. These expectations held the raw numbers — the « 311708308915 m² » the recette flagged.
 describe("formatDistance", () => {
     it('unit "m" always formats in metres', () => {
         expect(formatDistance(500, "m", 0)).toBe("500 m");
-        expect(formatDistance(1500, "m", 0)).toBe("1500 m");
+        expect(formatDistance(1500, "m", 0)).toBe("1 500 m");
     });
 
     it('unit "km" always formats in kilometres', () => {
-        expect(formatDistance(500, "km", 2)).toBe("0.5 km");
-        expect(formatDistance(1500, "km", 1)).toBe("1.5 km");
+        expect(formatDistance(500, "km", 2)).toBe("0,5 km");
+        expect(formatDistance(1500, "km", 1)).toBe("1,5 km");
     });
 
     it('"auto" uses m below 1000, km above', () => {
@@ -189,8 +191,8 @@ describe("formatDistance", () => {
     });
 
     it("respects decimals parameter", () => {
-        expect(formatDistance(1234.5, "m", 1)).toBe("1234.5 m");
-        expect(formatDistance(1234.5, "m", 0)).toBe("1235 m");
+        expect(formatDistance(1234.5, "m", 1)).toBe("1 234,5 m");
+        expect(formatDistance(1234.5, "m", 0)).toBe("1 235 m");
     });
 });
 
@@ -201,7 +203,7 @@ describe("formatDistance", () => {
 describe("formatArea", () => {
     it('unit "m2" always formats in m²', () => {
         expect(formatArea(500, "m2", 0)).toBe("500 m²");
-        expect(formatArea(20000, "m2", 0)).toBe("20000 m²");
+        expect(formatArea(20000, "m2", 0)).toBe("20 000 m²");
     });
 
     it('unit "ha" always formats in ha', () => {
@@ -220,7 +222,7 @@ describe("formatArea", () => {
     });
 
     it("respects decimals parameter", () => {
-        expect(formatArea(15000, "ha", 2)).toBe("1.5 ha");
+        expect(formatArea(15000, "ha", 2)).toBe("1,5 ha");
         expect(formatArea(15000, "ha", 0)).toBe("2 ha");
     });
 });

@@ -949,6 +949,7 @@ export const EXPECTED_FACADE_MEMBERS = {
         "openPanel",
         "registerPanelPane",
         "setImmersive",
+        "setPaneSize",
         "setTheme",
         "showError",
         "showInfo",

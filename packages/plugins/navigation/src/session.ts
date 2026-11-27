@@ -7,6 +7,7 @@
  * https://geoleaf.dev
  */
 import type { RouteResult, RouteOutcome, Waypoint } from "@geoleaf-plugins/routing";
+import { Log } from "@geoleaf/host-runtime";
 import { getPluginConfig } from "./config.js";
 import { createGuidanceRuntime } from "./engine/runtime.js";
 import type { Position } from "./engine/snap.js";
@@ -94,6 +95,12 @@ export function startSession(
     deps: GuidanceDeps
 ): void {
     const cfg = getPluginConfig();
+    // `enabled: false` switches guidance off — for a caller of the API too, not only for the
+    // button `routing` no longer offers. It used to start a session regardless.
+    if (cfg.enabled === false) {
+        Log.warn("[navigation] modules.navigation.enabled is false — no session is started");
+        return;
+    }
     // A previous session is stopped rather than left running: two runtimes would hold two
     // position watches and two sets of listeners, and the older would keep moving the camera
     // for a route the user has left.

@@ -22,7 +22,6 @@
 // the `unknown` fallback, which is worse than a generic sentence — it is a
 // generic sentence believed correct.
 const langTemplateEn = {
-    "navigation.toolbar.button": "Navigation",
     "navigation.maneuver.depart": "Depart",
     "navigation.maneuver.arrive": "Arrive",
     "navigation.maneuver.stop": "Stop",

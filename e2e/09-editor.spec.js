@@ -56,15 +56,19 @@ import { baseURL } from "./helpers/base-url.js";
 import { scanPage } from "./helpers/axe-config.js";
 import { GEOLEAF_DB, readStore } from "./helpers/idb.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
+import { acceptEveryGeometry } from "./helpers/editor.js";
 
 const TERRA_DRAW_CHUNK = /geoleaf-editor\.terra-draw-[^/]+\.js$/;
 const POINT_BTN = 'button.gl-editor-tool-btn[data-tool="point"]';
 
 test.use({ baseURL: baseURL("full") });
 
-// The basemap is not this spec's subject: its third-party latency must not decide it.
+// The basemap is not this spec's subject: its third-party latency must not decide it. Nor is
+// the profile: its only editable layer takes points, so the line and polygon tools would be
+// greyed — the editable layer is widened to the three geometries the engine draws.
 test.beforeEach(async ({ context }) => {
     await serveBasemapTilesLocally(context);
+    await acceptEveryGeometry(context);
 });
 
 /** Loads the lazy editor plugin (what the toolbar action does) and waits for its API. */

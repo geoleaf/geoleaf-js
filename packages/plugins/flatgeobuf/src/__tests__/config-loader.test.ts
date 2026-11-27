@@ -224,3 +224,44 @@ describe("loadLayerFromConfig", () => {
         expect(result).toBe("returned-layer-id");
     });
 });
+
+describe("a declarative layer — its address and its style", () => {
+    it("resolves a profile-relative url against the DOCUMENT, not the origin", async () => {
+        // Served under a sub-path, the origin-rooted address answered 404. A `<base>` puts the
+        // document under one, so the origin and the document no longer resolve alike.
+        const tag = document.createElement("base");
+        tag.href = `${location.origin}/app/`;
+        document.head.append(tag);
+        const base = document.baseURI;
+        const config = makeConfig({ data: { url: "layers/x/data/x.fgb" } });
+        (config as { _profileId?: string })._profileId = "tourism";
+        await loadLayerFromConfig(config);
+        const url = (loadAsLayer as unknown as { mock: { lastCall: unknown[] } }).mock.lastCall![0];
+        tag.remove();
+        expect(url).toBe(new URL("profiles/tourism/layers/x/data/x.fgb", base).href);
+        expect(String(url)).toContain("/app/profiles/");
+    });
+
+    it("hands the layer's declared style — flat keys and rules — to the drawing", async () => {
+        const style = {
+            style: { fillColor: "#b9b177", fillOpacity: 0.5 },
+            styleRules: [{ when: {} }],
+        };
+        const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => style }));
+        vi.stubGlobal("fetch", fetchMock);
+        const config = makeConfig();
+        (config as { styles?: unknown }).styles = { directory: "styles", default: "defaut.json" };
+        await loadLayerFromConfig(config);
+        expect(loadAsLayer).toHaveBeenCalledWith(
+            expect.any(String),
+            expect.objectContaining({
+                __declaredStyle: {
+                    fillColor: "#b9b177",
+                    fillOpacity: 0.5,
+                    styleRules: [{ when: {} }],
+                },
+            })
+        );
+        vi.unstubAllGlobals();
+    });
+});

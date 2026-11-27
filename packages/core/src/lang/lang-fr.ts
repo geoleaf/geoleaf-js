@@ -28,6 +28,10 @@ const lang_fr: LangDict = {
     "toast.init.loading": "Chargement des donn\u00e9es\u2026",
     "toast.layer.truncated.known":
         "{0} : {1} entit\u00e9s affich\u00e9es sur {2} \u2014 la couche est tronqu\u00e9e.",
+    "toast.plugin.load_failed": "Cette fonction n'a pas pu se charger.",
+    "toast.plugin.load_failed_offline":
+        "Cette fonction n'est pas disponible hors ligne : préparez une zone en ligne pour l'emporter.",
+    "toast.layer.load_failed": "La couche « {0} » n'a pas pu se charger.",
     "toast.layer.style_missing":
         "Style par d\u00e9faut introuvable pour « {0} » : affichage en style neutre.",
     "toast.layer.truncated.unknown":

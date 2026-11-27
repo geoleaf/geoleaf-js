@@ -45,6 +45,42 @@ describe("openModal / createModal", () => {
     });
 });
 
+describe("openModal({ mode })", () => {
+    test("par défaut, la fenêtre complète : onglets visibles, corps construit en « full »", () => {
+        ModalManager.openModal();
+        const modal = document.getElementById("gl-cache-modal");
+        expect(modal.getAttribute("data-mode")).toBe("full");
+        expect(modal.querySelector(".gl-cache-modal__tabs").hidden).toBe(false);
+        expect(exportLogic.initializeCacheContent).toHaveBeenLastCalledWith("full");
+    });
+
+    test("« simple » : la fenêtre de terrain, sans les onglets Import / Export", () => {
+        ModalManager.openModal({ mode: "simple" });
+        const modal = document.getElementById("gl-cache-modal");
+        expect(modal.getAttribute("data-mode")).toBe("simple");
+        expect(modal.querySelector(".gl-cache-modal__tabs").hidden).toBe(true);
+        expect(exportLogic.initializeCacheContent).toHaveBeenLastCalledWith("simple");
+    });
+
+    test("revenue en complet après Export, la fenêtre rouvre sur l'onglet Import", () => {
+        ModalManager.openModal();
+        ModalManager.switchTab("export");
+        ModalManager.openModal({ mode: "simple" });
+        ModalManager.openModal({ mode: "full" });
+        const active = document.querySelector(".gl-cache-modal__tab--active");
+        expect(active.dataset.tab).toBe("import");
+        expect(document.querySelector(".gl-cache-modal__tabs").hidden).toBe(false);
+    });
+
+    test("un mode inconnu est averti et ouvre la fenêtre complète", () => {
+        const warn = vi.fn();
+        globalThis.GeoLeaf.Log = { ...(globalThis.GeoLeaf.Log ?? {}), warn, info: vi.fn() };
+        ModalManager.openModal({ mode: "terrain" });
+        expect(exportLogic.initializeCacheContent).toHaveBeenLastCalledWith("full");
+        expect(warn.mock.calls.some((c) => String(c[0]).includes("terrain"))).toBe(true);
+    });
+});
+
 describe("fermeture", () => {
     test("clic sur la croix ferme le modal", () => {
         ModalManager.openModal();

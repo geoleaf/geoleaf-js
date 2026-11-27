@@ -41,8 +41,9 @@ const lang_fr: Record<string, string> = {
     "measure.unit.km2": "km²",
 
     // Unit selector labels
-    "measure.unit.distance.label": "Distances",
-    "measure.unit.area.label": "Surfaces",
+    "measure.unit.auto": "automatique",
+    "measure.unit.distance.current": "Unité des distances : {unit}",
+    "measure.unit.area.current": "Unité des surfaces : {unit}",
 
     // Recap box
     "measure.recap.header.index": "N°",

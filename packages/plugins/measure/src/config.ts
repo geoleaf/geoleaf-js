@@ -21,8 +21,10 @@ const MEASURE_CONFIG_DEFAULTS: MeasureConfig = {
     showButton: true,
     position: "left",
     menuPosition: "top-left",
-    defaultDistanceUnit: "m",
-    defaultAreaUnit: "m2",
+    // `auto`: the unit follows the magnitude. Metres and square metres by default printed a field's
+    // area as « 311708308915 m² ».
+    defaultDistanceUnit: "auto",
+    defaultAreaUnit: "auto",
     snapPx: 12,
     circleSteps: 64,
     enabledTools: [...ALL_TOOLS],
@@ -36,6 +38,9 @@ const MEASURE_CONFIG_DEFAULTS: MeasureConfig = {
     decimals: { distance: 0, area: 0 },
     exportFileName: "mesures.geojson",
 };
+
+/** `menuPosition` values already reported. */
+const _warnedMenuPositions = new Set<string>();
 
 /**
  * Narrows `menuPosition` to the two shapes the CDC §1.7 documents: an explicit
@@ -56,10 +61,16 @@ function _normalizeMenuPosition(raw: unknown): MeasureConfig["menuPosition"] {
     } else if (raw === "top-left") {
         return "top-left";
     }
-    console.warn(
-        `[GeoLeaf.Measure] menuPosition: unsupported value ${JSON.stringify(raw)} — ` +
-            `expected "top-left" or { top, left }. Falling back to the default.`
-    );
+    // Said ONCE per value: the config is read on every interaction, and the same warning
+    // came out three times for one opening.
+    const said = JSON.stringify(raw);
+    if (!_warnedMenuPositions.has(said)) {
+        _warnedMenuPositions.add(said);
+        console.warn(
+            `[GeoLeaf.Measure] menuPosition: unsupported value ${said} — ` +
+                `expected "top-left" or { top, left }. Falling back to the default.`
+        );
+    }
     return MEASURE_CONFIG_DEFAULTS.menuPosition;
 }
 

@@ -36,7 +36,12 @@ import {
     resolvePageDimensions,
 } from "./page-format.js";
 import { createComposedCanvas, registerSlot as _registerSlot } from "./layout-composer.js";
-import { registerExporter as _registerExporter, getExporter } from "./format-registry.js";
+import {
+    registerExporter as _registerExporter,
+    getExporter,
+    getExporterMeta,
+    type ExporterMeta,
+} from "./format-registry.js";
 import { downloadBlob } from "@geoleaf/host-runtime";
 import { getPrintConfig } from "./config.js";
 import { readBasemapCredit } from "./basemap-credit.js";
@@ -254,9 +259,14 @@ export async function exportPDF(opts: ExportOptions): Promise<Blob | null> {
  * Registers a custom export format.
  * @param format - Case-insensitive format identifier (e.g. `"png"`).
  * @param fn - Exporter function that receives the composed canvas and returns a Blob.
+ * @param meta - `extension` of the downloaded file (without the dot) and `label` of its button,
+ *   used when the dictionary carries no `print.btn.<format>`. Without them, a third-party format
+ *   was saved as `.jpg` and its button read `print.btn.<format>`.
+ * @example
+ * GeoLeaf.Print.registerExporter("png", pngExporter, { extension: "png", label: "PNG" });
  */
-export function registerExporter(format: string, fn: ExporterFn): void {
-    _registerExporter(format, fn);
+export function registerExporter(format: string, fn: ExporterFn, meta?: ExporterMeta): void {
+    _registerExporter(format, fn, meta);
 }
 
 /**
@@ -276,6 +286,11 @@ export function registerPageFormat(name: string, def: PageFormatDef): void {
  */
 export function registerSlot(slot: ComposeSlot): void {
     _registerSlot(slot);
+}
+
+/** @internal What a registered exporter declared (extension, label) — read by the modal. */
+export function _getExporterMeta(format: string): ExporterMeta | undefined {
+    return getExporterMeta(format);
 }
 
 /**

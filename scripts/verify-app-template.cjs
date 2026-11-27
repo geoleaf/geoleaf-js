@@ -507,8 +507,21 @@ const EXPECTED_CSP = {
     // cog, the tile simply did not display.
     // ⚠️ The widening is narrow: a `blob:` URL is same-origin by construction and can
     // only designate what the page itself fabricated. It opens no origin.
+    // 📌 cog no longer draws through it (2026-11-26): it hands MapLibre its image through a
+    // registered protocol, with no URL at all — see `connect-src` below. `blob:` STAYS: the
+    // photo previews of the editor and of the field renderer are `<img src="blob:…">`
+    // (`persistence/image-store.ts`, `types/field-media.ts`).
     "img-src": ["'self'", "data:", "blob:", "https:"],
-    "connect-src": ["'self'", "https:"],
+    // `wss:` ADDED on 2026-11-26, after a browser verdict on `demo.full`: the websocket
+    // plugin's connection was refused naming `connect-src`, and the plugin then waited for a
+    // `close` Chromium never sends. It is the exact counterpart of `https:` — any origin, TLS
+    // only — and opens nothing `https:` does not. `ws:` is not listed; under
+    // `upgrade-insecure-requests` a `ws:` URL is rewritten to `wss:` before the check.
+    // 🛑 `blob:` and `data:` are NOT here, and that is the other half of the same decision:
+    // MapLibre 6 loads an `image` source through `fetch()`, a `data:` URL included, so both
+    // fall under this directive. cog's fix was therefore not a URL scheme to allow but a
+    // protocol handler that answers without any request.
+    "connect-src": ["'self'", "https:", "wss:"],
     "font-src": ["'self'", "data:"],
     "worker-src": ["'self'", "blob:"],
     "child-src": ["blob:"],

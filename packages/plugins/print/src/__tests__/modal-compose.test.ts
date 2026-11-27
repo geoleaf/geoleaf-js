@@ -176,3 +176,28 @@ describe("mapViewport", () => {
         }
     });
 });
+
+describe("the composition stays under the phone's canvas ceiling", () => {
+    // The map zone alone was bounded: an A3 plate composed on a Pixel 7 came out at 17.4 Mpx,
+    // past the 16 Mpx a mobile canvas accepts.
+    it("bounds the WHOLE page's pixels by `maxCanvasPx`", () => {
+        // 400 DPI: an A3 page well past the ceiling, margins and all — the case is not vacuous.
+        const args = buildComposeArgs(
+            makeInputs({ format: "A3", dpi: 400, maxCanvasPx: 16_000_000 })
+        )!;
+        // The page is shared by its four zones: their pixels together are the composed canvas.
+        const total = Object.values(args.targetPx).reduce(
+            (sum, z) => sum + z.widthPx * z.heightPx,
+            0
+        );
+        expect(total).toBeLessThanOrEqual(16_000_000);
+    });
+
+    it("leaves the DPI alone without a ceiling", () => {
+        const free = buildComposeArgs(makeInputs({ format: "A3", dpi: 300 }))!;
+        const capped = buildComposeArgs(
+            makeInputs({ format: "A3", dpi: 300, maxCanvasPx: 16_000_000 })
+        )!;
+        expect(capped.targetPx.map.widthPx).toBeLessThan(free.targetPx.map.widthPx);
+    });
+});

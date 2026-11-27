@@ -180,7 +180,9 @@ const result = await GeoLeaf.FlatGeobuf.loadBbox(
 
 ### `loadAsLayer(url, options?)`
 
-Loads a complete FlatGeobuf file and adds it as a GeoJSON layer on the map.
+Loads a complete FlatGeobuf file and adds it as a GeoJSON layer on the map. The layer is painted
+with a default style — a contrasted outline over a translucent fill, readable on light and dark
+maps; the options offer no style of their own. `loadBboxAsLayer` paints the same way.
 
 ```typescript
 const layerId = await GeoLeaf.FlatGeobuf.loadAsLayer("https://example.com/data.fgb", {

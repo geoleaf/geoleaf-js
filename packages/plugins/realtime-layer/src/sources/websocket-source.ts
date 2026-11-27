@@ -41,7 +41,7 @@ export class WebSocketSource implements IRealtimeSource {
         this._handler = handler;
     }
 
-    start(): void {
+    start(): boolean {
         const ws = _g.GeoLeaf?.Ws;
         if (!ws || typeof ws.subscribe !== "function") {
             console.error(
@@ -50,12 +50,13 @@ export class WebSocketSource implements IRealtimeSource {
                     `Ensure the WebSocket plugin is loaded and GeoLeaf.Ws.init() has been called ` +
                     `before GeoLeaf.boot().`
             );
-            return;
+            return false;
         }
-        if (!this._handler) return;
+        if (!this._handler) return true;
         this._unsubscribe = ws.subscribe(this._channel, (data) => {
             this._handler?.(data);
         });
+        return true;
     }
 
     stop(): void {

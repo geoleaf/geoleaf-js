@@ -188,19 +188,40 @@ describe("geojson/loader/single-layer — branch coverage", () => {
         expect(result).toEqual({ id: "gl-fgb-1", label: "Zones", featureCount: 0 });
     });
 
-    it("reports a `plugin:` layer with no registered loader without throwing", async () => {
+    // A failed plugin layer REJECTS, as an ordinary layer whose data cannot be fetched does: every
+    // caller then reports it the same way (the layer manager leaves the toggle off). Resolving a
+    // 0-feature placeholder made the failure indistinguishable from a success — the toggle lit up.
+    it("rejects a `plugin:` layer with no registered loader, naming the plugin", async () => {
         globalThis.GeoLeaf = baseGeoLeaf();
         setupSingleLayerDeps({
             ...makeDeps(globalThis.GeoLeaf),
             getPluginLayerLoader: () => undefined,
         });
-        const result = await LoaderSingleLayer._loadSingleLayer(
-            "ghost",
-            "Ghost",
-            { plugin: "ghost", data: { url: "x" } },
-            {}
-        );
-        expect(result).toEqual({ id: "ghost", label: "Ghost", featureCount: 0 });
+        await expect(
+            LoaderSingleLayer._loadSingleLayer(
+                "ghost",
+                "Ghost",
+                { plugin: "ghost", data: { url: "x" } },
+                {}
+            )
+        ).rejects.toThrow(/plugin "ghost".*no loader is registered/);
+    });
+
+    it("rejects a `plugin:` layer whose loader fails, with the loader's error", async () => {
+        const failure = new Error("HTTP 404");
+        globalThis.GeoLeaf = baseGeoLeaf();
+        setupSingleLayerDeps({
+            ...makeDeps(globalThis.GeoLeaf),
+            getPluginLayerLoader: () => () => Promise.reject(failure),
+        });
+        await expect(
+            LoaderSingleLayer._loadSingleLayer(
+                "eco_regions_fgb",
+                "Eco regions",
+                { plugin: "flatgeobuf", data: { url: "data/missing.fgb" } },
+                {}
+            )
+        ).rejects.toBe(failure);
     });
 
     // ── From-cache path ───────────────────────────────────────────────────
@@ -991,7 +1012,7 @@ describe("geojson/loader/single-layer — style/data overlap", () => {
             "Plugin",
             { plugin: "flatgeobuf", styles: { default: "defaut.json" } },
             {}
-        );
+        ).catch(() => undefined); // no loader registered: the dispatch rejects
 
         // The early exit returns before the prefetch site — a style request here would be for
         // a layer that never reaches the code consuming it.

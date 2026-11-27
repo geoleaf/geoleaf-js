@@ -224,6 +224,21 @@ async function _drawLegendSymbol(
 }
 
 /**
+ * How the plate decides a layer is showing.
+ *
+ * 🛑 AT ITS SOURCE, the layer store — what is painted. `Legend` starts every layer at
+ * `visible: false` and only learns otherwise from its own toggles: the plate's legend came out
+ * EMPTY on a map whose layers were all showing. `Legend`'s flag stays the fallback for a host
+ * without `Layers.isVisible`.
+ */
+function visibilityReader(gl: GeoLeafHost): (id: string, info: LegendLayerInfo) => boolean {
+    const isVisible = (gl.Layers as { isVisible?(id: string): boolean } | undefined)?.isVisible;
+    return typeof isVisible === "function"
+        ? (id) => isVisible(id)
+        : (_id, info) => info.visible === true;
+}
+
+/**
  * Draws the GeoLeaf legend inline on the canvas below the map zone.
  * Returns the actual height drawn in pixels (may be less than `zone.heightPx`).
  *
@@ -263,8 +278,9 @@ export async function drawLegendInline(
     ctx.fillRect(zone.x, zone.y, zone.widthPx, zone.heightPx);
     ctx.restore();
 
-    for (const [, info] of layers) {
-        if (!info.visible || !info.legendData?.sections) continue;
+    const isShown = visibilityReader(gl);
+    for (const [id, info] of layers) {
+        if (!isShown(id, info) || !info.legendData?.sections) continue;
 
         for (const section of info.legendData.sections) {
             if (section.title) {

@@ -212,6 +212,47 @@ describe("map click — manual waypoints", () => {
 // _onPosition — GPS vertex filtering
 // ---------------------------------------------------------------------------
 
+describe("without the core's geolocation control — the tool centres the map itself", () => {
+    // Without the capability, nothing centres the map on the first fix: three vertices were
+    // traced off screen, the map left where it was.
+    it("eases the camera onto the FIRST accepted vertex, and only that one", () => {
+        const easeTo = vi.fn();
+        (map as unknown as { easeTo: typeof easeTo }).easeTo = easeTo;
+        activateGps(map);
+        geo._firePosition(COORD_A, makeTs(0));
+        geo._firePosition(COORD_B, makeTs(0, 10_000));
+        expect(easeTo).toHaveBeenCalledTimes(1);
+        expect(easeTo).toHaveBeenCalledWith(expect.objectContaining({ center: COORD_A }));
+    });
+
+    it("zooms in to a readable street level from a continent-wide view", () => {
+        // Centred at zoom 4.4, a 30-m trace was a single dot on the screen.
+        const easeTo = vi.fn();
+        Object.assign(map as object, { easeTo, getZoom: () => 4.4 });
+        activateGps(map);
+        geo._firePosition(COORD_A, makeTs(0));
+        expect(easeTo).toHaveBeenCalledWith({ center: COORD_A, zoom: 16 });
+    });
+
+    it("never zooms out a map that is already closer", () => {
+        const easeTo = vi.fn();
+        Object.assign(map as object, { easeTo, getZoom: () => 18.5 });
+        activateGps(map);
+        geo._firePosition(COORD_A, makeTs(0));
+        expect(easeTo).toHaveBeenCalledWith({ center: COORD_A, zoom: 18.5 });
+    });
+
+    it("leaves the camera to the core's control when there is one", () => {
+        const easeTo = vi.fn();
+        (map as unknown as { easeTo: typeof easeTo }).easeTo = easeTo;
+        const { ctrl } = installGeolocButtonMock();
+        activateGps(map);
+        geo._firePosition(COORD_A, makeTs(0));
+        expect(easeTo).not.toHaveBeenCalled();
+        uninstallGeolocButtonMock(ctrl);
+    });
+});
+
 describe("_onPosition — filtering", () => {
     it("adds a vertex for a valid first position", () => {
         activateGps(map);

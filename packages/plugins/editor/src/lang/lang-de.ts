@@ -23,6 +23,7 @@ const lang_de: Record<string, string> = {
     "editor.tool.polyline.hint":
         "Klicken Sie, um Stützpunkte zu setzen. Doppelklick oder Enter zum Beenden.",
     "editor.tool.polygon.label": "Polygon",
+    "editor.tool.noTarget": "Keine Ebene akzeptiert diese Geometrie",
     "editor.tool.polygon.hint":
         "Klicken Sie, um Stützpunkte zu setzen. Am ersten Stützpunkt einrasten, Doppelklick oder Enter zum Schließen.",
     "editor.tool.select.label": "Auswahl",
@@ -111,6 +112,8 @@ const lang_de: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Netzwerk-Zeitüberschreitung.",
     "editor.error.editionNotPermitted": "Diese Ebene erlaubt diesen Vorgang nicht.",
+    "editor.error.noWriteTarget":
+        "Diese Ebene gibt keine Schreibadresse an: Es wurde nichts gesendet.",
     "editor.error.operationNotSupported":
         "Der Server unterstützt diesen Vorgang nicht. Wenden Sie sich an Ihren Administrator.",
     "editor.error.server": "Serverfehler. Bitte versuchen Sie es erneut.",

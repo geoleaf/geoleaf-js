@@ -16,7 +16,9 @@
  *
  * The facts are read in parallel and each one on its own: a fact that cannot be read is
  * reported absent (`null`), never invented, and never takes the others down — the check is
- * made to be read before leaving, so it must answer. The layers kept are the ones that declare
+ * made to be read before leaving, so it must answer. A device never prepared (no manifest, or
+ * one that cannot be read) is not ready: the application does not start off-network without
+ * its profile. The layers kept are the ones that declare
  * something to pull: a layer with nothing to pull has no offline state to report
  * (`notDeclared`).
  *
@@ -183,6 +185,10 @@ function _verdict(
     session: WriteSession | null
 ): PreflightReport["verdict"] {
     if (layers.some((l) => NOT_ON_DEVICE.has(l.status))) return "notReady";
+    // 🛑 No preparation, no departure: without the profile and its resources on the device the
+    // application does not start off-network, whatever the layers say. A manifest that cannot
+    // be read is reported the same way — it cannot vouch for the device.
+    if (preparation === null) return "notReady";
     const tiles = preparation?.tiles;
     const degraded =
         layers.some((l) => INCOMPLETE.has(l.status)) ||

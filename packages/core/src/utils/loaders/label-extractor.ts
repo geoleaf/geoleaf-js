@@ -7,11 +7,14 @@
 /**
  * Label configuration extractor for GeoLeaf style data.
  *
- * Reads the `label` sub-block of a style file (integrated labels) and normalises
- * it for the renderers. Extracted from style-loader.ts.
+ * Reads the `label` sub-block of a style file (integrated labels) for the renderers.
+ * Extracted from style-loader.ts.
+ *
+ * `visibleByDefault` is passed through as the file says it, absence included: an absent key
+ * lets the caller decide whether the labels show (the labels module), and the loader's own
+ * path keeps them hidden until the user asks. Writing `false` in its place would turn that
+ * absence into a declaration, which wins over the caller.
  */
-
-import { Log } from "../log/index.js";
 
 /** Label sub-block of a style file (integrated labels). */
 interface StyleLabelConfig {
@@ -24,27 +27,6 @@ interface StyleLabelConfig {
 interface StyleDataWithLabel {
     label?: StyleLabelConfig;
     [key: string]: unknown;
-}
-
-/**
- * Ensures visibleByDefault is set when label.enabled is true.
- * Mutates styleData in place; emits a console warning if the field was missing.
- * @param {Object} styleData - Style data object.
- * @param {string} stylePath - Path of the style file (used in warning message).
- * @internal
- */
-export function _ensureLabelVisibleByDefault(
-    styleData: StyleDataWithLabel,
-    stylePath: string
-): void {
-    if (styleData.label && styleData.label.enabled === true) {
-        if (styleData.label.visibleByDefault === undefined) {
-            styleData.label.visibleByDefault = false;
-            Log.warn(
-                `[StyleLoader] "visibleByDefault" manquant: ${stylePath}\nFallback applied: visibleByDefault = false`
-            );
-        }
-    }
 }
 
 /**

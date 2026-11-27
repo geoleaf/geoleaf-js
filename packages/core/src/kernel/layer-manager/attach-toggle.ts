@@ -17,6 +17,8 @@ import { GeoJSONCore } from "../geojson/core.js";
 import { resolveLayerLabelConfig } from "../geojson/layer-labels.js";
 import type { LabelSourceEntry } from "../geojson/layer-labels.js";
 import { ThemeApplierCore } from "../themes/theme-applier/core.js";
+import { notifyPrimitive } from "../../utils/notify/notify.primitive.js";
+import { getLabel } from "../../utils/i18n/i18n.js";
 
 type ToggleBtn = HTMLButtonElement & { _toggleHandlerAttached?: boolean; _isToggling?: boolean };
 
@@ -77,15 +79,28 @@ function _handleLayerShow(toggleBtn: ToggleBtn, layerItem: Element | null, itemI
     }
 }
 
+/**
+ * Tells the user that a layer could not be loaded, by the label the manager shows for it.
+ * The button stays off: without this, the click looked ignored.
+ */
+function _notifyLoadFailed(toggleBtn: ToggleBtn, itemId: string) {
+    const item = toggleBtn.closest("[data-layer-id]");
+    const label = item?.querySelector(".gl-layer-manager__label")?.textContent?.trim() || itemId;
+    notifyPrimitive.notify(getLabel("toast.layer.load_failed", label), "error");
+}
+
 function _afterLazyLoadSuccess(toggleBtn: ToggleBtn, itemId: string, loadedLayer: unknown) {
     toggleBtn.classList.remove("gl-layer-manager__item-toggle--loading");
     toggleBtn.disabled = false;
     if (!loadedLayer) {
         if (Log) Log.warn("[LayerManager] Layer loading failed:", itemId);
+        _notifyLoadFailed(toggleBtn, itemId);
         return;
     }
     if (Log) Log.info("[LayerManager] Layer loaded successfully:", itemId);
-    GeoJSONCore.showLayer(itemId);
+    // A plugin-backed layer is drawn by its plugin, visible, and never enters the GeoJSON
+    // registry: `showLayer` would only log « layer not found » for it.
+    if (GeoJSONCore.getLayerById(itemId)) GeoJSONCore.showLayer(itemId);
     toggleBtn.setAttribute("aria-pressed", "true");
     toggleBtn.classList.add("gl-layer-manager__item-toggle--on");
     const layerItem = document.querySelector('[data-layer-id="' + itemId + '"]');
@@ -117,6 +132,7 @@ function _handleLazyLoad(toggleBtn: ToggleBtn, itemId: string) {
             toggleBtn.classList.remove("gl-layer-manager__item-toggle--loading");
             toggleBtn.disabled = false;
             if (Log) Log.error("[LayerManager] Error loading layer:", itemId, err);
+            _notifyLoadFailed(toggleBtn, itemId);
         });
 }
 

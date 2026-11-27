@@ -142,3 +142,25 @@ describe("l'adaptateur en ligne, par la porte publique", () => {
         expect(init.method).toBe("POST");
     });
 });
+
+describe("no write target — the direct path refuses before it sends", () => {
+    // A bundle without the offline engine sends every write down the direct path. With no
+    // `api.baseUrl`, that path wrote to `/features` relative to the page — a 404 from a server
+    // nobody named, told as « Erreur serveur ».
+    it("refuses with `no-target` when `api.baseUrl` is not declared, and sends nothing", async () => {
+        const adapter = createPersistenceAdapter({
+            persistence: { mode: "online" },
+        } as unknown as EditorConfig);
+        await expect(adapter.save(FEATURE, "sites")).rejects.toMatchObject({ kind: "no-target" });
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("keeps an EXPLICIT empty base — the root of the page's own origin", async () => {
+        const adapter = createPersistenceAdapter({
+            persistence: { mode: "online" },
+            api: { baseUrl: "", timeoutMs: 5000 },
+        } as unknown as EditorConfig);
+        await adapter.save(FEATURE, "sites").catch(() => {});
+        expect(fetchMock).toHaveBeenCalled();
+    });
+});

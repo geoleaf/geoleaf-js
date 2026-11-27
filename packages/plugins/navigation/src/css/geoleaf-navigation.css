@@ -43,6 +43,9 @@
     font-size: 1.5rem;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+    /* « 250 m » broke across two lines on a phone: a number and its unit stay together. */
+    white-space: nowrap;
+    flex: none;
 }
 
 .gl-nav-banner__maneuver {
@@ -197,8 +200,20 @@
 }
 
 @media (max-width: 40rem) {
+    /* The road gets its own line rather than being cut to a few letters. */
+    .gl-nav-banner {
+        flex-wrap: wrap;
+    }
+
+    .gl-nav-banner__road {
+        flex-basis: 100%;
+    }
+
+    /* At the BOTTOM, above the mobile toolbar: at a fixed `top`, « Arrêter le guidage » and the
+       status line overlapped a banner whose height depends on the road name. */
     .gl-nav-controls {
-        top: 4.5rem;
+        top: auto;
+        bottom: 6rem;
     }
 }
 

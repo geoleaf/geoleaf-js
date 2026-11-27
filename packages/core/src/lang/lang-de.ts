@@ -17,6 +17,10 @@ const lang_de: LangDict = {
     "toast.init.loading": "Daten werden geladen, bitte warten.",
     "toast.layer.truncated.known":
         "{0}: {1} von {2} Objekten angezeigt — die Ebene ist abgeschnitten.",
+    "toast.plugin.load_failed": "Diese Funktion konnte nicht geladen werden.",
+    "toast.plugin.load_failed_offline":
+        "Diese Funktion ist offline nicht verfügbar: Bereiten Sie online ein Gebiet vor, um sie mitzunehmen.",
+    "toast.layer.load_failed": "Die Ebene „{0}“ konnte nicht geladen werden.",
     "toast.layer.style_missing":
         "Standardstil f\u00fcr „{0}“ nicht gefunden – neutrale Darstellung.",
     "toast.layer.truncated.unknown": "{0}: {1} Objekte angezeigt, die Ebene enthält mehr.",

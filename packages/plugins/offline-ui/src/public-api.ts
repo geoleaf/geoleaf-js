@@ -8,7 +8,7 @@
  * members (`init`, `closeModal`, `Modules`) are wiring for the core and stay off the contract.
  * https://geoleaf.dev
  */
-import { ModalManager } from "./ui/cache-button/modal-manager.js";
+import { ModalManager, type OpenModalOptions } from "./ui/cache-button/modal-manager.js";
 
 /**
  * Where this facade is mounted on the namespace. offline-ui owns no namespace of its own: it
@@ -23,9 +23,16 @@ export function buildPublicApi() {
         /**
          * Opens the offline preparation window — the same call as the toolbar action.
          *
+         * `{ mode: "simple" }` opens the field window: the choice of zone, the download with
+         * its progress and its stop, the state in one line and the storage warning — nothing
+         * that administers the cache. Without it, or with `"full"`, the whole window opens,
+         * unchanged. An unknown mode is warned about and opens the whole window.
+         *
+         * @param options - `mode`: `"simple"` or `"full"` (default).
          * @example
          * GeoLeaf.UI.CacheButton.openModal();
+         * GeoLeaf.UI.CacheButton.openModal({ mode: "simple" });
          */
-        openModal: () => ModalManager.openModal(),
+        openModal: (options?: OpenModalOptions) => ModalManager.openModal(options),
     };
 }

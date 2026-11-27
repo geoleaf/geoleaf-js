@@ -748,6 +748,24 @@ import { UI } from "@geoleaf/core";
 
 UI manages controls, panels, content builder, and notification system.
 
+### `setPaneSize(size)` — the mobile sheet's height
+
+`GeoLeaf.UI.setPaneSize("peek" | "full")` sets the height of the open mobile sheet. In `"peek"` only
+its header stays on screen and the sheet stops being modal: the backdrop turns transparent and lets
+the map take gestures, focus is no longer trapped, `aria-modal` is dropped and the hidden body
+leaves the tab order. A tap on the header — or `setPaneSize("full")` — brings the full height back,
+and closing or reopening the sheet always gives `"full"`.
+
+It returns a promise of `true` once the panel has settled at that height, which is the moment to
+measure what it still covers, and of `false` when no mobile sheet is open — always the case at
+desktop widths, where panes live in the side panel.
+
+```js
+GeoLeaf?.UI?.setPaneSize?.("peek").then((lowered) => {
+    if (lowered) console.log("only the sheet's header is on screen");
+});
+```
+
 ---
 
 ## ThemeSelector — the theme bar

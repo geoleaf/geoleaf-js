@@ -170,6 +170,19 @@ let _tilePutsSinceCheck = TILE_CACHE_CHECK_EVERY;
 // Core assets to pre-cache — injected by build-deploy.cjs at build time
 const STATIC_ASSETS = [/* __GEOLEAF_STATIC_ASSETS__ */];
 
+/**
+ * The files of every plugin the application loads ON DEMAND — injected by build-deploy.cjs
+ * (`lib/lazy-plugin-assets.cjs`), never pre-cached at install.
+ *
+ * 🛑 Kept apart from {@link STATIC_ASSETS} on purpose. A plugin loaded on demand is an
+ * `import()`, served from `CACHE_STATIC` — never from IndexedDB, where the offline preparation
+ * writes the zone. Pre-cached at install, these files would cancel the laziness they exist
+ * for; left out entirely, a plugin the user had not opened online was unreachable offline
+ * after a preparation that reported success. They are fetched on the user's gesture instead:
+ * `PRECACHE_LAZY_PLUGINS`, sent by the preparation.
+ */
+const LAZY_PLUGIN_ASSETS = [/* __GEOLEAF_LAZY_PLUGIN_ASSETS__ */];
+
 // URLs to never cache
 const CACHE_BLACKLIST = [/chrome-extension/, /\/__/];
 
@@ -467,6 +480,14 @@ self.addEventListener("message", (event) => {
     // take a page that is in use — see `_takePageIfFirstInstall`.
     if (event.data && event.data.type === "SKIP_WAITING") {
         self.skipWaiting();
+    }
+
+    if (event.data && event.data.type === "PRECACHE_LAZY_PLUGINS") {
+        event.waitUntil(
+            precacheLazyPlugins().then((report) => {
+                if (event.ports && event.ports[0]) event.ports[0].postMessage(report);
+            })
+        );
     }
 
     if (event.data && event.data.type === "CLEAR_CACHE") {
@@ -1385,6 +1406,41 @@ function isTileRequest(url) {
 
     // 3. Fallback: detection by file extension
     return _isTileFile(path);
+}
+
+/**
+ * Keeps every file of {@link LAZY_PLUGIN_ASSETS} in `CACHE_STATIC`, one by one.
+ *
+ * ⚠️ ONE BY ONE, NOT `cache.addAll()`: a single 404 rejects an `addAll` batch whole, and the
+ * preparation would then keep no plugin because one file was missing. Each file stands alone,
+ * and the report names the ones that failed.
+ *
+ * ⚠️ `cache.put` ignores the response's `Cache-Control`, as `install`'s `addAll` does: these
+ * are the application's own versioned files, and the user asked for them to be kept. A server
+ * sending `no-store` on its static files would otherwise keep the editor unreachable offline.
+ *
+ * @returns {Promise<{ cached: number, failed: string[] }>}
+ */
+async function precacheLazyPlugins() {
+    const cache = await caches.open(CACHE_STATIC);
+    const failed = [];
+    let cached = 0;
+    for (const url of LAZY_PLUGIN_ASSETS) {
+        try {
+            if (await cache.match(url)) {
+                cached++;
+                continue;
+            }
+            const response = await fetchBounded(new Request(url));
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            await cache.put(url, response);
+            cached++;
+        } catch (err) {
+            failed.push(url);
+            console.warn("[SW] Plugin non conservé pour le hors-ligne :", url, err);
+        }
+    }
+    return { cached, failed };
 }
 
 function isStaticAsset(url) {

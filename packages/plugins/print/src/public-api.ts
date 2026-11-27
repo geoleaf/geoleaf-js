@@ -16,6 +16,7 @@ import {
     registerPageFormat,
     registerSlot,
     _getExporter,
+    _getExporterMeta,
 } from "./print-api.js";
 
 /** @internal Returns all public API functions as an object. */
@@ -35,5 +36,6 @@ export function buildPublicApi() {
         // another way in, which is not a documentation act. Marked rather than
         // quietly moved.
         _getExporter,
+        _getExporterMeta,
     };
 }

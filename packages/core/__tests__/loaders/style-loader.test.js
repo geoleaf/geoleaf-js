@@ -212,8 +212,8 @@ describe("loaders/style-loader — T22 branch coverage", () => {
         });
     });
 
-    describe("_ensureLabelVisibleByDefault branch", () => {
-        it("sets visibleByDefault=false when label.enabled=true and visibleByDefault is undefined", async () => {
+    describe("label visibleByDefault passthrough", () => {
+        it("leaves visibleByDefault absent when label.enabled=true omits it (the caller decides)", async () => {
             StyleLoader.clearStyleCache();
             StyleLoader.clearStyleCache();
             const styleData = { label: { enabled: true } };
@@ -227,7 +227,7 @@ describe("loaders/style-loader — T22 branch coverage", () => {
                 "d.json",
                 "layers/l"
             );
-            expect(result.styleData.label.visibleByDefault).toBe(false);
+            expect(result.styleData.label.visibleByDefault).toBeUndefined();
         });
 
         it("does not overwrite visibleByDefault when already set", async () => {

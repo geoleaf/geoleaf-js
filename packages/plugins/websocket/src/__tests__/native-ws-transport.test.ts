@@ -146,6 +146,46 @@ describe("NativeWsTransport — connect()", () => {
     });
 });
 
+describe("NativeWsTransport — an error with no close (a CSP refusal)", () => {
+    // Refused by the page's policy, Chromium fires `error` and never `close`: the transport
+    // stayed « connecting » and `init()` never settled.
+    it("settles the refusal itself when no close follows the error", async () => {
+        vi.useFakeTimers();
+        try {
+            const transport = new NativeWsTransport();
+            const onError = vi.fn();
+            transport.onError = onError;
+            const p = transport.connect({ url: "wss://test.example.com" });
+            const settled = expect(p).rejects.toMatchObject({ code: "CONNECTION_REFUSED" });
+            lastWs!.onerror?.(new Event("error"));
+            await vi.advanceTimersByTimeAsync(1000);
+            await settled;
+            expect(transport.state).toBe("disconnected");
+            expect(onError).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it("lets a real close speak when it follows the error", async () => {
+        vi.useFakeTimers();
+        try {
+            const transport = new NativeWsTransport();
+            const onError = vi.fn();
+            transport.onError = onError;
+            const p = transport.connect({ url: "wss://test.example.com" });
+            const settled = expect(p).rejects.toMatchObject({ code: "AUTH_FAILED" });
+            lastWs!.onerror?.(new Event("error"));
+            lastWs!.closeWith(1008, "policy violation");
+            await vi.advanceTimersByTimeAsync(1000);
+            await settled;
+            expect(onError).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
 describe("NativeWsTransport — post-connect lifecycle", () => {
     beforeEach(() => {
         lastWs = null;

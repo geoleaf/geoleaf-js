@@ -7,7 +7,16 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
-import { tLabel, getActiveLang, getGeoLeaf } from "@geoleaf/host-runtime";
+import { removeRouteAttribution } from "./ui/attribution.js";
+import { isRoutingOffered } from "./offered.js";
+import {
+    coreConfigGet,
+    getActiveLang,
+    getGeoLeaf,
+    isCapabilityOn,
+    Log,
+    tLabel,
+} from "@geoleaf/host-runtime";
 import type { RouteFailure, RouteOutcome, RouteResult, Waypoint } from "./model.js";
 import { decodePolyline } from "./polyline.js";
 import { createProvider } from "./provider.js";
@@ -166,11 +175,24 @@ const FAILURE_KEYS: Readonly<Record<string, string>> = {
  * refused stop says so in the message area. Assigning the array would have silently ignored it.
  *
  * @param initial Waypoints to append — a destination, when the call came from a POI.
+ * @param opts `asDestination`: each stop is added as the DESTINATION (`setDestination`) rather
+ *   than appended — kept last, so a stop the user adds afterwards is inserted before it.
  * @returns The panel.
  */
-export function openPanel(initial: readonly Waypoint[] = []): ItineraryPanel {
+export function openPanel(
+    initial: readonly Waypoint[] = [],
+    opts: { asDestination?: boolean } = {}
+): ItineraryPanel {
+    // The kernel refuses to show a pane its owner withholds; said here, once per call, so an
+    // entry point outside the toolbar (a feature's « itinéraire ») is not silently dead.
+    if (!isRoutingOffered()) {
+        Log.warn("[routing] not offered by this profile (enabled: false, or no route layer)");
+    }
     const live = ensurePanel();
-    for (const waypoint of initial) live.addWaypoint(waypoint);
+    for (const waypoint of initial) {
+        if (opts.asDestination) live.setDestination(waypoint);
+        else live.addWaypoint(waypoint);
+    }
     // The kernel owns which surface is live: the desktop side panel above 1440px, the mobile
     // sheet below it. Asking for the pane by id is the only thing this plugin can honestly do.
     showPane(PANE_ID);
@@ -187,6 +209,9 @@ export function openPanel(initial: readonly Waypoint[] = []): ItineraryPanel {
  */
 export function destroyPanel(): void {
     stopPicking();
+    // The engine's credit goes with the route: after an `unmount()` it stayed in the map container,
+    // crediting a route nobody would see again.
+    removeRouteAttribution();
     panel?.destroy();
     panel = null;
     waypoints = [];
@@ -310,6 +335,12 @@ function guidanceHandler(): { onStartGuidance?: () => void } {
         plugins?.isLoaded?.("navigation") === true ||
         plugins?.isLazyAvailable?.("navigation") === true;
     if (!reachable) return {};
+    // `modules.navigation.enabled: false` switches guidance off: the button is not offered, as
+    // when the plugin is not installed. It used to start a session anyway.
+    if (coreConfigGet<boolean>("modules.navigation.enabled", true) === false) return {};
+    // No position to guide from: the guidance follows the GPS, and without the capability the
+    // session could only wait for a fix that never comes.
+    if (!isCapabilityOn("geolocation")) return {};
     return { onStartGuidance: () => void startGuidance() };
 }
 

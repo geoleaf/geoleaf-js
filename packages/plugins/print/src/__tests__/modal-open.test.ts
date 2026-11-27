@@ -436,7 +436,9 @@ describe("openModal", () => {
         expect(result).toBeInstanceOf(Blob);
     });
 
-    it("resolves null when the exporter fails with a non-security error", async () => {
+    it("says why and STAYS OPEN when the exporter fails with a non-security error", async () => {
+        // It used to close and resolve null, the failure only in the console: the window
+        // vanished and no file arrived.
         (globalThis as any).GeoLeaf = {
             ...(globalThis as any).GeoLeaf,
             Print: {
@@ -457,14 +459,18 @@ describe("openModal", () => {
         await flushMicrotasks();
         await flushMicrotasks();
 
-        const result = await promise;
+        void promise;
         // A plain error is not a tainted canvas — no server round-trip.
         expect(tryServerFallbackMock).not.toHaveBeenCalled();
         expect(warn).toHaveBeenCalledWith(
             expect.stringContaining('Exporter "pdf" failed'),
             expect.any(Error)
         );
-        expect(result).toBeNull();
+        expect(document.querySelector(".gl-print-modal, .gl-print-btn--pdf")).not.toBeNull();
+        const status = document.querySelector<HTMLElement>(".gl-print-status");
+        expect(status?.hidden).toBe(false);
+        expect(status?.getAttribute("role")).toBe("status");
+        expect(status?.textContent).toBe("print.error.render");
         warn.mockRestore();
     });
 
@@ -517,7 +523,7 @@ describe("openModal", () => {
         expect(result).toBe(serverBlob);
     });
 
-    it("warns and resolves null on a tainted canvas when no endpoint is configured", async () => {
+    it("warns, says the CORS cause and stays open on a tainted canvas without endpoint", async () => {
         installMockGeoLeaf(); // no serverEndpoint
         _installTaintedExporter();
         const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -532,14 +538,14 @@ describe("openModal", () => {
         await flushMicrotasks();
         await flushMicrotasks();
 
-        const result = await promise;
+        void promise;
         expect(tryServerFallbackMock).not.toHaveBeenCalled();
         expect(warn).toHaveBeenCalledWith("[GeoLeaf.Print]", expect.stringContaining("CORS"));
-        expect(result).toBeNull();
+        expect(document.querySelector(".gl-print-status")?.textContent).toBe("print.error.tainted");
         warn.mockRestore();
     });
 
-    it("export button calls _close(null) when no exporter is registered", async () => {
+    it("export button says why and stays open when no exporter is registered", async () => {
         // installMockGeoLeaf does not set GeoLeaf.Print → no exporter found
         const promise = openModal(makeEmpriseResult(), {});
         await flushMicrotasks();
@@ -553,7 +559,8 @@ describe("openModal", () => {
         await flushMicrotasks();
         await flushMicrotasks();
 
-        const result = await promise;
-        expect(result).toBeNull();
+        void promise;
+        expect(document.querySelector<HTMLElement>(".gl-print-status")?.hidden).toBe(false);
+        expect(document.querySelector(".gl-print-btn--pdf")).not.toBeNull();
     });
 });

@@ -221,8 +221,9 @@ meaning**, as a style file's `label`:
 - A style that carries its own `label` object **keeps priority**; the layer's block applies
   otherwise — including when the default style file is missing and the layer is drawn with the
   neutral style.
-- `visibleByDefault` defaults to `false`, as in a style file: the labels exist, and the layer
-  manager's labels button shows them.
+- `visibleByDefault` defaults to `false`: the labels exist, and the layer manager's labels button
+  shows them. Unlike a style file's `label`, whose absent key lets a caller asking for the labels
+  (`enableLabels(id, cfg, true)`) show them, this default counts as declared.
 - The zoom window of labels (`labelScale`) stays a style-file key.
 
 > ⚠️ **An older form of this block was documented here, and none of it was ever read**:
@@ -468,7 +469,7 @@ these keys, plus `_comment*` keys; any other key is refused.
 | Property            | Type                  | Description                                                                                                                          |
 | ------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `enabled`           | boolean, **required** | Must be `true` for labels to exist; any other value disables them                                                                    |
-| `visibleByDefault`  | boolean               | Labels shown when the layer loads, without user action (default `false`)                                                             |
+| `visibleByDefault`  | boolean               | Labels shown when the layer loads, without user action. Absent: hidden until asked, unless a caller asks for them; set, it wins      |
 | `field`             | string                | Name of the feature property displayed, e.g. `"nom"` — a plain property name, not a `properties.` path                               |
 | `font.sizePt`       | number (1–72)         | Text size in points, converted to pixels (12 px when absent). The only key of `font`                                                 |
 | `color`             | string (`#rrggbb`)    | Text colour (default `#000000`)                                                                                                      |

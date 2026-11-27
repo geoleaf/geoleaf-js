@@ -445,7 +445,6 @@ const FAMILIES = {
             // because nobody had told it. A gate whose corpus is a hand-kept list
             // goes green on everything omitted from the list.
             "modules.navigation.enabled",
-            "modules.navigation.showButton",
             "modules.navigation.arrivalRadiusMetres",
             "modules.navigation.offRouteThresholdMetres",
             "modules.navigation.confirmExit",

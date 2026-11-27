@@ -46,10 +46,11 @@ function _asConfigObject(value: unknown): LayerLabelConfig | null {
  * Resolves the label configuration a layer wears: its current style's `label` object when it has
  * one, else its definition's `labels` block, else `null`.
  *
- * The definition's block is read with a style file's semantics, down to the default the style
- * loader applies: an enabled block that does not say `visibleByDefault` is shown only once the user
- * asks for it (`visibleByDefault: false`). That default is applied to a COPY — the definition is
- * never written back.
+ * The definition's block is read with a style file's semantics, with one difference: an enabled
+ * block that does not say `visibleByDefault` counts as `visibleByDefault: false` — shown only once
+ * the user asks for it, whatever a caller of `enableLabels()` requests. A style's `label` that
+ * omits the key is returned as is, and leaves that caller decide. The default is applied to a
+ * COPY — the definition is never written back.
  *
  * @param entry - A layer entry, as `GeoJSON.getLayerById(id)` returns it; `null` when unknown.
  * @returns The label configuration, or `null` when neither place declares one.

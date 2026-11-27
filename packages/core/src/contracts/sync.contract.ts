@@ -988,8 +988,8 @@ export interface WriteSession {
  * requested at boot and only logged, and the write session, which only its holder knows.
  * `verdict` says what they mean together:
  *
- * - `notReady` — a layer that declares something to pull was never pulled, or its last pull
- *   failed: its entities are not on the device.
+ * - `notReady` — the device was never prepared (`preparation` is `null`), or a layer that
+ *   declares something to pull was never pulled or its last pull failed.
  * - `degraded` — the device can leave, but something will be missing or may go: an unfinished
  *   or stale pull, entries set aside, an origin the browser may evict (`bestEffort` or
  *   `unsupported`), zooms left out of a basemap, resources that failed to download, a write

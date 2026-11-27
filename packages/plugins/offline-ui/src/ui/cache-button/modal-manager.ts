@@ -17,8 +17,17 @@ import { $create, events } from "../../utils/core-utils.js";
 import { createFocusTrap } from "@geoleaf/host-runtime";
 import { tLabel as t } from "@geoleaf/host-runtime";
 
+/** How the offline window opens — see {@link ModalManager.openModal}. */
+export interface OpenModalOptions {
+    /**
+     * `"simple"`: the field window — zone, download, progress and stop, the state in one line,
+     * the storage warning. `"full"` (default): the whole window, with its Import / Export tabs.
+     */
+    mode?: "simple" | "full";
+}
+
 interface ExportLogicLike {
-    initializeCacheContent(): void;
+    initializeCacheContent(mode?: "simple" | "full"): void;
     initializeExportContent(): void;
     /** Releases the control mounted in the modal body. Optional: test doubles omit it. */
     releaseCacheContent?(): void;
@@ -61,16 +70,33 @@ const ModalManager = {
     },
 
     /**
-     * Open cache modal
+     * Opens the offline window.
+     *
+     * @param options - `{ mode: "simple" }` for the field window; anything else opens the full
+     *   one. An unknown mode is warned about and opens the full window.
      */
-    openModal() {
+    openModal(options?: OpenModalOptions) {
         if (Log) Log.info("[CacheButton.ModalManager] Ouverture du modal de cache");
+        const requested = options?.mode;
+        if (requested !== undefined && requested !== "simple" && requested !== "full") {
+            Log?.warn(
+                `[CacheButton] openModal : mode « ${String(requested)} » inconnu — fenêtre complète.`
+            );
+        }
+        const mode = requested === "simple" ? "simple" : "full";
 
         // Create modal if it doesn't exist
         let modal = document.getElementById("gl-cache-modal");
         if (!modal) {
             modal = this.createModal();
         }
+
+        // The tabs are the full window's (Import / Export): the field window has neither. Back
+        // in full mode, the window reopens on Import, the tab its body is built for.
+        modal.setAttribute("data-mode", mode);
+        const tabs = modal.querySelector<HTMLElement>(".gl-cache-modal__tabs");
+        if (tabs) tabs.hidden = mode === "simple";
+        this._markActiveTab("import");
 
         // Show modal
         modal.style.display = "flex";
@@ -85,8 +111,16 @@ const ModalManager = {
 
         // Initialize cache content in modal (delegate to ExportLogic)
         if (_ExportLogic) {
-            _ExportLogic.initializeCacheContent();
+            _ExportLogic.initializeCacheContent(mode);
         }
+    },
+
+    /** Marks the tab named `tabName` as the active one. */
+    _markActiveTab(tabName: string) {
+        document.querySelectorAll(".gl-cache-modal__tab").forEach((tab: Element) => {
+            const el = tab as HTMLElement;
+            el.classList.toggle("gl-cache-modal__tab--active", el.dataset?.tab === tabName);
+        });
     },
 
     /**
@@ -250,15 +284,7 @@ const ModalManager = {
     switchTab(tabName: string) {
         if (Log) Log.info("[CacheButton.ModalManager] Changement d'onglet:", tabName);
 
-        const tabs = document.querySelectorAll(".gl-cache-modal__tab");
-        tabs.forEach((tab: Element) => {
-            const el = tab as HTMLElement;
-            if (el.dataset?.tab === tabName) {
-                el.classList.add("gl-cache-modal__tab--active");
-            } else {
-                el.classList.remove("gl-cache-modal__tab--active");
-            }
-        });
+        this._markActiveTab(tabName);
 
         // Update content (delegate to ExportLogic)
         if (!_ExportLogic) {
@@ -267,7 +293,8 @@ const ModalManager = {
         }
 
         if (tabName === "import") {
-            _ExportLogic.initializeCacheContent();
+            // The tabs exist in full mode only.
+            _ExportLogic.initializeCacheContent("full");
         } else if (tabName === "export") {
             _ExportLogic.initializeExportContent();
         }

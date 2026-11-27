@@ -52,6 +52,9 @@
     });
     gl.plugins.registerLazy("table", () => import("./dist/geoleaf-table.plugin.js"));
     gl.plugins.registerLazyForAction("table", "table", {
+        // Hidden when the profile sets `modules.table.enabled: false` — what `enabled`
+        // governs for this plugin (`APP_SHELL.md`, the table of `enabled` per plugin).
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _TABLE_ICON,
             labelKey: "table.toolbar.button",
@@ -157,6 +160,9 @@
     });
     gl.plugins.registerLazy("isochrone", () => import("./dist/geoleaf-isochrone.plugin.js"));
     gl.plugins.registerLazyForAction("isochrone", "isochrone", {
+        // Hidden when the profile sets `modules.isochrone.enabled: false` — what `enabled`
+        // governs for this plugin (`APP_SHELL.md`, the table of `enabled` per plugin).
+        gateOnModuleEnabled: true,
         mobileIcon: {
             icon: _ISOCHRONE_ICON,
             labelKey: "isochrone.toolbar.button",
@@ -299,15 +305,11 @@
         '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>' +
         "</svg>";
     gl.plugins.registerLazy("geocoding", () => import("./dist/geoleaf-geocoding.plugin.js"));
-    gl.plugins.registerLazyForAction("geocoding", "geocoding", {
-        mobileIcon: {
-            icon: _SEARCH_ICON,
-            labelKey: "geocoding.toolbar.button",
-            profileKey: "modules.geocoding.showButton",
-            legacyProfileKey: "ui.showGeocoding",
-            action: "geocoding",
-        },
-    });
+    // 🛑 NO lazy slot for geocoding, and it is not an omission. Its control mounts on
+    // `geoleaf:map:ready`, so the plugin only works PRELOADED — `beforeBoot` does it when the
+    // profile sets `enabled: true`, and the plugin then declares its own slot. A lazy slot was
+    // therefore drawn only when the plugin had NOT been preloaded, i.e. exactly when it could do
+    // nothing: the click downloaded the bundle and opened nothing.
 
     // ── Position share ────────────────────────────────────────────────────────
     const _POSITION_SHARE_ICON =
@@ -326,6 +328,8 @@
         () => import("./dist/geoleaf-position-share.plugin.js")
     );
     gl.plugins.registerLazyForAction("position-share", "position-share", {
+        // Not offered without the geolocation capability: there would be no position to share.
+        requiresCapability: "geolocation",
         mobileIcon: {
             icon: _POSITION_SHARE_ICON,
             labelKey: "position-share.toolbar.button",
@@ -352,8 +356,8 @@
     //
     // 🛑 No `registerLazyForAction` here, deliberately. Guidance has nothing to
     // follow while no route exists: a toolbar button would be a control that
-    // does nothing most of the time, and `modules.navigation.showButton` is
-    // `false` for exactly that reason. The entry point lives where the route
+    // does nothing most of the time, and the plugin declares none for exactly
+    // that reason. The entry point lives where the route
     // lives — in `routing`'s panel, which is loaded EAGER and thus always knows
     // when to offer the button.
     //
@@ -431,6 +435,33 @@ if (window.GEOLEAF_DEV_ROUTING && GeoLeaf.Routing?.configure(window.GEOLEAF_DEV_
 // them later would achieve nothing: the listener would be attached after the event.
 
 /**
+ * The id a config node names for itself, else the one of the node that holds it.
+ *
+ * @param {object} n A config node.
+ * @param {string | undefined} ownerId The id of the nearest node above that names one.
+ * @returns {string | undefined}
+ */
+function _ownIdOr(n, ownerId) {
+    return typeof n.id === "string" ? n.id : ownerId;
+}
+
+/**
+ * Warns when a `realtime` block carries an `enabled` that is not a boolean (the string `"true"`).
+ * Such a block keeps `realtime-layer` unloaded, so the warning the plugin gives for it would never
+ * leave: it is given here, in the plugin's words.
+ *
+ * @param {unknown} rt The `realtime` value found in the profile.
+ * @param {string | undefined} id The id of the layer that carries it.
+ */
+function _warnNonBooleanRealtime(rt, id) {
+    if (!rt || typeof rt !== "object" || rt.enabled === undefined) return;
+    if (typeof rt.enabled === "boolean") return;
+    console.warn(
+        `[GeoLeaf] "${id}": data.realtime.enabled must be a boolean, got ${JSON.stringify(rt.enabled)} — the layer is not started.`
+    );
+}
+
+/**
  * Walks the merged profile config and reports what the plugins need to find in it.
  *
  * 🛑 The walk is deliberate, not paranoia: a flag written at `ui.showCredentialButton` in a
@@ -438,16 +469,27 @@ if (window.GEOLEAF_DEV_ROUTING && GeoLeaf.Routing?.configure(window.GEOLEAF_DEV_
  * return false forever, the plugin would never load, and the feature would vanish with no
  * error — indistinguishable from a plugin legitimately not required. We look for the KEY.
  *
+ * A `realtime.enabled` that is not a boolean is warned about here (`console.warn`), since the
+ * plugin that would say it is not loaded for it.
+ *
  * @param {unknown} node The merged profile config handed over by `beforeBoot`.
- * @returns {{ realtime: boolean, websocket: boolean, credentialButton: boolean, geocoding: boolean }}
+ * @returns {{ realtime: boolean, websocket: boolean, credentialButton: boolean, geocoding: boolean, positionShare: boolean }}
  */
 function _scanProfileNeeds(node) {
-    const out = { realtime: false, websocket: false, credentialButton: false, geocoding: false };
+    const out = {
+        realtime: false,
+        websocket: false,
+        credentialButton: false,
+        geocoding: false,
+        positionShare: false,
+    };
     const seen = new Set();
-    const walk = (n) => {
+    const walk = (n, ownerId) => {
         if (!n || typeof n !== "object" || seen.has(n)) return;
         seen.add(n);
+        const id = _ownIdOr(n, ownerId);
         const rt = n.realtime;
+        _warnNonBooleanRealtime(rt, id);
         if (rt && typeof rt === "object" && rt.enabled === true) {
             out.realtime = true;
             if (rt.source === "websocket") out.websocket = true;
@@ -459,7 +501,15 @@ function _scanProfileNeeds(node) {
         // search bar and no error. Loading it after the fact repairs nothing.
         const gc = n.geocoding;
         if (gc && typeof gc === "object" && gc.enabled === true) out.geocoding = true;
-        for (const v of Object.values(n)) if (v && typeof v === "object") walk(v);
+        // `position-share` in `auto` mode emits from the boot: its watch request and its first
+        // emission wait for `geoleaf:app:ready`, which a bundle loaded on the first click never
+        // hears — `auto` never started. Its `websocket` transport needs the channel plugin too.
+        const ps = n["position-share"];
+        if (ps && typeof ps === "object" && ps.enabled === true && ps.mode === "auto") {
+            out.positionShare = true;
+            if (ps.transport === "websocket") out.websocket = true;
+        }
+        for (const v of Object.values(n)) if (v && typeof v === "object") walk(v, id);
     };
     walk(node);
     return out;
@@ -487,6 +537,7 @@ GeoLeaf.boot({
         // `entry.ts` reads, not a rule reinvented here.
         if (needs.credentialButton) needed.push("connector");
         if (needs.geocoding) needed.push("geocoding");
+        if (needs.positionShare) needed.push("position-share");
 
         // `Promise.all` rather than a sequential loop: these loads are independent and sit on
         // the boot path, so serialising them would add one round-trip per plugin.

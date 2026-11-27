@@ -325,6 +325,16 @@ function _onFailure(
             t("connector.error.tooManyAttemptsLater", "Trop de tentatives. Réessayez plus tard."),
             reason
         );
+    } else if (err.message.startsWith("Invalid server response")) {
+        // The server answered without the token it was asked for: said in the window's language,
+        // not as « Erreur : Invalid server response: missing token or expiresIn ».
+        state.showError(
+            t(
+                "connector.error.invalidResponse",
+                "Le serveur a répondu sans jeton de session. Contactez l'administrateur."
+            ),
+            reason
+        );
     } else {
         state.showError(t("connector.error.generic", "Erreur : ") + err.message, reason);
     }

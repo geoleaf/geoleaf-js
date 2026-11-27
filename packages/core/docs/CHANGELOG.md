@@ -11,6 +11,274 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — a field window.** `GeoLeaf.UI.CacheButton.openModal({
+mode: "simple" })` opens the preparation window with only the choice of zone, the download with
+  its progress and stop, the state in one line and the storage warning; without it (or with
+  `"full"`) the whole window opens, unchanged. On a phone the zone and the download button were
+  below the fold, behind quota, layers, zoom ceiling, tabs and purge.
+- **A toolbar slot or a hostable pane can be withheld when it can only fail**
+  (`IModuleUISlot.requiresCapability`, `IModuleUISlot.isAvailable()`,
+  `PluginLazyUI.requiresCapability`, `PanelPane.requiresCapability`, `PanelPane.isAvailable()`).
+  `requiresCapability` names the in-core capability the control drives: when the bundle does not
+  embark it, or the merged profile switches it off (its own gate or a dependency's), the button
+  is not drawn and the pane gets no tab and no sheet entry. `isAvailable()` is the owner's own
+  verdict, read at render time: a plugin registered before the profile loads can now say
+  `modules.<id>.enabled: false`, or that the profile lacks what its feature needs. Both fail
+  open — nothing declared yet, or a predicate that throws, keeps the control. A slot or a pane
+  that declares neither behaves as before.
+- **The mobile sheet has a reduced height** (`GeoLeaf.UI.setPaneSize("peek" | "full")`). In
+  `"peek"` only the sheet's header stays on screen and the sheet stops being modal: the backdrop
+  turns transparent and lets the map take gestures, focus is no longer trapped, `aria-modal` is
+  dropped and the hidden body leaves the tab order. The map's bottom-left corner (scale, branding)
+  and the mobile toolbar rise above the lowered header instead of sliding under it. A tap on the
+  header brings the full height back; closing or reopening the sheet always gives `"full"`. The promise resolves `true` once the
+  panel has settled — when what it covers can be measured — and `false` when no sheet is open,
+  which is always the case at desktop widths.
+
+### Fixed
+
+- **A zone prepared for offline use now carries the plugins the application loads on demand.**
+  The preparation wrote the zone into IndexedDB, while a plugin loaded on demand is an
+  `import()` served by the service worker's static cache — which only held it once it had been
+  opened online. A user who had not opened the editor before leaving had a prepared zone and an
+  editor button that did nothing. At the end of a preparation, the core now asks the worker to
+  keep every file of those plugins; the list is derived at build time from the deployed
+  `init.js`, and is never pre-cached at install. The preparation's summary carries
+  `pluginCode` (`{ cached, failed }`, or `null` when no worker controls the page). A host
+  building its own service worker from `sw-core.js` gets the list through its
+  `__GEOLEAF_LAZY_PLUGIN_ASSETS__` marker.
+- **`@geoleaf-plugins/cog` 1.0.7 — the drawn raster shows under the shipped CSP.** MapLibre 6
+  loads an `image` source through `fetch()`, a `blob:` or `data:` URL included, so both fall
+  under `connect-src`; the deliverables' `'self' https:` refused the plugin's `blob:` URL, the
+  source never loaded and the tile never showed. The plugin now hands the image to the engine
+  through a registered MapLibre protocol (`geoleaf-cog`), with no request at all — the policy is
+  not widened. A host without `maplibregl.addProtocol` keeps the former data-URL path.
+- **`@geoleaf-plugins/cog` 1.0.7 — the file's own nodata value is honoured.** Without a `nodata`
+  option, the value a GeoTIFF declares (`GDAL_NODATA`) was read by `getInfo()` but never reached
+  the drawing: those pixels were painted opaque black, and counted in the min/max that stretches
+  16-bit and float bands to 8 bits. They now stay transparent and out of that range, an explicit
+  `nodata` still taking precedence; a declared `nan` is matched as well.
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — the « Cache » column follows a download.** After a
+  download from the full window, every layer of the table kept its ✗ until the window was
+  reopened: the refresh went through a member of the core's storage façade that the core never
+  fills, and was skipped without a word. The window now refreshes its own layer table, from the
+  layers it rendered — a layer expanded from a template turns ✓ as well. The same holds after a
+  purge.
+- **The deliverables' CSP admits `wss:`** (`apps/geoleaf-app/index.html`). Every WebSocket
+  connection was refused under `connect-src 'self' https:`. `wss:` is the exact counterpart of
+  `https:`; `ws:` is not listed, and `upgrade-insecure-requests` rewrites a `ws:` URL to `wss:`. An integrator writing their own policy adds it the same way
+  when the websocket plugin is loaded.
+- **A capability the bundle does not carry is no longer offered by the plugins that need it.**
+  Each plugin judged by a façade or a configuration key, never by what the bundle embarks. They
+  now ask the core (`GeoLeaf.Introspection.getCapabilityStatus()`, through one accessor of
+  `@geoleaf/host-runtime` 1.2.0), and the control that could only fail is not offered, the reason
+  logged once:
+    - `@geoleaf-plugins/offline-ui` 1.8.0 — without the offline engine (or `pwa`), the window's
+      toolbar slot is withheld, and « Download » no longer waits forever;
+    - `@geoleaf-plugins/editor` 1.6.5 — with no `api.baseUrl` declared, the direct write path
+      refuses before sending (`editor.error.noWriteTarget`) instead of posting to `/features`
+      relative to the page; an explicit `api.baseUrl: ""` still means the page's own origin;
+    - `@geoleaf-plugins/position-share` 1.0.4 — without geolocation, the slot is withheld and a
+      start is refused on screen; the same with the `websocket` transport before `GeoLeaf.Ws` is
+      connected;
+    - `@geoleaf-plugins/measure` 1.0.15 — without the core's geolocation control, the GPS tool
+      centres the map on its first vertex and zooms to 16, as the core does on a first fix (a
+      map already closer keeps its zoom);
+    - `@geoleaf-plugins/routing` 1.1.1 — « Votre position » is not offered without geolocation;
+    - `@geoleaf-plugins/navigation` 1.0.5 — `requires: ["routing"]` is held: loaded without
+      `routing`, the plugin refuses and names the dependency.
+- **`@geoleaf-plugins/position-share` 1.0.4 — the button shares, and the badge shows.** For this
+  plugin `enabled` means « emit from the boot »: the shipped `enabled: false` with the button shown
+  made the button do nothing; it now starts emission, `mode: "off"` still refusing it. The button
+  asks for the GPS watch itself, the badge is raised with the first fix and placed below the theme
+  bar, which covered it; `auto` is preloaded by the application when the profile asks for it, and
+  `showOthers(true)` refuses a reception layer the profile does not declare.
+- **`enabled: false` now does what each plugin's documentation says** — written down plugin by
+  plugin in `docs/specs/contrats/APP_SHELL.md`, and held by the code:
+    - `@geoleaf-plugins/table` 1.2.3 and `@geoleaf-plugins/isochrone` 1.0.4 — the toolbar slot is
+      withheld (it loaded the plugin and opened nothing);
+    - `@geoleaf-plugins/geocoding` 1.2.0 — opt-in: the slot follows `enabled: true`, and the
+      application no longer declares a lazy slot, which was only drawn when the plugin could do
+      nothing;
+    - `@geoleaf-plugins/routing` 1.1.1 — neither slot nor pane, and a profile that lacks the route
+      layer is treated the same (it offered a route it could not draw);
+    - `@geoleaf-plugins/navigation` 1.0.5 — « Start guidance » is not offered, and `start()`
+      refuses. **Removed:** `modules.navigation.showButton` and the toolbar slot it governed, which
+      never opened anything (its listener called a `Navigation.open()` that does not exist). A
+      profile that still carries the key is not affected.
+- **What the user should see on the map is in view.**
+    - `@geoleaf-plugins/routing` 1.1.1 — a computed route is judged visible against the part of the
+      map that is not covered (side panel, mobile sheet, theme bar), projected on screen so a pitched
+      camera is read right; the fit pads the covered edges. The arrival used to land under the panel.
+      On a phone, the bottom sheet now pads the bottom edge (it was ranked on the left, and the fit
+      fell back to a uniform margin), and the toolbar and the basemap credit are counted.
+      The fitted box spans the stops AND the decoded line — a route along a coast left 364 of its
+      1417 vertices under the phone's toolbar when fitted on its stops alone.
+      Under a pitched camera, a fit that landed with a stop closer than its margin to an edge (by
+      half a pixel or more: a flat fit's rounding no longer refits) is corrected once: the engine fits the ground box flat, and at 60° the near side widened onto
+      the side panel (a stop 9 px from it).
+      On a phone with the sheet open, a fit the profile's camera bounds hold back (the camera
+      stopping closer than the zoom the fit asked, the arrival left under the sheet) lowers the
+      sheet to its header with `GeoLeaf.UI.setPaneSize("peek")` and fits once more against what
+      is left — measured on a Pixel 7, Saint-Denis → Saint-Pierre: zoom 8.04 asked, bounds at 8.58.
+    - `@geoleaf-plugins/isochrone` 1.0.4 — computed zones are framed when they are out of view or a
+      speck in it; readable zones leave the map alone. "In view" means the uncovered part of the
+      map — the plugin's window, the side panel or sheet, the theme bar, the toolbar, the credit —
+      and the fit pads each covered edge.
+      On a phone, the reduced window — a band 12 px off the right edge — pads the top edge: a
+      surface is ranked on the edge where it hides the smallest share of the map (it was ranked on
+      the right, and the fit fell back to a uniform margin).
+    - The `tourism` profile no longer sets `label.visibleByDefault: false` on `routing-route`, which
+      overrode routing's request and left the stops unnumbered. The style schema now says that a
+      style's `visibleByDefault` wins over the caller, and that its absence leaves the caller decide.
+    - The style loader no longer writes `visibleByDefault: false` into an enabled `label` that
+      omits it, nor warns `"visibleByDefault" manquant` on every load: the written `false` counted
+      as a declaration and overrode routing's request, so the absence the schema documents never
+      reached the labels module. A layer whose style omits the key still keeps its labels hidden
+      until the user shows them; only a caller that asks for them (`enableLabels(id, cfg, true)`)
+      now gets them.
+- **Failures that were silent, or said the wrong thing, now say what happened.**
+    - `@geoleaf-plugins/print` 1.4.0 — the plate's legend reads each layer's visibility from the
+      layer store; it came out empty, `Legend` starting every layer as hidden. An export that
+      produces no file says why in the window
+      (`role=status`: tainted canvas, render server failure, render error) and the window stays
+      open; it used to close with nothing downloaded and the reason in the console only.
+    - `@geoleaf-plugins/routing` 1.1.1 — a destination opened from a feature stays the destination:
+      stops added afterwards are inserted before it, where they used to turn it into the departure.
+      A response of the wrong shape is reported as a malfunction (`malformed`), no longer as « no
+      route », for Valhalla and OSRM alike.
+    - `@geoleaf-plugins/websocket` 1.0.4 — a connection refused by the page's CSP (`error`, never
+      `close`) is settled as `CONNECTION_REFUSED` instead of hanging `init()`; a `subscribe()` made
+      before `init()` is kept; a `send()` before `init()` emits `geoleaf:ws:send-dropped`; `ws://`
+      is refused on an https page.
+- **`@geoleaf-plugins/realtime-layer` 1.0.9 — no more duplicates, and a status that tells the
+  truth.** A feed carrying its identity in `feature.id` (the GeoJSON standard place) duplicated
+  every feature at each refresh: the lookup read `properties` only and the working copy dropped
+  `id`. `getStatus` reported `active: true` for a source that could not open (SSE without
+  `EventSource`, websocket without `GeoLeaf.Ws`); a non-boolean `enabled` now says so; over
+  polling, a third-party decoder receives the raw text of a non-JSON response.
+- **`@geoleaf-plugins/flatgeobuf` 1.0.6 — a layer declared in a profile loads and looks as
+  declared.** Its address is resolved against the document (it answered 404 under a sub-path), its
+  declared style — flat keys and rules — is applied instead of an opaque grey fill, and `onHeader`
+  receives the file's header (it received `{}`: the header comes through `deserialize`'s callback).
+  A layer nothing styles — `loadAsLayer` / `loadBboxAsLayer` called from code, or a declared layer
+  whose style file names nothing or fails — is painted with a contrasted outline over a translucent
+  fill; it covered what lay beneath it with the same opaque grey.
+  A declared layer that fails to load (its file answers 404, its plugin has no loader) leaves the
+  layer manager's toggle off, as an ordinary layer does: the core resolved it as a loaded layer of
+  0 features, and the toggle lit up over nothing. A layer the click fails to load — any layer —
+  is now also said on screen, by its label (`toast.layer.load_failed`). Once loaded, it no longer logs
+  `showLayer: layer not found` — the plugin draws it, outside the GeoJSON registry.
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — the estimate speaks of what will be downloaded.** It
+  counted every zoom level, while the core's preparation skips a level past 30 000 tiles and stops
+  at 200 000: « ~69 GB » was announced for 18 MB fetched. The estimate now applies the same caps
+  and names the levels left out, and the end of a preparation says them instead of a plain success.
+- **A control withheld for its capability is said.** A toolbar slot or a pane that declares
+  `requiresCapability` vanished without a word when the capability was absent or switched off:
+  the core now logs it once per capability (`Log.warn`).
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — the field window prepares a zone when opened first.**
+  `openModal({ mode: "simple" })` builds no purge button, and the download handler was only
+  initialised when one existed: opened before the full window, « Download » failed at every click
+  with « Cannot set properties of null ». Opened after it, it drove the previous body's button.
+- **A device never prepared is not ready to leave.** `GeoLeaf.Storage.preflight()` answered `ready`
+  (or `degraded`) with no preparation on the device — no manifest — although the application does
+  not start off-network without its profile. Its `verdict` is now `notReady` there, as when the
+  manifest cannot be read; `@geoleaf-plugins/offline-ui` 1.8.0 names what is missing under it.
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — no tiles are promised without an offline basemap.** The
+  zone estimate counted tiles that only a vector basemap declared `offline: true` downloads: on a
+  profile without one, « ~1.10 GB (38409 tiles) » was announced for 18 MB prepared. It now says
+  that no tiles will be prepared, and why.
+- **`@geoleaf-plugins/print` 1.4.0 — `registerExporter` takes what the format declares.** A third
+  argument, `{ extension, label }`: a third-party format was downloaded as `.jpg` and its button
+  read `print.btn.<format>`. On a phone the whole composed page now stays under
+  `maxCanvasPxMobile` (an A3 plate reached 17.4 Mpx); the print-area hint speaks of the finger on a
+  touch screen, says « adjust the handles » once drawn, and sits below the theme bar. The twelve
+  unread `print.orientation.*` dictionary keys are removed — the orientation follows the drawn area.
+- **`@geoleaf-plugins/routing` 1.1.1 — panel finishes.** Clearing the itinerary clears its message;
+  the engine's credit leaves the map with the panel on unmount; the address suggestions are a
+  framed list; the toolbar icon is a route, no longer the bare circle geocoding also used.
+- **`@geoleaf-plugins/geocoding` 1.2.0 — `GeocodingResult.detail`.** Two results with the same
+  label could not be told apart; each now carries what the provider gives beyond it (postcode,
+  kind, context), shown under the label — and in routing's stop field. Two Nominatim homonyms
+  that still read the same are told apart by their named administrative level (« municipality »,
+  « district », « county »), the number only for another level. The toolbar icon is a magnifier,
+  no longer the circle routing also used.
+- **`@geoleaf-plugins/table` 1.2.3 — the spreadsheet writer loads on demand.** It was folded into
+  the plugin's entry (`inlineDynamicImports`); it is now a chunk of its own, next to the entry —
+  deploy every `dist/*.js` of the package together. On a phone the toolbar wraps instead of
+  scrolling its close button off screen, the checkboxes are 24 px under a coarse pointer, and the
+  highlight toggle carries `aria-pressed`. The layer selector is as wide as its prompt, which no
+  longer reads « Sélectionner une » on a desktop, within a 15rem bound once a layer is chosen.
+  The selector and the search field follow the theme's colours: the core's host guard reverted
+  them to the browser's grey and white, a light field on the dark theme's black panel.
+- **Fields follow the theme's colours against the core's host guard**, as the table's do:
+  `@geoleaf-plugins/print` 1.4.0 (title, description, format), `@geoleaf-plugins/routing` 1.1.1
+  (stop field), `@geoleaf-plugins/offline-ui` 1.8.0 (style and zoom-ceiling selects),
+  `@geoleaf-plugins/geocoding` 1.2.0 (search field, which only kept its colours when the filter
+  capability was embedded), `@geoleaf-plugins/isochrone` 1.0.4 and `@geoleaf/field-renderer`
+  1.4.6 (colour inputs no longer framed in the browser's grey; form fields and tags input).
+- **`@geoleaf-plugins/file-import` 1.1.0 — an imported layer can be seen.** It was painted in the
+  adapter's default (`#cccccc`, 5 px, no outline), near invisible; it now gets a contrasted,
+  outlined default, and `ImportLayerOptions.style` takes the core's flat style keys.
+- **Phone layouts.** `@geoleaf-plugins/navigation` 1.0.5 — the distance no longer breaks across
+  two lines, the road gets its own line, and the guidance controls sit at the bottom instead of
+  over the banner. `@geoleaf-plugins/isochrone` 1.0.4 — the window stands beside the toolbar
+  column instead of over it, stops above the bottom band, and zone names wrap.
+- **`@geoleaf-plugins/connector` 1.5.1 — the credential button tells the truth.** Without an auth
+  endpoint the click only emits its event (CN-22), instead of opening a form that could only say
+  « endpoint missing »; in `getToken` mode it reports the host's session as authenticated. A
+  login response without a token is said in the window's language. A `429` countdown needs the
+  server to expose `Retry-After` to the page (`Access-Control-Expose-Headers`) — now written.
+- **`@geoleaf-plugins/editor` 1.6.5 — the editor's own surfaces.** A creation tool no editable
+  layer accepts is disabled, with a tooltip saying why (it opened an empty form whose save was
+  refused); the creation form has a title; the pending-operations window has a frame, names layers
+  by their label and offers « retry now » only when something can be replayed; the handle sizes
+  follow `vertexHandleSize` and `midpointHandleSize`, which were read nowhere.
+  `@geoleaf/field-renderer` 1.4.6 — the list field's « + Add » is translated, and the form's layer
+  menu takes up to half the header instead of a fixed 180 px, which cut an ordinary layer name; the
+  editor's menu names the chosen layer in full on hover.
+- **« Everything sent » no longer stands beside « never synchronised ».** With nothing owed and no
+  synchronisation yet, the sync strip (core) and the offline window (`@geoleaf-plugins/offline-ui`)
+  say « nothing pending »; « everything sent » needs a past synchronisation and nothing set aside.
+  `@geoleaf-plugins/offline-ui` 1.8.0 also writes sizes in the active language (« 18,07 Mo », no
+  longer « 18.07 MB »), wraps its status row on a phone instead of cutting it, and lets the layer
+  table scroll instead of losing its columns.
+- **The theme bar leaves with the application.** `ThemeSelector.destroy()` empties the host page's
+  containers: after `GeoLeaf.unmount()` the bar stayed on screen over a map that was gone.
+- **The mobile toolbar clears the bottom-left corner when the credit lifts it.** The map's host now
+  carries `--gl-attrib-clearance` too, and the toolbar's bottom follows it: at a fixed 80 px its
+  chevron covered the scale bar the expanded credit had pushed up.
+- **A prepared zone says its real size, and a second preparation says « already up to date ».**
+  What the device already held counted 0 (the manifest carries no size): a first preparation over
+  resources the runtime had cached ended on « Profile downloaded: 0.00 MB ». The size is now read
+  from the stored records, and the result carries `upToDate` and `downloadedThisRun`, which
+  `@geoleaf-plugins/offline-ui` uses to say « Zone already up to date ».
+- **A plugin that fails to load says so on screen.** A toolbar button whose plugin could not be
+  loaded only logged to the console; it now shows an error notification, which offline tells
+  the user to prepare a zone while online.
+
+### Changed
+
+- **`@geoleaf-plugins/offline-ui` 1.8.0 — the storage contract declares what the core fills.**
+  `StorageContractCache` is now `{ Storage }`, exactly what the core's offline engine wires: its
+  `LayerSelector` member, never filled, is removed, and so is the `StorageContractLayerSelector`
+  type the package exported for it. Code that read `GeoLeaf.Storage.Cache.LayerSelector` already
+  received `undefined`; it now fails to compile instead of failing silently.
+- **`@geoleaf-plugins/measure` 1.0.15 — values are readable.** `defaultDistanceUnit` and
+  `defaultAreaUnit` now default to `"auto"` (they were `"m"` and `"m2"`, which printed a field's
+  area as « 311708308915 m² »); numbers are grouped and use the active language's decimal mark; the
+  unit button cycles back to `auto`; an invalid `menuPosition` is warned once. A profile that wants
+  metres sets the key explicitly. In automatic mode the two unit buttons read `~ m` and `~ m²`
+  (both showed a bare `~`), and each one's accessible name and tooltip say the quantity and the
+  current unit in the active language (« Unité des distances : km »).
+- **`GeoLeaf.UI` hosts no longer open a withheld pane.** `getPanelPane(id)` answers `undefined`
+  for a pane whose `requiresCapability` or `isAvailable()` withholds it, so `openPane(id)`
+  cannot show it either.
+
 ## [3.20.6] - 2026-11-25
 
 Published with `@geoleaf-plugins/offline-ui` 1.7.4, `@geoleaf-plugins/editor` 1.6.4 and

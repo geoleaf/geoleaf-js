@@ -1,12 +1,12 @@
 {
     "name": "@geoleaf-plugins/table",
-    "version": "1.2.2",
+    "version": "1.2.3",
     "type": "module",
     "license": "MIT",
     "description": "GeoLeaf table plugin",
     "geoleaf": {
         "bundle": "geoleaf-table.plugin.js",
-        "lazyChunks": false,
+        "lazyChunks": true,
         "includeFlag": null
     },
     "homepage": "https://geoleaf.dev",

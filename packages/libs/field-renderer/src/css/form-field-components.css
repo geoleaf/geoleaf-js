@@ -201,11 +201,16 @@
     min-width: 80px;
     border: none;
     outline: none;
-    background: transparent;
     font-size: var(--gl-font-size-base, 0.875rem);
     font-family: inherit;
-    color: var(--gl-color-text-main, #0f172a);
     padding: 1px 0;
+}
+
+/* Its colours under the field wrapper, for the host-guard reason given at `.gl-form-input`
+   (`form-modal-base.css`): at a single class they were reverted to the browser's. */
+.gl-form-field .gl-form-tags__input {
+    background: transparent;
+    color: var(--gl-color-text-main, #0f172a);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -320,6 +325,11 @@
     border-radius: var(--gl-border-radius, 6px);
     cursor: pointer;
     padding: 2px;
+}
+
+/* Its background under the field wrapper, for the host-guard reason given at `.gl-form-input`
+   (`form-modal-base.css`): at a single class the colour input got the browser's grey face. */
+.gl-form-field .gl-form-badge__color {
     background: none;
 }
 

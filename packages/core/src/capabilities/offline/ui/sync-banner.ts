@@ -206,9 +206,12 @@ function _worseThanDismissed(status: SyncStatus): boolean {
  * was set aside either: a capture in quarantine has not left, and « Tout est envoyé · 1
  * bloquée(s) » said the opposite.
  */
-function _pendingLabel(owed: number, quarantined: number): string {
+function _pendingLabel(owed: number, quarantined: number, everSynced: boolean): string {
     if (owed === 0) {
-        return getLabel(quarantined > 0 ? "ui.sync.none_pending" : "ui.sync.all_sent");
+        // « Tout est envoyé » beside « jamais synchronisé » said two contrary things: with no
+        // synchronisation yet, nothing was sent — there is simply nothing waiting.
+        const sent = quarantined === 0 && everSynced;
+        return getLabel(sent ? "ui.sync.all_sent" : "ui.sync.none_pending");
     }
     return owed === 1
         ? getLabel("ui.sync.pending_one")
@@ -238,7 +241,7 @@ function _paint(status: SyncStatus): void {
     // would have hidden the same coupling behind a regex.
     _root.setAttribute("data-network", online ? "online" : "offline");
     _els.net.textContent = getLabel(online ? "ui.sync.online" : "ui.sync.offline");
-    _els.pending.textContent = _pendingLabel(owed, quarantined);
+    _els.pending.textContent = _pendingLabel(owed, quarantined, lastSyncAt !== null);
     _els.quarantine.textContent =
         quarantined > 0 ? getLabel("ui.sync.quarantined", String(quarantined)) : "";
     _els.quarantine.hidden = quarantined === 0;

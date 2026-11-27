@@ -17,7 +17,7 @@ import "./providers/builtins.js";
 // The toolbar seam is typed by the core — the shape is imported rather than re-declared inline.
 import type { GeoLeafRawEventMap } from "@geoleaf/core";
 
-import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
+import { coreConfigGet, getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 
 import langDe from "./lang/lang-de.js";
 import langEn from "./lang/lang-en.js";
@@ -120,6 +120,9 @@ registerPluginModule({
     id: "isochrone",
     destroy: () => destroyIsochrone(),
     ui: {
+        // `modules.isochrone.enabled: false` withholds the slot — read at render, the profile
+        // being merged after this bundle loads (`APP_SHELL.md`, `enabled` per plugin).
+        isAvailable: () => coreConfigGet<boolean>("modules.isochrone.enabled", true) !== false,
         mobileIcon: {
             icon: _ICON,
             labelKey: "isochrone.toolbar.button",

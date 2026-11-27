@@ -154,7 +154,7 @@ const StorageContract = {
 
     /**
      * Access to the Cache namespace (Storage.Cache).
-     * Holds CacheStorage, LayerSelector, etc.
+     * Holds the layer-selection store (`{ Storage }`), as the offline engine wires it.
      * @returns {Object|null}
      */
     get Cache() {

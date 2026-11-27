@@ -48,6 +48,7 @@ function createCacheControl(options: CacheControlOptions = {}): IControl | null 
             position: options.position || "topright",
             collapsed: options.collapsed || false,
             collapsible: options.collapsible !== false,
+            mode: options.mode === "simple" ? "simple" : "full",
         },
         _eventCleanups: [],
         _map: null,
@@ -98,20 +99,23 @@ function createCacheControl(options: CacheControlOptions = {}): IControl | null 
                 LayerSelectorCore.init(self, self._layersContent);
             }
 
+            // 🛑 The purge button is NOT a condition: the simple body does not build one, and
+            // a handler left uninitialised there threw at the first « Télécharger ». It is
+            // handed over as `null` instead, which also drops the one a previous full body
+            // left in this singleton.
             if (
                 DownloadHandler &&
                 self._progressEl &&
                 self._progressFill &&
                 self._progressText &&
-                self._downloadBtn &&
-                self._clearBtn
+                self._downloadBtn
             ) {
                 DownloadHandler.init(self, {
                     progressEl: self._progressEl,
                     progressFill: self._progressFill,
                     progressText: self._progressText,
                     downloadBtn: self._downloadBtn,
-                    clearBtn: self._clearBtn,
+                    clearBtn: self._clearBtn ?? null,
                 });
             }
 

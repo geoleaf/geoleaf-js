@@ -57,7 +57,12 @@ const langStorageEs: StorageLangDict = {
     "storage.zone.note": "Más alto = más nítido pero más pesado.",
     "storage.zone.noZone": "Ninguna área seleccionada.",
     "storage.zone.summary": "Área",
+    "storage.zone.skippedZooms": "zooms {0} omitidos (demasiadas teselas)",
+    "storage.zone.capped": "total limitado",
+    "storage.notif.download.skippedZooms": "{0} nivel(es) de zoom omitido(s) (demasiadas teselas)",
     "storage.zone.estimate": "Estimación",
+    "storage.zone.noOfflineBasemap":
+        "Ningún mapa base sin conexión en este perfil: no se prepararán teselas para esta zona",
     "storage.zone.tiles": "teselas",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Seleccionar todo / deseleccionar",
@@ -115,6 +120,7 @@ const langStorageEs: StorageLangDict = {
     "storage.notif.offline.unavailable": "Almacenamiento sin conexión no disponible",
     "storage.notif.noProfile": "Ningún perfil activo",
     "storage.notif.download.success": "Perfil descargado",
+    "storage.notif.download.upToDate": "Zona ya actualizada",
     "storage.notif.download.partial":
         "Perfil descargado, salvo {0} origen(es) no declarado(s) para la preparación",
     "storage.notif.download.error": "Error de descarga",
@@ -187,6 +193,9 @@ const langStorageEs: StorageLangDict = {
     "storage.preflight.persistence.bestEffort":
         "Almacenamiento no garantizado: el navegador puede borrar los datos",
     "storage.preflight.persistence.unsupported": "Persistencia del almacenamiento desconocida",
+    "storage.simple.ready": "Zona lista sin conexión, actualizada: {0}",
+    "storage.simple.readyNoTime": "Zona lista sin conexión",
+    "storage.simple.none": "Ninguna zona preparada",
     "storage.preflight.layer.declaredNeverPulled": "nunca descargada",
     "storage.preflight.layer.pullFailed": "descarga fallida",
     "storage.preflight.layer.pulledPartial": "descarga incompleta",
@@ -195,6 +204,8 @@ const langStorageEs: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Niveles de zoom no preparados: {0}",
     "storage.preflight.tiles.capped": "Preparación detenida en el límite de teselas",
     "storage.preflight.failed": "{0} recurso(s) no descargado(s)",
+    "storage.preflight.notPrepared":
+        "Perfil nunca preparado en este dispositivo: la aplicación no se iniciará sin conexión",
     "storage.preflight.session.valid": "Sesión de escritura válida hasta el {0}",
     "storage.preflight.session.validNoExpiry": "Sesión de escritura abierta",
     "storage.preflight.session.expired":

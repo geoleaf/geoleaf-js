@@ -26,6 +26,12 @@ vi.mock("../../src/kernel/themes/theme-applier/core.js", () => ({
     },
 }));
 
+// The user-facing notification — asserted, not only the console line.
+const mockNotify = vi.fn();
+vi.mock("../../src/utils/notify/notify.primitive.js", () => ({
+    notifyPrimitive: { notify: (...args) => mockNotify(...args) },
+}));
+
 // Capture the Log mock instance (same object used by attach-toggle.ts before any resetModules)
 import { Log as TopLog } from "../../src/utils/log/index.js";
 
@@ -47,6 +53,7 @@ describe("layer-manager/attach-toggle — branch coverage", () => {
         mockShowLayer.mockReset();
         mockHideLayer.mockReset();
         mockLoadLayerFromProfile.mockReset();
+        mockNotify.mockReset();
     });
 
     // ── Guard: already attached ───────────────────────────────────────────
@@ -224,13 +231,57 @@ describe("layer-manager/attach-toggle — branch coverage", () => {
             expect.stringContaining("Layer loading failed"),
             "lyrNull"
         );
+        expect(mockShowLayer).not.toHaveBeenCalled();
+        expect(btn.getAttribute("aria-pressed")).not.toBe("true");
+        expect(btn.classList.contains("gl-layer-manager__item-toggle--on")).toBe(false);
+        cleanup(btn);
+    });
+
+    // ── A failed load is SAID to the user, naming the layer ───────────────
+    // A declared plugin layer whose file 404s left the button off with only a console line:
+    // the click looked ignored.
+    it.each([
+        ["resolves to null", () => Promise.resolve(null)],
+        ["rejects", () => Promise.reject(new Error("HTTP 404"))],
+    ])("a lazy load that %s notifies the user with the layer's label", async (_, impl) => {
+        mockLoadLayerFromProfile.mockImplementation(impl);
+        mockGetLayerById.mockReturnValue(null);
+        const item = document.createElement("div");
+        item.setAttribute("data-layer-id", "eco_fgb");
+        const label = document.createElement("span");
+        label.className = "gl-layer-manager__label";
+        label.textContent = "Écorégions";
+        item.appendChild(label);
+        const btn = document.createElement("button");
+        item.appendChild(btn);
+        document.body.appendChild(item);
+        attachToggleHandler(btn, "eco_fgb", vi.fn());
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(mockNotify).toHaveBeenCalledTimes(1);
+        const [message, kind] = mockNotify.mock.calls[0];
+        expect(kind).toBe("error");
+        expect(message).toContain("Écorégions");
+        expect(btn.getAttribute("aria-pressed")).not.toBe("true");
+        item.remove();
+    });
+
+    it("a successful lazy load notifies nothing", async () => {
+        mockLoadLayerFromProfile.mockReturnValue(Promise.resolve({ id: "ok", featureCount: 3 }));
+        mockGetLayerById.mockReturnValue(null);
+        const btn = makeToggleBtn();
+        attachToggleHandler(btn, "ok", vi.fn());
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(mockNotify).not.toHaveBeenCalled();
         cleanup(btn);
     });
 
     // ── _afterLazyLoadSuccess — loadedLayer is valid ──────────────────────
     it("_afterLazyLoadSuccess: shows layer on successful load", async () => {
         mockLoadLayerFromProfile.mockReturnValue(Promise.resolve({ id: "lyrLoaded", layer: {} }));
-        mockGetLayerById.mockReturnValue(null);
+        // Absent at the click (lazy load), registered once loaded.
+        mockGetLayerById.mockReturnValueOnce(null).mockReturnValue({ id: "lyrLoaded" });
         const btn = makeToggleBtn();
         attachToggleHandler(btn, "lyrLoaded", vi.fn());
         btn.click();
@@ -238,6 +289,24 @@ describe("layer-manager/attach-toggle — branch coverage", () => {
         await Promise.resolve();
         await Promise.resolve();
         expect(mockShowLayer).toHaveBeenCalledWith("lyrLoaded");
+        expect(btn.classList.contains("gl-layer-manager__item-toggle--on")).toBe(true);
+        cleanup(btn);
+    });
+
+    // ── _afterLazyLoadSuccess — a layer drawn outside the GeoJSON registry ─
+    // A plugin-backed layer (e.g. flatgeobuf) is drawn by its plugin and never enters the
+    // GeoJSON registry: asking `showLayer` for it only logged « layer not found ».
+    it("_afterLazyLoadSuccess: lights the toggle without asking showLayer for a layer outside the registry", async () => {
+        mockLoadLayerFromProfile.mockReturnValue(
+            Promise.resolve({ id: "eco_regions_fgb", label: "Eco", featureCount: 0 })
+        );
+        mockGetLayerById.mockReturnValue(null);
+        const btn = makeToggleBtn();
+        attachToggleHandler(btn, "eco_regions_fgb", vi.fn());
+        btn.click();
+        await new Promise((r) => setTimeout(r, 0));
+        expect(mockShowLayer).not.toHaveBeenCalled();
+        expect(btn.getAttribute("aria-pressed")).toBe("true");
         expect(btn.classList.contains("gl-layer-manager__item-toggle--on")).toBe(true);
         cleanup(btn);
     });

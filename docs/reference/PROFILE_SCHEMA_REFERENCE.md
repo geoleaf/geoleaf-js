@@ -310,7 +310,7 @@ Per-layer configuration file (layers/*/[name]_config.json). Defines data source,
 | `labels.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `labels.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
 | `labels.opacity` | number | — | `1` | — | — |
-| `labels.visibleByDefault` | boolean | — | `false` | — | Labels visible on layer load without user action. |
+| `labels.visibleByDefault` | boolean | — | — | — | Labels visible on layer load without user action. When set, it WINS over the caller: a plugin asking for its labels (routing's step numbers) is overridden by `false`. When absent, the caller decides — shown if it asks for them, hidden until the user toggles them otherwise. |
 | `legends` | object | — | — | — | Legend file references for this layer (unused by current profiles). |
 | `legends.default` | string | — | — | — | Filename of the default legend. |
 | `legends.directory` | string | — | `"legends"` | — | Relative directory containing legend JSON files. |
@@ -488,7 +488,7 @@ Style definition for a GeoLeaf layer (flat format). Used in layers/*/styles/*.js
 | `label.offset.distancePx` | number | — | `12` | — | Gap in CSS pixels between the feature and the nearest edge of the text box; converted to ems of text-size. Ignored when placement is 'center'. Rule of thumb: at least the marker radius plus 3 px, or half the drawn icon height. Below roughly 0.3 x text-size the engine's baseline correction cancels it out. |
 | `label.offset.placement` | string | — | `"center"` | "center" \| "top" \| "bottom" \| "left" \| "right" \| "top-left" \| "top-right" \| "bottom-left" \| "bottom-right" | Side the LABEL sits on, NOT the MapLibre anchor (whose vocabulary is the opposite: a label above its feature anchors by its 'bottom'). The renderer holds the conversion table. |
 | `label.opacity` | number | — | `1` | — | — |
-| `label.visibleByDefault` | boolean | — | `false` | — | Labels visible on layer load without user action. |
+| `label.visibleByDefault` | boolean | — | — | — | Labels visible on layer load without user action. When set, it WINS over the caller: a plugin asking for its labels (routing's step numbers) is overridden by `false`. When absent, the caller decides — shown if it asks for them, hidden until the user toggles them otherwise. |
 | `labelScale` | object | — | — | — | Label visibility by scale range — LIVE feature (isScaleInRange in scale-utils.ts, consumed by labels.ts). minScale/maxScale are scale denominators, same unit as scaleConfig, but scoped to the layer's labels rather than the layer itself — NOT a duplicate. |
 | `labelScale.maxScale` | number \| null | — | — | — | — |
 | `labelScale.minScale` | number \| null | — | — | — | — |

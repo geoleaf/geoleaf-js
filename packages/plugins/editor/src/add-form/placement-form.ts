@@ -170,9 +170,10 @@ export function openAddForm(latlng: LatLng): void {
     const draft = beginDraft(null, _endCapture);
     draft.opened(
         deps.openForm({
-            // Empty title and schema: both are resolved per target layer inside the modal, by
-            // the layer dropdown and `getSchemaForLayer`. Same contract as a Terra Draw create.
-            title: "",
+            // The title names the gesture — the dialog had no accessible name, its `h2` empty.
+            // The schema is resolved per target layer inside the modal, by the layer dropdown and
+            // `getSchemaForLayer`. Same contract as a Terra Draw create.
+            title: _getLabel("editor.modal.title.create"),
             schema: [],
             geometryType: "Point",
             initialValues: {},

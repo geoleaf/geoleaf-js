@@ -54,6 +54,26 @@ import type { IModuleInfo, IModuleSchema } from "./introspection.contract.ts";
  */
 export interface IModuleUISlot {
     /**
+     * In-core capability every button of this slot drives. When the bundle does not embark it,
+     * or the merged profile switches it off (its own gate or a dependency's), neither the
+     * mobile icon nor the desktop button is rendered: a control that can only fail is not
+     * offered. Unknown — nothing declared yet, or no registry — keeps the buttons.
+     *
+     * @example `'offline'`
+     */
+    requiresCapability?: string;
+
+    /**
+     * The module's own verdict on whether its buttons may be offered, read at RENDER time —
+     * the only moment the merged profile exists. A module registered before boot cannot read
+     * its configuration when it registers; this is where it says `modules.<id>.enabled: false`,
+     * or that the profile lacks what the feature needs. A throw keeps the buttons and is logged.
+     *
+     * @returns `false` to withhold the buttons.
+     */
+    isAvailable?(): boolean;
+
+    /**
      * Mobile toolbar (bottom pill) integration.
      *
      * When declared, the registry renders a button in the mobile pill using

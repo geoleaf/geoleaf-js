@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "capability-seam",
+    "scope": ["packages/libs/host-runtime/src/capability-seam.ts"],
+    "verdicts": {
+        "packages/libs/host-runtime/src/capability-seam.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Le verdict du cœur sur une capacité, pour un plugin : `capabilityAvailability(id)` (on, off, absent, unknown), `isCapabilityOn(id)` et `warnCapabilityMissing(plugin, capacité)`, lus sur `GeoLeaf.Introspection.getCapabilityStatus()`",
+            "confidence": "haute",
+            "rationale": "Un seul accesseur pour que tous les plugins jugent l'embarquement de la même façon : aucun ne le lisait, chacun jugeait à une façade ou à une clé, d'où des boutons offerts qui ne pouvaient qu'échouer sur une variante sans la capacité. « Inconnu » n'est jamais « absent » : avant le boot, la liste est vide. Sur le modèle de `geolocation-seam.ts`, sans import du cœur. Tenu par `src/__tests__/capability-seam.test.ts`, vu rougir"
+        }
+    }
+}

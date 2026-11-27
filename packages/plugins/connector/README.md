@@ -171,6 +171,9 @@ auth: {
 In both presentations the password field is emptied as soon as the request leaves, and a `429`
 whose `Retry-After` says how long keeps the button disabled for that time, with a countdown.
 
+> ⚠️ For a cross-origin server, the countdown needs `Access-Control-Expose-Headers: Retry-After`:
+> without it the browser hides the header and the form says « try again later ».
+
 ### `GeoLeaf.Connector.openLoginModal()`
 
 Opens the login window manually, in the presentation `auth.ui` asks for. Requires a prior `configure()` call carrying `auth`. There is one

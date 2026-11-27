@@ -29,6 +29,7 @@
  */
 
 import { Log } from "../../utils/log/index.js";
+import { DOMSecurity } from "../../kernel/security/index.js";
 import { Config } from "../../kernel/config/config-primitives.js";
 import {
     ThemeApplierCore,
@@ -353,6 +354,18 @@ const ThemeSelector = {
                 }
             });
             _state._eventCleanups = [];
+        }
+
+        // 🛑 The CONTAINERS belong to the host page (`index.html`), so they outlive an unmount —
+        // and the bar they held stayed on screen, over a map that was gone, until the next mount
+        // rebuilt it. Emptied here, with the classes the primary UI set, before the references go.
+        for (const container of [_state.primaryContainer, _state.secondaryContainer]) {
+            if (!container) continue;
+            DOMSecurity.clearElementFast(container);
+            container.classList.remove(
+                "gl-theme-selector-primary",
+                "gl-theme-selector-primary--compact"
+            );
         }
 
         // Clear DOM/data references so a destroy → recreate cycle never operates on

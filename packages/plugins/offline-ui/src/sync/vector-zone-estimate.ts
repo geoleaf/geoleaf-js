@@ -69,19 +69,51 @@ function countTilesForBounds(
 }
 
 /**
- * Rough pre-download estimation: tile count over the zoom range, plus the total
- * gzip weight (tiles + glyphs/sprites flat fee).
+ * The core's caps on a tile preparation (`CacheCalculator.defaults`): a zoom covering more tiles
+ * than this is SKIPPED, and the enumeration stops at the total cap. Mirrored here, not imported:
+ * the core prunes the calculator from its published artifact (see this file's header).
+ */
+const CORE_MAX_TILES_PER_ZOOM = 30_000;
+const CORE_MAX_TOTAL_TILES = 200_000;
+
+/** What the estimate leaves out, as the core's preparation will. */
+interface VectorZoneEstimate {
+    readonly tiles: number;
+    readonly bytes: number;
+    /** Zoom levels the core skips — too many tiles. */
+    readonly skippedZooms: readonly number[];
+    /** Whether the total cap cuts the enumeration. */
+    readonly capped: boolean;
+}
+
+/**
+ * Pre-download estimation of what the core's preparation will REALLY fetch: tile count over the
+ * zoom range, with the core's caps applied, plus the total gzip weight.
  *
- * ⚠️ A silent UNDER-estimation was fixed here: a 2°×2° zone at zoom 15
- * (~33k tiles) already crossed the old implementation's cap and counted 0.
+ * 🛑 THE ESTIMATE AND THE DOWNLOAD SPEAK OF THE SAME PERIMETER. The arithmetic count is kept — it
+ * fixed an under-estimation, a 2°×2° zone at zoom 15 counting 0 — but a zoom the core skips is no
+ * longer added: « ~69,40 GB (2425840 tuiles) » was announced for a preparation that fetched
+ * 18 MB, the core having skipped every zoom past its per-zoom cap.
  *
  * @param zone - Zone and zoom range to estimate.
- * @returns `{ tiles, bytes }` — tile count and estimated size.
+ * @returns The tiles and bytes the core will fetch, and what it will leave out.
  */
-export function estimateVectorZone(zone: VectorZone): { tiles: number; bytes: number } {
+export function estimateVectorZone(zone: VectorZone): VectorZoneEstimate {
     let tiles = 0;
+    let capped = false;
+    const skippedZooms: number[] = [];
     for (let z = zone.cacheMinZoom; z <= zone.cacheMaxZoom; z++) {
-        tiles += countTilesForBounds(zone.bounds, z);
+        const atZoom = countTilesForBounds(zone.bounds, z);
+        if (atZoom > CORE_MAX_TILES_PER_ZOOM) {
+            skippedZooms.push(z);
+            continue;
+        }
+        if (tiles + atZoom > CORE_MAX_TOTAL_TILES) {
+            tiles = CORE_MAX_TOTAL_TILES;
+            capped = true;
+            break;
+        }
+        tiles += atZoom;
     }
-    return { tiles, bytes: tiles * AVG_PBF_BYTES + GLYPH_SPRITE_OVERHEAD };
+    return { tiles, bytes: tiles * AVG_PBF_BYTES + GLYPH_SPRITE_OVERHEAD, skippedZooms, capped };
 }

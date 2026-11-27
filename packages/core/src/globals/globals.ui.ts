@@ -91,6 +91,7 @@ import { _UITheme } from "../kernel/ui/theme.js";
 // `GeoLeaf.Filter` contract (S13 — the former `_UIFilterPanel*` shims + the
 // `ui/filter-panel/**` builder were removed).
 import { initMobileToolbar, destroyMobileToolbar } from "../kernel/ui/mobile/mobile-toolbar.js";
+import { setPaneSize } from "../kernel/ui/mobile/mobile-toolbar-sheet.js";
 import { registerPanelPane, openPane, closePane } from "../kernel/ui/panel-panes.js";
 import { setImmersive, isImmersive } from "../kernel/ui/immersive.js";
 import {
@@ -261,6 +262,9 @@ export function setupUIKernel(): void {
     ui.registerPanelPane = registerPanelPane;
     ui.openPane = openPane;
     ui.closePane = closePane;
+    // The mobile sheet's height. ⚠️ Answers false at desktop widths, where no sheet is open:
+    // a plugin that lowers the sheet to show what it framed calls it at any width.
+    ui.setPaneSize = setPaneSize;
     // Stripping the chrome for one task. ⚠️ The kernel never learns WHO asked — that is what
     // keeps `no-plugin-in-core` intact while a plugin drives an application-wide UI mode.
     ui.setImmersive = setImmersive;

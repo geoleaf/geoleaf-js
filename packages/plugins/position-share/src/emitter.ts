@@ -9,12 +9,20 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
-import { getGeoLeaf, Log } from "@geoleaf/host-runtime";
+import {
+    getGeoLeaf,
+    getUINotifications,
+    isCapabilityOn,
+    Log,
+    tLabel,
+    warnCapabilityMissing,
+} from "@geoleaf/host-runtime";
 
 import { getPluginConfig, validateConfig, type PluginConfig } from "./config.js";
 import { getClientId } from "./client-id.js";
 import { hasMovedEnough, type LatLng } from "./distance.js";
 import { setIndicator } from "./indicator.js";
+import { ensureWatch, isWatchActive } from "./gps-watch.js";
 import { registerBuiltinTransports } from "./transports/builtins.js";
 import { resolveTransport } from "./transports/registry.js";
 import type { IPositionTransport, PositionPayload } from "./transports/contract.js";
@@ -73,6 +81,8 @@ async function tick(cfg: PluginConfig): Promise<void> {
         return;
     }
     _inactiveWarned = false;
+    // The badge says a position is LEAVING: raised with the first fix, not with the loop.
+    setIndicator(true);
 
     if (!hasMovedEnough(_lastSent, fix, cfg.minDistanceM)) return;
 
@@ -91,18 +101,51 @@ async function tick(cfg: PluginConfig): Promise<void> {
     }
 }
 
+/** Tells the user why a start they asked for did not happen. Silent for a start by program. */
+function _refuse(fromUser: boolean, key: string, fallback: string): false {
+    if (fromUser) getUINotifications()?.warning(tLabel(key, fallback));
+    return false;
+}
+
+/** The websocket transport needs the `Ws` channel connected; the plugin never initialises it. */
+function _channelReady(cfg: PluginConfig): boolean {
+    if (cfg.transport !== "websocket") return true;
+    const ws = getGeoLeaf()?.Ws as { state?: string } | undefined;
+    return ws?.state === "connected";
+}
+
 /**
  * Starts the emission loop.
  *
+ * 🛑 **It refuses what it cannot carry out, and says so** — it used to start, raise the badge
+ * « Partage de ma position en cours » and send nothing: without the geolocation capability (no fix
+ * is ever read), and with the websocket transport before `GeoLeaf.Ws` is connected (every sample
+ * dropped). A start by the user's button is told the reason on screen; a start by program
+ * (`auto`) only logs it.
+ *
+ * ⚠️ **`enabled` gates the start by program, not the button** (`APP_SHELL.md`, table of what
+ * `enabled` governs): for this plugin it means « emit from the boot ». The shipped profile carries
+ * `enabled: false` with the button shown — the button is the switch. `mode: "off"` refuses both.
+ *
  * @param override - Configuration to use instead of reading the profile (tests).
+ * @param opts - `fromUser`: the start comes from the user's button.
  * @returns `true` when the loop started, `false` when configuration forbids or prevents it.
  */
-export function startEmission(override?: PluginConfig): boolean {
+export function startEmission(override?: PluginConfig, opts: { fromUser?: boolean } = {}): boolean {
     if (_timer) return true;
 
     const cfg = override ?? getPluginConfig();
+    const fromUser = opts.fromUser === true;
 
-    if (cfg.enabled !== true || cfg.mode === "off") return false;
+    if (cfg.mode === "off") {
+        return _refuse(fromUser, "position-share.error.modeOff", "Position sharing is off.");
+    }
+    if (cfg.enabled !== true && !fromUser) return false;
+
+    if (!isCapabilityOn("geolocation")) {
+        warnCapabilityMissing("position-share", "geolocation");
+        return _refuse(fromUser, "position-share.error.noGeolocation", "Geolocation is missing.");
+    }
 
     const problems = validateConfig(cfg);
     if (problems.length > 0) {
@@ -119,14 +162,26 @@ export function startEmission(override?: PluginConfig): boolean {
         );
         return false;
     }
+    if (!_channelReady(cfg)) {
+        Log.warn(
+            '[PositionShare] transport "websocket" needs GeoLeaf.Ws connected — call ' +
+                "GeoLeaf.Ws.init() first; this plugin deliberately does not initialise it"
+        );
+        _transport = null;
+        return _refuse(fromUser, "position-share.error.noChannel", "The channel is not connected.");
+    }
+
+    // The button asks for the GPS itself: without a watch running, there is no fix to send, and
+    // the loop would turn in silence. `auto` asks for it at boot (`lifecycle.ts`).
+    if (fromUser) ensureWatch();
 
     _timer = setInterval(() => {
         void tick(cfg);
     }, cfg.intervalMs);
 
-    // Raised with the loop, not with the first successful send: what the badge reports is that
-    // this browser is now sharing, and that becomes true here.
-    setIndicator(true);
+    // The badge comes with the first fix (`tick`): raised here only when the watch already
+    // runs, so a refused or pending permission does not announce a sharing that is not there.
+    if (isWatchActive()) setIndicator(true);
 
     // Emit once immediately: waiting a full period before the first sample makes the feature
     // look broken at exactly the moment someone switches it on to check that it works.
@@ -157,5 +212,5 @@ export function toggleEmission(): boolean {
         stopEmission();
         return false;
     }
-    return startEmission();
+    return startEmission(undefined, { fromUser: true });
 }

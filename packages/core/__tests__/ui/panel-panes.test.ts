@@ -50,6 +50,7 @@ import {
     destroyDesktopPanel,
     getOpenPanel,
 } from "../../src/kernel/ui/desktop/desktop-panel.js";
+import { CapabilityRegistry } from "../../src/kernel/api/capability-registry.js";
 
 /** A panel some plugin owns, already in the document. */
 function mountOwnedPanel(cls = "gl-fake-panel"): HTMLElement {
@@ -129,6 +130,51 @@ describe("the registry itself", () => {
         registerPanelPane({ id: "b", labelKey: "k", selector: ".b", order: -1 });
         registerPanelPane({ id: "c", labelKey: "k", selector: ".c" });
         expect(listPanelPanes().map((p) => p.id)).toEqual(["b", "a", "c"]);
+    });
+});
+
+describe("a pane can be withheld — requiresCapability and isAvailable()", () => {
+    afterEach(() => {
+        CapabilityRegistry._reset();
+        delete (globalThis as { GeoLeaf?: unknown }).GeoLeaf;
+    });
+
+    it("is neither listed nor returned while its owner answers false", () => {
+        let available = false;
+        registerPanelPane({
+            id: "r",
+            labelKey: "k",
+            selector: ".r",
+            isAvailable: () => available,
+        });
+        expect(listPanelPanes()).toEqual([]);
+        expect(getPanelPane("r")).toBeUndefined();
+        // Read at call time, not frozen at registration: the profile is merged after it.
+        available = true;
+        expect(listPanelPanes().map((p) => p.id)).toEqual(["r"]);
+        expect(getPanelPane("r")?.id).toBe("r");
+    });
+
+    it("is withheld when the bundle does not embark the capability it requires", () => {
+        CapabilityRegistry.register({ id: "legend" });
+        CapabilityRegistry.noteInstaller("legend", { hasModule: true });
+        registerPanelPane({
+            id: "r",
+            labelKey: "k",
+            selector: ".r",
+            requiresCapability: "geolocation",
+        });
+        expect(listPanelPanes()).toEqual([]);
+    });
+
+    it("is kept while nothing is declared — unknown is not absent", () => {
+        registerPanelPane({
+            id: "r",
+            labelKey: "k",
+            selector: ".r",
+            requiresCapability: "geolocation",
+        });
+        expect(listPanelPanes().map((p) => p.id)).toEqual(["r"]);
     });
 });
 

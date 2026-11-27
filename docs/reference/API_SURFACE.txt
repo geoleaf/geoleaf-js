@@ -42,9 +42,9 @@ CallSignature | @geoleaf-plugins/cog.cog-api.removeLayer.removeLayer | doc:35074
 CallSignature | @geoleaf-plugins/cog.cog-loader.getCogInfo.getCogInfo | doc:0967b469b921
 CallSignature | @geoleaf-plugins/cog.cog-loader.loadViewportRasters.loadViewportRasters | doc:815917f3d310
 CallSignature | @geoleaf-plugins/cog.cog-loader.selectOverview.selectOverview | doc:ffbc2a539fc3
-CallSignature | @geoleaf-plugins/cog.cog-renderer.canvasToDataUrl.canvasToDataUrl | doc:2c876a22bb3b
+CallSignature | @geoleaf-plugins/cog.cog-renderer.canvasToImageUrl.canvasToImageUrl | doc:fb6d3b42e583
 CallSignature | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource | doc:02db3ebc0e1a
-CallSignature | @geoleaf-plugins/cog.cog-renderer.rastersToCanvas.rastersToCanvas | doc:4bdf3383d7ae
+CallSignature | @geoleaf-plugins/cog.cog-renderer.rastersToCanvas.rastersToCanvas | doc:c3925bed49bb
 CallSignature | @geoleaf-plugins/cog.cog-renderer.removeImageSource.removeImageSource | doc:9c8b5090e8a3
 CallSignature | @geoleaf-plugins/cog.types.CogLayerHandle.remove.remove | doc:24548d916c2c
 CallSignature | @geoleaf-plugins/cog.types.CogLayerHandle.update.update | doc:6c5e17663011
@@ -370,9 +370,9 @@ CallSignature | @geoleaf-plugins/file-import.import-api.registerConverter.regist
 CallSignature | @geoleaf-plugins/file-import.kmz-extractor.extractKmlFromKmz.extractKmlFromKmz | doc:0d6aea4ecf57
 CallSignature | @geoleaf-plugins/flatgeobuf.config-loader.loadLayerFromConfig.loadLayerFromConfig | doc:956572cbc260
 CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.load.load | doc:b2f209cf651a
-CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.loadAsLayer.loadAsLayer | doc:6bd2e288d3dd
+CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.loadAsLayer.loadAsLayer | doc:5c9d03ff2c0f
 CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.loadBbox.loadBbox | doc:0ffa8f27202f
-CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.loadBboxAsLayer.loadBboxAsLayer | doc:fb0afe0126ce
+CallSignature | @geoleaf-plugins/flatgeobuf.fgb-api.loadBboxAsLayer.loadBboxAsLayer | doc:f4f85f79fd68
 CallSignature | @geoleaf-plugins/flatgeobuf.fgb-bbox-filter.loadFgbBbox.loadFgbBbox | doc:ed53d4a43d1c
 CallSignature | @geoleaf-plugins/flatgeobuf.fgb-bbox-filter.setupAutoRefresh.setupAutoRefresh | doc:1e50784ab361
 CallSignature | @geoleaf-plugins/flatgeobuf.fgb-bbox-filter.setupAutoRefresh.setupAutoRefresh.__type.__type | doc:-
@@ -433,14 +433,22 @@ CallSignature | @geoleaf-plugins/isochrone.controller.onStackChange.onStackChang
 CallSignature | @geoleaf-plugins/isochrone.controller.removeLayer.removeLayer | doc:9a476986f49c
 CallSignature | @geoleaf-plugins/isochrone.controller.showLayer.showLayer | doc:57d0c3581b0f
 CallSignature | @geoleaf-plugins/isochrone.controller.styleLayer.styleLayer | doc:59fde98cb74b
+CallSignature | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds.fitBounds | doc:-
+CallSignature | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.getBounds.getBounds | doc:-
+CallSignature | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.getContainer.getContainer | doc:-
+CallSignature | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint | doc:-
+CallSignature | @geoleaf-plugins/isochrone.frame-zones.frameZonesIfUnreadable.frameZonesIfUnreadable | doc:6423fce591c3
 CallSignature | @geoleaf-plugins/isochrone.isochrone-api.closeIsochrone.closeIsochrone | doc:8b2db4937705
 CallSignature | @geoleaf-plugins/isochrone.isochrone-api.destroyIsochrone.destroyIsochrone | doc:90a5497275cb
 CallSignature | @geoleaf-plugins/isochrone.isochrone-api.openIsochrone.openIsochrone | doc:4d485867695e
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.addGeoJSONLayer.addGeoJSONLayer | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker | doc:-
+CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds.fitBounds | doc:-
+CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.getBounds.getBounds | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.getContainer.getContainer | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hasLayer.hasLayer | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hideLayer.hideLayer | doc:-
+CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeLayer.removeLayer | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeMarker.removeMarker | doc:-
 CallSignature | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.setLayerStyle.setLayerStyle | doc:-
@@ -620,10 +628,12 @@ CallSignature | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom.__type
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom.__type.enable.enable | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.dragPan.__type.disable.disable | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.dragPan.__type.enable.enable | doc:-
+CallSignature | @geoleaf-plugins/measure.types.MeasureMap.easeTo.easeTo | doc:180c79e1624b
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.getCanvas.getCanvas | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.getContainer.getContainer | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.getLayer.getLayer | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.getSource.getSource | doc:-
+CallSignature | @geoleaf-plugins/measure.types.MeasureMap.getZoom.getZoom | doc:9cc095de3c2e
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.off.off | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.off.off | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureMap.off.off.listener.__type.__type | doc:-
@@ -638,6 +648,10 @@ CallSignature | @geoleaf-plugins/measure.types.MeasureMapMouseEvent.preventDefau
 CallSignature | @geoleaf-plugins/measure.types.MeasureMapTouchEvent.preventDefault.preventDefault | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureTypeDef.onActivate.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/measure.types.MeasureTypeDef.onDeactivate.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit | doc:605416e0cd39
+CallSignature | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit | doc:605416e0cd39
+CallSignature | @geoleaf-plugins/measure.unit-labels.unitButtonName.unitButtonName | doc:51bae72bf1eb
+CallSignature | @geoleaf-plugins/measure.unit-labels.unitButtonText.unitButtonText | doc:d1ffa937a943
 CallSignature | @geoleaf-plugins/navigation.config.getPluginConfig.getPluginConfig | doc:4ee9a11455bc
 CallSignature | @geoleaf-plugins/navigation.engine/heading.normaliseDegrees.normaliseDegrees | doc:970ec49a1c9f
 CallSignature | @geoleaf-plugins/navigation.engine/heading.resolveHeading.resolveHeading | doc:edc39d8bec6a
@@ -681,7 +695,7 @@ CallSignature | @geoleaf-plugins/navigation.platform/wake-lock.ScreenWakeLock.re
 CallSignature | @geoleaf-plugins/navigation.platform/wake-lock.createScreenWakeLock.createScreenWakeLock | doc:3a12224f106b
 CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.getConfig.getConfig | doc:433ee250a855
 CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.isGuiding.isGuiding | doc:14a73187584c
-CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.isVoiceAvailable.isVoiceAvailable | doc:31969a28b7cc
+CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.isVoiceAvailable.isVoiceAvailable | doc:3147c390139c
 CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.isVoiceEnabled.isVoiceEnabled | doc:e69d93810ef9
 CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.onProgress.onProgress | doc:9da8719274ac
 CallSignature | @geoleaf-plugins/navigation.public-api.NavigationPublicApi.onProgress.onProgress.__type.__type | doc:-
@@ -764,6 +778,7 @@ CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheContr
 CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control-zone.buildZoneSelectionSection.buildZoneSelectionSection | doc:c1ab2dba2524
 CallSignature | @geoleaf-plugins/offline-ui.cache/cache-control.CacheControl.__type.create.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.cache/corridor-selection.proposeCorridor.proposeCorridor | doc:0318bdd46cd3
+CallSignature | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type._refreshCacheIcons._refreshCacheIcons | doc:a8c9052982d8
 CallSignature | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type._showDownloadSuccess._showDownloadSuccess | doc:f361ff5ea5e0
 CallSignature | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type.handleClear.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type.handleDownload.__type.__type | doc:-
@@ -802,8 +817,9 @@ CallSignature | @geoleaf-plugins/offline-ui.cache/preflight-block.buildPreflight
 CallSignature | @geoleaf-plugins/offline-ui.cache/quarantine-block.buildQuarantineBlock.buildQuarantineBlock | doc:fec8368743c0
 CallSignature | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection | doc:3ab83cc4b5a5
 CallSignature | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection.mutate.__type.__type | doc:-
+CallSignature | @geoleaf-plugins/offline-ui.cache/simple-mode-block.buildSimpleModeBlock.buildSimpleModeBlock | doc:fb182f47a544
 CallSignature | @geoleaf-plugins/offline-ui.cache/sync-status-block.buildSyncStatusBlock.buildSyncStatusBlock | doc:fc4c74dc0fd1
-CallSignature | @geoleaf-plugins/offline-ui.core/engine-ready.ensureEngineReady.ensureEngineReady | doc:6ca972c14e75
+CallSignature | @geoleaf-plugins/offline-ui.core/engine-ready.ensureEngineReady.ensureEngineReady | doc:a7a57531c7a3
 CallSignature | @geoleaf-plugins/offline-ui.core/engine-signals.unwireEngineSignals.unwireEngineSignals | doc:52d7cb8b453f
 CallSignature | @geoleaf-plugins/offline-ui.core/engine-signals.wireEngineSignals.wireEngineSignals | doc:7a68057b90dc
 CallSignature | @geoleaf-plugins/offline-ui.core/sw-update-banner.removeSwUpdateBanner.removeSwUpdateBanner | doc:ea089d8a023e
@@ -819,9 +835,6 @@ CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContr
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB._ensureModule._ensureModule | doc:d18ad97d47d0
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits | doc:31f89613f429
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.purgeCachedFeatures.purgeCachedFeatures | doc:24dc78b4ac58
-CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.refreshCacheIcons.refreshCacheIcons | doc:-
-CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.saveSelection.saveSelection | doc:-
-CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.updateWarning.updateWarning | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.getStats.getStats | doc:526d4d30ec73
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.getSyncStatus.getSyncStatus | doc:448f48491482
 CallSignature | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.init.init | doc:-
@@ -841,7 +854,7 @@ CallSignature | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type
 CallSignature | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount | doc:d21ca2ffb911
 CallSignature | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type.onSynced.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.updateStatus.updateStatus | doc:5a3d5c1ad128
-CallSignature | @geoleaf-plugins/offline-ui.sync/vector-zone-estimate.estimateVectorZone.estimateVectorZone | doc:4ede29fb2171
+CallSignature | @geoleaf-plugins/offline-ui.sync/vector-zone-estimate.estimateVectorZone.estimateVectorZone | doc:cb806f858c68
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.getMap.getMap | doc:d46e76027ab5
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init | doc:e948d880f7c5
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.clearLocalPOIs.clearLocalPOIs | doc:88c93eaf1ef1
@@ -851,11 +864,12 @@ CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportL
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.initializeCacheContent.initializeCacheContent | doc:c138ad036cec
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.initializeExportContent.initializeExportContent | doc:688c11c3c40e
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.releaseCacheContent.releaseCacheContent | doc:6a392f4393e3
+CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._markActiveTab._markActiveTab | doc:7e56ac7c98ee
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._setExportLogic._setExportLogic | doc:-
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.closeModal.closeModal | doc:a00b8a8e2f62
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.createModal.createModal | doc:54b90ff086a4
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.destroy.destroy | doc:a14880efb9f3
-CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.openModal.openModal | doc:f10e0b3b9c5d
+CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.openModal.openModal | doc:d01ce941d833
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.switchTab.switchTab | doc:68849af870d8
 CallSignature | @geoleaf-plugins/offline-ui.ui/cache-button/toolbar-registration.registerCacheToolbar.registerCacheToolbar | doc:d93eff7d9f4a
 CallSignature | @geoleaf-plugins/offline-ui.utils/core-utils.$create.$create | doc:015935b446e1
@@ -867,6 +881,7 @@ CallSignature | @geoleaf-plugins/offline-ui.utils/core-utils.formatFileSize.form
 CallSignature | @geoleaf-plugins/offline-ui.utils/core-utils.toGB.toGB | doc:17ce48d6ce48
 CallSignature | @geoleaf-plugins/offline-ui.utils/core-utils.toMB.toMB | doc:017c87708d7e
 CallSignature | @geoleaf-plugins/offline-ui.utils/dom-helpers.createElement.createElement | doc:6e7801d7221d
+CallSignature | @geoleaf-plugins/offline-ui.utils/size-format.formatSize.formatSize | doc:9fbc91a01718
 CallSignature | @geoleaf-plugins/position-share.client-id.clearClientId.clearClientId | doc:3d71f424311c
 CallSignature | @geoleaf-plugins/position-share.client-id.getClientId.getClientId | doc:66b2e4d68a88
 CallSignature | @geoleaf-plugins/position-share.config.getPluginConfig.getPluginConfig | doc:59fe513c856c
@@ -874,7 +889,7 @@ CallSignature | @geoleaf-plugins/position-share.config.validateConfig.validateCo
 CallSignature | @geoleaf-plugins/position-share.distance.distanceMetres.distanceMetres | doc:8b623fbcd674
 CallSignature | @geoleaf-plugins/position-share.distance.hasMovedEnough.hasMovedEnough | doc:a1550281860d
 CallSignature | @geoleaf-plugins/position-share.emitter.isEmitting.isEmitting | doc:d01bd854aedb
-CallSignature | @geoleaf-plugins/position-share.emitter.startEmission.startEmission | doc:80f1d922ec76
+CallSignature | @geoleaf-plugins/position-share.emitter.startEmission.startEmission | doc:ea5905adf779
 CallSignature | @geoleaf-plugins/position-share.emitter.stopEmission.stopEmission | doc:2c79b5834769
 CallSignature | @geoleaf-plugins/position-share.emitter.toggleEmission.toggleEmission | doc:112069fc44ba
 CallSignature | @geoleaf-plugins/position-share.gps-watch.ensureWatch.ensureWatch | doc:9e17dbd8b4c5
@@ -950,7 +965,7 @@ CallSignature | @geoleaf-plugins/print.print-api.captureViewport.captureViewport
 CallSignature | @geoleaf-plugins/print.print-api.exportImage.exportImage | doc:0fbfa565d5bd
 CallSignature | @geoleaf-plugins/print.print-api.exportPDF.exportPDF | doc:b7af4cd97b6b
 CallSignature | @geoleaf-plugins/print.print-api.openPrintFlow.openPrintFlow | doc:c33e57f4ad71
-CallSignature | @geoleaf-plugins/print.print-api.registerExporter.registerExporter | doc:b5a2d4ecff05
+CallSignature | @geoleaf-plugins/print.print-api.registerExporter.registerExporter | doc:de0f7ad2b450
 CallSignature | @geoleaf-plugins/print.print-api.registerPageFormat.registerPageFormat | doc:01203fd6a158
 CallSignature | @geoleaf-plugins/print.print-api.registerSlot.registerSlot | doc:d1bf06280806
 CallSignature | @geoleaf-plugins/print.scale-format.formatScaleDenominator.formatScaleDenominator | doc:4b01a86d278b
@@ -983,19 +998,19 @@ CallSignature | @geoleaf-plugins/realtime-layer.realtime-runtime.stopAll.stopAll
 CallSignature | @geoleaf-plugins/realtime-layer.source-factory.createSource.createSource | doc:31514c2c1dc5
 CallSignature | @geoleaf-plugins/realtime-layer.sources/i-realtime-source.IRealtimeSource.onData.onData | doc:02353823fb02
 CallSignature | @geoleaf-plugins/realtime-layer.sources/i-realtime-source.IRealtimeSource.onData.onData.handler.__type.__type | doc:-
-CallSignature | @geoleaf-plugins/realtime-layer.sources/i-realtime-source.IRealtimeSource.start.start | doc:15fcec0d16ed
+CallSignature | @geoleaf-plugins/realtime-layer.sources/i-realtime-source.IRealtimeSource.start.start | doc:7fa3d91775cc
 CallSignature | @geoleaf-plugins/realtime-layer.sources/i-realtime-source.IRealtimeSource.stop.stop | doc:8c229ec35a4c
 CallSignature | @geoleaf-plugins/realtime-layer.sources/polling-source.PollingSource.onData.onData | doc:02353823fb02
 CallSignature | @geoleaf-plugins/realtime-layer.sources/polling-source.PollingSource.onData.onData.handler.__type.__type | doc:-
-CallSignature | @geoleaf-plugins/realtime-layer.sources/polling-source.PollingSource.start.start | doc:15fcec0d16ed
+CallSignature | @geoleaf-plugins/realtime-layer.sources/polling-source.PollingSource.start.start | doc:7fa3d91775cc
 CallSignature | @geoleaf-plugins/realtime-layer.sources/polling-source.PollingSource.stop.stop | doc:8c229ec35a4c
 CallSignature | @geoleaf-plugins/realtime-layer.sources/sse-source.SseSource.onData.onData | doc:02353823fb02
 CallSignature | @geoleaf-plugins/realtime-layer.sources/sse-source.SseSource.onData.onData.handler.__type.__type | doc:-
-CallSignature | @geoleaf-plugins/realtime-layer.sources/sse-source.SseSource.start.start | doc:15fcec0d16ed
+CallSignature | @geoleaf-plugins/realtime-layer.sources/sse-source.SseSource.start.start | doc:7fa3d91775cc
 CallSignature | @geoleaf-plugins/realtime-layer.sources/sse-source.SseSource.stop.stop | doc:8c229ec35a4c
 CallSignature | @geoleaf-plugins/realtime-layer.sources/websocket-source.WebSocketSource.onData.onData | doc:02353823fb02
 CallSignature | @geoleaf-plugins/realtime-layer.sources/websocket-source.WebSocketSource.onData.onData.handler.__type.__type | doc:-
-CallSignature | @geoleaf-plugins/realtime-layer.sources/websocket-source.WebSocketSource.start.start | doc:15fcec0d16ed
+CallSignature | @geoleaf-plugins/realtime-layer.sources/websocket-source.WebSocketSource.start.start | doc:7fa3d91775cc
 CallSignature | @geoleaf-plugins/realtime-layer.sources/websocket-source.WebSocketSource.stop.stop | doc:8c229ec35a4c
 CallSignature | @geoleaf-plugins/realtime-layer.stale-tracking.StaleActionHandler.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/realtime-layer.stale-tracking.getStaleCount.getStaleCount | doc:01c950cf3bcd
@@ -1006,6 +1021,7 @@ CallSignature | @geoleaf-plugins/realtime-layer.stale-tracking.touch.touch | doc
 CallSignature | @geoleaf-plugins/realtime-layer.url-resolver.resolveProfileUrl.resolveProfileUrl | doc:709d8ead6727
 CallSignature | @geoleaf-plugins/routing.composition.addWaypoint.addWaypoint | doc:69090420829f
 CallSignature | @geoleaf-plugins/routing.composition.clearWaypoints.clearWaypoints | doc:ec0e74c45d5f
+CallSignature | @geoleaf-plugins/routing.composition.insertBeforeLast.insertBeforeLast | doc:b42748b8f9c1
 CallSignature | @geoleaf-plugins/routing.composition.isRoutable.isRoutable | doc:29daff5143ab
 CallSignature | @geoleaf-plugins/routing.composition.maxWaypoints.maxWaypoints | doc:8b57e633d40a
 CallSignature | @geoleaf-plugins/routing.composition.moveWaypoint.moveWaypoint | doc:5a6c033f263c
@@ -1024,7 +1040,7 @@ CallSignature | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoi
 CallSignature | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint.onDestination.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/routing.fit-route.bboxWithin.bboxWithin | doc:2c6d4cab6686
 CallSignature | @geoleaf-plugins/routing.fit-route.fitRouteIfOutOfView.fitRouteIfOutOfView | doc:984055d56512
-CallSignature | @geoleaf-plugins/routing.fit-route.routeBbox.routeBbox | doc:112e357ea36c
+CallSignature | @geoleaf-plugins/routing.fit-route.routeBbox.routeBbox | doc:135b8b5e7a8a
 CallSignature | @geoleaf-plugins/routing.geocode-seam.geocodingAvailable.geocodingAvailable | doc:bf355ab38003
 CallSignature | @geoleaf-plugins/routing.geocode-seam.searchAddress.searchAddress | doc:1ba0b8a77ea8
 CallSignature | @geoleaf-plugins/routing.itinerary.destroyPanel.destroyPanel | doc:99687b346524
@@ -1038,6 +1054,7 @@ CallSignature | @geoleaf-plugins/routing.model.IRouteProvider.route.route | doc:
 CallSignature | @geoleaf-plugins/routing.model.RouteProviderFactory.__type.__type | doc:-
 CallSignature | @geoleaf-plugins/routing.normalize-osrm.normalizeOsrm.normalizeOsrm | doc:7348461c0840
 CallSignature | @geoleaf-plugins/routing.normalize-valhalla.normalizeValhalla.normalizeValhalla | doc:86dcaa321808
+CallSignature | @geoleaf-plugins/routing.offered.isRoutingOffered.isRoutingOffered | doc:465e074a146d
 CallSignature | @geoleaf-plugins/routing.origin.originFromUserPosition.originFromUserPosition | doc:62564970bbc2
 CallSignature | @geoleaf-plugins/routing.parse-point.parseTypedPoint.parseTypedPoint | doc:89026e22ffbe
 CallSignature | @geoleaf-plugins/routing.pick-on-map.PickMode.stop.stop | doc:747fc8745d47
@@ -1082,7 +1099,9 @@ CallSignature | @geoleaf-plugins/routing.route-cache.routeCacheSize.routeCacheSi
 CallSignature | @geoleaf-plugins/routing.route-cache.routeKey.routeKey | doc:aaf258d10095
 CallSignature | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad.hasStopFarFromRoad | doc:bab66a529fdb
 CallSignature | @geoleaf-plugins/routing.ui-seam.hidePane.hidePane | doc:aaf5de3b4bc3
+CallSignature | @geoleaf-plugins/routing.ui-seam.lowerSheet.lowerSheet | doc:90773f929086
 CallSignature | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane | doc:690441182977
+CallSignature | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type.isAvailable.isAvailable | doc:776272296f71
 CallSignature | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type.onOpen.onOpen | doc:-
 CallSignature | @geoleaf-plugins/routing.ui-seam.showPane.showPane | doc:e782074135fe
 CallSignature | @geoleaf-plugins/routing.ui/attribution.RouteAttribution.remove.remove | doc:ad31f2c49a10
@@ -1093,6 +1112,7 @@ CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.addWa
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.close.close | doc:fe184bed7ff1
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.destroy.destroy | doc:44ff33061c8a
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setComputing.setComputing | doc:d427cd3a38d1
+CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setDestination.setDestination | doc:df8fc1d1ebf3
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setPicking.setPicking | doc:29429bf2f924
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setRoute.setRoute | doc:7717bf5dec2b
 CallSignature | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setWaypoints.setWaypoints | doc:1d402a485a03
@@ -1968,6 +1988,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/cache/fetch-manager.FetchM
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/fetch-manager.FetchManager.__type.isModified.isModified | doc:6c726e85c6b4
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/metrics.CacheMetrics.__type.estimateProfileSize.estimateProfileSize | doc:f261ac0cea94
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/metrics.CacheMetrics.__type.formatBytes.formatBytes | doc:aca9ddc8ea9c
+CallSignature | GeoLeaf Core API.capabilities/offline/cache/plugin-code.keepPluginCode.keepPluginCode | doc:4db849884638
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/profile-icons.resolveProfileIcons.resolveProfileIcons | doc:f798fc463981
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/progress-tracker.ProgressTracker.__type.emitProgress.emitProgress | doc:7b5060539f7a
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/progress-tracker.ProgressTracker.__type.emitProgress.emitProgress.callback.__type.__type | doc:-
@@ -1998,6 +2019,7 @@ CallSignature | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.loadProfileConfig.loadProfileConfig | doc:3d5042e5742c
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.saveLayerSelection.saveLayerSelection | doc:77ac2fdbafd2
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.saveManifest.saveManifest | doc:96273221e691
+CallSignature | GeoLeaf Core API.capabilities/offline/cache/storage.readCachedBytes.readCachedBytes | doc:d8f33b061e5f
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateGlyphs._enumerateGlyphs | doc:4aebd36f7312
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateSprite._enumerateSprite | doc:33521afcbe1c
 CallSignature | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateVectorTiles._enumerateVectorTiles | doc:af36e363d963
@@ -2447,6 +2469,7 @@ CallSignature | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.
 CallSignature | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.isInitialized.isInitialized | doc:dae5b7f1e3d1
 CallSignature | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.register.register | doc:22848bfaabc4
 CallSignature | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.filterTab.__type.render.render | doc:25cf5985a390
+CallSignature | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.isAvailable.isAvailable | doc:16cdd0263071
 CallSignature | GeoLeaf Core API.contracts/core-module.contract.ModuleInitOptions.onModuleError.__type.__type | doc:b9e768f831a8
 CallSignature | GeoLeaf Core API.contracts/core-module.contract.ModuleInitOptions.shouldContinue.__type.__type | doc:7c7ac9f6a9c5
 CallSignature | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafPopupActionDetail.close.close | doc:23b80859e697
@@ -2870,6 +2893,7 @@ CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.openPane.__type.__type |
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.openPanel.__type.__type | doc:11e94cf5554b
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.registerPanelPane.__type.__type | doc:c7192262dd4c
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type.__type | doc:1aed51d61dd2
+CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.setPaneSize.__type.__type | doc:d77ab154362a
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.setTheme.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.showError.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.global.GeoLeafUIFacade.showInfo.__type.__type | doc:-
@@ -3244,7 +3268,7 @@ CallSignature | GeoLeaf Core API.kernel/geojson/geojson-worker.handleFetch.handl
 CallSignature | GeoLeaf Core API.kernel/geojson/geojson-worker.handleFetchText.handleFetchText | doc:916018969846
 CallSignature | GeoLeaf Core API.kernel/geojson/geojson-worker.validateWorkerUrl.validateWorkerUrl | doc:64b0d5f7d72a
 CallSignature | GeoLeaf Core API.kernel/geojson/layer-focus.focusFeature.focusFeature | doc:ec7c07802c21
-CallSignature | GeoLeaf Core API.kernel/geojson/layer-labels.resolveLayerLabelConfig.resolveLayerLabelConfig | doc:87924459792b
+CallSignature | GeoLeaf Core API.kernel/geojson/layer-labels.resolveLayerLabelConfig.resolveLayerLabelConfig | doc:819a706bd6f8
 CallSignature | GeoLeaf Core API.kernel/geojson/layer-search.declaredSearchFields.declaredSearchFields | doc:0fea85ae6249
 CallSignature | GeoLeaf Core API.kernel/geojson/layer-search.hasSearchField.hasSearchField | doc:2b2d0fbbd8a5
 CallSignature | GeoLeaf Core API.kernel/geojson/layer-search.searchLayers.searchLayers | doc:ab7982edf49f
@@ -3502,7 +3526,7 @@ CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.isProfileA
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.listConflicts.listConflicts | doc:db8414857f91
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.mayEdit.mayEdit | doc:00c033e3d6d5
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.prefetchVerdict.prefetchVerdict | doc:046421f889a4
-CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.preflight.preflight | doc:4887257a74bb
+CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.preflight.preflight | doc:978ca8c9e5d7
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pullLayer.pullLayer | doc:76c89993b764
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.pushOutbox.pushOutbox | doc:7bea8336daa3
 CallSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.requeueAll.requeueAll | doc:311f95514df1
@@ -3579,6 +3603,7 @@ CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.closeShee
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.createSheetDom.createSheetDom | doc:46bf459a2e20
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.markPillsWithPane.markPillsWithPane | doc:fbe5de575207
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.openSheet.openSheet | doc:643b09bc1218
+CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.setPaneSize.setPaneSize | doc:d77ab154362a
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-state.MobileToolbarOptions.getFilterActiveState.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-state.MobileToolbarOptions.onResetFilters.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-state.getDefaultSheetTitles.getDefaultSheetTitles | doc:784cabd599f6
@@ -3588,11 +3613,12 @@ CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.close.close | do
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.isActive.isActive | doc:567b540e9ea3
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.open.open | doc:bf180da27743
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.sync.sync | doc:8e737bcda601
+CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.isAvailable.isAvailable | doc:6ff8552cf653
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.onOpen.onOpen | doc:301303bf34bf
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.clearPanelPanes.clearPanelPanes | doc:9e404bd748f3
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.closePane.closePane | doc:d23762578f6b
-CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.getPanelPane.getPanelPane | doc:d0d950aca6e9
-CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.listPanelPanes.listPanelPanes | doc:492e72067c4a
+CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.getPanelPane.getPanelPane | doc:a3d895699631
+CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.listPanelPanes.listPanelPanes | doc:6bc56365724c
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.openPane.openPane | doc:21028fbe9780
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.preparePane.preparePane | doc:87e181d52687
 CallSignature | GeoLeaf Core API.kernel/ui/panel-panes.registerPaneHost.registerPaneHost | doc:196e49fffa3b
@@ -3603,14 +3629,17 @@ CallSignature | GeoLeaf Core API.kernel/ui/pill-search.PillSearchOptions.onInput
 CallSignature | GeoLeaf Core API.kernel/ui/pill-search.PillSearchOptions.onSubmit.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/ui/pill-search.createPillSearchInput.createPillSearchInput | doc:4bdf51a57874
 CallSignature | GeoLeaf Core API.kernel/ui/roving-tabindex.resolveRovingIndex.resolveRovingIndex | doc:faaf7399938a
+CallSignature | GeoLeaf Core API.kernel/ui/slot-availability.isCapabilityOffered.isCapabilityOffered | doc:46a2cc10b916
+CallSignature | GeoLeaf Core API.kernel/ui/slot-availability.isOwnerAvailable.isOwnerAvailable | doc:fbb6d55be4df
 CallSignature | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.applyTheme.__type.__type | doc:1b92540a05ff
 CallSignature | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.getCurrentTheme.__type.__type | doc:8f30e19ab07f
 CallSignature | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.initAutoTheme.__type.__type | doc:71b70b434569
 CallSignature | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.initThemeToggle.__type.__type | doc:e2e9143d0d91
 CallSignature | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.toggleTheme.__type.__type | doc:f3a6b9dcd5a7
-CallSignature | GeoLeaf Core API.kernel/ui/toolbar-dispatch.dispatchToolbarAction.dispatchToolbarAction | doc:3c154bee2a1b
+CallSignature | GeoLeaf Core API.kernel/ui/toolbar-dispatch.dispatchToolbarAction.dispatchToolbarAction | doc:3d49ec50e2e1
 CallSignature | GeoLeaf Core API.kernel/ui/ui-slot-builder.lazySlotsToDraw.lazySlotsToDraw | doc:84721468f328
-CallSignature | GeoLeaf Core API.kernel/ui/ui-slot-builder.resolveUISlotVisibility.resolveUISlotVisibility | doc:b02376cb52a9
+CallSignature | GeoLeaf Core API.kernel/ui/ui-slot-builder.resolveUISlotVisibility.resolveUISlotVisibility | doc:fa20e2d2a070
+CallSignature | GeoLeaf Core API.kernel/ui/ui-slot-builder.slotAvailabilityOptions.slotAvailabilityOptions | doc:1cb19e02dd16
 CallSignature | GeoLeaf Core API.kernel/ui/widgets.AccordionConfig.onToggle.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/ui/widgets.ToggleButtonConfig.onToggle.__type.__type | doc:-
 CallSignature | GeoLeaf Core API.kernel/ui/widgets.attachEventHandler.attachEventHandler | doc:2cbe1907bf9d
@@ -4163,7 +4192,7 @@ Function | @geoleaf-plugins/cog.cog-api.removeLayer | doc:-
 Function | @geoleaf-plugins/cog.cog-loader.getCogInfo | doc:-
 Function | @geoleaf-plugins/cog.cog-loader.loadViewportRasters | doc:-
 Function | @geoleaf-plugins/cog.cog-loader.selectOverview | doc:-
-Function | @geoleaf-plugins/cog.cog-renderer.canvasToDataUrl | doc:-
+Function | @geoleaf-plugins/cog.cog-renderer.canvasToImageUrl | doc:-
 Function | @geoleaf-plugins/cog.cog-renderer.injectImageSource | doc:-
 Function | @geoleaf-plugins/cog.cog-renderer.rastersToCanvas | doc:-
 Function | @geoleaf-plugins/cog.cog-renderer.removeImageSource | doc:-
@@ -4374,6 +4403,7 @@ Function | @geoleaf-plugins/isochrone.controller.onStackChange | doc:-
 Function | @geoleaf-plugins/isochrone.controller.removeLayer | doc:-
 Function | @geoleaf-plugins/isochrone.controller.showLayer | doc:-
 Function | @geoleaf-plugins/isochrone.controller.styleLayer | doc:-
+Function | @geoleaf-plugins/isochrone.frame-zones.frameZonesIfUnreadable | doc:-
 Function | @geoleaf-plugins/isochrone.isochrone-api.closeIsochrone | doc:-
 Function | @geoleaf-plugins/isochrone.isochrone-api.destroyIsochrone | doc:-
 Function | @geoleaf-plugins/isochrone.isochrone-api.openIsochrone | doc:-
@@ -4507,6 +4537,9 @@ Function | @geoleaf-plugins/measure.tools/tool-rect.deactivateRect | doc:-
 Function | @geoleaf-plugins/measure.tools/tool-shared.containerCoord | doc:-
 Function | @geoleaf-plugins/measure.tools/tool-shared.createDragTool | doc:-
 Function | @geoleaf-plugins/measure.tools/tool-shared.startCursorGuard | doc:-
+Function | @geoleaf-plugins/measure.unit-labels.nextUnit | doc:-
+Function | @geoleaf-plugins/measure.unit-labels.unitButtonName | doc:-
+Function | @geoleaf-plugins/measure.unit-labels.unitButtonText | doc:-
 Function | @geoleaf-plugins/navigation.config.getPluginConfig | doc:-
 Function | @geoleaf-plugins/navigation.engine/heading.normaliseDegrees | doc:-
 Function | @geoleaf-plugins/navigation.engine/heading.resolveHeading | doc:-
@@ -4568,6 +4601,7 @@ Function | @geoleaf-plugins/offline-ui.cache/log-export-block.buildLogExportBloc
 Function | @geoleaf-plugins/offline-ui.cache/preflight-block.buildPreflightBlock | doc:-
 Function | @geoleaf-plugins/offline-ui.cache/quarantine-block.buildQuarantineBlock | doc:-
 Function | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection | doc:-
+Function | @geoleaf-plugins/offline-ui.cache/simple-mode-block.buildSimpleModeBlock | doc:-
 Function | @geoleaf-plugins/offline-ui.cache/sync-status-block.buildSyncStatusBlock | doc:-
 Function | @geoleaf-plugins/offline-ui.core/engine-ready.ensureEngineReady | doc:-
 Function | @geoleaf-plugins/offline-ui.core/engine-signals.unwireEngineSignals | doc:-
@@ -4585,6 +4619,7 @@ Function | @geoleaf-plugins/offline-ui.utils/core-utils.formatFileSize | doc:-
 Function | @geoleaf-plugins/offline-ui.utils/core-utils.toGB | doc:-
 Function | @geoleaf-plugins/offline-ui.utils/core-utils.toMB | doc:-
 Function | @geoleaf-plugins/offline-ui.utils/dom-helpers.createElement | doc:-
+Function | @geoleaf-plugins/offline-ui.utils/size-format.formatSize | doc:-
 Function | @geoleaf-plugins/position-share.client-id.clearClientId | doc:-
 Function | @geoleaf-plugins/position-share.client-id.getClientId | doc:-
 Function | @geoleaf-plugins/position-share.config.getPluginConfig | doc:-
@@ -4675,6 +4710,7 @@ Function | @geoleaf-plugins/realtime-layer.stale-tracking.touch | doc:-
 Function | @geoleaf-plugins/realtime-layer.url-resolver.resolveProfileUrl | doc:-
 Function | @geoleaf-plugins/routing.composition.addWaypoint | doc:-
 Function | @geoleaf-plugins/routing.composition.clearWaypoints | doc:-
+Function | @geoleaf-plugins/routing.composition.insertBeforeLast | doc:-
 Function | @geoleaf-plugins/routing.composition.isRoutable | doc:-
 Function | @geoleaf-plugins/routing.composition.maxWaypoints | doc:-
 Function | @geoleaf-plugins/routing.composition.moveWaypoint | doc:-
@@ -4702,6 +4738,7 @@ Function | @geoleaf-plugins/routing.legs.legSummaries | doc:-
 Function | @geoleaf-plugins/routing.legs.stepNumber | doc:-
 Function | @geoleaf-plugins/routing.normalize-osrm.normalizeOsrm | doc:-
 Function | @geoleaf-plugins/routing.normalize-valhalla.normalizeValhalla | doc:-
+Function | @geoleaf-plugins/routing.offered.isRoutingOffered | doc:-
 Function | @geoleaf-plugins/routing.origin.originFromUserPosition | doc:-
 Function | @geoleaf-plugins/routing.parse-point.parseTypedPoint | doc:-
 Function | @geoleaf-plugins/routing.pick-on-map.pickWaypointOnMap | doc:-
@@ -4727,6 +4764,7 @@ Function | @geoleaf-plugins/routing.route-cache.routeCacheSize | doc:-
 Function | @geoleaf-plugins/routing.route-cache.routeKey | doc:-
 Function | @geoleaf-plugins/routing.stop-gap.hasStopFarFromRoad | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.hidePane | doc:-
+Function | @geoleaf-plugins/routing.ui-seam.lowerSheet | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.registerPane | doc:-
 Function | @geoleaf-plugins/routing.ui-seam.showPane | doc:-
 Function | @geoleaf-plugins/routing.ui/attribution.currentRouteAttribution | doc:-
@@ -5108,6 +5146,7 @@ Function | GeoLeaf Core API.capabilities/legend/legend-seam.LegendContract.isAva
 Function | GeoLeaf Core API.capabilities/legend/legend-seam.LegendContract.loadLayerLegend | doc:-
 Function | GeoLeaf Core API.capabilities/legend/legend-seam.LegendContract.setLayerVisibility | doc:-
 Function | GeoLeaf Core API.capabilities/legend/legend.isLegendInitialized | doc:-
+Function | GeoLeaf Core API.capabilities/offline/cache/plugin-code.keepPluginCode | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/profile-icons.resolveProfileIcons | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/pull-declared-layers.declaresPullSource | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/pull-declared-layers.pullDeclaredLayers | doc:-
@@ -5116,6 +5155,7 @@ Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandle
 Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandler.getConfig | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandler.init | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandler.retry | doc:-
+Function | GeoLeaf Core API.capabilities/offline/cache/storage.readCachedBytes | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/tile-math.latLngToTile | doc:-
 Function | GeoLeaf Core API.capabilities/offline/cache/url-guard.validateFetchUrl | doc:-
 Function | GeoLeaf Core API.capabilities/offline/config-seam.belongsToActiveProfile | doc:-
@@ -5504,6 +5544,7 @@ Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.closeSheet | d
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.createSheetDom | doc:-
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.markPillsWithPane | doc:-
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.openSheet | doc:-
+Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.setPaneSize | doc:-
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-state.getDefaultSheetTitles | doc:-
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar.destroyMobileToolbar | doc:-
 Function | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar.initMobileToolbar | doc:-
@@ -5517,9 +5558,12 @@ Function | GeoLeaf Core API.kernel/ui/panel-panes.registerPaneHost | doc:-
 Function | GeoLeaf Core API.kernel/ui/panel-panes.registerPanelPane | doc:-
 Function | GeoLeaf Core API.kernel/ui/pill-search.createPillSearchInput | doc:-
 Function | GeoLeaf Core API.kernel/ui/roving-tabindex.resolveRovingIndex | doc:-
+Function | GeoLeaf Core API.kernel/ui/slot-availability.isCapabilityOffered | doc:-
+Function | GeoLeaf Core API.kernel/ui/slot-availability.isOwnerAvailable | doc:-
 Function | GeoLeaf Core API.kernel/ui/toolbar-dispatch.dispatchToolbarAction | doc:-
 Function | GeoLeaf Core API.kernel/ui/ui-slot-builder.lazySlotsToDraw | doc:-
 Function | GeoLeaf Core API.kernel/ui/ui-slot-builder.resolveUISlotVisibility | doc:-
+Function | GeoLeaf Core API.kernel/ui/ui-slot-builder.slotAvailabilityOptions | doc:-
 Function | GeoLeaf Core API.kernel/ui/widgets.attachEventHandler | doc:-
 Function | GeoLeaf Core API.presets/apply-preset.registerPresetDeclarations | doc:-
 Function | GeoLeaf Core API.presets/apply-preset.registerPresetModules | doc:-
@@ -5669,14 +5713,14 @@ GetSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type.DEFAULT_S
 GetSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type._layers._layers | doc:-
 GetSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type._map._map | doc:ed39b8eb0489
 GetSignature | GeoLeaf Core API.kernel/geojson/core.GeoJSONCore.__type._options._options | doc:-
-GetSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.Cache.Cache | doc:05cc29cc9cb9
+GetSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.Cache.Cache | doc:67942e871e47
 GetSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.CacheManager.CacheManager | doc:500589b70c0a
 GetSignature | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract.DB.DB | doc:4d080c87a7c4
-GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.Cache.Cache | doc:c6cef777ba32
+GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.Cache.Cache | doc:bad1c2eca4ea
 GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.CacheManager.CacheManager | doc:ad57ead50d0a
 GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.DB.DB | doc:13392e73fb8b
 GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.OfflineDetector.OfflineDetector | doc:292997296ad5
-GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.cache.cache | doc:6af02d7ae53d
+GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.cache.cache | doc:eb46ac331f80
 GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.cacheManager.cacheManager | doc:7640f9a8e7b9
 GetSignature | GeoLeaf Core API.kernel/storage/facade.Storage.__type.db.db | doc:3edfce2913f7
 GetSignature | GeoLeaf Core API.utils/general/fetch-helper.FetchHelper.__type._rateLimiter._rateLimiter | doc:-
@@ -5880,6 +5924,7 @@ Interface | @geoleaf-plugins/geocoding.types.GeocodingResult | doc:402034db8bea
 Interface | @geoleaf-plugins/geocoding.ui/pill-search.PillSearchHandles | doc:5285e08eb70e
 Interface | @geoleaf-plugins/geocoding.ui/pill-search.PillSearchOptions | doc:f11eb09ccd87
 Interface | @geoleaf-plugins/isochrone.config.PluginConfig | doc:f684c681bb9c
+Interface | @geoleaf-plugins/isochrone.frame-zones.FrameableMap | doc:681d67c01c64
 Interface | @geoleaf-plugins/isochrone.map-binding.IsochroneMap | doc:b5b5135acf8d
 Interface | @geoleaf-plugins/isochrone.model.ComputeOptions | doc:03f27a73c0dd
 Interface | @geoleaf-plugins/isochrone.model.IIsochroneProvider | doc:9978b04c302e
@@ -5924,7 +5969,7 @@ Interface | @geoleaf-plugins/navigation.platform/geo.GeoFix | doc:7bf6f4f6eefd
 Interface | @geoleaf-plugins/navigation.platform/geo.GeoWatchOptions | doc:a40bdbf1dd5e
 Interface | @geoleaf-plugins/navigation.platform/voice.VoiceAnnouncer | doc:3fd3175416b0
 Interface | @geoleaf-plugins/navigation.platform/wake-lock.ScreenWakeLock | doc:256638e7f4dc
-Interface | @geoleaf-plugins/navigation.public-api.NavigationPublicApi | doc:981efe89eab5
+Interface | @geoleaf-plugins/navigation.public-api.NavigationPublicApi | doc:890c9297bf88
 Interface | @geoleaf-plugins/navigation.session.GuidanceDeps | doc:2472e552a217
 Interface | @geoleaf-plugins/navigation.ui/announcer.Announcer | doc:466835b8554b
 Interface | @geoleaf-plugins/navigation.ui/announcer.AnnouncerOptions | doc:01dbacbce4c6
@@ -5953,13 +5998,13 @@ Interface | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-type
 Interface | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-types.SelectionBounds | doc:a91346752452
 Interface | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-types.VectorZone | doc:24433963af47
 Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit | doc:c84bf5b529f1
-Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache | doc:ad98db2708c6
+Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache | doc:36ac7e01d7a3
 Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheManager | doc:7c18c30718d0
 Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheStorage | doc:0d4310dfa087
 Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB | doc:e9c7f32a17a3
-Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector | doc:f0a3d5e53139
 Interface | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape | doc:5c9aea3dbb23
 Interface | @geoleaf-plugins/offline-ui.sync/corridor-tiles.TileRef | doc:242e8f9ba36d
+Interface | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.OpenModalOptions | doc:9830e9b6bd24
 Interface | @geoleaf-plugins/position-share.config.ConfigProblem | doc:2c3f1ca1c4f9
 Interface | @geoleaf-plugins/position-share.config.PluginConfig | doc:34aab624080e
 Interface | @geoleaf-plugins/position-share.config.ReceiveConfig | doc:00c7c17ba7df
@@ -5969,6 +6014,7 @@ Interface | @geoleaf-plugins/position-share.transports/contract.IPositionTranspo
 Interface | @geoleaf-plugins/position-share.transports/contract.PositionPayload | doc:e76127009a4e
 Interface | @geoleaf-plugins/print.config.PrintConfig | doc:9744f5999703
 Interface | @geoleaf-plugins/print.emprise-selector.EmpriseResult | doc:64b91d12931d
+Interface | @geoleaf-plugins/print.format-registry.ExporterMeta | doc:06128788cda5
 Interface | @geoleaf-plugins/print.layout-composer.ComposeOptions | doc:b31eb81109e4
 Interface | @geoleaf-plugins/print.modal-compose.ComposeArgs | doc:14cf69c85283
 Interface | @geoleaf-plugins/print.modal-compose.ComposeInputs | doc:663c3c6c4974
@@ -6357,7 +6403,7 @@ Interface | GeoLeaf Core API.contracts/sync.contract.LayerSyncConfig | doc:70101
 Interface | GeoLeaf Core API.contracts/sync.contract.LayerSyncReport | doc:398eb33b3a64
 Interface | GeoLeaf Core API.contracts/sync.contract.LayerWriteTarget | doc:8e86142c3a90
 Interface | GeoLeaf Core API.contracts/sync.contract.OutboxEntry | doc:812736e4e9b1
-Interface | GeoLeaf Core API.contracts/sync.contract.PreflightReport | doc:5722a56c6f0b
+Interface | GeoLeaf Core API.contracts/sync.contract.PreflightReport | doc:ba8c82731d23
 Interface | GeoLeaf Core API.contracts/sync.contract.SyncHandler | doc:57e3640c28bd
 Interface | GeoLeaf Core API.contracts/sync.contract.SyncStatus | doc:be6d0cf1c1d3
 Interface | GeoLeaf Core API.contracts/sync.contract.TilePreparationTrace | doc:d10d95439819
@@ -6612,11 +6658,18 @@ Method | @geoleaf-plugins/geocoding.registry.GeocodingRegistry.__type.search | d
 Method | @geoleaf-plugins/geocoding.registry.GeocodingRegistry.__type.selectResult | doc:-
 Method | @geoleaf-plugins/isochrone.attribution.AttributionNote.clear | doc:-
 Method | @geoleaf-plugins/isochrone.attribution.AttributionNote.sync | doc:-
+Method | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds | doc:-
+Method | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.getBounds | doc:-
+Method | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.getContainer | doc:-
+Method | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.addGeoJSONLayer | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker | doc:-
+Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds | doc:-
+Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.getBounds | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.getContainer | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hasLayer | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hideLayer | doc:-
+Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeLayer | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeMarker | doc:-
 Method | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.setLayerStyle | doc:-
@@ -6659,10 +6712,12 @@ Method | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom.__type.disabl
 Method | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom.__type.enable | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.dragPan.__type.disable | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.dragPan.__type.enable | doc:-
+Method | @geoleaf-plugins/measure.types.MeasureMap.easeTo | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.getCanvas | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.getContainer | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.getLayer | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.getSource | doc:-
+Method | @geoleaf-plugins/measure.types.MeasureMap.getZoom | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.off | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.on | doc:-
 Method | @geoleaf-plugins/measure.types.MeasureMap.project | doc:-
@@ -6733,6 +6788,7 @@ Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState
 Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._updateProgress | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._updatePullProgress | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._updateStatus | doc:-
+Method | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type._refreshCacheIcons | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type._showDownloadSuccess | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/download-handler.DownloadHandler.__type.init | doc:-
 Method | @geoleaf-plugins/offline-ui.cache/layer-selector/layer-selector-types.LayerSelectorAPI._createTableHeader | doc:-
@@ -6765,9 +6821,6 @@ Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCach
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB._ensureModule | doc:-
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits | doc:-
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.purgeCachedFeatures | doc:-
-Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.refreshCacheIcons | doc:-
-Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.saveSelection | doc:-
-Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractLayerSelector.updateWarning | doc:-
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.getStats | doc:-
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.getSyncStatus | doc:-
 Method | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.init | doc:-
@@ -6792,6 +6845,7 @@ Method | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.initializeCacheContent | doc:-
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.initializeExportContent | doc:-
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.releaseCacheContent | doc:-
+Method | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._markActiveTab | doc:-
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._setExportLogic | doc:-
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.closeModal | doc:-
 Method | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.createModal | doc:-
@@ -6856,12 +6910,14 @@ Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.publishRoute | doc
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.registerProvider | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.removeWaypoint | doc:-
 Method | @geoleaf-plugins/routing.public-api.RoutingPublicApi.routeFeatures | doc:-
+Method | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type.isAvailable | doc:-
 Method | @geoleaf-plugins/routing.ui-seam.registerPane.registerPane.pane.__type.onOpen | doc:-
 Method | @geoleaf-plugins/routing.ui/attribution.RouteAttribution.remove | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.addWaypoint | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.close | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.destroy | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setComputing | doc:-
+Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setDestination | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setPicking | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setRoute | doc:-
 Method | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setWaypoints | doc:-
@@ -7491,6 +7547,7 @@ Method | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.init | 
 Method | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.isInitialized | doc:-
 Method | GeoLeaf Core API.contracts/core-module.contract.IModuleRegistry.register | doc:-
 Method | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.filterTab.__type.render | doc:-
+Method | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.isAvailable | doc:-
 Method | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafPopupActionDetail.close | doc:-
 Method | GeoLeaf Core API.contracts/event-bus.contract.GeoLeafPopupActionDetail.setBusy | doc:-
 Method | GeoLeaf Core API.contracts/event-bus.contract.IEventBus.dispatch | doc:-
@@ -8029,6 +8086,7 @@ Method | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.close | doc:-
 Method | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.isActive | doc:-
 Method | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.open | doc:-
 Method | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.sync | doc:-
+Method | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.isAvailable | doc:-
 Method | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.onOpen | doc:-
 Method | GeoLeaf Core API.utils/errors/errors.ConfigError.toJSON | doc:-
 Method | GeoLeaf Core API.utils/errors/errors.ConfigError.toString | doc:-
@@ -8253,6 +8311,7 @@ Module | @geoleaf-plugins/isochrone.config | doc:-
 Module | @geoleaf-plugins/isochrone.controller | doc:-
 Module | @geoleaf-plugins/isochrone.css | doc:-
 Module | @geoleaf-plugins/isochrone.entry | doc:-
+Module | @geoleaf-plugins/isochrone.frame-zones | doc:-
 Module | @geoleaf-plugins/isochrone.isochrone-api | doc:-
 Module | @geoleaf-plugins/isochrone.lang/lang-de | doc:-
 Module | @geoleaf-plugins/isochrone.lang/lang-en | doc:-
@@ -8306,6 +8365,7 @@ Module | @geoleaf-plugins/measure.tools/tool-polygon | doc:-
 Module | @geoleaf-plugins/measure.tools/tool-rect | doc:-
 Module | @geoleaf-plugins/measure.tools/tool-shared | doc:-
 Module | @geoleaf-plugins/measure.types | doc:-
+Module | @geoleaf-plugins/measure.unit-labels | doc:-
 Module | @geoleaf-plugins/navigation | doc:-
 Module | @geoleaf-plugins/navigation.config | doc:-
 Module | @geoleaf-plugins/navigation.css | doc:-
@@ -8356,6 +8416,7 @@ Module | @geoleaf-plugins/offline-ui.cache/log-export-block | doc:-
 Module | @geoleaf-plugins/offline-ui.cache/preflight-block | doc:-
 Module | @geoleaf-plugins/offline-ui.cache/quarantine-block | doc:-
 Module | @geoleaf-plugins/offline-ui.cache/selection-writer | doc:-
+Module | @geoleaf-plugins/offline-ui.cache/simple-mode-block | doc:-
 Module | @geoleaf-plugins/offline-ui.cache/sync-status-block | doc:-
 Module | @geoleaf-plugins/offline-ui.core/engine-ready | doc:-
 Module | @geoleaf-plugins/offline-ui.core/engine-signals | doc:-
@@ -8381,6 +8442,7 @@ Module | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager | doc:-
 Module | @geoleaf-plugins/offline-ui.ui/cache-button/toolbar-registration | doc:-
 Module | @geoleaf-plugins/offline-ui.utils/core-utils | doc:-
 Module | @geoleaf-plugins/offline-ui.utils/dom-helpers | doc:-
+Module | @geoleaf-plugins/offline-ui.utils/size-format | doc:-
 Module | @geoleaf-plugins/position-share | doc:-
 Module | @geoleaf-plugins/position-share.client-id | doc:-
 Module | @geoleaf-plugins/position-share.config | doc:-
@@ -8467,6 +8529,7 @@ Module | @geoleaf-plugins/routing.legs | doc:-
 Module | @geoleaf-plugins/routing.model | doc:-
 Module | @geoleaf-plugins/routing.normalize-osrm | doc:-
 Module | @geoleaf-plugins/routing.normalize-valhalla | doc:-
+Module | @geoleaf-plugins/routing.offered | doc:-
 Module | @geoleaf-plugins/routing.origin | doc:-
 Module | @geoleaf-plugins/routing.parse-point | doc:-
 Module | @geoleaf-plugins/routing.pick-on-map | doc:-
@@ -8780,6 +8843,7 @@ Module | GeoLeaf Core API.capabilities/offline/cache/calculator | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/downloader | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/fetch-manager | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/metrics | doc:-
+Module | GeoLeaf Core API.capabilities/offline/cache/plugin-code | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/profile-icons | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/progress-tracker | doc:-
 Module | GeoLeaf Core API.capabilities/offline/cache/pull-declared-layers | doc:-
@@ -9109,6 +9173,7 @@ Module | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-state | doc:-
 Module | GeoLeaf Core API.kernel/ui/panel-panes | doc:-
 Module | GeoLeaf Core API.kernel/ui/pill-search | doc:-
 Module | GeoLeaf Core API.kernel/ui/roving-tabindex | doc:-
+Module | GeoLeaf Core API.kernel/ui/slot-availability | doc:-
 Module | GeoLeaf Core API.kernel/ui/theme | doc:-
 Module | GeoLeaf Core API.kernel/ui/toolbar-dispatch | doc:-
 Module | GeoLeaf Core API.kernel/ui/ui-api | doc:-
@@ -9181,7 +9246,7 @@ Namespace | GeoLeaf Core API.capabilities/offline/cache/retry-handler.RetryHandl
 Namespace | GeoLeaf Core API.capabilities/theme-selector/theme-selector.ThemeSelector | doc:153788ba809e
 Namespace | GeoLeaf Core API.kernel/shared/storage-contract.StorageContract | doc:47e314f46e26
 Parameter | @geoleaf-plugins/cog.cog-api.addLayer.addLayer.map | doc:46a034eb5de2
-Parameter | @geoleaf-plugins/cog.cog-api.addLayer.addLayer.opts | doc:66d9624b1228
+Parameter | @geoleaf-plugins/cog.cog-api.addLayer.addLayer.opts | doc:af4dd767556b
 Parameter | @geoleaf-plugins/cog.cog-api.addLayer.addLayer.url | doc:e94b2601e149
 Parameter | @geoleaf-plugins/cog.cog-api.getInfo.getInfo.opts | doc:49facc77b336
 Parameter | @geoleaf-plugins/cog.cog-api.getInfo.getInfo.url | doc:e94b2601e149
@@ -9194,9 +9259,10 @@ Parameter | @geoleaf-plugins/cog.cog-loader.loadViewportRasters.loadViewportRast
 Parameter | @geoleaf-plugins/cog.cog-loader.loadViewportRasters.loadViewportRasters.url | doc:-
 Parameter | @geoleaf-plugins/cog.cog-loader.selectOverview.selectOverview.info | doc:8dc0948aafd2
 Parameter | @geoleaf-plugins/cog.cog-loader.selectOverview.selectOverview.targetPixelWidth | doc:88dd4cc52418
-Parameter | @geoleaf-plugins/cog.cog-renderer.canvasToDataUrl.canvasToDataUrl.canvas | doc:-
+Parameter | @geoleaf-plugins/cog.cog-renderer.canvasToImageUrl.canvasToImageUrl.canvas | doc:e09b31b7c2c8
+Parameter | @geoleaf-plugins/cog.cog-renderer.canvasToImageUrl.canvasToImageUrl.layerId | doc:305104db2fd7
 Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.bounds | doc:a741a476bd21
-Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.dataUrl | doc:1418521dd0dc
+Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.dataUrl | doc:6968504212f6
 Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.layerId | doc:1c32a0743f1a
 Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.map | doc:0d76f7405e1e
 Parameter | @geoleaf-plugins/cog.cog-renderer.injectImageSource.injectImageSource.opts | doc:bd4024432c9c
@@ -9629,6 +9695,11 @@ Parameter | @geoleaf-plugins/isochrone.controller.showLayer.showLayer.id | doc:5
 Parameter | @geoleaf-plugins/isochrone.controller.showLayer.showLayer.visible | doc:59dbefc8600d
 Parameter | @geoleaf-plugins/isochrone.controller.styleLayer.styleLayer.id | doc:5e2790b204d0
 Parameter | @geoleaf-plugins/isochrone.controller.styleLayer.styleLayer.style | doc:17bbe1be1d92
+Parameter | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds.fitBounds.bounds | doc:-
+Parameter | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds.fitBounds.options | doc:-
+Parameter | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.latlng | doc:-
+Parameter | @geoleaf-plugins/isochrone.frame-zones.frameZonesIfUnreadable.frameZonesIfUnreadable.geometries | doc:c4452ee00eb1
+Parameter | @geoleaf-plugins/isochrone.frame-zones.frameZonesIfUnreadable.frameZonesIfUnreadable.map | doc:69bdf757a64a
 Parameter | @geoleaf-plugins/isochrone.isochrone-api.openIsochrone.openIsochrone.anchor | doc:dc0aa5c53350
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.addGeoJSONLayer.addGeoJSONLayer.data | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.addGeoJSONLayer.addGeoJSONLayer.id | doc:-
@@ -9636,8 +9707,11 @@ Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.addGeoJSONLayer.
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.id | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.options | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.position | doc:-
+Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds.fitBounds.bounds | doc:-
+Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds.fitBounds.options | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hasLayer.hasLayer.id | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.hideLayer.hideLayer.id | doc:-
+Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.latlng | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeLayer.removeLayer.id | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.removeMarker.removeMarker.id | doc:-
 Parameter | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.setLayerStyle.setLayerStyle.id | doc:-
@@ -9824,6 +9898,7 @@ Parameter | @geoleaf-plugins/measure.types.MeasureGeoJSONSource.setData.setData.
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.addLayer.addLayer.layer | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.id | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source | doc:-
+Parameter | @geoleaf-plugins/measure.types.MeasureMap.easeTo.easeTo.options | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.getLayer.getLayer.id | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.getSource.getSource.id | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.off.off.listener | doc:-
@@ -9841,6 +9916,14 @@ Parameter | @geoleaf-plugins/measure.types.MeasureMap.on.on.type | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.project.project.lngLat | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureMap.unproject.unproject.point | doc:-
 Parameter | @geoleaf-plugins/measure.types.MeasureTypeDef.onActivate.__type.__type.map | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit.current | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit.current | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit.type | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.nextUnit.nextUnit.type | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.unitButtonName.unitButtonName.type | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.unitButtonName.unitButtonName.unit | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.unitButtonText.unitButtonText.type | doc:-
+Parameter | @geoleaf-plugins/measure.unit-labels.unitButtonText.unitButtonText.unit | doc:-
 Parameter | @geoleaf-plugins/navigation.config.PluginConfig.__index.key | doc:-
 Parameter | @geoleaf-plugins/navigation.engine/heading.normaliseDegrees.normaliseDegrees.deg | doc:d595d3b9e683
 Parameter | @geoleaf-plugins/navigation.engine/heading.resolveHeading.resolveHeading.current | doc:c92995bc9068
@@ -10001,6 +10084,8 @@ Parameter | @geoleaf-plugins/offline-ui.cache/quarantine-block.buildQuarantineBl
 Parameter | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection.mutate | doc:538bbb8acc55
 Parameter | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection.mutate.__type.__type.current | doc:-
 Parameter | @geoleaf-plugins/offline-ui.cache/selection-writer.updateSelection.updateSelection.profileId | doc:8494a4955c76
+Parameter | @geoleaf-plugins/offline-ui.cache/simple-mode-block.buildSimpleModeBlock.buildSimpleModeBlock.bodyEl | doc:0f97b3c47221
+Parameter | @geoleaf-plugins/offline-ui.cache/simple-mode-block.buildSimpleModeBlock.buildSimpleModeBlock.self | doc:3907102e9b08
 Parameter | @geoleaf-plugins/offline-ui.cache/sync-status-block.buildSyncStatusBlock.buildSyncStatusBlock.bodyEl | doc:9a79f5f68020
 Parameter | @geoleaf-plugins/offline-ui.cache/sync-status-block.buildSyncStatusBlock.buildSyncStatusBlock.self | doc:3907102e9b08
 Parameter | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCacheManager.cacheProfile.cacheProfile.opts | doc:-
@@ -10041,7 +10126,10 @@ Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonCon
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init.map | doc:-
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.copyPOIsToClipboard.copyPOIsToClipboard.pois | doc:1dc5c6dad8c1
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.exportPOIsAsJSON.exportPOIsAsJSON.pois | doc:1dc5c6dad8c1
+Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/export-logic.ExportLogic.__type.initializeCacheContent.initializeCacheContent.mode | doc:aaa2ce1132f6
+Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._markActiveTab._markActiveTab.tabName | doc:-
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._setExportLogic._setExportLogic.ref | doc:-
+Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.openModal.openModal.options | doc:ecd4558e1261
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type.switchTab.switchTab.tabName | doc:797bdf9ac755
 Parameter | @geoleaf-plugins/offline-ui.ui/cache-button/toolbar-registration.registerCacheToolbar.registerCacheToolbar.host | doc:76b681a99248
 Parameter | @geoleaf-plugins/offline-ui.utils/core-utils.$create.$create.rest | doc:-
@@ -10063,6 +10151,8 @@ Parameter | @geoleaf-plugins/offline-ui.utils/core-utils.toMB.toMB.precision | d
 Parameter | @geoleaf-plugins/offline-ui.utils/dom-helpers.createElement.createElement.className | doc:072f6842c13d
 Parameter | @geoleaf-plugins/offline-ui.utils/dom-helpers.createElement.createElement.parent | doc:2046ffe0419f
 Parameter | @geoleaf-plugins/offline-ui.utils/dom-helpers.createElement.createElement.tag | doc:27189c62e819
+Parameter | @geoleaf-plugins/offline-ui.utils/size-format.formatSize.formatSize.bytes | doc:d942709a7279
+Parameter | @geoleaf-plugins/offline-ui.utils/size-format.formatSize.formatSize.digits | doc:ed0c41c36a8e
 Parameter | @geoleaf-plugins/position-share.config.PluginConfig.__index.key | doc:-
 Parameter | @geoleaf-plugins/position-share.config.validateConfig.validateConfig.cfg | doc:4f4693defea7
 Parameter | @geoleaf-plugins/position-share.distance.distanceMetres.distanceMetres.a | doc:4872329498dc
@@ -10070,6 +10160,7 @@ Parameter | @geoleaf-plugins/position-share.distance.distanceMetres.distanceMetr
 Parameter | @geoleaf-plugins/position-share.distance.hasMovedEnough.hasMovedEnough.last | doc:b8032c57ff20
 Parameter | @geoleaf-plugins/position-share.distance.hasMovedEnough.hasMovedEnough.minDistanceM | doc:ec59b6e2efd3
 Parameter | @geoleaf-plugins/position-share.distance.hasMovedEnough.hasMovedEnough.next | doc:5fd25e21c4f5
+Parameter | @geoleaf-plugins/position-share.emitter.startEmission.startEmission.opts | doc:dd5e25e8217e
 Parameter | @geoleaf-plugins/position-share.emitter.startEmission.startEmission.override | doc:503bb378bd95
 Parameter | @geoleaf-plugins/position-share.indicator.setIndicator.setIndicator.active | doc:2422a7cd8020
 Parameter | @geoleaf-plugins/position-share.public-api.PositionSharePublicApi.registerTransport.registerTransport.factory | doc:-
@@ -10090,6 +10181,7 @@ Parameter | @geoleaf-plugins/print.emprise-selector.createEmpriseSelector.create
 Parameter | @geoleaf-plugins/print.flow.openPrintFlow.openPrintFlow.opts | doc:0b4827d9508b
 Parameter | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter.fn | doc:6f24a1891403
 Parameter | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter.format | doc:f750cc4cd178
+Parameter | @geoleaf-plugins/print.format-registry.registerExporter.registerExporter.meta | doc:53b35d29f464
 Parameter | @geoleaf-plugins/print.internal._liveTransformRequest._liveTransformRequest.nativeMap | doc:0bd2cbd4f925
 Parameter | @geoleaf-plugins/print.internal._validateUrl._validateUrl.url | doc:-
 Parameter | @geoleaf-plugins/print.internal._warnNoCore._warnNoCore.fnName | doc:-
@@ -10164,6 +10256,7 @@ Parameter | @geoleaf-plugins/print.print-api.exportPDF.exportPDF.opts | doc:-
 Parameter | @geoleaf-plugins/print.print-api.openPrintFlow.openPrintFlow.opts | doc:-
 Parameter | @geoleaf-plugins/print.print-api.registerExporter.registerExporter.fn | doc:6f24a1891403
 Parameter | @geoleaf-plugins/print.print-api.registerExporter.registerExporter.format | doc:27c101d6ce61
+Parameter | @geoleaf-plugins/print.print-api.registerExporter.registerExporter.meta | doc:287f9524c3e7
 Parameter | @geoleaf-plugins/print.print-api.registerPageFormat.registerPageFormat.def | doc:5a02c76e1f38
 Parameter | @geoleaf-plugins/print.print-api.registerPageFormat.registerPageFormat.name | doc:ea70e4c3e3e1
 Parameter | @geoleaf-plugins/print.print-api.registerSlot.registerSlot.slot | doc:f42418f1224d
@@ -10193,6 +10286,7 @@ Parameter | @geoleaf-plugins/realtime-layer.decoders/json-decoder.JsonDecoder.de
 Parameter | @geoleaf-plugins/realtime-layer.feature-index.findFeatureIndex.findFeatureIndex.features | doc:39aa3ca28d30
 Parameter | @geoleaf-plugins/realtime-layer.feature-index.findFeatureIndex.findFeatureIndex.id | doc:004917ae2069
 Parameter | @geoleaf-plugins/realtime-layer.feature-index.findFeatureIndex.findFeatureIndex.idField | doc:b3bd94edc234
+Parameter | @geoleaf-plugins/realtime-layer.feature-index.resolveFeatureId.resolveFeatureId.featureId | doc:962cd7eacb23
 Parameter | @geoleaf-plugins/realtime-layer.feature-index.resolveFeatureId.resolveFeatureId.idField | doc:b3bd94edc234
 Parameter | @geoleaf-plugins/realtime-layer.feature-index.resolveFeatureId.resolveFeatureId.props | doc:76ae9c145bca
 Parameter | @geoleaf-plugins/realtime-layer.layer-updater.applyUpdates.applyUpdates.config | doc:e589ff1d261c
@@ -10244,6 +10338,9 @@ Parameter | @geoleaf-plugins/realtime-layer.url-resolver.resolveProfileUrl.resol
 Parameter | @geoleaf-plugins/routing.composition.addWaypoint.addWaypoint.cap | doc:179acba1b15d
 Parameter | @geoleaf-plugins/routing.composition.addWaypoint.addWaypoint.waypoint | doc:15bb0ac0540c
 Parameter | @geoleaf-plugins/routing.composition.addWaypoint.addWaypoint.waypoints | doc:a00b0cb8cb67
+Parameter | @geoleaf-plugins/routing.composition.insertBeforeLast.insertBeforeLast.cap | doc:179acba1b15d
+Parameter | @geoleaf-plugins/routing.composition.insertBeforeLast.insertBeforeLast.waypoint | doc:57f02f7cd1d9
+Parameter | @geoleaf-plugins/routing.composition.insertBeforeLast.insertBeforeLast.waypoints | doc:63d32173022e
 Parameter | @geoleaf-plugins/routing.composition.isRoutable.isRoutable.waypoints | doc:38a40c99e057
 Parameter | @geoleaf-plugins/routing.composition.moveWaypoint.moveWaypoint.from | doc:ed1fb5cb753a
 Parameter | @geoleaf-plugins/routing.composition.moveWaypoint.moveWaypoint.to | doc:e520e05edc3e
@@ -10267,6 +10364,7 @@ Parameter | @geoleaf-plugins/routing.fit-route.fitRouteIfOutOfView.fitRouteIfOut
 Parameter | @geoleaf-plugins/routing.fit-route.routeBbox.routeBbox.route | doc:28027a9064ce
 Parameter | @geoleaf-plugins/routing.geocode-seam.searchAddress.searchAddress.query | doc:9eb7ed5050a8
 Parameter | @geoleaf-plugins/routing.itinerary.openPanel.openPanel.initial | doc:373ef9c258ca
+Parameter | @geoleaf-plugins/routing.itinerary.openPanel.openPanel.opts | doc:883854baa5f1
 Parameter | @geoleaf-plugins/routing.labels-seam.hideStepLabels.hideStepLabels.layerId | doc:534fcbd6b6a6
 Parameter | @geoleaf-plugins/routing.labels-seam.showStepLabels.showStepLabels.layerId | doc:bc3a77a76d19
 Parameter | @geoleaf-plugins/routing.legs.legSummaries.legSummaries.route | doc:2bdb116eb11a
@@ -10333,6 +10431,7 @@ Parameter | @geoleaf-plugins/routing.ui-seam.showPane.showPane.paneId | doc:46b3
 Parameter | @geoleaf-plugins/routing.ui/attribution.showRouteAttribution.showRouteAttribution.text | doc:f9181a92bd3c
 Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.addWaypoint.addWaypoint.waypoint | doc:-
 Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setComputing.setComputing.busy | doc:-
+Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setDestination.setDestination.waypoint | doc:-
 Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setPicking.setPicking.picking | doc:-
 Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setRoute.setRoute.route | doc:-
 Parameter | @geoleaf-plugins/routing.ui/itinerary-panel.ItineraryPanel.setWaypoints.setWaypoints.waypoints | doc:-
@@ -11463,6 +11562,7 @@ Parameter | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__t
 Parameter | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.saveLayerSelection.saveLayerSelection.selection | doc:0ad427d610c9
 Parameter | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.saveManifest.saveManifest.profileId | doc:e1093e7ec2ce
 Parameter | GeoLeaf Core API.capabilities/offline/cache/storage.CacheStorage.__type.saveManifest.saveManifest.results | doc:40a6d73a6108
+Parameter | GeoLeaf Core API.capabilities/offline/cache/storage.readCachedBytes.readCachedBytes.profileId | doc:e1093e7ec2ce
 Parameter | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateGlyphs._enumerateGlyphs.style | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateGlyphs._enumerateGlyphs.styleUrl | doc:-
 Parameter | GeoLeaf Core API.capabilities/offline/cache/style-resolver.StyleResolver.__type._enumerateSprite._enumerateSprite.style | doc:-
@@ -12467,6 +12567,7 @@ Parameter | GeoLeaf Core API.global.GeoLeafThemeSelector.setTheme.__type.__type.
 Parameter | GeoLeaf Core API.global.GeoLeafThemeSelector.setTheme.__type.__type.themeId | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.init.__type.__type.cfg | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.init.__type.__type.map | doc:-
+Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal.__type.__type.options | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.applyTheme.__type.__type.args | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.clearNotifications.__type.__type.args | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.init.__type.__type.options | doc:-
@@ -12488,6 +12589,7 @@ Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.openPanel.__type.__type.tabI
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.registerPanelPane.__type.__type.pane | doc:3d326e7df0ac
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type.__type.on | doc:7f12380f0089
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type.__type.options | doc:539c30a165f4
+Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.setPaneSize.__type.__type.size | doc:16116ff40dfb
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.setTheme.__type.__type.args | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.showError.__type.__type.args | doc:-
 Parameter | GeoLeaf Core API.global.GeoLeafUIFacade.showInfo.__type.__type.args | doc:-
@@ -13389,6 +13491,7 @@ Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-pill.createSvgIcon.
 Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-proximity.closeProximityBar.closeProximityBar.cancel | doc:6d758e970424
 Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-proximity.closeProximityBar.closeProximityBar.skipFilter | doc:1f2820ca7fe2
 Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.openSheet.openSheet.sheetId | doc:-
+Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar-sheet.setPaneSize.setPaneSize.size | doc:16116ff40dfb
 Parameter | GeoLeaf Core API.kernel/ui/mobile/mobile-toolbar.initMobileToolbar.initMobileToolbar.options | doc:a4303d3c3997
 Parameter | GeoLeaf Core API.kernel/ui/panel-panes.PaneHost.open.open.paneId | doc:-
 Parameter | GeoLeaf Core API.kernel/ui/panel-panes.getPanelPane.getPanelPane.id | doc:47d5447d76a4
@@ -13402,6 +13505,9 @@ Parameter | GeoLeaf Core API.kernel/ui/pill-search.createPillSearchInput.createP
 Parameter | GeoLeaf Core API.kernel/ui/roving-tabindex.resolveRovingIndex.resolveRovingIndex.count | doc:eb8ecd5f0b83
 Parameter | GeoLeaf Core API.kernel/ui/roving-tabindex.resolveRovingIndex.resolveRovingIndex.currentIndex | doc:4e719155bf69
 Parameter | GeoLeaf Core API.kernel/ui/roving-tabindex.resolveRovingIndex.resolveRovingIndex.key | doc:03120e8085cb
+Parameter | GeoLeaf Core API.kernel/ui/slot-availability.isCapabilityOffered.isCapabilityOffered.id | doc:4626b7256f4c
+Parameter | GeoLeaf Core API.kernel/ui/slot-availability.isOwnerAvailable.isOwnerAvailable.owner | doc:fa0767200279
+Parameter | GeoLeaf Core API.kernel/ui/slot-availability.isOwnerAvailable.isOwnerAvailable.predicate | doc:4ed402a06876
 Parameter | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.applyTheme.__type.__type.persist | doc:305f2840e745
 Parameter | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.applyTheme.__type.__type.theme | doc:8c0fb313f6c1
 Parameter | GeoLeaf Core API.kernel/ui/theme._UITheme.__type.initAutoTheme.__type.__type.themeConfig | doc:ae7db9d453d0
@@ -13410,6 +13516,8 @@ Parameter | GeoLeaf Core API.kernel/ui/toolbar-dispatch.dispatchToolbarAction.di
 Parameter | GeoLeaf Core API.kernel/ui/toolbar-dispatch.dispatchToolbarAction.dispatchToolbarAction.element | doc:477f140dbc04
 Parameter | GeoLeaf Core API.kernel/ui/ui-slot-builder.resolveUISlotVisibility.resolveUISlotVisibility.def | doc:3f32e367cb69
 Parameter | GeoLeaf Core API.kernel/ui/ui-slot-builder.resolveUISlotVisibility.resolveUISlotVisibility.opts | doc:1746cd6752d8
+Parameter | GeoLeaf Core API.kernel/ui/ui-slot-builder.slotAvailabilityOptions.slotAvailabilityOptions.id | doc:3bdfe2a73a5b
+Parameter | GeoLeaf Core API.kernel/ui/ui-slot-builder.slotAvailabilityOptions.slotAvailabilityOptions.slot | doc:2f48adc2ca7c
 Parameter | GeoLeaf Core API.kernel/ui/widgets.AccordionConfig.onToggle.__type.__type.expanded | doc:-
 Parameter | GeoLeaf Core API.kernel/ui/widgets.AccordionConfig.onToggle.__type.__type.layerId | doc:-
 Parameter | GeoLeaf Core API.kernel/ui/widgets.ToggleButtonConfig.onToggle.__type.__type.ev | doc:-
@@ -14037,6 +14145,7 @@ Property | @geoleaf-plugins/connector.config.LoginUiOptions.reloadOnSuccess | do
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14050,9 +14159,11 @@ Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-de.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14066,9 +14177,11 @@ Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-en.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14082,9 +14195,11 @@ Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-es.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14098,9 +14213,11 @@ Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-fr.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14114,9 +14231,11 @@ Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-it.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.emptyFields | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.generic | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.invalidCredentials | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.invalidResponse | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.networkUnavailable | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.noEndpoint | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.error.tooManyAttempts | doc:-
@@ -14130,6 +14249,7 @@ Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.moda
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.modal.submit | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.modal.submitting | doc:-
 Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.modal.title | doc:-
+Property | @geoleaf-plugins/connector.lang/lang-pt.default.__type.connector.session.hostManaged | doc:-
 Property | @geoleaf-plugins/connector.login-form.FormElements.card | doc:3dad1527c171
 Property | @geoleaf-plugins/connector.login-form.FormElements.closeBtn | doc:-
 Property | @geoleaf-plugins/connector.login-form.FormElements.errorEl | doc:-
@@ -14432,6 +14552,7 @@ Property | @geoleaf-plugins/file-import.converters/i-converter.IFileConverter.fo
 Property | @geoleaf-plugins/file-import.import-api.ImportLayerOptions.cluster | doc:4a222eeea3e5
 Property | @geoleaf-plugins/file-import.import-api.ImportLayerOptions.layerId | doc:4444daf5cb33
 Property | @geoleaf-plugins/file-import.import-api.ImportLayerOptions.layerName | doc:5ccbed29ff1a
+Property | @geoleaf-plugins/file-import.import-api.ImportLayerOptions.style | doc:b7ba9e7c56a0
 Property | @geoleaf-plugins/file-import.import-api.ImportLayerOptions.visible | doc:3e0c4251ac83
 Property | @geoleaf-plugins/file-import.kmz-extractor.extractKmlFromKmz.extractKmlFromKmz.__type.kml | doc:-
 Property | @geoleaf-plugins/file-import.kmz-extractor.extractKmlFromKmz.extractKmlFromKmz.__type.warnings | doc:-
@@ -14481,36 +14602,108 @@ Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.cont
 Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-de.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.control.clearAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.control.noResults | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-en.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.control.clearAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.control.noResults | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-es.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.control.clearAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.control.noResults | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-fr.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.control.clearAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.control.noResults | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-it.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.control.clearAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.control.noResults | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.control.placeholder | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.control.searchAriaLabel | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.control.submitAriaLabel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.detail.adminLevel | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.detail.adminLevel6 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.detail.adminLevel7 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.detail.adminLevel8 | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.city | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.housenumber | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.locality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.municipality | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.street | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.suburb | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.town | doc:-
+Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.kind.village | doc:-
 Property | @geoleaf-plugins/geocoding.lang/lang-pt.default.__type.geocoding.toolbar.button | doc:-
 Property | @geoleaf-plugins/geocoding.provider.IGeocodingProvider.network | doc:a128e952d139
 Property | @geoleaf-plugins/geocoding.public-api.buildPublicApi.buildPublicApi.__type.destroy | doc:6f4a2031cb7f
@@ -14534,6 +14727,7 @@ Property | @geoleaf-plugins/geocoding.types.GeocodingResult.bounds.__type.east |
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.bounds.__type.north | doc:-
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.bounds.__type.south | doc:-
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.bounds.__type.west | doc:-
+Property | @geoleaf-plugins/geocoding.types.GeocodingResult.detail | doc:2e4cb20cdd52
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.featureId | doc:434ffdf36a05
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.label | doc:12d77abe5bbd
 Property | @geoleaf-plugins/geocoding.types.GeocodingResult.lat | doc:fc9310b6c339
@@ -14567,6 +14761,11 @@ Property | @geoleaf-plugins/isochrone.config.PluginConfig.provider | doc:a26d631
 Property | @geoleaf-plugins/isochrone.config.PluginConfig.showButton | doc:321f1da77ce3
 Property | @geoleaf-plugins/isochrone.config.PluginConfig.timeoutMs | doc:865d8df3cc23
 Property | @geoleaf-plugins/isochrone.config.PluginConfig.zIndex | doc:3621b33417b2
+Property | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds.fitBounds.options.__type.padding | doc:-
+Property | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.__type.x | doc:-
+Property | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.__type.y | doc:-
+Property | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.latlng.__type.lat | doc:-
+Property | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.latlng.__type.lng | doc:-
 Property | @geoleaf-plugins/isochrone.lang/lang-de.default.__type.isochrone.error.busy | doc:-
 Property | @geoleaf-plugins/isochrone.lang/lang-de.default.__type.isochrone.error.capReached | doc:-
 Property | @geoleaf-plugins/isochrone.lang/lang-de.default.__type.isochrone.error.http | doc:-
@@ -14839,6 +15038,11 @@ Property | @geoleaf-plugins/isochrone.lang/lang-pt.default.__type.isochrone.stat
 Property | @geoleaf-plugins/isochrone.lang/lang-pt.default.__type.isochrone.toolbar.button | doc:-
 Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.position.__type.lat | doc:-
 Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.position.__type.lng | doc:-
+Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds.fitBounds.options.__type.padding | doc:-
+Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.__type.x | doc:-
+Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.__type.y | doc:-
+Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.latlng.__type.lat | doc:-
+Property | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.latlng.__type.lng | doc:-
 Property | @geoleaf-plugins/isochrone.model.ComputeOptions.minutes | doc:6a8a972dfcc4
 Property | @geoleaf-plugins/isochrone.model.ComputeOptions.mode | doc:660190f5cb42
 Property | @geoleaf-plugins/isochrone.model.ComputeOptions.origin | doc:70bcbb9ea5aa
@@ -14918,6 +15122,8 @@ Property | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source.
 Property | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source.__type.type | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMap.dragPan | doc:-
+Property | @geoleaf-plugins/measure.types.MeasureMap.easeTo.easeTo.options.__type.center | doc:-
+Property | @geoleaf-plugins/measure.types.MeasureMap.easeTo.easeTo.options.__type.zoom | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMapMouseEvent.lngLat | doc:-
 Property | @geoleaf-plugins/measure.types.MeasureMapMouseEvent.originalEvent | doc:f2e4881e1f28
 Property | @geoleaf-plugins/measure.types.MeasureMapTouchEvent.lngLat | doc:-
@@ -14950,7 +15156,6 @@ Property | @geoleaf-plugins/navigation.config.PluginConfig.keepScreenAwake | doc
 Property | @geoleaf-plugins/navigation.config.PluginConfig.maxRetryFixes | doc:-
 Property | @geoleaf-plugins/navigation.config.PluginConfig.offRouteThresholdMetres | doc:-
 Property | @geoleaf-plugins/navigation.config.PluginConfig.retryAfterFixes | doc:-
-Property | @geoleaf-plugins/navigation.config.PluginConfig.showButton | doc:-
 Property | @geoleaf-plugins/navigation.config.PluginConfig.voiceAnnounceAtMetres | doc:-
 Property | @geoleaf-plugins/navigation.config.PluginConfig.voiceEnabled | doc:-
 Property | @geoleaf-plugins/navigation.engine/maneuver.ManeuverAhead.distanceToManeuver | doc:4038b920baf2
@@ -15025,7 +15230,6 @@ Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.se
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.finish | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.stop | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.session.stopReached | doc:-
-Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.toolbar.button | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.unit.kilometres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.unit.metres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-en.default.__type.navigation.voice.ahead | doc:-
@@ -15061,7 +15265,6 @@ Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.se
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.finish | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.stop | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.session.stopReached | doc:-
-Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.toolbar.button | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.unit.kilometres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.unit.metres | doc:-
 Property | @geoleaf-plugins/navigation.lang/lang-fr.default.__type.navigation.voice.ahead | doc:-
@@ -15101,6 +15304,7 @@ Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CACHE_EVENTS.__
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CACHE_EVENTS.__type.PULL_PROGRESS | doc:2c024bce498c
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlOptions.collapsed | doc:-
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlOptions.collapsible | doc:-
+Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlOptions.mode | doc:b34dca303787
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlOptions.position | doc:-
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._bodyEl | doc:-
 Property | @geoleaf-plugins/offline-ui.cache/cache-control-types.CacheControlState._clearBtn | doc:-
@@ -15268,7 +15472,9 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.disk.insufficient | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.download.error | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.download.partial | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.download.skippedZooms | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.download.success | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.download.upToDate | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.export.error | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.export.success | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.notif.noProfile | doc:-
@@ -15286,6 +15492,7 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.prefl
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.layer.pulled | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.layer.pulledPartial | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.layer.pulledStale | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.notPrepared | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.bestEffort | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.persistent | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.preflight.persistence.unsupported | doc:-
@@ -15316,6 +15523,9 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.quara
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.quarantine.requeue | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.quarantine.requeued | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.quarantine.title | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.simple.none | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.simple.ready | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.simple.readyNoTime | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.status.profile | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.status.state | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.status.title | doc:-
@@ -15348,6 +15558,7 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.warn.
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.warn.significantDownload | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.warn.wifiAdvised | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.warn.wifiStrong | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.capped | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.corridor.degenerate-line | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.corridor.no-engine | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.corridor.no-route | doc:-
@@ -15356,8 +15567,10 @@ Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.estimate | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.lever.buffer | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.lever.zoom | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.noOfflineBasemap | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.noZone | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.note | doc:-
+Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.skippedZooms | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.summary | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.tiles | doc:-
 Property | @geoleaf-plugins/offline-ui.lang/lang-fr.default.__type.storage.zone.title | doc:-
@@ -15373,7 +15586,6 @@ Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.layer
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.localId | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.profileId | doc:bb629e34e0ea
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.PendingEdit.state | doc:-
-Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache.LayerSelector | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractCache.Storage | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractDB.listPendingEdits.listPendingEdits.options.__type.allProfiles | doc:-
 Property | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContractShape.Cache | doc:-
@@ -15390,12 +15602,11 @@ Property | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type._syn
 Property | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type._syncStatusEl | doc:-
 Property | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type._syncToggleBtn | doc:-
 Property | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type.onSynced | doc:b20658681993
-Property | @geoleaf-plugins/offline-ui.sync/vector-zone-estimate.estimateVectorZone.estimateVectorZone.__type.bytes | doc:-
-Property | @geoleaf-plugins/offline-ui.sync/vector-zone-estimate.estimateVectorZone.estimateVectorZone.__type.tiles | doc:-
 Property | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init._cfg.__type.ui | doc:-
 Property | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init._cfg.__type.ui.__type.showCacheButton | doc:-
 Property | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._eventCleanups | doc:-
 Property | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.ModalManager.__type._trap | doc:-
+Property | @geoleaf-plugins/offline-ui.ui/cache-button/modal-manager.OpenModalOptions.mode | doc:4735c53afa46
 Property | @geoleaf-plugins/offline-ui.utils/core-utils.DOMSecurity.__type.clearElement | doc:-
 Property | @geoleaf-plugins/offline-ui.utils/core-utils.DOMSecurity.__type.clearElementFast | doc:-
 Property | @geoleaf-plugins/offline-ui.utils/core-utils.events.__type.off | doc:9602e6750a25
@@ -15417,8 +15628,15 @@ Property | @geoleaf-plugins/position-share.config.ReceiveConfig.enabled | doc:-
 Property | @geoleaf-plugins/position-share.config.ReceiveConfig.layerId | doc:-
 Property | @geoleaf-plugins/position-share.distance.LatLng.lat | doc:-
 Property | @geoleaf-plugins/position-share.distance.LatLng.lng | doc:-
+Property | @geoleaf-plugins/position-share.emitter.startEmission.startEmission.opts.__type.fromUser | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-en.default.__type.position-share.error.modeOff | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-en.default.__type.position-share.error.noChannel | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-en.default.__type.position-share.error.noGeolocation | doc:-
 Property | @geoleaf-plugins/position-share.lang/lang-en.default.__type.position-share.status.emitting | doc:-
 Property | @geoleaf-plugins/position-share.lang/lang-en.default.__type.position-share.toolbar.button | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-fr.default.__type.position-share.error.modeOff | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-fr.default.__type.position-share.error.noChannel | doc:-
+Property | @geoleaf-plugins/position-share.lang/lang-fr.default.__type.position-share.error.noGeolocation | doc:-
 Property | @geoleaf-plugins/position-share.lang/lang-fr.default.__type.position-share.status.emitting | doc:-
 Property | @geoleaf-plugins/position-share.lang/lang-fr.default.__type.position-share.toolbar.button | doc:-
 Property | @geoleaf-plugins/position-share.transports/contract.PositionPayload.accuracy | doc:c3ad8f19b76c
@@ -15455,6 +15673,8 @@ Property | @geoleaf-plugins/print.emprise-selector.EmpriseResult.center.__type.l
 Property | @geoleaf-plugins/print.emprise-selector.EmpriseResult.center.__type.lng | doc:-
 Property | @geoleaf-plugins/print.emprise-selector.EmpriseResult.orientation | doc:-
 Property | @geoleaf-plugins/print.emprise-selector.EmpriseResult.scaleDenominator | doc:-
+Property | @geoleaf-plugins/print.format-registry.ExporterMeta.extension | doc:9c5373de55a1
+Property | @geoleaf-plugins/print.format-registry.ExporterMeta.label | doc:dbdb0803e882
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.aria.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.aria.toolbar.print | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.btn.cancel | doc:-
@@ -15464,6 +15684,7 @@ Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.error.serverEndpoint | doc:-
@@ -15479,8 +15700,6 @@ Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-de.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.aria.scaleLocked | doc:-
@@ -15492,6 +15711,7 @@ Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.error.serverEndpoint | doc:-
@@ -15507,8 +15727,6 @@ Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-en.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.aria.scaleLocked | doc:-
@@ -15520,6 +15738,7 @@ Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.error.serverEndpoint | doc:-
@@ -15535,8 +15754,6 @@ Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-es.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.aria.scaleLocked | doc:-
@@ -15548,6 +15765,7 @@ Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.error.serverEndpoint | doc:-
@@ -15563,8 +15781,6 @@ Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-fr.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.aria.scaleLocked | doc:-
@@ -15576,6 +15792,7 @@ Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.error.serverEndpoint | doc:-
@@ -15591,8 +15808,6 @@ Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-it.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.aria.scaleLocked | doc:-
@@ -15604,6 +15819,7 @@ Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.btn.ok | doc
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.btn.pdf | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.emprise.hint | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.emprise.hint.adjust | doc:-
+Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.emprise.hint.touch | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.error.noMap | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.error.render | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.error.serverEndpoint | doc:-
@@ -15619,8 +15835,6 @@ Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.modal.format
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.modal.redefineExtent | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.modal.scaleLocked | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.modal.title | doc:-
-Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.orientation.landscape | doc:-
-Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.orientation.portrait | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.spinner.rendering | doc:-
 Property | @geoleaf-plugins/print.lang/lang-pt.default.__type.print.toolbar.button | doc:-
 Property | @geoleaf-plugins/print.layout-composer.ComposeOptions.bbox | doc:4876c0d37544
@@ -15652,6 +15866,7 @@ Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.includeLegend | do
 Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.includeNorthArrow | doc:-
 Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.includeScale | doc:-
 Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.lockedScale | doc:10df84f2f24a
+Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.maxCanvasPx | doc:f8933a129566
 Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.orientation | doc:-
 Property | @geoleaf-plugins/print.modal-compose.ComposeInputs.title | doc:-
 Property | @geoleaf-plugins/print.modal-compose.mapViewport.mapViewport.center.__type.lat | doc:-
@@ -15671,6 +15886,7 @@ Property | @geoleaf-plugins/print.modal-dom.ModalDom.previewImg | doc:-
 Property | @geoleaf-plugins/print.modal-dom.ModalDom.redefineLink | doc:-
 Property | @geoleaf-plugins/print.modal-dom.ModalDom.scale | doc:-
 Property | @geoleaf-plugins/print.modal-dom.ModalDom.spinner | doc:-
+Property | @geoleaf-plugins/print.modal-dom.ModalDom.status | doc:5048937e69c3
 Property | @geoleaf-plugins/print.modal-dom.ModalDom.titleInput | doc:-
 Property | @geoleaf-plugins/print.overlays/scale-overlay.MapZonePx.heightPx | doc:-
 Property | @geoleaf-plugins/print.overlays/scale-overlay.MapZonePx.widthPx | doc:-
@@ -15806,9 +16022,11 @@ Property | @geoleaf-plugins/routing.entry-point.ActionDetail.lngLat | doc:-
 Property | @geoleaf-plugins/routing.entry-point.ActionDetail.lngLat.__type.lat | doc:-
 Property | @geoleaf-plugins/routing.entry-point.ActionDetail.lngLat.__type.lng | doc:-
 Property | @geoleaf-plugins/routing.entry-point.ActionDetail.properties | doc:-
+Property | @geoleaf-plugins/routing.geocode-seam.AddressHit.detail | doc:959bd1144b6a
 Property | @geoleaf-plugins/routing.geocode-seam.AddressHit.label | doc:0847d8bf9a75
 Property | @geoleaf-plugins/routing.geocode-seam.AddressHit.lat | doc:22eede1a1a8a
 Property | @geoleaf-plugins/routing.geocode-seam.AddressHit.lng | doc:bbfc385d75c4
+Property | @geoleaf-plugins/routing.itinerary.openPanel.openPanel.opts.__type.asDestination | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.field | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.noMatch | doc:-
 Property | @geoleaf-plugins/routing.lang/lang-en.default.__type.routing.add.notCoordinates | doc:-
@@ -17284,6 +17502,7 @@ Property | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.mobileI
 Property | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.mobileIcon.__type.order | doc:a8805dbd15cf
 Property | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.mobileIcon.__type.profileKey | doc:682411515d3b
 Property | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.mobileIcon.__type.requiresPlugin | doc:2639d51dfe02
+Property | GeoLeaf Core API.contracts/core-module.contract.IModuleUISlot.requiresCapability | doc:5ab4b926c80f
 Property | GeoLeaf Core API.contracts/core-module.contract.IUISlotModule.dependencies | doc:1d35b1f5feb7
 Property | GeoLeaf Core API.contracts/core-module.contract.IUISlotModule.destroy | doc:8c9fa8326055
 Property | GeoLeaf Core API.contracts/core-module.contract.IUISlotModule.id | doc:7a4e32b10ccb
@@ -18062,7 +18281,8 @@ Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton | doc:05d0025b8de
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.Modules | doc:-
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.closeModal | doc:-
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.init | doc:-
-Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal | doc:-
+Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal | doc:d63ff48d61c5
+Property | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal.__type.__type.options.__type.mode | doc:-
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.Notifications | doc:cc7a915c001a
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.VERSION | doc:63b3eea6751c
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.activateDesktopPanel | doc:21d060968618
@@ -18100,6 +18320,7 @@ Property | GeoLeaf Core API.global.GeoLeafUIFacade.openPanel | doc:906a72d0b1a3
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.registerPanelPane | doc:fa01d927ca00
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive | doc:ffa310f160de
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type.__type.options.__type.fullscreen | doc:-
+Property | GeoLeaf Core API.global.GeoLeafUIFacade.setPaneSize | doc:591329e4ae51
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.setTheme | doc:d069124be60d
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.showError | doc:e586a717af16
 Property | GeoLeaf Core API.global.GeoLeafUIFacade.showInfo | doc:de15f49d0765
@@ -18132,6 +18353,7 @@ Property | GeoLeaf Core API.kernel/api/api-types.LazyUISlotEntry.gateOnModuleEna
 Property | GeoLeaf Core API.kernel/api/api-types.LazyUISlotEntry.id | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.LazyUISlotEntry.mobileIcon | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.LazyUISlotEntry.pluginName | doc:-
+Property | GeoLeaf Core API.kernel/api/api-types.LazyUISlotEntry.requiresCapability | doc:5caff2defe8a
 Property | GeoLeaf Core API.kernel/api/api-types.PluginEntry.healthCheck | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.PluginEntry.label | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.PluginEntry.loaded | doc:-
@@ -18143,6 +18365,7 @@ Property | GeoLeaf Core API.kernel/api/api-types.PluginEntry.version | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.PluginLazyUI.desktopTabButton | doc:-
 Property | GeoLeaf Core API.kernel/api/api-types.PluginLazyUI.gateOnModuleEnabled | doc:bc8cb7b46eca
 Property | GeoLeaf Core API.kernel/api/api-types.PluginLazyUI.mobileIcon | doc:-
+Property | GeoLeaf Core API.kernel/api/api-types.PluginLazyUI.requiresCapability | doc:5caff2defe8a
 Property | GeoLeaf Core API.kernel/api/api-types.PluginMetadata.healthCheck | doc:94b5f98fb4a4
 Property | GeoLeaf Core API.kernel/api/api-types.PluginMetadata.label | doc:b33cafe8f397
 Property | GeoLeaf Core API.kernel/api/api-types.PluginMetadata.optional | doc:0cbd26afa745
@@ -19055,6 +19278,7 @@ Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.icon | doc:ff7699868
 Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.id | doc:cc733c3a9111
 Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.labelKey | doc:084e2a4eed05
 Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.order | doc:7b972304242c
+Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.requiresCapability | doc:ce649a236ed3
 Property | GeoLeaf Core API.kernel/ui/panel-panes.PanelPane.selector | doc:66273bb499cf
 Property | GeoLeaf Core API.kernel/ui/pill-search.PillSearchHandles.clearBtn | doc:c813fb40891e
 Property | GeoLeaf Core API.kernel/ui/pill-search.PillSearchHandles.destroy | doc:6dd49f0b386f
@@ -19469,7 +19693,6 @@ Reference | @geoleaf-plugins/offline-ui.entry.StorageContractCache | doc:-
 Reference | @geoleaf-plugins/offline-ui.entry.StorageContractCacheManager | doc:-
 Reference | @geoleaf-plugins/offline-ui.entry.StorageContractCacheStorage | doc:-
 Reference | @geoleaf-plugins/offline-ui.entry.StorageContractDB | doc:-
-Reference | @geoleaf-plugins/offline-ui.entry.StorageContractLayerSelector | doc:-
 Reference | @geoleaf-plugins/offline-ui.entry.StorageContractShape | doc:-
 Reference | @geoleaf-plugins/position-share.entry.IPositionTransport | doc:-
 Reference | @geoleaf-plugins/position-share.entry.PositionPayload | doc:-
@@ -19875,6 +20098,7 @@ TypeAlias | @geoleaf-plugins/measure.types.AreaUnit | doc:ac63425cd6ed
 TypeAlias | @geoleaf-plugins/measure.types.DistanceUnit | doc:32b531affb32
 TypeAlias | @geoleaf-plugins/measure.types.MeasureToolId | doc:25185151a2a7
 TypeAlias | @geoleaf-plugins/measure.types.MeasureType | doc:ef5d0cb1f2e3
+TypeAlias | @geoleaf-plugins/measure.unit-labels.UnitButtonType | doc:6154c66b28f5
 TypeAlias | @geoleaf-plugins/navigation.engine/snap.Position | doc:0093a1fe14fc
 TypeAlias | @geoleaf-plugins/navigation.entry.NavigationApi | doc:c41a5c8d52b2
 TypeAlias | @geoleaf-plugins/navigation.guidance-contract.GuidanceListener | doc:4d6e1abfc657
@@ -20157,6 +20381,9 @@ TypeLiteral | @geoleaf-plugins/geocoding.ui/pill-search.PillSearchOptions.onInpu
 TypeLiteral | @geoleaf-plugins/geocoding.ui/pill-search.PillSearchOptions.onSubmit.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.controller.onStackChange.onStackChange.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.controller.onStackChange.onStackChange.listener.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.fitBounds.fitBounds.options.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.frame-zones.FrameableMap.latLngToPoint.latLngToPoint.latlng.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-de.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-en.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-es.default.__type | doc:-
@@ -20164,6 +20391,9 @@ TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-it.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.lang/lang-pt.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.createMarker.createMarker.position.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.fitBounds.fitBounds.options.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.__type | doc:-
+TypeLiteral | @geoleaf-plugins/isochrone.map-binding.IsochroneMap.latLngToPoint.latLngToPoint.latlng.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.map-binding.rerankZones.rerankZones.zoneOf.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.model.IsochroneProviderFactory.__type | doc:-
 TypeLiteral | @geoleaf-plugins/isochrone.pick-on-map.pickOriginOnMap.pickOriginOnMap.onPick.__type | doc:-
@@ -20180,6 +20410,7 @@ TypeLiteral | @geoleaf-plugins/measure.types.MeasureFeature.properties.__type | 
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.addSource.addSource.source.__type | doc:-
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.doubleClickZoom.__type | doc:-
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.dragPan.__type | doc:-
+TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.easeTo.easeTo.options.__type | doc:-
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.off.off.listener.__type | doc:-
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.off.off.listener.__type | doc:-
 TypeLiteral | @geoleaf-plugins/measure.types.MeasureMap.on.on.listener.__type | doc:-
@@ -20217,7 +20448,6 @@ TypeLiteral | @geoleaf-plugins/offline-ui.shared/storage-contract.StorageContrac
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.sync/sync-manager.SyncManager.__type.mount.mount.opts.__type.onSynced.__type | doc:-
-TypeLiteral | @geoleaf-plugins/offline-ui.sync/vector-zone-estimate.estimateVectorZone.estimateVectorZone.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init._cfg.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.ui/cache-button/button-control.ButtonControl.__type.init.init._cfg.__type.ui.__type | doc:-
@@ -20230,6 +20460,7 @@ TypeLiteral | @geoleaf-plugins/offline-ui.utils/core-utils.events.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.utils/core-utils.events.__type.off.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.utils/core-utils.events.__type.on.__type | doc:-
 TypeLiteral | @geoleaf-plugins/offline-ui.utils/core-utils.formatFileSize.formatFileSize.options.__type | doc:-
+TypeLiteral | @geoleaf-plugins/position-share.emitter.startEmission.startEmission.opts.__type | doc:-
 TypeLiteral | @geoleaf-plugins/position-share.lang/lang-en.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/position-share.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/position-share.transports/registry.PositionTransportFactory.__type | doc:-
@@ -20258,6 +20489,7 @@ TypeLiteral | @geoleaf-plugins/routing.entry-point.ActionDetail.close.__type | d
 TypeLiteral | @geoleaf-plugins/routing.entry-point.ActionDetail.lngLat.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.entry-point.wireEntryPoint.wireEntryPoint.onDestination.__type | doc:-
+TypeLiteral | @geoleaf-plugins/routing.itinerary.openPanel.openPanel.opts.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.lang/lang-en.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.lang/lang-fr.default.__type | doc:-
 TypeLiteral | @geoleaf-plugins/routing.model.RouteProviderFactory.__type | doc:-
@@ -20907,6 +21139,7 @@ TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.closeModal.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.init.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal.__type | doc:-
+TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.CacheButton.__type.openModal.__type.__type.options.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.activateDesktopPanel.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.applyTheme.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.cleanup.__type | doc:-
@@ -20936,6 +21169,7 @@ TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.openPanel.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.registerPanelPane.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.setImmersive.__type.__type.options.__type | doc:-
+TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.setPaneSize.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.setTheme.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.showError.__type | doc:-
 TypeLiteral | GeoLeaf Core API.global.GeoLeafUIFacade.showInfo.__type | doc:-

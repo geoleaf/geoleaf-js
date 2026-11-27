@@ -33,11 +33,18 @@ import type {
 type RawMessage = { channel?: string; type?: string; payload?: unknown };
 
 /**
+ * How long an `error` waits for its `close` before the refusal is settled without it. Short: a
+ * real close follows its error within the same task in every engine measured.
+ */
+const ERROR_WITHOUT_CLOSE_MS = 1000;
+
+/**
  * Transport backed by the browser's native `WebSocket`.
  *
  * Backend-neutral: it knows nothing of the application protocol beyond the minimal channel
  * routing convention, which is what lets the same plugin sit in front of different servers.
  */
+
 export class NativeWsTransport implements IWsTransport {
     private _ws: WebSocket | null = null;
     private _state: TransportState = "disconnected";
@@ -141,6 +148,7 @@ export class NativeWsTransport implements IWsTransport {
         let settled = false;
 
         ws.onopen = () => {
+            clearGrace();
             if (settled) return;
             settled = true;
             this._state = "connected";
@@ -149,6 +157,7 @@ export class NativeWsTransport implements IWsTransport {
         };
 
         ws.onclose = (ev) => {
+            clearGrace();
             const wasConnecting = !settled;
             settled = true;
 
@@ -177,8 +186,30 @@ export class NativeWsTransport implements IWsTransport {
             }
         };
 
+        // 🛑 `onerror` is NOT always followed by `onclose`. Refused by the page's CSP, Chromium
+        // fires `error` and never `close`: the connection stayed « connecting » forever, and
+        // `init()` never settled. A short grace lets a real `close` speak first; past it, the
+        // refusal is settled here.
+        let errorGrace: ReturnType<typeof setTimeout> | null = null;
+        const clearGrace = (): void => {
+            if (errorGrace !== null) clearTimeout(errorGrace);
+            errorGrace = null;
+        };
+        const settleRefused = (): void => {
+            errorGrace = null;
+            if (settled) return;
+            settled = true;
+            this._state = "disconnected";
+            const wsErr = this._makeError(
+                "CONNECTION_REFUSED",
+                "WebSocket errored and never closed — refused before the handshake (CSP, network)."
+            );
+            this.onError?.(wsErr);
+            reject(wsErr);
+        };
         ws.onerror = () => {
-            // onerror always precedes onclose — let onclose handle the final state
+            if (settled || errorGrace !== null) return;
+            errorGrace = setTimeout(settleRefused, ERROR_WITHOUT_CLOSE_MS);
         };
 
         ws.onmessage = (ev) => {

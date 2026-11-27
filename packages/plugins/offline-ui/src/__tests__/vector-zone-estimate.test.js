@@ -109,22 +109,27 @@ describe("estimateVectorZone()", () => {
         ).toBe(0);
     });
 
-    // ── The regression this extraction fixed ──
-    test("does NOT drop a zoom that exceeds 30 000 tiles (S1 fix)", () => {
-        // A 2°×2° zone at zoom 15 sits past the old enumerator's per-zoom cap.
+    // ── The estimate and the download speak of the same perimeter ──
+    test("a zoom past the core's 30 000-tile cap is NOT counted — and it is SAID", () => {
+        // A 2°×2° zone at zoom 15 sits past the core's per-zoom cap: its preparation skips that
+        // zoom (`getTileCoordsForBounds` returns []). The estimate used to count it anyway —
+        // « ~69,40 GB » announced for a preparation that fetched 18 MB. It now leaves out what
+        // the core leaves out, and names it.
         const bounds = { north: 50, south: 48, east: 4, west: 2 };
-        const count = countAt(bounds, 15);
-        expect(count).toBeGreaterThan(30000);
-
-        // The old path returned [] here, so the zoom contributed 0 to the estimate.
+        // The raw count, as the core computes it — `countAt` goes through the estimate.
+        expect(CacheCalculator._tileCount(bounds, 15)).toBeGreaterThan(30000);
         expect(CacheCalculator.getTileCoordsForBounds(bounds, 15)).toEqual([]);
 
-        // The estimate now reports those tiles instead of silently ignoring them.
-        const { tiles } = estimateVectorZone({
-            bounds,
-            cacheMinZoom: 15,
-            cacheMaxZoom: 15,
-        });
-        expect(tiles).toBe(count);
+        const est = estimateVectorZone({ bounds, cacheMinZoom: 14, cacheMaxZoom: 15 });
+        expect(est.tiles).toBe(countAt(bounds, 14));
+        expect(est.skippedZooms).toEqual([15]);
+    });
+
+    test("the total stops at the core's 200 000-tile cap, and says so", () => {
+        // Each zoom under the per-zoom cap, the sum over it.
+        const bounds = { north: 50, south: 48, east: 4, west: 2 };
+        const est = estimateVectorZone({ bounds, cacheMinZoom: 0, cacheMaxZoom: 14 });
+        expect(est.tiles).toBeLessThanOrEqual(200000);
+        expect(typeof est.capped).toBe("boolean");
     });
 });

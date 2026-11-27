@@ -63,13 +63,15 @@ describe("navigation — le démontage", () => {
         expect(module?.ui).toBeUndefined();
     });
 
-    test("chargé avant le boot : le même démontage, ET le créneau de barre", async () => {
+    test("chargé avant le boot : le même démontage, et AUCUN créneau de barre", async () => {
+        // The slot never opened anything (its listener called a `Navigation.open` that does not
+        // exist): it is gone, with `showButton`. Guidance is entered from routing's panel.
         const register = plantCore({ initialized: false });
         await import("../entry.js");
 
         const module = moduleOf(register);
         expect(typeof module?.destroy).toBe("function");
-        expect(module?.ui, "le créneau n'est plus déclaré sur le chemin eager").toBeDefined();
+        expect(module?.ui).toBeUndefined();
 
         const stop = vi.spyOn(g.GeoLeaf!.Navigation!, "stop");
         module?.destroy?.();
@@ -86,5 +88,27 @@ describe("navigation — le démontage", () => {
         const register = plantCore({ initialized: true });
         await import("../entry.js");
         expect(() => moduleOf(register)?.destroy?.()).not.toThrow();
+    });
+});
+
+describe('navigation — `requires: ["routing"]` est tenu', () => {
+    test("sans routing chargé, le chargement refuse et nomme la dépendance — rien n'est monté", async () => {
+        plantCore({ initialized: true });
+        (g.GeoLeaf as unknown as { plugins: unknown }).plugins = {
+            isLoaded: (name: string) => name !== "routing",
+            register: vi.fn(),
+        };
+        await expect(import("../entry.js")).rejects.toThrow(/requires the routing plugin/);
+        expect(g.GeoLeaf?.Navigation).toBeUndefined();
+    });
+
+    test("avec routing chargé, le chargement se fait", async () => {
+        plantCore({ initialized: true });
+        (g.GeoLeaf as unknown as { plugins: unknown }).plugins = {
+            isLoaded: () => true,
+            register: vi.fn(),
+        };
+        await import("../entry.js");
+        expect(typeof g.GeoLeaf?.Navigation).toBe("object");
     });
 });

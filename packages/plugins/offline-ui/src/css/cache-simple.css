@@ -1,0 +1,48 @@
+/* ==========================================================================
+   @geoleaf-plugins/offline-ui — the field window (`openModal({ mode: "simple" })`)
+   The one-line state and the storage warning (`cache/simple-mode-block.ts`), and the parts
+   of the full window this mode keeps built but hides. A file of its own: `cache-control.css`
+   sits at the 700-line cap (PC-08). `data-state` is matched literally, for purgecss.
+   ========================================================================== */
+
+/* Same warning token as the pre-departure block, with its dark value: the theme defines none. */
+.gl-cache-simple {
+    --gl-cache-simple-warning: #b45309;
+    margin: 0 0 8px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+}
+
+body.gl-theme-dark .gl-cache-simple {
+    --gl-cache-simple-warning: #fbbf24;
+}
+
+.gl-cache-simple__state {
+    font-weight: 600;
+}
+
+.gl-cache-simple__state[data-state="ready"] {
+    color: var(--gl-color-success, #16a34a);
+}
+
+.gl-cache-simple__warning {
+    margin-top: 4px;
+    color: var(--gl-cache-simple-warning);
+}
+
+.gl-cache-simple__warning[hidden] {
+    display: none;
+}
+
+/* Built, so the default layer selection is still written, but not shown. Each rule names its
+   class: the accordions set their own `display`, which beats the user-agent `[hidden]`. */
+.gl-cache-layers[hidden],
+.gl-cache-zone__row[hidden],
+.gl-cache-zone__note[hidden] {
+    display: none;
+}
+
+/* The Import / Export tabs belong to the full window. */
+.gl-cache-modal__tabs[hidden] {
+    display: none;
+}

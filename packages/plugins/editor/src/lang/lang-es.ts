@@ -22,6 +22,7 @@ const lang_es: Record<string, string> = {
     "editor.tool.polyline.hint":
         "Haz clic para colocar vértices. Doble clic o Intro para terminar.",
     "editor.tool.polygon.label": "Polígono",
+    "editor.tool.noTarget": "Ninguna capa acepta esta geometría",
     "editor.tool.polygon.hint":
         "Haz clic para colocar vértices. Engancha al primer vértice, doble clic o Intro para cerrar.",
     "editor.tool.select.label": "Selección",
@@ -109,6 +110,8 @@ const lang_es: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Se ha superado el tiempo de espera de la red.",
     "editor.error.editionNotPermitted": "Esta capa no permite esta operación.",
+    "editor.error.noWriteTarget":
+        "Esta capa no declara ninguna dirección de escritura: no se ha enviado nada.",
     "editor.error.operationNotSupported":
         "El servidor no admite esta operación. Contacte con el administrador.",
     "editor.error.server": "Error del servidor. Vuelve a intentarlo.",

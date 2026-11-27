@@ -34,6 +34,8 @@
  * host, which is what keeps the dependency arrow pointing one way.
  */
 
+import { isCapabilityOffered, isOwnerAvailable } from "./slot-availability.js";
+
 /** A panel surface some module owns, offered to whichever host is live. */
 export interface PanelPane {
     /**
@@ -78,6 +80,24 @@ export interface PanelPane {
      * ⚠️ Must be idempotent: it fires on every open, not only the first.
      */
     onOpen?(): void;
+    /**
+     * In-core capability this pane cannot work without. When the bundle does not embark it, or
+     * the profile switches it off, the pane is not offered — no tab, no sheet entry, and
+     * {@link openPane} cannot show it. Unknown (nothing declared yet) keeps the pane.
+     *
+     * @example `"geolocation"`
+     */
+    readonly requiresCapability?: string;
+    /**
+     * The owner's verdict on whether the pane may be offered, read every time a host lists or
+     * opens panes — never at registration, which happens before the profile is merged.
+     *
+     * Use it for a condition only the merged profile knows: `modules.<id>.enabled: false`, or a
+     * layer the pane's feature has to draw into. A throw keeps the pane and is logged.
+     *
+     * @returns `false` to withhold the pane.
+     */
+    isAvailable?(): boolean;
 }
 
 /** A surface able to display a pane — the desktop panel, or the mobile sheet. */
@@ -140,21 +160,38 @@ export function registerPanelPane(pane: PanelPane): void {
 /**
  * Every registered pane, ordered.
  *
- * @returns The panes, sorted by `order` ascending; those without one keep registration order
- *          and land after the ordered ones (`Array.prototype.sort` is stable per spec).
+ * Panes withheld by `requiresCapability` or `isAvailable()` are left out.
+ *
+ * @returns The offered panes, sorted by `order` ascending; those without one keep registration
+ *          order and land after the ordered ones (`Array.prototype.sort` is stable per spec).
  */
 export function listPanelPanes(): readonly PanelPane[] {
-    return [..._panes.values()].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    return [..._panes.values()]
+        .filter(isPaneOffered)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+}
+
+/**
+ * Whether a registered pane may be offered now — its capability is served and its owner agrees.
+ *
+ * @param pane - The registered pane.
+ * @returns `false` when `requiresCapability` or `isAvailable()` withholds it.
+ */
+function isPaneOffered(pane: PanelPane): boolean {
+    if (pane.requiresCapability && !isCapabilityOffered(pane.requiresCapability)) return false;
+    return isOwnerAvailable(pane.id, pane.isAvailable?.bind(pane));
 }
 
 /**
  * One registered pane.
  *
  * @param id - The pane identifier.
- * @returns The pane, or `undefined` when nothing is registered under that id.
+ * @returns The pane, or `undefined` when nothing is registered under that id or the pane is
+ *          withheld (`requiresCapability`, `isAvailable()`) — a host then cannot open it.
  */
 export function getPanelPane(id: string): PanelPane | undefined {
-    return _panes.get(id);
+    const pane = _panes.get(id);
+    return pane && isPaneOffered(pane) ? pane : undefined;
 }
 
 /**

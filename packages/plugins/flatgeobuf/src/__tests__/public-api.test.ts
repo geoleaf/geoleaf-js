@@ -144,6 +144,38 @@ describe("public-api", () => {
             );
         });
 
+        // Without a style the adapter's own default applied — an opaque grey fill with no
+        // outline, covering whatever lay beneath it (a whole country for a polygon file).
+        it("paints a readable default when the caller gives no style: outlined, translucent fill", async () => {
+            mockLoadFgb.mockResolvedValue(makeFgbResult());
+            const { addGeoJSONLayer } = installAdapter();
+
+            await loadAsLayer("https://example.com/data.fgb", { layerId: "plain" });
+
+            const opts = addGeoJSONLayer.mock.calls[0][2] as Record<string, unknown>;
+            expect(opts.color).toEqual(expect.any(String));
+            expect(opts.weight).toBeGreaterThanOrEqual(1);
+            expect(opts.fillColor).toEqual(expect.any(String));
+            expect(opts.fillColor).not.toBe(opts.color);
+            expect(opts.fillOpacity).toBeGreaterThan(0);
+            expect(opts.fillOpacity).toBeLessThan(0.5);
+        });
+
+        it("keeps a declared style as declared: no default key is added to it", async () => {
+            mockLoadFgb.mockResolvedValue(makeFgbResult());
+            const { addGeoJSONLayer } = installAdapter();
+
+            await loadAsLayer("https://example.com/data.fgb", {
+                layerId: "declared",
+                ...{ __declaredStyle: { fillColor: "#123456" } },
+            } as never);
+
+            const opts = addGeoJSONLayer.mock.calls[0][2] as Record<string, unknown>;
+            expect(opts.fillColor).toBe("#123456");
+            expect(opts).not.toHaveProperty("weight");
+            expect(opts).not.toHaveProperty("fillOpacity");
+        });
+
         it("throws when the map adapter is unavailable", async () => {
             mockLoadFgb.mockResolvedValue(makeFgbResult());
             (globalThis as any).GeoLeaf = {};

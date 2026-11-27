@@ -38,29 +38,35 @@ function _installGeoLeafStorage(api) {
     return api;
 }
 
-function setConfig(profile = "prof-1") {
+/** A vector basemap the preparation will feed from the zone — the core's `offline: true`. */
+const OFFLINE_VECTOR_BASEMAPS = {
+    vector: {
+        id: "vector",
+        type: "maplibre",
+        style: "https://tiles.example/style.json",
+        offline: true,
+    },
+};
+
+function setConfig(profile = "prof-1", basemaps = OFFLINE_VECTOR_BASEMAPS) {
     globalThis.GeoLeaf = globalThis.GeoLeaf || {};
     globalThis.GeoLeaf.Config = {
-        get: (k, fb) => (k === "data.activeProfile" ? profile : fb),
+        get: (k, fb) => (k === "data.activeProfile" ? profile : k === "basemaps" ? basemaps : fb),
     };
 }
 
-function installStorage({ selection = null, withLayerSelector = true, loadThrows = false } = {}) {
+// The core's shape: `Cache` = `{ Storage }` (`offline-engine-entry.ts`), and nothing else.
+function installStorage({ selection = null, loadThrows = false } = {}) {
     const saveLayerSelection = vi.fn(async () => {});
     const loadLayerSelection = vi.fn(async () => {
         if (loadThrows) throw new Error("DB");
         return selection;
     });
-    const saveSelection = vi.fn(async () => {});
-    const updateWarning = vi.fn(async () => {});
     _installGeoLeafStorage({
         isAvailable: () => true,
-        Cache: {
-            Storage: { loadLayerSelection, saveLayerSelection },
-            LayerSelector: withLayerSelector ? { saveSelection, updateWarning } : undefined,
-        },
+        Cache: { Storage: { loadLayerSelection, saveLayerSelection } },
     });
-    return { saveLayerSelection, loadLayerSelection, saveSelection, updateWarning };
+    return { saveLayerSelection, loadLayerSelection };
 }
 
 /** Map with "method" bounds (LngLatBounds). */
@@ -162,10 +168,37 @@ describe("applyZone — capture bbox", () => {
         expect(saved.vectorZone.bounds.north).toBeCloseTo(48.9);
         expect(self._zoneSummaryEl.textContent).toContain("z");
         expect(self._zoneEstimateEl.textContent).toContain("tiles");
-        // totals refreshed
-        expect(store.saveSelection).toHaveBeenCalled();
-        expect(store.updateWarning).toHaveBeenCalled();
+        // totals refreshed — by the plugin's own selector (next test)
     });
+
+    // The core enumerates tiles from the zone only for a vector basemap declared `offline: true`.
+    // Without one, « ~1.10 GB (38409 tiles) » was announced for a preparation that took 18 MB.
+    test.each([
+        ["aucun fond de carte", {}],
+        [
+            "un fond vectoriel sans offline: true",
+            { v: { id: "v", type: "maplibre", style: "https://tiles.example/style.json" } },
+        ],
+        [
+            "un fond raster hors ligne — il lit ses propres bornes, pas la zone",
+            { r: { id: "r", url: "https://tiles.example/{z}/{x}/{y}.png", offline: true } },
+        ],
+    ])(
+        "sans fond vectoriel hors ligne (%s) → aucune tuile promise, et le pourquoi",
+        async (_what, basemaps) => {
+            setConfig("prof-1", basemaps);
+            installStorage();
+            buildZoneSelectionSection(self, parent);
+            await flush();
+
+            zoneButtons()[0].click(); // vue
+            await flush();
+
+            expect(self._zoneSummaryEl.textContent).toContain("z");
+            expect(self._zoneEstimateEl.textContent).not.toContain("tiles");
+            expect(self._zoneEstimateEl.textContent).toBe("storage.zone.noOfflineBasemap");
+        }
+    );
 
     test("« zone du profil » (getMaxBounds plat) → borne plate lue, minZoom plafonné", async () => {
         self._map = plainMap();
@@ -269,8 +302,27 @@ describe("applyZone — capture bbox", () => {
         expect(store.saveLayerSelection).not.toHaveBeenCalled();
     });
 
-    test("sans LayerSelector, la zone est quand même persistée (refresh best-effort)", async () => {
-        const store = installStorage({ withLayerSelector: false });
+    // The core wires `Storage.Cache` with its `Storage` alone: the totals refresh after a zone
+    // change once went through an absent member of that namespace and never ran.
+    test("un changement de zone recalcule les totaux par le sélecteur du greffon (forme du core)", async () => {
+        installStorage();
+        const save = vi.spyOn(LS, "saveSelection").mockResolvedValue(undefined);
+        const warn = vi.spyOn(LS, "updateWarning").mockResolvedValue(undefined);
+        buildZoneSelectionSection(self, parent);
+        await flush();
+
+        zoneButtons()[0].click();
+        await flush();
+
+        expect(save).toHaveBeenCalled();
+        expect(warn).toHaveBeenCalled();
+        save.mockRestore();
+        warn.mockRestore();
+    });
+
+    test("la zone est persistée même quand le rafraîchissement échoue (best-effort)", async () => {
+        const store = installStorage();
+        const save = vi.spyOn(LS, "saveSelection").mockRejectedValue(new Error("refresh"));
         buildZoneSelectionSection(self, parent);
         await flush();
 
@@ -278,6 +330,8 @@ describe("applyZone — capture bbox", () => {
         await flush();
 
         expect(store.saveLayerSelection).toHaveBeenCalled();
+        expect(save).toHaveBeenCalled();
+        save.mockRestore();
     });
 
     test("sans profil actif → persistZone sort sans écrire", async () => {
@@ -385,13 +439,7 @@ describe("La zone et la liste des couches écrivent la MÊME préférence", () =
         });
         _installGeoLeafStorage({
             isAvailable: () => true,
-            Cache: {
-                Storage: { loadLayerSelection, saveLayerSelection },
-                LayerSelector: {
-                    saveSelection: vi.fn(async () => {}),
-                    updateWarning: vi.fn(async () => {}),
-                },
-            },
+            Cache: { Storage: { loadLayerSelection, saveLayerSelection } },
         });
         return { current: () => record, releaseFirstSave, loadLayerSelection, saveLayerSelection };
     }

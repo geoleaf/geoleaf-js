@@ -83,7 +83,7 @@ describe("createBasemapRow", () => {
         };
         await LS.createBasemapRow(tbody, basemap, null, true);
         const sizeCell = tbody.querySelector(".gl-cache-layers__td-size");
-        expect(sizeCell.textContent).toContain("GB");
+        expect(sizeCell.textContent).toContain("Go"); // French without a host: « Go », not « GB »
     });
 
     test("estimation nulle (minZoom > maxZoom) → tiret", async () => {

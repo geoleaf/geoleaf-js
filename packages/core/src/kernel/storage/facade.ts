@@ -420,7 +420,7 @@ const Storage = {
     },
 
     /**
-     * Cache namespace (`{ Storage, LayerSelector }`) — read by `StorageContract.Cache`
+     * Cache namespace (`{ Storage }`) — read by `StorageContract.Cache`
      * (download-handler, selection-cache, cache-control-zone).
      */
     get Cache(): unknown {
@@ -444,7 +444,7 @@ const Storage = {
     },
 
     /**
-     * Plugin Contract v1 accessor for the cache namespace (`{ Storage, LayerSelector }`).
+     * Plugin Contract v1 accessor for the cache namespace (`{ Storage }`).
      */
     get cache(): unknown {
         return this.Cache;
@@ -1028,10 +1028,10 @@ const Storage = {
      * quota, the last preparation (when it ran, what failed, which zooms of a basemap were
      * left out) — and one that had none: whether the browser keeps this origin's data
      * (`navigator.storage.persisted()`, which the PWA requested at boot and only logged).
-     * `verdict` says what they mean together: `notReady` when a layer declaring something to
-     * pull is not on the device, `degraded` when the device can leave with something missing
-     * or evictable, `ready` otherwise. The write session is not in it: its validity is the
-     * connector's knowledge.
+     * `verdict` says what they mean together: `notReady` when the device was never prepared
+     * or a layer declaring something to pull is not on it, `degraded` when the device can
+     * leave with something missing or evictable, `ready` otherwise. The write session is
+     * reported as its holder tells it — the core never reads the token.
      *
      * Never throws. With no engine wired, it answers `null` rather than a report that would
      * reassure without having read anything. Since 3.10.0.

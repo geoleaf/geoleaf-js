@@ -70,9 +70,9 @@ const _g = (typeof globalThis !== "undefined" ? globalThis : {}) as {
     GeoLeaf?: { Storage?: StorageFacadeLike };
 };
 
-// Inject the assembled engine into the in-core façade. The UI `LayerSelector` is NOT
-// wired here — it lives in the residual storage plugin (UI) and is consumed there
-// directly, not through the façade's `cache` bag.
+// Inject the assembled engine into the in-core façade. `cache` carries the selection
+// store alone: the layer selector is the offline UI plugin's own component, called
+// there directly, and no contract declares it on the façade.
 if (_g.GeoLeaf?.Storage) {
     _g.GeoLeaf.Storage.wireModules({
         db: IndexedDB,

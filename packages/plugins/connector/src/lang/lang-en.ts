@@ -17,6 +17,9 @@ const langConnectorEn = {
     "connector.error.noEndpoint": "Invalid configuration: missing endpoint.",
     "connector.error.invalidCredentials": "Incorrect username or password.",
     "connector.error.networkUnavailable": "Server unreachable. Check your connection.",
+    "connector.error.invalidResponse":
+        "The server answered without a session token. Contact the administrator.",
+    "connector.session.hostManaged": "The session is managed by the application.",
     "connector.error.generic": "Error: ",
     "connector.error.unexpected": "An unexpected error occurred.",
     "connector.error.tooManyAttempts": "Too many attempts. Try again in {seconds} s.",

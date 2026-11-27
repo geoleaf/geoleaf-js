@@ -4,7 +4,7 @@
  * https://geoleaf.dev
  */
 import type { EditorConfig, EditorMap, EditorTool } from "../types.js";
-import { getEditorConfig } from "../config.js";
+import { getEditableLayers, getEditorConfig } from "../config.js";
 import { _getNativeMap, _el, _getLabel } from "../internal.js";
 import { wireDrag, wireTooltips, wireTouchDrag, positionMenuNear } from "@geoleaf/host-runtime";
 
@@ -442,12 +442,28 @@ function _wireMenu(handle: HTMLElement, container: HTMLElement): void {
     document.addEventListener("geoleaf:submenu:open", _submenuOpenListener);
 }
 
+/** The geometry each creation tool draws — what a target layer must accept. */
+const _TOOL_GEOMETRY: Record<string, string> = {
+    point: "Point",
+    line: "LineString",
+    polyline: "LineString",
+    polygon: "Polygon",
+};
+
 function _buildModeBtn(tool: ToolDef): HTMLButtonElement {
     const btn = _el("button", "gl-editor-tool-btn");
     btn.type = "button";
     btn.dataset.tool = tool.id;
-    btn.dataset.tooltip = _getLabel(tool.lk);
-    btn.setAttribute("aria-label", _getLabel(tool.ak));
+    // 🛑 A creation tool no layer can receive is offered DISABLED, and says why: drawn anyway, it
+    // opened an empty form on « (Aucune couche disponible) » whose save was refused.
+    // Judged only when the profile has editable layers at all: with none to read (no profile yet),
+    // the tool stays offered rather than every tool going grey.
+    const geometry = _TOOL_GEOMETRY[tool.id];
+    const noTarget =
+        !!geometry && getEditableLayers().length > 0 && getEditableLayers(geometry).length === 0;
+    btn.disabled = noTarget;
+    btn.dataset.tooltip = _getLabel(noTarget ? "editor.tool.noTarget" : tool.lk);
+    btn.setAttribute("aria-label", _getLabel(noTarget ? "editor.tool.noTarget" : tool.ak));
     btn.setAttribute("aria-pressed", "false");
     btn.appendChild(_makeIcon(tool.svg));
     btn.addEventListener("click", () => _handleToolClick(tool.id));

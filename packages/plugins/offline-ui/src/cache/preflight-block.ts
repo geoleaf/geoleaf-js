@@ -159,6 +159,9 @@ function _paint(root: HTMLElement, check: PreflightReport): void {
     if (tiles) {
         const trace = check.preparation?.tiles;
         const lines: string[] = [];
+        // The core makes a device never prepared `notReady`; its verdict line only says that
+        // data is missing. What is missing is said here — the profile itself, not a layer.
+        if (check.preparation === null) lines.push(t("storage.preflight.notPrepared"));
         if (trace && trace.skippedZooms.length > 0) {
             const zooms = trace.skippedZooms.map((z) => `${z.source} z${z.zoom}`).join(", ");
             lines.push(t("storage.preflight.tiles.skipped", zooms));

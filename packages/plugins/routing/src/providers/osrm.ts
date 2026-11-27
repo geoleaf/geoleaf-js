@@ -70,7 +70,11 @@ export function createOsrmProvider(
             const route = normalizeOsrm(res.body);
             // OSRM answers `code: "NoRoute"` with HTTP 200 when the points cannot be joined. An
             // ordinary answer about the map, not a malfunction.
-            return route ? { ok: true, route } : { ok: false, reason: "no-route" };
+            if (route) return { ok: true, route };
+            // ⚠️ Only `NoRoute` is that answer. `code: "Ok"` without a usable route, or a body
+            // without `code`, is a malfunction — not a statement about the map.
+            const code = (res.body as { code?: unknown } | null)?.code;
+            return { ok: false, reason: code === "NoRoute" ? "no-route" : "malformed" };
         },
     };
 }

@@ -14,6 +14,10 @@ const lang_en: LangDict = {
     "toast.geoloc.error.timeout": "Geolocation timed out",
     "toast.init.loading": "Loading data, please wait.",
     "toast.layer.truncated.known": "{0}: {1} entities shown out of {2} — the layer is truncated.",
+    "toast.plugin.load_failed": "This feature could not be loaded.",
+    "toast.plugin.load_failed_offline":
+        "This feature is not available offline: prepare a zone while online to take it with you.",
+    "toast.layer.load_failed": "The layer “{0}” could not be loaded.",
     "toast.layer.style_missing":
         "Default style not found for “{0}”. Displaying with a neutral style.",
     "toast.layer.truncated.unknown": "{0}: {1} entities shown, the layer holds more.",

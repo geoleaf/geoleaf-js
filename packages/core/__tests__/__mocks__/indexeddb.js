@@ -57,28 +57,44 @@ const IndexedDB = {
                         };
                     }
                     if (name === "layers") {
+                        // One cursor over a list of records, as `openCursor` delivers them.
+                        const cursorOver = (entries) => {
+                            const req = {};
+                            let idx = 0;
+                            const fire = () => {
+                                setTimeout(() => {
+                                    req.result =
+                                        idx < entries.length
+                                            ? {
+                                                  value: entries[idx],
+                                                  continue: () => {
+                                                      idx++;
+                                                      fire();
+                                                  },
+                                              }
+                                            : null;
+                                    if (req.onsuccess) req.onsuccess({ target: req });
+                                }, 0);
+                            };
+                            fire();
+                            return req;
+                        };
                         return {
                             openCursor() {
-                                const req = {};
-                                const entries = Array.from(layersStore.values());
-                                let idx = 0;
-                                const fire = () => {
-                                    setTimeout(() => {
-                                        req.result =
-                                            idx < entries.length
-                                                ? {
-                                                      value: entries[idx],
-                                                      continue: () => {
-                                                          idx++;
-                                                          fire();
-                                                      },
-                                                  }
-                                                : null;
-                                        if (req.onsuccess) req.onsuccess({ target: req });
-                                    }, 0);
+                                return cursorOver(Array.from(layersStore.values()));
+                            },
+                            // The `profileId` index, walked by an `IDBKeyRange.only(...)` range
+                            // (the test stubs it to `{ only: v => ({ only: v }) }`).
+                            index(indexName) {
+                                return {
+                                    openCursor(range) {
+                                        return cursorOver(
+                                            Array.from(layersStore.values()).filter(
+                                                (r) => r[indexName] === range?.only
+                                            )
+                                        );
+                                    },
                                 };
-                                fire();
-                                return req;
                             },
                         };
                     }

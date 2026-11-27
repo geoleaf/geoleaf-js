@@ -412,6 +412,27 @@ declare global {
         closePane?: typeof import("./kernel/ui/panel-panes.js").closePane;
 
         /**
+         * Sets the height of the open mobile sheet: `"peek"` leaves only its header on screen and
+         * makes it non-modal — transparent backdrop letting the map take gestures, no focus trap,
+         * no `aria-modal` — and `"full"` restores the default height. While lowered, the map's
+         * bottom-left corner and the mobile toolbar rise above the header. A tap on the header of a
+         * reduced sheet restores it too, and closing or reopening the sheet always gives `"full"`.
+         *
+         * ⚠️ A no-op resolving `false` when no mobile sheet is open — always the case at desktop
+         * widths. Resolves `true` once the panel has reached the height, which is when what it
+         * covers can be measured.
+         *
+         * @example
+         * ```js
+         * // Lower the sheet, then measure what is left of the map once it has settled.
+         * GeoLeaf?.UI?.setPaneSize?.("peek").then((lowered) => {
+         *     if (lowered) console.log("only the sheet's header is on screen");
+         * });
+         * ```
+         */
+        setPaneSize?: typeof import("./kernel/ui/mobile/mobile-toolbar-sheet.js").setPaneSize;
+
+        /**
          * Turns the immersive UI mode on or off — strips the chrome the kernel owns, and
          * optionally asks for browser fullscreen.
          *
@@ -436,7 +457,8 @@ declare global {
          */
         CacheButton?: {
             init?: (map: unknown, cfg: Record<string, unknown>) => unknown;
-            openModal?: () => unknown;
+            /** `{ mode: "simple" }` opens the field window; default `"full"` (offline-ui ≥ 1.8.0). */
+            openModal?: (options?: { mode?: "simple" | "full" }) => unknown;
             closeModal?: () => unknown;
             Modules?: Record<string, unknown>;
         };

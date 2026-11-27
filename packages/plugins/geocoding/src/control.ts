@@ -136,6 +136,13 @@ export function mountGeocodingControl(
             li.setAttribute("aria-selected", "false");
             li.dataset.idx = String(idx);
             li.textContent = result.label; // safe — textContent, not innerHTML
+            // The detail that tells two same-named results apart — text only, on its own line.
+            if (result.detail) {
+                const detail = document.createElement("span");
+                detail.className = "gl-geocoding-result-detail";
+                detail.textContent = result.detail;
+                li.appendChild(detail);
+            }
             resultsList.appendChild(li);
         });
     }

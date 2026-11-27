@@ -35,6 +35,7 @@ const _g = globalThis as { GeoLeaf?: { GeoJSON?: GeoLeafGeoJSON } };
 
 type GeoJSONFeature = {
     type: "Feature";
+    id?: string | number;
     properties: Record<string, unknown> | null;
     geometry: GeoJSONGeometry | null;
 };
@@ -96,14 +97,18 @@ function _applyReplace(GeoJSON: GeoLeafGeoJSON, layerId: string, updates: Decode
 function _cloneExisting(
     layerData: {
         features: Array<{
+            id?: unknown;
             properties?: Record<string, unknown> | null;
             geometry?: GeoJSONGeometry | null;
         }>;
     } | null
 ): GeoJSONFeature[] {
     if (!layerData) return [];
+    // The `id` is copied with the rest: dropped, the working set lost the identity the lookup
+    // matches on, and every update was appended as a new feature.
     return layerData.features.map((f) => ({
         type: "Feature" as const,
+        ...(typeof f.id === "string" || typeof f.id === "number" ? { id: f.id } : {}),
         properties: f.properties ? { ...f.properties } : {},
         geometry: f.geometry ?? null,
     }));

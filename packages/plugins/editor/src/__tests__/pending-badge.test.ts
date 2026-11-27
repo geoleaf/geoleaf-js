@@ -67,6 +67,37 @@ describe("pending-queue-modal", () => {
         uninstallMockGeoLeaf();
     });
 
+    it("names the layer by its LABEL, not its identifier", () => {
+        // « sites_rosario » is an identifier; the user knows the layer by its name.
+        (globalThis as any).GeoLeaf.Config = {
+            ...((globalThis as any).GeoLeaf.Config ?? {}),
+            getActiveProfile: () => ({
+                layers: [{ id: "sites_rosario", label: "Sites de Rosario" }],
+            }),
+        };
+        openPendingQueueModal(
+            [{ id: "1", kind: "create", layerId: "sites_rosario", localId: "a" }],
+            {
+                onRetry: vi.fn(),
+            }
+        );
+        expect(document.querySelector(".gl-editor-queue-detail__layer")?.textContent).toBe(
+            "Sites de Rosario"
+        );
+    });
+
+    it("offers « retry now » only when something it can replay is listed", () => {
+        // Beside a set-aside group alone, it stood next to « retry all » and did nothing for it.
+        openPendingQueueModal(
+            [{ id: "1", kind: "create", layerId: "L", localId: "a", state: "quarantined" }],
+            { onRetry: vi.fn() }
+        );
+        const labels = [...document.querySelectorAll(".gl-form-modal__footer button")].map(
+            (b) => b.textContent
+        );
+        expect(labels).toHaveLength(1);
+    });
+
     it("lists each pending operation", () => {
         openPendingQueueModal(
             [

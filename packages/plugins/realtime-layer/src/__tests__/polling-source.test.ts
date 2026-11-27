@@ -56,6 +56,30 @@ describe("PollingSource", () => {
         src.stop();
     });
 
+    it("hands a third-party decoder the raw TEXT of a non-JSON response", async () => {
+        // `registerDecoder` advertises « a proprietary format »: over polling it only ever got
+        // parsed JSON, so a non-JSON feed could not be decoded at all.
+        const body = "BUS;12;48.85;2.35";
+        const fetchMock = vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            headers: new Headers({ "content-type": "text/plain" }),
+            text: async () => body,
+            json: async () => {
+                throw new SyntaxError("not JSON");
+            },
+        });
+        vi.stubGlobal("fetch", fetchMock);
+        const handler = vi.fn();
+
+        const src = new PollingSource("https://primary/data", 5000, "csv-feed");
+        src.onData(handler);
+        src.start();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(handler).toHaveBeenCalledWith(body);
+        src.stop();
+    });
+
     // ── fallback: primary fails, fallback succeeds, snapshot emitted once ────
 
     it("falls back to fallbackUrl on HTTP error, emits snapshot once", async () => {

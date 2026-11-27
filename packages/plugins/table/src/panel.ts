@@ -125,8 +125,11 @@ function createToolbar(config: TableConfig) {
     // Highlight button
     const highlightButton = createButton(getLabel("ui.table.highlight"), "highlight", () => {
         const isActive = highlightButton.classList.toggle("gl-is-active");
+        // A toggle says its state to assistive technology, not only through a class.
+        highlightButton.setAttribute("aria-pressed", String(isActive));
         TableContract.highlightSelection(isActive);
     });
+    highlightButton.setAttribute("aria-pressed", "false");
     highlightButton.disabled = true;
     highlightButton.setAttribute("data-table-btn", "highlight");
     toolbar.appendChild(highlightButton);

@@ -22,6 +22,7 @@ const lang_it: Record<string, string> = {
     "editor.tool.polyline.hint":
         "Fai clic per posizionare i vertici. Doppio clic o Invio per terminare.",
     "editor.tool.polygon.label": "Poligono",
+    "editor.tool.noTarget": "Nessun livello accetta questa geometria",
     "editor.tool.polygon.hint":
         "Fai clic per posizionare i vertici. Aggancia al primo vertice, doppio clic o Invio per chiudere.",
     "editor.tool.select.label": "Selezione",
@@ -109,6 +110,8 @@ const lang_it: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Timeout di rete superato.",
     "editor.error.editionNotPermitted": "Questo livello non consente questa operazione.",
+    "editor.error.noWriteTarget":
+        "Questo livello non dichiara alcun indirizzo di scrittura: non è stato inviato nulla.",
     "editor.error.operationNotSupported":
         "Il server non supporta questa operazione. Contatta l'amministratore.",
     "editor.error.server": "Errore del server. Riprova.",

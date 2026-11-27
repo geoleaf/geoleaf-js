@@ -40,6 +40,8 @@ interface PanelHostFacade {
     }): void;
     openPane?(paneId: string): boolean;
     closePane?(): void;
+    /** Core ≥ 3.21 — resolves `false` when no mobile sheet is open. */
+    setPaneSize?(size: "peek" | "full"): Promise<boolean> | boolean;
 }
 
 /**
@@ -75,6 +77,8 @@ export function registerPane(pane: {
      */
     icon?: string;
     onOpen?(): void;
+    /** Read by the kernel at every listing — `PanelPane.isAvailable` (core ≥ 3.21). */
+    isAvailable?(): boolean;
 }): boolean {
     const register = ui()?.registerPanelPane;
     if (typeof register !== "function") return false;
@@ -99,4 +103,24 @@ export function showPane(paneId: string): boolean {
 /** Asks the kernel to hide whatever pane is open. */
 export function hidePane(): void {
     ui()?.closePane?.();
+}
+
+/**
+ * Asks the kernel to lower the open mobile sheet to its header.
+ *
+ * @returns A promise of `true` once the sheet has settled at that height — the moment to measure
+ *          what still covers the map — and of `false` when there was nothing to lower: no sheet
+ *          open (any desktop width), or a kernel without the member. Never rejects.
+ */
+export function lowerSheet(): Promise<boolean> {
+    const facade = ui();
+    if (typeof facade?.setPaneSize !== "function") return Promise.resolve(false);
+    try {
+        return Promise.resolve(facade.setPaneSize("peek")).then(
+            (lowered) => lowered === true,
+            () => false
+        );
+    } catch {
+        return Promise.resolve(false);
+    }
 }

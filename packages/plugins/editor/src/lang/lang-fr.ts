@@ -22,6 +22,7 @@ const lang_fr: Record<string, string> = {
     "editor.tool.polyline.hint":
         "Cliquez pour poser des sommets. Double-clic ou Entrée pour terminer.",
     "editor.tool.polygon.label": "Polygone",
+    "editor.tool.noTarget": "Aucune couche n'accepte cette géométrie",
     "editor.tool.polygon.hint":
         "Cliquez pour poser des sommets. Raccrochez au 1er sommet, double-clic ou Entrée pour clore.",
     "editor.tool.select.label": "Sélection",
@@ -115,6 +116,8 @@ const lang_fr: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Délai d'attente réseau dépassé.",
     "editor.error.editionNotPermitted": "Cette couche n'autorise pas cette opération.",
+    "editor.error.noWriteTarget":
+        "Cette couche ne déclare aucune adresse d'écriture : rien n'a été envoyé.",
     "editor.error.operationNotSupported":
         "Le serveur ne prend pas en charge cette opération. Contactez l'administrateur.",
     "editor.error.server": "Erreur serveur. Veuillez réessayer.",

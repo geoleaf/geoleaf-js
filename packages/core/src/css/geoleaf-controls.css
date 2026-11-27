@@ -114,11 +114,15 @@ body.gl-theme-dark .geoleaf-ctrl a:hover {
     }
 }
 
-/* The bottom-left corner (scale, coordinates, legend, branding) clears the basemap credit
-   while it is expanded over the same edge — on a phone, at load. The height is measured and
-   set on the map container by the adapter (`maplibre-attribution-clearance.ts`); absent, the
-   corner stays put. `transform`, not `bottom`: branding.css pins `bottom` with `!important`. */
+/* The bottom-left corner (scale, coordinates, legend, branding) clears what covers the same
+   edge: the basemap credit while it is expanded — on a phone, at load — and the mobile sheet's
+   header while the sheet is lowered (`setPaneSize("peek")`). Both heights are measured: the first
+   by the adapter (`maplibre-attribution-clearance.ts`), the second by the sheet, which sets it on
+   the map's host. The larger wins; absent both, the corner stays put. `transform`, not `bottom`:
+   branding.css pins `bottom` with `!important`. */
 .maplibregl-ctrl-bottom-left {
-    transform: translateY(calc(-1 * var(--gl-attrib-clearance, 0px)));
+    transform: translateY(
+        calc(-1 * max(var(--gl-attrib-clearance, 0px), var(--gl-sheet-peek-clearance, 0px)))
+    );
     transition: transform 160ms ease-out;
 }

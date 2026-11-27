@@ -259,6 +259,16 @@ describe("GeoLeaf._TablePanel", () => {
             expect(highlightBtn).not.toBeNull();
         });
 
+        test("the highlight toggle says its state — aria-pressed, not only a class", () => {
+            const btn = document.querySelector<HTMLButtonElement>('[data-table-btn="highlight"]')!;
+            expect(btn.getAttribute("aria-pressed")).toBe("false");
+            btn.disabled = false;
+            btn.click();
+            expect(btn.getAttribute("aria-pressed")).toBe("true");
+            btn.click();
+            expect(btn.getAttribute("aria-pressed")).toBe("false");
+        });
+
         test("should create export button when enabled", () => {
             const exportBtn = document.querySelector('[data-table-btn="export"]');
             expect(exportBtn).not.toBeNull();

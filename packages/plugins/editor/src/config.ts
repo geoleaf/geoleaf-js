@@ -69,7 +69,9 @@ export const EDITOR_CONFIG_DEFAULTS: EditorConfig = {
     minVerticesLineString: 2,
     minVerticesPolygon: 3,
     api: {
-        baseUrl: "",
+        // 🛑 No `baseUrl` here. An absent base is how the direct adapter knows there is no write
+        // target and refuses (`no-target`); a default `""` reached it through `getEditorConfig()`
+        // and sent every write to `/features` of the page. A profile that writes `""` keeps it.
         authHeader: null,
         timeoutMs: 8000,
         // Property key under which the geometry is sent in the "collection" dialect (ANO-079).

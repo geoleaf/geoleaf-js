@@ -101,9 +101,13 @@ function _paint(root: HTMLElement, status: SyncStatus): void {
     if (net) net.textContent = t(online ? "ui.sync.online" : "ui.sync.offline");
     const pending = find("pending");
     if (pending) {
+        // « Tout est envoyé » only after a synchronisation, and with nothing set aside — beside
+        // « jamais synchronisé » it said the opposite of the line next to it. Same rule as the
+        // core's strip.
+        const sent = quarantined === 0 && lastSyncAt !== null;
         pending.textContent =
             owed === 0
-                ? t("ui.sync.all_sent")
+                ? t(sent ? "ui.sync.all_sent" : "ui.sync.none_pending")
                 : owed === 1
                   ? t("ui.sync.pending_one")
                   : t("ui.sync.pending_many", String(owed));

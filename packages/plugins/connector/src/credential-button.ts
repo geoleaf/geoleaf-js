@@ -12,7 +12,7 @@
 import type { ConnectorConfig } from "./config.js";
 import { TokenStore } from "./token-store.js";
 import { showLoginModal } from "./login-ui.js";
-import { adoptStylesheet } from "@geoleaf/host-runtime";
+import { adoptStylesheet, getUINotifications, tLabel } from "@geoleaf/host-runtime";
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 
@@ -165,11 +165,16 @@ function _buildButton(config: ConnectorConfig, variant: "desktop" | "mobile"): H
 // ─── Click handler ────────────────────────────────────────────────────────────
 
 async function _onCredentialClick(config: ConnectorConfig): Promise<void> {
-    // Only hit the token store when an auth endpoint is wired — otherwise
-    // there is no backend to authenticate against and we go straight to the
-    // modal. The ui.showCredentialButton flag is the sole display safeguard.
     const hasEndpoint = !!config.auth?.endpoint?.trim();
-    const token = hasEndpoint ? await TokenStore.getTokenAsync(config.baseUrl) : null;
+    // 🛑 In `getToken` mode the session is the HOST's: the store is not where it lives. The click
+    // reported `authenticated: false` beside a valid host token, then opened a form that could
+    // only fail (« endpoint manquant »). The host's own token is read, and no form is opened —
+    // there is no endpoint for it to post to.
+    const token = hasEndpoint
+        ? await TokenStore.getTokenAsync(config.baseUrl)
+        : config.getToken
+          ? await Promise.resolve(config.getToken()).catch(() => null)
+          : null;
     const authenticated = !!token;
 
     document.dispatchEvent(
@@ -179,6 +184,17 @@ async function _onCredentialClick(config: ConnectorConfig): Promise<void> {
     );
 
     if (authenticated) return;
+    if (!hasEndpoint) {
+        // Nothing this button can sign in to. In `getToken` mode the host owns the session, and
+        // says so; in UI-only mode the click only emits its event (CN-22), for the host to act on.
+        if (config.getToken) {
+            getUINotifications()?.info(
+                tLabel("connector.session.hostManaged", "La session est gérée par l'application."),
+                5000
+            );
+        }
+        return;
+    }
 
     try {
         await showLoginModal(config);

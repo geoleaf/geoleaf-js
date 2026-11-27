@@ -21,6 +21,7 @@ const lang_en: Record<string, string> = {
     "editor.tool.polyline.label": "Polyline",
     "editor.tool.polyline.hint": "Click to add vertices. Double-click or Enter to finish.",
     "editor.tool.polygon.label": "Polygon",
+    "editor.tool.noTarget": "No layer accepts this geometry",
     "editor.tool.polygon.hint":
         "Click to add vertices. Snap to first vertex, double-click or Enter to close.",
     "editor.tool.select.label": "Select",
@@ -109,6 +110,7 @@ const lang_en: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Network request timed out.",
     "editor.error.editionNotPermitted": "This layer does not allow this operation.",
+    "editor.error.noWriteTarget": "This layer declares no write address: nothing was sent.",
     "editor.error.operationNotSupported":
         "The server does not support this operation. Contact your administrator.",
     "editor.error.server": "Server error. Please try again.",

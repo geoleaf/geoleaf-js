@@ -42,6 +42,25 @@ describe("validateConfig", () => {
         }
     });
 
+    it("refuses ws:// on a page served over https — where the `process` test is inert", () => {
+        // In a browser bundle there is no `process`: the production rule alone refused nothing.
+        const original = globalThis.location;
+        Object.defineProperty(globalThis, "location", {
+            configurable: true,
+            value: { protocol: "https:" },
+        });
+        try {
+            expect(() =>
+                validateConfig({ transport: "native-ws", url: "ws://example.com/ws" })
+            ).toThrow(WsConfigError);
+            expect(() =>
+                validateConfig({ transport: "native-ws", url: "wss://example.com/ws" })
+            ).not.toThrow();
+        } finally {
+            Object.defineProperty(globalThis, "location", { configurable: true, value: original });
+        }
+    });
+
     it("throws CONNECTION_REFUSED when heartbeat.timeoutMs >= intervalMs", () => {
         const config: WsPluginConfig = {
             transport: "native-ws",

@@ -58,6 +58,17 @@ export function showOthers(visible: boolean): boolean {
         return false;
     }
 
+    // The layer must exist: `start` on an unknown id did nothing, and this answered `true`.
+    const layers = getGeoLeaf()?.Layers as { listLayerIds?(): string[] } | undefined;
+    const known = layers?.listLayerIds?.();
+    if (visible && known && !known.includes(layerId)) {
+        Log.warn(
+            `[PositionShare] receive.layerId "${layerId}" names no layer of the profile — ` +
+                "nothing to display other users on"
+        );
+        return false;
+    }
+
     if (visible) rt.start(layerId);
     else rt.stop(layerId);
     _shownLayerId = visible ? layerId : null;

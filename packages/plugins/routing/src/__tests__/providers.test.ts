@@ -248,6 +248,20 @@ describe("the four failures are NAMED, and none of them yields a partial route",
         expect(res).toEqual({ ok: false, reason: "no-route" });
     });
 
+    it("valhalla — a body of the WRONG SHAPE is `malformed`, not « no route »", async () => {
+        // No `status` at all: a malfunction of the engine. Said « aucun itinéraire », it sent the
+        // user to move their points for a fault that was not theirs.
+        answering({ trip: { legs: [] } });
+        const res = await createValhallaProvider("https://x.example").route(REQUEST);
+        expect(res).toEqual({ ok: false, reason: "malformed" });
+    });
+
+    it("osrm — `code: Ok` without a usable route is `malformed`", async () => {
+        answering({ code: "Ok", routes: [] });
+        const res = await createOsrmProvider("https://x.example").route(REQUEST);
+        expect(res).toEqual({ ok: false, reason: "malformed" });
+    });
+
     it("no failure ever carries a route — not even an empty one", async () => {
         // An empty `RouteResult` would be indistinguishable from a zero-length route, and a
         // consumer reading `res.route.distance` on a failure would render "0 m" as an answer.

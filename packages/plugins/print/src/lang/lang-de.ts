@@ -7,6 +7,7 @@
 const langPrintDe = {
     "print.toolbar.button": "Drucken / Exportieren",
     "print.emprise.hint": "Klicken und ziehen, um den Druckbereich festzulegen",
+    "print.emprise.hint.touch": "Ziehen Sie mit dem Finger, um den Druckbereich festzulegen",
     "print.emprise.hint.adjust": "Ziehpunkte anpassen, dann OK klicken",
     "print.modal.title": "Drucken / Export",
     "print.modal.field.title": "Titel",
@@ -30,8 +31,6 @@ const langPrintDe = {
     "print.error.serverEndpoint": "Die URL des Render-Servers ist ungültig.",
     "print.error.serverFailed": "Der Render-Server hat einen Fehler zurückgegeben.",
     "print.spinner.rendering": "Wird gerendert…",
-    "print.orientation.portrait": "Hochformat",
-    "print.orientation.landscape": "Querformat",
     "print.aria.scaleLocked": "Maßstab gesperrt bei",
     "print.aria.toolbar.print": "Karte drucken / exportieren",
 } satisfies Record<string, string>;

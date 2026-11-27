@@ -80,7 +80,9 @@ export interface FgbLayerJsonConfig {
  *
  * Absolute (`http(s)://`) and `data:` URLs pass through unchanged. Profile-relative
  * URLs are prefixed with `<profilesBasePath>/<profileId>/` then made absolute against
- * the document origin. Mirrors the core `_resolveProfileBasePath` convention.
+ * the document's address (`document.baseURI`), so an application served under a sub-path
+ * resolves under it; a `/…` path stays rooted at the origin. Mirrors the core
+ * `_resolveProfileBasePath` convention.
  * @internal
  */
 function resolveProfileUrl(url: string, profileId?: string): string {
@@ -90,14 +92,64 @@ function resolveProfileUrl(url: string, profileId?: string): string {
     ).GeoLeaf?.Config?.get?.("data") as { profilesBasePath?: string } | undefined;
     const basePath = dataCfg?.profilesBasePath || "profiles";
     const rooted = url.startsWith("/") || !profileId ? url : `${basePath}/${profileId}/${url}`;
-    if (typeof location !== "undefined" && location.origin) {
+    // 🛑 Against the DOCUMENT's address, not the origin: an application served under a sub-path
+    // (`https://host/app/`) asked `https://host/profiles/…` and got a 404. Same fix as the
+    // profile sprite's. An absolute `/…` path stays origin-rooted, as it says.
+    const base =
+        typeof document !== "undefined" && document.baseURI
+            ? document.baseURI
+            : typeof location !== "undefined"
+              ? location.href
+              : undefined;
+    if (base) {
         try {
-            return new URL(rooted, location.origin).href;
+            return new URL(rooted, base).href;
         } catch {
             /* fall through to the rooted path */
         }
     }
     return rooted;
+}
+
+/** How long a declared style file may take before the layer loads without it. */
+const STYLE_FETCH_TIMEOUT_MS = 10_000;
+
+/** What a declarative layer's `styles` block names, as the core profile format writes it. */
+interface DeclaredStyles {
+    directory?: string;
+    default?: string;
+}
+
+/**
+ * Reads the default style file a declarative layer names, as layer options.
+ *
+ * ⚠️ Read off the config rather than typed on `FgbLayerJsonConfig`: that type is part of the
+ * public surface, and the `styles` block is the profile format's, which the core documents.
+ *
+ * @returns `{ …flat style keys, styleRules }`, or `{}` when the layer names none or the file fails.
+ */
+async function loadDeclaredStyle(config: FgbLayerJsonConfig): Promise<Record<string, unknown>> {
+    const styles = (config as { styles?: DeclaredStyles }).styles;
+    if (!styles?.default) return {};
+    const path = `layers/${config.id}/${styles.directory ?? "styles"}/${styles.default}`;
+    try {
+        // Bounded: a style file that never answers must not hold the layer's load forever.
+        const res = await fetch(resolveProfileUrl(path, config._profileId), {
+            signal: AbortSignal.timeout(STYLE_FETCH_TIMEOUT_MS),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const file = (await res.json()) as {
+            style?: Record<string, unknown>;
+            styleRules?: unknown;
+        };
+        return {
+            ...(file.style ?? {}),
+            ...(Array.isArray(file.styleRules) && { styleRules: file.styleRules }),
+        };
+    } catch (err) {
+        console.warn(`[GeoLeaf.FlatGeobuf] "${config.id}": style ${path} not loaded —`, err);
+        return {};
+    }
 }
 
 // ─── loadLayerFromConfig ──────────────────────────────────────────────────────
@@ -140,15 +192,20 @@ export async function loadLayerFromConfig(config: FgbLayerJsonConfig): Promise<s
         ...(zIndex !== undefined && { zIndex }),
     };
 
+    // The layer's declared style — read like the core's GeoJSON loader reads it: its flat keys and
+    // its rules. Without it the layer painted as an opaque grey fill, its fifteen rules ignored.
+    const declared = await loadDeclaredStyle(config);
+    const styledOpts: FgbLayerOptions = { ...layerOpts, ...{ __declaredStyle: declared } };
+
     if (data.bbox) {
         const [minX, minY, maxX, maxY] = data.bbox;
         const bbox: FgbBbox = { minX, minY, maxX, maxY };
         return loadBboxAsLayer(url, bbox, {
-            ...layerOpts,
+            ...styledOpts,
             autoRefresh: data.autoRefresh ?? false,
             ...(data.debounceMs !== undefined && { debounceMs: data.debounceMs }),
         });
     }
 
-    return loadAsLayer(url, layerOpts);
+    return loadAsLayer(url, styledOpts);
 }

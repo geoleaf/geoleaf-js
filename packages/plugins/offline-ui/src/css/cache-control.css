@@ -520,8 +520,7 @@
 
 .gl-cache-layers__style-select {
     width: 100%;
-    background: var(--gl-color-bg-surface, #fff);
-    color: var(--gl-color-text-main, #0f172a);
+    /* Colours in cache-modal.css, under their section: the host guard reverts them here. */
     border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
     border-radius: 4px;
     padding: 4px 8px;
@@ -590,8 +589,7 @@
 }
 
 .gl-cache-zone__zoom-select {
-    background: var(--gl-color-bg-surface, #fff);
-    color: var(--gl-color-text-main, #0f172a);
+    /* Colours in cache-modal.css, under their section: the host guard reverts them here. */
     border: 1px solid var(--gl-color-border-soft, rgba(15, 23, 42, 0.08));
     border-radius: 4px;
     padding: 4px 8px;

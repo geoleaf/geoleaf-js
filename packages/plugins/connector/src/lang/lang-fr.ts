@@ -17,6 +17,9 @@ const langConnectorFr = {
     "connector.error.noEndpoint": "Configuration invalide : endpoint manquant.",
     "connector.error.invalidCredentials": "Identifiant ou mot de passe incorrect.",
     "connector.error.networkUnavailable": "Serveur inaccessible. Vérifiez votre connexion.",
+    "connector.error.invalidResponse":
+        "Le serveur a répondu sans jeton de session. Contactez l'administrateur.",
+    "connector.session.hostManaged": "La session est gérée par l'application.",
     "connector.error.generic": "Erreur : ",
     "connector.error.unexpected": "Une erreur inattendue est survenue.",
     "connector.error.tooManyAttempts": "Trop de tentatives. Réessayez dans {seconds} s.",

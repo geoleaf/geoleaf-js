@@ -105,7 +105,14 @@ export function registerCacheToolbar(
     registerPluginModule({
         id: "offline-ui",
         destroy: destroyCacheWindow,
-        ui: { mobileIcon: { ...slot }, desktopTabButton: { ...slot } },
+        // Not offered when the bundle does not embark the offline engine, or the profile
+        // switches it (or `pwa`, its dependency) off: every gesture of the window drives it,
+        // and the download button could only wait forever.
+        ui: {
+            requiresCapability: "offline",
+            mobileIcon: { ...slot },
+            desktopTabButton: { ...slot },
+        },
     });
 
     if (typeof document !== "undefined") {

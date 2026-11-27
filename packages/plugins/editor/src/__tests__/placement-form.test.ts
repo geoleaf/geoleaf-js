@@ -106,9 +106,11 @@ describe("openAddForm", () => {
         expect(compute([])._geom).toEqual({ type: "Point", coordinates: [55.53, -21.11] });
     });
 
-    it("laisse la modale résoudre titre et schéma par couche cible", () => {
+    it("nomme la boîte de dialogue, et laisse la modale résoudre le schéma par couche cible", () => {
+        // An empty title left the dialog without an accessible name (`h2` empty); the key
+        // `editor.modal.title.create` existed and was read nowhere.
         openAddForm({ lat: 1, lng: 2 });
-        expect(opened[0]!["title"]).toBe("");
+        expect(opened[0]!["title"]).not.toBe("");
         expect(opened[0]!["schema"]).toEqual([]);
     });
 

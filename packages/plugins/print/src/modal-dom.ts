@@ -21,7 +21,7 @@ import { formatScaleDenominator } from "./scale-format.js";
 
 // `_el` was the 4th copy of the same helper (measure, print/internal,
 // field-renderer); it now comes from the shared package, under its local name.
-import { createEl as _el } from "@geoleaf/host-runtime";
+import { createEl as _el, getGeoLeaf } from "@geoleaf/host-runtime";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -50,6 +50,8 @@ export interface ModalDom {
     redefineLink: HTMLAnchorElement;
     formatSelect: HTMLSelectElement;
     exportButtons: Array<{ format: string; btn: HTMLButtonElement }>;
+    /** Where an export that produced nothing says why — announced, the modal staying open. */
+    status: HTMLDivElement;
 }
 
 /** Inputs needed to lay out the modal — no map state, no session. */
@@ -171,6 +173,13 @@ function _buildChecks(inputs: ModalDomInputs) {
 }
 
 /** Footer: locked scale + format selector on the left, export buttons on the right. */
+/** The label a registered exporter declared — read off `GeoLeaf.Print`, like the exporter. */
+function exporterLabel(format: string): string | undefined {
+    return (
+        getGeoLeaf()?.Print as { _getExporterMeta?(f: string): { label?: string } } | undefined
+    )?._getExporterMeta?.(format)?.label;
+}
+
 function _buildFooter(inputs: ModalDomInputs) {
     const { getLabel, config, lockedScale, currentFormat } = inputs;
     const footer = _el("div", "gl-print-modal__footer");
@@ -196,7 +205,12 @@ function _buildFooter(inputs: ModalDomInputs) {
     const footerRight = _el("div", "gl-print-footer-right");
     const exportButtons = (config.exportFormats ?? ["pdf", "jpg"]).map((format) => {
         const btn = _el("button", `gl-print-btn gl-print-btn--${format}`, { type: "button" });
-        btn.textContent = getLabel(`print.btn.${format}`);
+        // A third-party format: the label its exporter declared, else the format in capitals —
+        // never the raw `print.btn.<format>` key the dictionary does not carry.
+        const key = `print.btn.${format}`;
+        const label = getLabel(key);
+        btn.textContent =
+            label && label !== key ? label : (exporterLabel(format) ?? format.toUpperCase());
         footerRight.appendChild(btn);
         return { format, btn };
     });
@@ -249,6 +263,9 @@ export function buildModalDom(inputs: ModalDomInputs): ModalDom {
 
     content.appendChild(header);
     content.appendChild(body);
+    const status = _el("div", "gl-print-status", { role: "status", "aria-live": "polite" });
+    status.hidden = true;
+    content.appendChild(status);
     content.appendChild(footer);
     modal.appendChild(overlay);
     modal.appendChild(content);
@@ -268,5 +285,6 @@ export function buildModalDom(inputs: ModalDomInputs): ModalDom {
         redefineLink,
         formatSelect,
         exportButtons,
+        status,
     };
 }

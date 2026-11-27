@@ -141,7 +141,10 @@ function formRender(
     const addBtn = _el("button");
     addBtn.type = "button";
     addBtn.className = "gl-form-list__add";
-    addBtn.textContent = fieldConfig.addLabel ? String(fieldConfig.addLabel) : "+ Add";
+    // Translated: « + Add » stayed in English in a French form.
+    addBtn.textContent = fieldConfig.addLabel
+        ? String(fieldConfig.addLabel)
+        : _getLabel("form.list.add");
     addBtn.disabled = !!ctx.readOnly;
     addBtn.addEventListener("click", () => {
         if (items.length >= maxItems) return;

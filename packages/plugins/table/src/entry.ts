@@ -24,7 +24,7 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Same for namespace access: `getGeoLeaf()` replaces the
 // `interface GeoLeafHost` + `globalThis as unknown as …` pair the 13 plugins
 // each re-declared their own way.
-import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
+import { coreConfigGet, getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -91,6 +91,9 @@ registerPluginModule({
     id: "table",
     destroy: () => TableLifecycle.destroy(),
     ui: {
+        // `modules.table.enabled: false` withholds the slot — read at render, the profile
+        // being merged after this bundle loads (`APP_SHELL.md`, `enabled` per plugin).
+        isAvailable: () => coreConfigGet<boolean>("modules.table.enabled", true) !== false,
         mobileIcon: {
             icon: _ICON,
             labelKey: "table.toolbar.button",

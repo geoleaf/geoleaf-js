@@ -1237,6 +1237,14 @@ const STEPS = [
         name: "Couplages CSS inter-paquets déclarés (CCO)",
         run: ["node", "scripts/check-css-class-ownership.cjs"],
     },
+    // HGR — a plugin or lib field rule, adopted outside the layers, must outrank the core's
+    // unlayered host guard or lose its colours to the browser's (dark theme). The only gate
+    // computing a cascade between two sheets. Seen red on 10 rules before the fixes ⇒ no
+    // baseline, the floor is zero. Product gate: the subject ships.
+    {
+        name: "Champs hors couche au-dessus de la garde d'hôte (HGR)",
+        run: ["node", "scripts/check-host-guard-reach.cjs"],
+    },
     // WREF — no new workshop reference in anything the public repo ships (code-autonomy
     // roadmap; ratchet posed BEFORE the triage: 2725 tokens frozen, shrink-only).
     {

@@ -56,7 +56,12 @@ const langStoragePt: StorageLangDict = {
     "storage.zone.note": "Mais alto = mais nítido mas mais pesado.",
     "storage.zone.noZone": "Nenhuma área selecionada.",
     "storage.zone.summary": "Área",
+    "storage.zone.skippedZooms": "zooms {0} omitidos (demasiados mosaicos)",
+    "storage.zone.capped": "total limitado",
+    "storage.notif.download.skippedZooms": "{0} nível(is) de zoom omitido(s) (demasiados mosaicos)",
     "storage.zone.estimate": "Estimativa",
+    "storage.zone.noOfflineBasemap":
+        "Nenhum mapa base offline neste perfil: nenhuma tela será preparada para esta zona",
     "storage.zone.tiles": "telas",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Selecionar tudo / desmarcar",
@@ -114,6 +119,7 @@ const langStoragePt: StorageLangDict = {
     "storage.notif.offline.unavailable": "Armazenamento offline indisponível",
     "storage.notif.noProfile": "Nenhum perfil ativo",
     "storage.notif.download.success": "Perfil baixado",
+    "storage.notif.download.upToDate": "Zona já atualizada",
     "storage.notif.download.partial":
         "Perfil descarregado, exceto {0} origem(ns) não declarada(s) para a preparação",
     "storage.notif.download.error": "Erro de download",
@@ -186,6 +192,9 @@ const langStoragePt: StorageLangDict = {
     "storage.preflight.persistence.bestEffort":
         "Armazenamento não garantido: o navegador pode apagar os dados",
     "storage.preflight.persistence.unsupported": "Persistência do armazenamento desconhecida",
+    "storage.simple.ready": "Zona pronta para uso offline, atualizada: {0}",
+    "storage.simple.readyNoTime": "Zona pronta para uso offline",
+    "storage.simple.none": "Nenhuma zona preparada",
     "storage.preflight.layer.declaredNeverPulled": "nunca descarregada",
     "storage.preflight.layer.pullFailed": "falha no descarregamento",
     "storage.preflight.layer.pulledPartial": "descarregamento incompleto",
@@ -194,6 +203,8 @@ const langStoragePt: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Níveis de zoom não preparados: {0}",
     "storage.preflight.tiles.capped": "Preparação interrompida no limite de mosaicos",
     "storage.preflight.failed": "{0} recurso(s) não descarregado(s)",
+    "storage.preflight.notPrepared":
+        "Perfil nunca preparado neste dispositivo: a aplicação não iniciará offline",
     "storage.preflight.session.valid": "Sessão de escrita válida até {0}",
     "storage.preflight.session.validNoExpiry": "Sessão de escrita aberta",
     "storage.preflight.session.expired":

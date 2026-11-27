@@ -25,12 +25,13 @@ import { HeartbeatManager } from "./heartbeat-manager.js";
 import { SendQueue } from "./send-queue.js";
 import { MetricsCollector } from "./metrics-collector.js";
 import { createTransport } from "./transports/transport-registry.js";
+import { emitSendDropped } from "./event-bus-bridge.js";
 
 // ─── Module-level mutable singletons ─────────────────────────────────────────
 // Reset on each init() call — allows the API object to survive multiple cycles.
 
 let _connectionManager: ConnectionManager = new ConnectionManager();
-let _channelManager: ChannelManager = new ChannelManager();
+const _channelManager: ChannelManager = new ChannelManager();
 let _heartbeatManager: HeartbeatManager = new HeartbeatManager();
 let _metrics: MetricsCollector = new MetricsCollector();
 let _sendQueue: SendQueue | null = null;
@@ -49,7 +50,9 @@ export async function wsInit(config: WsPluginConfig): Promise<void> {
     _initialized = true;
 
     _connectionManager = new ConnectionManager();
-    _channelManager = new ChannelManager();
+    // 🛑 The channel manager is NOT replaced: a `subscribe()` made before `init()` lived in it,
+    // and a fresh one dropped it — the handler never fired. `wsDestroy()` clears it; the
+    // connection re-subscribes everything it holds once connected (`resubscribeAll`).
     _heartbeatManager = new HeartbeatManager();
     _metrics = new MetricsCollector();
     _sendQueue = new SendQueue(resolved.maxQueueSize, resolved.queueOnDisconnect);
@@ -115,6 +118,10 @@ export function wsSend(channel: string, payload: unknown): void {
         _sendDirect(channel, payload);
     } else if (_sendQueue) {
         _sendQueue.enqueue(channel, payload);
+    } else {
+        // Before `init()` there is no queue: the message used to vanish without a word. It is
+        // reported as dropped, the event an integrator already listens to for an overflow.
+        emitSendDropped({ channel });
     }
 }
 

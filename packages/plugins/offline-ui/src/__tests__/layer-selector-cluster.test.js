@@ -194,7 +194,7 @@ describe("populate — nominal (1 couche + 1 fond)", () => {
 
         const sizeCell = container.querySelector(".gl-cache-layers__td-size");
         // 2 097 152 octets = 2 MB, rendu "… MB"
-        expect(sizeCell.textContent).toContain("MB");
+        expect(sizeCell.textContent).toContain("Mo"); // French without a host: « Mo », not « MB »
     });
 
     test("construit le sélecteur de style à partir de styles.available", async () => {
@@ -637,10 +637,8 @@ describe("refreshCacheIcons", () => {
     test("re-rend les cellules de cache des lignes présentes", async () => {
         setConfig({ "data.activeProfile": `prof-${seq}` });
         installStorage({ cacheResources: [] });
-        installFetch({
-            profile: { layers: [{ id: "roads", layerDir: "layers/roads", dataFile: "r.geojson" }] },
-            layerConfig: {},
-        });
+        // The layers `populate()` left behind — the refresh reads them, not the profile.
+        LS._layers = [{ id: "roads", layerDir: "layers/roads", dataFile: "r.geojson" }];
 
         // A pre-existing row with its checkbox + cache cell.
         const row = document.createElement("div");

@@ -34,13 +34,11 @@ import { coreConfigGet } from "@geoleaf/host-runtime";
 /**
  * The values a profile inherits when it says nothing.
  *
- * ⚠️ `showButton` is `false` while the panel does not exist — a visible button that opens
- * nothing is a DEAD control, and a dead control does not announce itself, it gets clicked. It
- * turns `true` together with what it opens.
+ * ⚠️ No `showButton`: the toolbar entry point it governed never opened anything, and it was
+ * removed with its slot. Guidance is entered from the route, in `routing`'s panel.
  */
 const DEFAULTS = {
     enabled: true,
-    showButton: false,
 
     /** Within this distance of a stop, the stop counts as reached. METRES. */
     arrivalRadiusMetres: 30,
@@ -104,7 +102,6 @@ const DEFAULTS = {
 /** Every key `modules.navigation` accepts. */
 export interface PluginConfig {
     enabled: boolean;
-    showButton: boolean;
     arrivalRadiusMetres: number;
     offRouteThresholdMetres: number;
     confirmExit: number;

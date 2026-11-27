@@ -377,7 +377,7 @@
             "existenceTarget": null,
             "rule": "N/A",
             "severity": null,
-            "description": "Liste blanche de balises SVG et résolution des deux gardes de visibilité (profileKey, requiresPlugin) des boutons de slot UI.",
+            "description": "Liste blanche de balises SVG et résolution des gardes de visibilité des boutons de slot UI (profileKey, requiresPlugin, enabled du créneau paresseux, capacité requise, prédicat du propriétaire).",
             "confidence": "moyenne",
             "rationale": "96 LOC, 2 importeurs, un par ecran ; le suffixe -builder ne figure ni dans la liste N7 ni dans la table des suffixes cross-T5, et l'en-tete annonce des « helpers for building », pas un constructeur — tension reelle mais sous le seuil d'un verdict."
         },

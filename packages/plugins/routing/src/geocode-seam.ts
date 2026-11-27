@@ -34,6 +34,8 @@ export interface AddressHit {
     readonly lat: number;
     /** Longitude. */
     readonly lng: number;
+    /** What tells it apart from a same-named match (postcode, kind…), when the provider says. */
+    readonly detail?: string;
 }
 
 /** The slice of the geocoding plugin this reads. */
@@ -46,6 +48,7 @@ interface RawHit {
     readonly label?: unknown;
     readonly lat?: unknown;
     readonly lng?: unknown;
+    readonly detail?: unknown;
 }
 
 /** Enough choices to be useful, few enough to read without scrolling a panel. */
@@ -106,6 +109,7 @@ export async function searchAddress(query: string): Promise<readonly AddressHit[
             label: typeof r.label === "string" && r.label !== "" ? r.label : `${r.lat}, ${r.lng}`,
             lat: r.lat,
             lng: r.lng,
+            ...(typeof r.detail === "string" && r.detail !== "" && { detail: r.detail }),
         });
     }
     return hits;

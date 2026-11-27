@@ -78,6 +78,11 @@ export interface SavedFeature {
  * sentence is not what guards it — the one above already carried the ban and
  * did not stop the defect from living. A test is.
  *
+ * `"no-target"` — the layer declares no write target and the editor has no `api.baseUrl`:
+ * the write is refused BEFORE any request. It used to go to `/features` relative to the page,
+ * answered 404, and was told « Erreur serveur » — a server that was never asked. Not a
+ * transport either: retrying cannot succeed until the profile declares where to write.
+ *
  * ⚠️ Distinct from `"client"` (a 4xx: THIS request is refused, another may
  * pass) and from `"forbidden"` (local decision, before any request).
  * `"capability"` carries a **server** refusal, definitive, bearing on the
@@ -91,6 +96,7 @@ type PersistenceErrorKind =
     | "parse"
     | "forbidden"
     | "capability"
+    | "no-target"
     | "unknown";
 
 /**

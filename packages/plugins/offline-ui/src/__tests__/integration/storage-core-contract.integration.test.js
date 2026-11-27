@@ -102,17 +102,40 @@ describe("Integration core ↔ storage — StorageContract", () => {
             expect(StorageContract.CacheManager).toBe(fakeCacheManager);
         });
 
-        test("Cache getter exposes Storage + LayerSelector after init (download wiring)", () => {
+        test("🛑 the core's engine wires the cache namespace exactly as this package declares it", async () => {
+            // The REAL wiring, not a double: `offline-engine-entry.ts` hands the façade its
+            // bags at load. This package's `StorageContractCache` declares `{ Storage }`; a key
+            // the core adds, or one this package expects and the core never fills, is a member
+            // called into the void — the « Cache » column stayed frozen that way.
+            const wireModules = vi.fn();
+            const G = globalThis;
+            const previous = G.GeoLeaf;
+            G.GeoLeaf = { ...(previous ?? {}), Storage: { wireModules } };
+            try {
+                vi.resetModules();
+                await import("@core-offline/offline-engine-entry.js");
+            } finally {
+                G.GeoLeaf = previous;
+            }
+            expect(wireModules).toHaveBeenCalledTimes(1);
+            const { cache } = wireModules.mock.calls[0][0];
+            expect(Object.keys(cache)).toEqual(["Storage"]);
+            // The two members `StorageContractCacheStorage` declares, on the wired instance.
+            expect(typeof cache.Storage.loadLayerSelection).toBe("function");
+            expect(typeof cache.Storage.saveLayerSelection).toBe("function");
+        });
+
+        test("Cache getter exposes the selection Storage after init (download wiring)", () => {
+            // The core's shape (`offline-engine-entry.ts`): `{ Storage }` and nothing else.
             const fakeCache = {
                 Storage: { loadLayerSelection: vi.fn(), saveLayerSelection: vi.fn() },
-                LayerSelector: { refreshCacheIcons: vi.fn() },
             };
             StorageContract.init({ DB: null, CacheManager: null, Cache: fakeCache });
 
             expect(StorageContract.Cache).toBe(fakeCache);
             expect(typeof StorageContract.Cache.Storage.loadLayerSelection).toBe("function");
             expect(typeof StorageContract.Cache.Storage.saveLayerSelection).toBe("function");
-            expect(typeof StorageContract.Cache.LayerSelector.refreshCacheIcons).toBe("function");
+            expect(Object.keys(StorageContract.Cache)).toEqual(["Storage"]);
         });
     });
 

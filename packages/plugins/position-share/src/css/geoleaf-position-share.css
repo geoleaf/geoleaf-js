@@ -4,7 +4,10 @@
    that it cannot be missed while location data is leaving the browser. */
 .gl-position-share-badge {
     position: absolute;
-    top: 10px;
+    /* BELOW the primary theme bar, which sits at the same top-centre spot (10 px + its 38 px):
+       placed at 10 px, the badge was covered by it on desktop and on a phone — the one sign that
+       a position is leaving the browser, hidden. Follows the top strip like the bar does. */
+    top: calc(56px + var(--gl-map-top-inset, 0px));
     left: 50%;
     transform: translateX(-50%);
     z-index: 900;

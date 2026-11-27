@@ -322,6 +322,22 @@ describe("sw-core (R4)", () => {
             expect(mockSkipWaiting).toHaveBeenCalled();
         });
 
+        it("PRECACHE_LAZY_PLUGINS répond sur le port, même sans liste injectée", async () => {
+            // Under vitest the list is the empty placeholder: what is held here is the
+            // protocol — the page's wait ends on an answer. The fetching itself is proved on
+            // the deployed build (e2e/106).
+            const postMessage = vi.fn();
+            const event = {
+                source: { type: "window" },
+                data: { type: "PRECACHE_LAZY_PLUGINS" },
+                ports: [{ postMessage }],
+                waitUntil: vi.fn((p) => Promise.resolve(p)),
+            };
+            handlers.message(event);
+            await event.waitUntil.mock.calls[0][0];
+            expect(postMessage).toHaveBeenCalledWith({ cached: 0, failed: [] });
+        });
+
         it("CLEAR_CACHE supprime les caches et postMessage sur le port", async () => {
             mockCaches.keys.mockResolvedValue(["geoleaf-v1-static"]);
             const postMessage = vi.fn();

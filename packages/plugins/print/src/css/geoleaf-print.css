@@ -24,9 +24,13 @@
        measured, the hint took it instead of the application's. */
     font-family: var(--gl-font-family, system-ui, -apple-system, sans-serif);
     position: absolute;
-    top: 12px;
+    /* BELOW the primary theme bar (10 px + its 38 px), which covered it on a phone. */
+    top: calc(56px + var(--gl-map-top-inset, 0px));
     left: 50%;
     transform: translateX(-50%);
+    max-width: calc(100% - 24px);
+    white-space: normal;
+    text-align: center;
     background: rgba(0, 0, 0, 0.65);
     color: #fff;
     font-size: 13px;
@@ -34,7 +38,6 @@
     padding: 5px 14px;
     border-radius: 4px;
     pointer-events: none;
-    white-space: nowrap;
     z-index: 10;
 }
 
@@ -240,12 +243,21 @@ body.gl-print-modal-open {
     border-radius: 6px;
     padding: 7px 10px;
     font-size: 14px;
-    color: var(--gl-color-text-main);
-    background: var(--gl-color-bg-surface-muted);
     width: 100%;
     box-sizing: border-box;
     font-family: inherit;
     resize: vertical;
+}
+
+/* The title and description fields' colours, scoped under the modal on purpose: (0,2,0). This sheet is adopted outside
+   the cascade layers, and the core's host guard (`geoleaf-host-guard.css`, unlayered too)
+   writes `color` and `background: revert-layer` on every `gl-*` input and textarea at (0,1,1). At a
+   single class the guard won and dropped these declarations; no `gl.*` layer styles these fields, so the
+   browser's own white field and dark text came back — in the dark theme too. Only the reverted declarations move here, so
+   the cascade of the other properties does not. */
+.gl-print-modal .gl-print-form-input {
+    color: var(--gl-color-text-main);
+    background: var(--gl-color-bg-surface-muted);
 }
 
 .gl-print-form-input:focus {
@@ -370,10 +382,14 @@ body.gl-print-modal-open {
     border-radius: 6px;
     padding: 5px 8px;
     font-size: 13px;
-    color: var(--gl-color-text-main);
-    background: var(--gl-color-bg-surface-muted);
     cursor: pointer;
     font-family: inherit;
+}
+
+/* The format selector's colours, under the modal for the reason given at the form fields. */
+.gl-print-modal .gl-print-format-select {
+    color: var(--gl-color-text-main);
+    background: var(--gl-color-bg-surface-muted);
 }
 
 .gl-print-footer-right {
@@ -422,4 +438,18 @@ body.gl-print-modal-open {
 .gl-print-desc {
     min-height: 56px;
     flex-shrink: 0;
+}
+
+/* The line where an export that produced nothing says why. The modal stays open under it. */
+.gl-print-status {
+    margin: 0 16px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--gl-color-danger);
+    background: var(--gl-color-danger-alpha);
+}
+
+.gl-print-status[hidden] {
+    display: none;
 }

@@ -7,10 +7,17 @@
  * © 2026 Mattieu Pottier — MIT License
  * https://geoleaf.dev
  */
+import { isCapabilityOn, warnCapabilityMissing } from "@geoleaf/host-runtime";
 import { hidePane } from "../ui-seam.js";
 import type { RouteResult, Waypoint, RouteFailure } from "../model.js";
 import { renderStepList, type StepListLabels } from "./step-list.js";
-import { addWaypoint, removeWaypoint, moveWaypoint, isRoutable } from "../composition.js";
+import {
+    addWaypoint,
+    insertBeforeLast,
+    removeWaypoint,
+    moveWaypoint,
+    isRoutable,
+} from "../composition.js";
 import {
     createWaypointInput,
     type WaypointInput,
@@ -123,6 +130,11 @@ export interface PanelHandlers {
 export interface ItineraryPanel {
     /** Replaces the itinerary and redraws. */
     setWaypoints(waypoints: readonly Waypoint[]): void;
+    /**
+     * Adds `waypoint` as the DESTINATION, kept last: stops added after it are inserted before it.
+     * The pin follows the object — moved or removed by the user, it stops holding.
+     */
+    setDestination(waypoint: Waypoint): void;
     /** Appends a waypoint, honouring the cap; shows the refusal when there is one. */
     addWaypoint(waypoint: Waypoint): void;
     /** Attaches a computed route, so the list can show per-leg figures. */
@@ -233,6 +245,19 @@ function createPanelShell(title: string, closeLabel: string, onClose: () => void
 }
 
 /**
+ * « Votre position », only when the geolocation capability can answer it — the rule `isochrone`
+ * already applied. Offered without it, the button could only refuse. Read at the panel's build,
+ * which always comes after the boot.
+ */
+function appendMyPositionButton(panel: HTMLElement, label: string, onClick: () => void): void {
+    if (!isCapabilityOn("geolocation")) {
+        warnCapabilityMissing("routing", "geolocation");
+        return;
+    }
+    panel.append(textButton("gl-routing-panel__my-position", label, onClick));
+}
+
+/**
  * Opens the itinerary panel.
  *
  * @param labels Every string it renders.
@@ -246,6 +271,8 @@ export function openItineraryPanel(
     initial: readonly Waypoint[] = []
 ): ItineraryPanel {
     let waypoints: readonly Waypoint[] = [...initial];
+    /** The destination opened from a feature, while it is still the last stop. */
+    let destination: Waypoint | null = null;
     let route: RouteResult | null = null;
     /** Created only when guidance is available — see `onStartGuidance`. */
     let guideBtn: HTMLButtonElement | null = null;
@@ -289,12 +316,8 @@ export function openItineraryPanel(
         // ⚠️ No "close" button here any more: the header carries one, and a second at the
         // foot of a tab panel says the panel is dismissable in two different ways. The
         // header copy is the one the host hides when it supplies its own chrome.
+        appendMyPositionButton(panel, labels.useMyPosition, handlers.onUseMyPosition);
         panel.append(
-            textButton(
-                "gl-routing-panel__my-position",
-                labels.useMyPosition,
-                handlers.onUseMyPosition
-            ),
             textButton("gl-routing-panel__clear", labels.clear, () => {
                 set([]);
             })
@@ -313,6 +336,9 @@ export function openItineraryPanel(
         // A route computed for the previous list describes an itinerary that no longer exists.
         // Keeping it would show per-leg figures beside stops they do not belong to.
         route = null;
+        // The message spoke of the previous list too: « Aucun itinéraire entre ces points. » stayed
+        // under an emptied list after « Vider l'itinéraire ».
+        if (message) message.textContent = "";
         draw();
         handlers.onChange(waypoints);
     }
@@ -340,8 +366,13 @@ export function openItineraryPanel(
         setWaypoints(next) {
             set([...next]);
         },
+        setDestination(wp) {
+            api.addWaypoint(wp);
+            if (waypoints[waypoints.length - 1] === wp) destination = wp;
+        },
         addWaypoint(wp) {
-            const r = addWaypoint(waypoints, wp);
+            const pinned = destination !== null && waypoints[waypoints.length - 1] === destination;
+            const r = pinned ? insertBeforeLast(waypoints, wp) : addWaypoint(waypoints, wp);
             if (r.ok) {
                 set(r.waypoints);
                 return;

@@ -180,9 +180,10 @@ test.describe("11-connector", () => {
         expect(api.openLoginModal).toBe("function");
     });
 
-    test("UI-only click dispatches event and opens the login modal (CDC §20/§21)", async ({
-        page,
-    }) => {
+    // 🛑 THE CLICK ONLY EMITS, AND NO WINDOW OPENS (connector 1.5.1, CN-22). Without an
+    // endpoint the window could only say « endpoint missing »; the host listens to the event
+    // and opens its own sign-in. This spec asserted the window, i.e. the defect.
+    test("UI-only click dispatches its event, and opens no window (CN-22)", async ({ page }) => {
         await page.goto("/");
         await bootReady(page);
         await page.evaluate(() => {
@@ -196,9 +197,9 @@ test.describe("11-connector", () => {
         await page.waitForFunction(() => /** @type {any} */ (window).__btnClicked !== null, null, {
             timeout: 30000,
         });
-        await expect(page.locator(".gc-overlay")).toBeVisible({ timeout: 5000 });
         const detail = await page.evaluate(() => /** @type {any} */ (window).__btnClicked);
         expect(detail.authenticated).toBe(false);
+        await expect(page.locator(".gc-overlay")).toHaveCount(0);
     });
 
     test("full auth flow: login -> geoleaf:connector:authenticated + token persisted in IDB (CDC §1.2/§6/§13)", async ({

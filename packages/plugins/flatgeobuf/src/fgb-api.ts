@@ -49,6 +49,23 @@ function _getGeoLeaf(): GeoLeafNS {
 /** Auto-increment used to generate unique layer ids when none is supplied. */
 let _layerSeq = 0;
 
+/**
+ * What a layer looks like when nothing styles it — an imperative call, or a declarative layer
+ * whose style file names nothing or fails to load.
+ *
+ * 🛑 Without it the adapter's own default applied: an opaque grey fill with no outline, which
+ * covered whatever lay beneath the layer — a whole country for a polygon file. A contrasted
+ * outline over a translucent fill, readable on light and dark maps alike.
+ */
+const FGB_DEFAULT_STYLE: Readonly<Record<string, unknown>> = {
+    color: "#be185d",
+    weight: 2,
+    opacity: 1,
+    fillColor: "#ec4899",
+    fillOpacity: 0.3,
+    radius: 6,
+};
+
 /** Resolves the core map adapter or throws when the map is not initialized. */
 function _getAdapter(): MapAdapterLike {
     const adapter = _getGeoLeaf().Core?.getMap?.();
@@ -73,7 +90,15 @@ function _getAdapter(): MapAdapterLike {
 function _addDataToMap(result: FgbLoadResult, options: FgbLayerOptions): string {
     const adapter = _getAdapter();
     const layerId = options.layerId ?? `flatgeobuf-${(_layerSeq += 1)}`;
+    // A declarative layer's style (flat keys + `styleRules`), handed by `config-loader.ts` under
+    // a key of its own so nothing else of the options reaches the adapter. Not part of the
+    // public `FgbLayerOptions`: an imperative call has no style file, and gets FGB_DEFAULT_STYLE.
+    // A declared style is passed whole and alone — merging the default under it would add an
+    // outline and a fill opacity the style file never asked for.
+    const declared = (options as { __declaredStyle?: Record<string, unknown> }).__declaredStyle;
+    const style = declared && Object.keys(declared).length > 0 ? declared : FGB_DEFAULT_STYLE;
     adapter.addGeoJSONLayer!(layerId, result.data, {
+        ...style,
         layerName: options.layerName,
         visible: options.visible ?? true,
         cluster: options.cluster ?? false,
@@ -118,7 +143,8 @@ export async function loadBbox(
 // ─── loadAsLayer ──────────────────────────────────────────────────────────────
 
 /**
- * Loads a complete FlatGeobuf file and adds it as a GeoJSON layer on the map.
+ * Loads a complete FlatGeobuf file and adds it as a GeoJSON layer on the map, painted with a
+ * default style — a contrasted outline over a translucent fill; the options carry no style.
  *
  * @param url - Remote URL of the .fgb file.
  * @param options - Layer options (layerId, visible, cluster, maxFeatures…).
@@ -132,8 +158,8 @@ export async function loadAsLayer(url: string, options: FgbLayerOptions = {}): P
 // ─── loadBboxAsLayer ──────────────────────────────────────────────────────────
 
 /**
- * Loads FlatGeobuf features filtered by bbox and adds them as a GeoJSON layer.
- * Optionally sets up auto-refresh to re-fetch on viewport change.
+ * Loads FlatGeobuf features filtered by bbox and adds them as a GeoJSON layer, painted like
+ * {@link loadAsLayer}'s. Optionally sets up auto-refresh to re-fetch on viewport change.
  *
  * The refresh lasts as long as the layer: once the layer has been removed from the map
  * (`removeLayer` on the map adapter), the next viewport change removes the listener instead of

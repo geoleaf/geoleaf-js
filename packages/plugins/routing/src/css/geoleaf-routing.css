@@ -380,14 +380,23 @@
     padding: 0.35rem 0.5rem;
     border: 1px solid var(--gl-color-border-strong, rgba(15, 23, 42, 0.22));
     border-radius: var(--gl-border-radius, 6px);
-    background: var(--gl-color-bg-surface, #fff);
-    color: var(--gl-color-text-main, #0f172a);
 
     /* `inherit`, not a figure: a form control does NOT inherit the page's font, so leaving this
        out gives the field the browser's 13.33px default — a third scale in a panel that already
        has one. */
     font-family: inherit;
     font-size: inherit;
+}
+
+/* The field's colours, scoped under its row on purpose: (0,2,0). This sheet is adopted outside
+   the cascade layers, and the core's host guard (`geoleaf-host-guard.css`, unlayered too)
+   writes `color` and `background: revert-layer` on every `gl-*` input at (0,1,1). At a
+   single class the guard won and dropped them; no `gl.*` layer styles this field, so the
+   browser's own white and black came back — over a dark panel in the dark theme. Only the reverted declarations move here, so
+   the cascade of the other properties does not. */
+.gl-routing-add .gl-routing-add__field {
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
 }
 
 /* It wraps onto its own line at this width whatever we do — so it takes the FULL line, and
@@ -416,18 +425,35 @@
     list-style: none;
     max-height: 10rem;
     overflow-y: auto;
+    /* A LIST, framed like the search bar's: bare text under the field did not read as choices. */
+    border: 1px solid var(--gl-color-border-soft, #e2e8f0);
+    border-radius: 8px;
+    background: var(--gl-color-bg-surface, #fff);
+    box-shadow: var(--gl-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.12));
+}
+
+.gl-routing-add__results:empty {
+    display: none;
 }
 
 .gl-routing-add__result {
     display: block;
     width: 100%;
-    padding: 0.3rem 0.5rem;
+    padding: 0.45rem 0.6rem;
     border: 0;
+    border-bottom: 1px solid var(--gl-color-border-subtle, #f1f5f9);
     background: transparent;
     color: var(--gl-color-text-main, #0f172a);
     text-align: left;
     font-size: inherit;
     cursor: pointer;
+}
+
+/* What tells two same-named matches apart, under the label (from the geocoder). */
+.gl-routing-add__result-detail {
+    display: block;
+    font-size: 0.85em;
+    color: var(--gl-color-text-muted, #64748b);
 }
 
 .gl-routing-add__result:hover,

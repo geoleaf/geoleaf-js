@@ -64,6 +64,22 @@ async function configureConnector(page) {
 }
 
 /**
+ * Prepares the device for its profile — the real preparation, the smallest one: without it the
+ * check is `notReady` and the session could not move the verdict.
+ * @param {import('@playwright/test').Page} page
+ */
+async function prepareDevice(page) {
+    await page.evaluate(async () => {
+        const gl = /** @type {any} */ (window).GeoLeaf;
+        await gl.Storage.whenReady();
+        const profileId = gl.Config.get("data.activeProfile");
+        await gl.Storage.CacheManager.cacheProfile(profileId, {
+            selection: { layers: [], basemaps: [], includeTiles: false },
+        });
+    });
+}
+
+/**
  * Opens the offline window, where the check lives.
  * @param {import('@playwright/test').Page} page
  */
@@ -80,6 +96,7 @@ test("[offline] the check says a valid session and until when — and its end wh
     page,
 }) => {
     await bootWithoutServiceWorker(page);
+    await prepareDevice(page);
     const expiresAt = Date.now() + HOUR;
     await seedConnectorToken(page, { baseUrl: BASE, token: STORED, expiresAt });
     await configureConnector(page);
@@ -113,6 +130,7 @@ test("[offline] the check says a valid session and until when — and its end wh
 
 test("[offline] an expired session degrades the check", async ({ page }) => {
     await bootWithoutServiceWorker(page);
+    await prepareDevice(page);
     await seedConnectorToken(page, {
         baseUrl: BASE,
         token: STORED,

@@ -144,7 +144,7 @@ function _applyAction(
     if (handler) {
         const layerData = GeoJSON.getLayerData(layerId);
         const feature = layerData?.features.find(
-            (f) => resolveFeatureId(f.properties, idField) === featureId
+            (f) => resolveFeatureId(f.properties, idField, (f as { id?: unknown }).id) === featureId
         );
         handler(layerId, featureId, feature?.properties ?? {});
         return;
@@ -164,7 +164,7 @@ function _removeFeature(
     const layerData = GeoJSON.getLayerData(layerId);
     if (!layerData) return;
     const features = layerData.features.filter(
-        (f) => resolveFeatureId(f.properties, idField) !== featureId
+        (f) => resolveFeatureId(f.properties, idField, (f as { id?: unknown }).id) !== featureId
     );
     GeoJSON.updateLayerData(layerId, { type: "FeatureCollection", features });
 }
@@ -179,7 +179,7 @@ function _mergeFeatureProps(
     const layerData = GeoJSON.getLayerData(layerId);
     if (!layerData) return;
     const features = layerData.features.map((f) => {
-        const fid = resolveFeatureId(f.properties, idField);
+        const fid = resolveFeatureId(f.properties, idField, (f as { id?: unknown }).id);
         if (fid !== featureId) return f;
         return { ...f, properties: { ...(f.properties ?? undefined), ...patch } };
     });

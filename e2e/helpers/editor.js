@@ -41,4 +41,44 @@ async function armEditor(page) {
     );
 }
 
-export { armEditor };
+/**
+ * Makes the profile's editable layers accept points, lines AND polygons, for a spec whose
+ * subject is the drawing engine rather than the profile.
+ *
+ * 🛑 A creation tool that no editable layer accepts is offered DISABLED (editor 1.6.5): drawn
+ * anyway, it opened a form with no layer to file the shape in. The demo profile's only
+ * editable layer takes points, so the line and polygon tools are greyed there — rightly — and
+ * a spec tracing a line must first give the line somewhere to go.
+ *
+ * ⚠️ On `profile-bundle.json`, not on the layer's own config: the deploy inlines every layer
+ * config into the bundle (see spec 38). Laid on the CONTEXT, before the page loads.
+ *
+ * @param {import("@playwright/test").BrowserContext} context
+ * @returns {Promise<{ widened: number }>} Live count of layers widened — the witness the
+ *   route bit; a spec reads it after the page has loaded.
+ */
+async function acceptEveryGeometry(context) {
+    const witness = { widened: 0 };
+    await context.route("**/profile-bundle.json**", async (route) => {
+        let bundle;
+        try {
+            bundle = await (await route.fetch()).json();
+        } catch {
+            // The test ended while the bundle was in flight (a spec that never waits for the
+            // profile): the context is closing, and there is no page left to serve.
+            return;
+        }
+        for (const cfg of Object.values(bundle.layerConfigs ?? {})) {
+            const c = /** @type {any} */ (cfg);
+            if (c?.edition?.create === true || c?.edition?.update === true) {
+                c.editableGeometryTypes = ["Point", "LineString", "Polygon"];
+                witness.widened += 1;
+            }
+        }
+        if (witness.widened === 0) throw new Error("le bundle ne porte aucune couche éditable");
+        await route.fulfill({ json: bundle });
+    });
+    return witness;
+}
+
+export { armEditor, acceptEveryGeometry };

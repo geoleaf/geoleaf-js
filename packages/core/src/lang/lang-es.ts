@@ -14,6 +14,10 @@ const lang_es: LangDict = {
     "toast.geoloc.error.timeout": "Tiempo de geolocalizaci\u00f3n agotado",
     "toast.init.loading": "Cargando datos, espere por favor.",
     "toast.layer.truncated.known": "{0}: {1} entidades mostradas de {2} — la capa está truncada.",
+    "toast.plugin.load_failed": "No se pudo cargar esta función.",
+    "toast.plugin.load_failed_offline":
+        "Esta función no está disponible sin conexión: prepare una zona en línea para llevarla consigo.",
+    "toast.layer.load_failed": "No se pudo cargar la capa «{0}».",
     "toast.layer.style_missing":
         "No se encontr\u00f3 el estilo predeterminado de «{0}»: se muestra con un estilo neutro.",
     "toast.layer.truncated.unknown": "{0}: {1} entidades mostradas, la capa contiene más.",

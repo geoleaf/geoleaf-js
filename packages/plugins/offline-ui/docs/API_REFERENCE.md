@@ -11,14 +11,25 @@
 a toolbar button, a window and six dictionaries. It adds a single public member to the core's
 `UI` façade.
 
-### `GeoLeaf.UI.CacheButton.openModal()`
+### `GeoLeaf.UI.CacheButton.openModal(options?)`
 
 Opens the offline preparation window: the same call as the toolbar action, for a host that
 offers its own button.
 
+| Option | Type                   | Default  | Effect                                                    |
+| ------ | ---------------------- | -------- | --------------------------------------------------------- |
+| `mode` | `"simple"` \| `"full"` | `"full"` | `"simple"`: the field window, without what administers it |
+
+`{ mode: "simple" }` (since 1.8.0) opens the field window instead: the choice of zone, the
+download with its progress and its stop, the state in one line (« Zone ready for offline use,
+updated: 14:32 » / « No zone prepared ») and, when the browser may erase the data, the storage
+warning. Quota, layer configuration, zoom ceiling, Import / Export tabs and purge stay in the
+full window, which is the default (`"full"`) and is unchanged. An unknown mode is warned about
+and opens the full window. Switching mode between two openings rebuilds the window's body.
+
 ```js
 document.querySelector("#my-offline-button").addEventListener("click", () => {
-    GeoLeaf.UI.CacheButton.openModal();
+    GeoLeaf.UI.CacheButton.openModal({ mode: "simple" });
 });
 ```
 

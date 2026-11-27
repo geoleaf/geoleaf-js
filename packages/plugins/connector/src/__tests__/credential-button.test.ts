@@ -330,13 +330,28 @@ describe("credential-button", () => {
             },
         };
 
+        it("getToken mode: the host's token answers `authenticated: true`, and no form opens", async () => {
+            // A valid host token was reported as `authenticated: false`, then a dead form opened.
+            createDesktopTabs();
+            const cfg = { ...UI_ONLY_CONFIG, getToken: () => "host-token" } as ConnectorConfig;
+            installCredentialButton(cfg);
+            const handler = vi.fn();
+            document.addEventListener("geoleaf:connector:credential-button-clicked", handler);
+            document.querySelector<HTMLButtonElement>(".gc-credential-btn")!.click();
+            await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+            expect(handler.mock.calls[0][0].detail.authenticated).toBe(true);
+            expect(showLoginModal).not.toHaveBeenCalled();
+            document.removeEventListener("geoleaf:connector:credential-button-clicked", handler);
+        });
+
         it("injects button when enabled via config even without auth.endpoint", () => {
             createDesktopTabs();
             installCredentialButton(UI_ONLY_CONFIG);
             expect(document.querySelector(".gc-credential-btn")).not.toBeNull();
         });
 
-        it("click opens login modal and dispatches event (no token lookup)", async () => {
+        it("click only dispatches its event — no form with no endpoint to post to (CN-22)", async () => {
+            // The form it opened could only fail: « Configuration invalide : endpoint manquant ».
             createDesktopTabs();
             installCredentialButton(UI_ONLY_CONFIG);
 
@@ -346,10 +361,8 @@ describe("credential-button", () => {
             const btn = document.querySelector<HTMLButtonElement>(".gc-credential-btn")!;
             btn.click();
 
-            await vi.waitFor(() => expect(showLoginModal).toHaveBeenCalledTimes(1));
-            expect(showLoginModal).toHaveBeenCalledWith(UI_ONLY_CONFIG);
-
-            expect(handler).toHaveBeenCalledTimes(1);
+            await vi.waitFor(() => expect(handler).toHaveBeenCalledTimes(1));
+            expect(showLoginModal).not.toHaveBeenCalled();
             expect(handler.mock.calls[0][0].detail).toEqual({
                 baseUrl: "http://localhost",
                 authenticated: false,

@@ -39,15 +39,14 @@ describe("@geoleaf-plugins/navigation — getPluginConfig", () => {
     it("applies the built-in defaults when the profile says nothing", () => {
         const cfg = getPluginConfig();
         expect(cfg.enabled).toBe(true);
-        // `false` on purpose while there is no panel to open: a visible control that does
-        // nothing does not announce itself, it gets clicked.
-        expect(cfg.showButton).toBe(false);
+        // `showButton` is gone: the toolbar entry point it governed never opened anything.
+        expect("showButton" in cfg).toBe(false);
     });
 
     it("lets a PARTIAL override win without dropping the other defaults", () => {
-        _raw = { showButton: true };
+        _raw = { voiceEnabled: false };
         const cfg = getPluginConfig();
-        expect(cfg.showButton).toBe(true);
+        expect(cfg.voiceEnabled).toBe(false);
         expect(cfg.enabled).toBe(true);
     });
 
@@ -65,7 +64,7 @@ describe("@geoleaf-plugins/navigation — getPluginConfig", () => {
         _raw = undefined;
         const cfg = getPluginConfig();
         expect(cfg.enabled).toBe(true);
-        expect(cfg.showButton).toBe(false);
+        expect(cfg.voiceEnabled).toBe(true);
     });
 });
 

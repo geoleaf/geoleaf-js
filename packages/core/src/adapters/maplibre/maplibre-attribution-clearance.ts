@@ -66,10 +66,17 @@ function _clearance(container: HTMLElement): number {
  */
 export function watchAttributionClearance(map: MapLike): void {
     const container = map.getContainer();
+    // The map's HOST carries it too: the application lays controls BESIDE the map, not in it —
+    // the mobile toolbar is a sibling of the map container. Lifted with the corner it must clear,
+    // its bottom chevron stayed at a fixed 80 px and covered the scale bar the credit had pushed up.
+    const host = container.parentElement;
     const update = (): void => {
         const px = _clearance(container);
-        if (px > 0) container.style.setProperty(ATTRIB_CLEARANCE_VAR, `${px}px`);
-        else container.style.removeProperty(ATTRIB_CLEARANCE_VAR);
+        for (const el of [container, host]) {
+            if (!el) continue;
+            if (px > 0) el.style.setProperty(ATTRIB_CLEARANCE_VAR, `${px}px`);
+            else el.style.removeProperty(ATTRIB_CLEARANCE_VAR);
+        }
     };
 
     let classObserver: MutationObserver | null = null;
@@ -96,5 +103,6 @@ export function watchAttributionClearance(map: MapLike): void {
         classObserver?.disconnect();
         sizeObserver?.disconnect();
         container.style.removeProperty(ATTRIB_CLEARANCE_VAR);
+        host?.style.removeProperty(ATTRIB_CLEARANCE_VAR);
     });
 }

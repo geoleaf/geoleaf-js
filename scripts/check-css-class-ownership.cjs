@@ -57,8 +57,6 @@ const ASSUMED = {
     "gl-form-label :: editor": "field-renderer form system — editor bundles it",
     "gl-form-modal-overlay :: editor":
         "modal system of host-runtime, extended by field-renderer — editor bundles both",
-    "gl-form-modal-panel :: editor":
-        "modal system of host-runtime, extended by field-renderer — editor bundles both",
     "gl-form-modal__btn :: editor":
         "modal system of host-runtime, extended by field-renderer — editor bundles both",
     "gl-form-modal__delete-body :: editor": "host-runtime dialog system — editor bundles it",

@@ -59,6 +59,10 @@ const RUNTIME_SET = {
     // Through a constant (`ATTRIB_CLEARANCE_VAR`), hence invisible to a literal grep.
     "--gl-attrib-clearance":
         "packages/core/src/adapters/maplibre/maplibre-attribution-clearance.ts:71",
+    // The lowered mobile sheet, through constants (`PEEK_HEIGHT_VAR` on the panel,
+    // `PEEK_CLEARANCE_VAR` on the map's host), hence invisible to a literal grep.
+    "--gl-sheet-peek-height": "packages/core/src/kernel/ui/mobile/mobile-toolbar-sheet.ts:289",
+    "--gl-sheet-peek-clearance": "packages/core/src/kernel/ui/mobile/mobile-toolbar-sheet.ts:294",
     "--gl-measure-top": "packages/plugins/measure/src/floating-menu.ts:206",
     "--gl-measure-left": "packages/plugins/measure/src/floating-menu.ts:207",
     "--gl-measure-max-h": "packages/plugins/measure/src/floating-menu.ts:337",

@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "routing-offered",
+    "scope": ["packages/plugins/routing/src/offered.ts"],
+    "verdicts": {
+        "packages/plugins/routing/src/offered.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Si `routing` peut être offert : allumé par le profil, et le profil déclare la couche où le tracé se publie ; lu par le cœur au rendu du créneau et du volet (`isAvailable()`), et par `openPanel`",
+            "confidence": "haute",
+            "rationale": "Le plugin est eager et s'inscrit avant la fusion du profil : ni le créneau ni le volet ne peuvent lire `enabled` à l'inscription. Né de deux défauts mesurés : `enabled: false` n'éteignait rien, et un profil sans couche du tracé offrait un calcul qu'il ne pouvait pas dessiner. La couche se cherche parmi les couches DÉCLARÉES, la barre étant bâtie avant leur chargement. Tenu par `src/__tests__/offered.test.ts`, vu rougir"
+        }
+    }
+}

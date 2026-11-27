@@ -16,8 +16,14 @@
  * Interface that every realtime source must implement.
  */
 export interface IRealtimeSource {
-    /** Start fetching / subscribing. */
-    start(): void;
+    /**
+     * Start fetching / subscribing.
+     *
+     * @returns `false` when the source could not open (no `EventSource`, no `GeoLeaf.Ws`) —
+     *   the layer then reports `active: false` instead of announcing a stream that is not there.
+     *   `void` (a custom source written before this) counts as opened.
+     */
+    start(): boolean | void;
     /** Stop fetching / unsubscribe and free resources. */
     stop(): void;
     /**

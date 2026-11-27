@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getEditorConfig, EDITOR_CONFIG_DEFAULTS } from "../config.js";
+import { createPersistenceAdapter } from "../persistence/adapter-factory.js";
 
 const mockConfig: Record<string, unknown> = {};
 
@@ -68,6 +69,36 @@ describe("getEditorConfig — profile values override defaults", () => {
         expect(cfg.api?.baseUrl).toBe("https://api.example.com");
         expect(cfg.api?.timeoutMs).toBe(8000); // default preserved
         expect(cfg.api?.authHeader).toBeNull();
+    });
+
+    it("🛑 sans `api.baseUrl` au profil, la configuration fusionnée n'en invente pas, et l'écriture directe refuse", async () => {
+        // A default `baseUrl: ""` reached the adapter the running editor builds, so the
+        // « no write target » refusal never fired and the write left for `/features` of the
+        // page. Only the tests that built the adapter from a raw configuration saw the refusal.
+        mockConfig["modules.editor"] = { persistence: { mode: "online" } };
+        const cfg = getEditorConfig();
+        expect(cfg.api?.baseUrl).toBeUndefined();
+
+        const fetchSpy = vi.fn();
+        vi.stubGlobal("fetch", fetchSpy);
+        // The permission guard refuses when it cannot ask: grant everything, the target is
+        // what is under test (the permission has its own suite).
+        const G = (globalThis as any).GeoLeaf;
+        const storage = G.Storage;
+        G.Storage = { mayEdit: () => true, applyEdit: vi.fn() };
+        try {
+            const adapter = createPersistenceAdapter(cfg);
+            await expect(
+                adapter.save(
+                    { id: "f1", geometry: { type: "Point", coordinates: [2, 48] }, properties: {} },
+                    "sites"
+                )
+            ).rejects.toMatchObject({ kind: "no-target" });
+            expect(fetchSpy).not.toHaveBeenCalled();
+        } finally {
+            G.Storage = storage;
+            vi.unstubAllGlobals();
+        }
     });
 
     it("deep-merges modal sub-object", () => {

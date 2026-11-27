@@ -24,7 +24,7 @@ import type { GeoLeafRawEventMap } from "@geoleaf/core";
 // Same for namespace access: `getGeoLeaf()` replaces the
 // `interface GeoLeafHost` + `globalThis as unknown as …` pair the 13 plugins
 // each re-declared their own way.
-import { getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
+import { coreConfigGet, getGeoLeaf, registerPluginModule } from "@geoleaf/host-runtime";
 // Replaced at build time by rollup/replace — must be a plain string literal.
 const _VERSION = "__GEOLEAF_VERSION__";
 
@@ -72,10 +72,12 @@ getGeoLeaf()?.plugins?.register?.("geocoding", {
     healthCheck: () => typeof getGeoLeaf()?.Geocoding === "object",
 });
 
-// Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity.
+// Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity. A magnifier: it was a
+// bare circle, the same SVG as routing's, and the two buttons could not be told apart.
 const _ICON =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
-    ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
+    ' stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>';
 
 // 5 — Register the module: the teardown, and the mobile toolbar slot. Only a mobileIcon is
 // declared: on desktop (≥ 769px) the search bar is always visible, so the pill toolbar button is
@@ -98,6 +100,9 @@ registerPluginModule({
     id: "geocoding",
     destroy: () => GeocodingRegistry.destroy(),
     ui: {
+        // OPT-IN, unlike table or isochrone: geocoding defaults to `enabled: false`, and a
+        // plugin that is not switched on mounts no search bar — its button would open nothing.
+        isAvailable: () => coreConfigGet<boolean>("modules.geocoding.enabled", false) === true,
         mobileIcon: {
             icon: _ICON,
             labelKey: "geocoding.toolbar.button",

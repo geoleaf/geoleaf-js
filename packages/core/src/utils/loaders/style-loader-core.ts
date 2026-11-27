@@ -20,7 +20,7 @@ import { Log } from "../log/index.js";
 import { StyleValidator } from "../validators/style-validator.js";
 import { getGeoLeaf } from "../general/geoleaf-global.js";
 import { styleCache, styleDocumentStore } from "./style-cache.js";
-import { extractLabelConfig, _ensureLabelVisibleByDefault } from "./label-extractor.js";
+import { extractLabelConfig } from "./label-extractor.js";
 
 /** Loaded-and-validated style result returned by the loader. */
 interface LoadedStyleResult {
@@ -110,7 +110,7 @@ function _applyStyleValidation(
  * style files" — but nothing ever performed that derivation, so consumers reading
  * `styleData.id` (e.g. `legend-generator`) got `undefined`. `styleId` is already the file
  * base name resolved upstream by the layer config, so it IS the documented fallback.
- * Mutates in place, before validation, like `_ensureLabelVisibleByDefault`.
+ * Mutates in place, before validation.
  */
 function _ensureStyleId(styleData: unknown, styleId: string): void {
     if (!styleData || typeof styleData !== "object") return;
@@ -144,7 +144,7 @@ function _buildStyleResult(
  * Turns a raw style document into the envelope every consumer expects.
  *
  * 🛑 **Extracted so the two paths cannot drift.** The fetched path and the pre-seeded path
- * must produce a structurally identical result; leaving the four steps inline in one of them
+ * must produce a structurally identical result; leaving the steps inline in one of them
  * would make that a resemblance rather than a guarantee. Skipping any of them is a real
  * defect and not a theoretical one: without `_ensureStyleId`, the legend generator reads
  * `styleData.id` and gets `undefined`, which is precisely why that step was written.
@@ -163,13 +163,6 @@ function _finalizeStyle(
     styleId: string,
     stylePath: string
 ): LoadedStyleResult {
-    _ensureLabelVisibleByDefault(
-        styleData as {
-            label?: { enabled?: boolean; visibleByDefault?: boolean; [key: string]: unknown };
-            [key: string]: unknown;
-        },
-        stylePath
-    );
     _ensureStyleId(styleData, styleId);
     _applyStyleValidation(styleData, stylePath, { profileId, layerId, styleId, stylePath });
     return _buildStyleResult(styleData, profileId, layerId, styleId, stylePath);

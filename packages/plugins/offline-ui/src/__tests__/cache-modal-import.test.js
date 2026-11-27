@@ -71,6 +71,34 @@ describe("ExportLogic.initializeCacheContent — mounts the control (Bug A)", ()
         ExportLogic.initializeCacheContent();
         expect(cacheControlStub.CacheControl.create).not.toHaveBeenCalled();
     });
+
+    test("simple → complet → simple : le corps est rebâti à chaque changement de mode, et l'ancien contrôle libéré", () => {
+        // The modal is a singleton and keeps its body between openings: an opening in another
+        // mode showed the previous body. Each control built is released before the next one —
+        // its listeners are on `document`, and a forgotten one leaks a set per round trip.
+        const controls = [];
+        cacheControlStub.CacheControl.create = vi.fn((opts) => {
+            const c = {
+                mode: opts.mode,
+                onAdd: vi.fn(() => document.createElement("div")),
+                onRemove: vi.fn(),
+            };
+            controls.push(c);
+            return c;
+        });
+
+        ExportLogic.initializeCacheContent("simple");
+        ExportLogic.initializeCacheContent("simple"); // same mode: kept
+        ExportLogic.initializeCacheContent("full");
+        ExportLogic.initializeCacheContent("simple");
+
+        expect(controls.map((c) => c.mode)).toEqual(["simple", "full", "simple"]);
+        expect(controls[0].onRemove).toHaveBeenCalledTimes(1);
+        expect(controls[1].onRemove).toHaveBeenCalledTimes(1);
+        expect(controls[2].onRemove).not.toHaveBeenCalled();
+        expect(body.getAttribute("data-mode")).toBe("simple");
+        expect(body.querySelectorAll(".gl-cache-control")).toHaveLength(1);
+    });
 });
 
 // ── Bug C — the layer table is appended INTO the CONFIG container ──────────────

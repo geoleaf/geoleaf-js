@@ -62,6 +62,8 @@ interface ModalState {
      * while the selector reads A3.
      */
     composeTimer: ReturnType<typeof setTimeout> | null;
+    /** Why the last export produced nothing — an i18n key, read when the click finds no blob. */
+    failure: string | null;
 }
 
 /** Signature of a format exporter registered on `GeoLeaf.Print._getExporter`. */
@@ -72,6 +74,11 @@ type CanvasExporter = (canvas: HTMLCanvasElement, opts: ComposedExportOpts) => P
 // ---------------------------------------------------------------------------
 
 /** Snapshots the form state into the inputs the geometry layer expects. */
+/** A phone — the device whose canvas has a ceiling (same test as `offscreen-render.ts`). */
+function _isMobile(): boolean {
+    return typeof navigator !== "undefined" && /Mobi|Android/i.test(navigator.userAgent);
+}
+
 function _composeInputs(state: ModalState): ComposeInputs {
     const { dom, config, emprise } = state;
     return {
@@ -80,6 +87,7 @@ function _composeInputs(state: ModalState): ComposeInputs {
         lockedScale: emprise.scaleDenominator,
         center: emprise.center,
         dpi: config.dpi,
+        ...(_isMobile() && { maxCanvasPx: config.maxCanvasPxMobile }),
         title: dom.titleInput.value,
         description: dom.descArea.value,
         includeLegend: dom.legend.input.checked,
@@ -222,6 +230,7 @@ async function _serverFallback(
 ): Promise<Blob | null> {
     const { config, dom } = state;
     if (!config.serverEndpoint || !nativeMap) {
+        state.failure = "print.error.tainted";
         const msg =
             getGeoLeaf()?.I18n?.getLabel?.("print.error.tainted") ??
             "Export impossible : certains fonds de carte ne supportent pas le CORS.";
@@ -246,7 +255,9 @@ async function _serverFallback(
         },
         format
     );
-    return tryServerFallback(payload, config);
+    const blob = await tryServerFallback(payload, config);
+    if (!blob) state.failure = "print.error.serverFailed";
+    return blob;
 }
 
 /** Composes at full quality then hands the canvas to the format exporter. */
@@ -277,12 +288,23 @@ async function _runExport(
     }
 }
 
+/** Shows, or clears, the failure line of the modal. */
+function _showFailure(state: ModalState, key: string | null): void {
+    const { status } = state.dom;
+    status.hidden = key === null;
+    status.textContent = key === null ? "" : (getGeoLeaf()?.I18n?.getLabel?.(key) ?? key);
+}
+
 /** Downloads the exported blob under a filename derived from the title. */
 async function _download(state: ModalState, blob: Blob, format: string): Promise<void> {
     const slug = (state.dom.titleInput.value.trim() || "carte")
         .replace(/[^a-zA-Z0-9À-ɏ_-]/g, "_")
         .slice(0, 80);
-    await downloadBlob(blob, `${slug}.${format === "pdf" ? "pdf" : "jpg"}`);
+    // The extension the exporter DECLARED: everything that was not PDF was named `.jpg`.
+    const declared = (
+        getGeoLeaf()?.Print as { _getExporterMeta?(f: string): { extension?: string } } | undefined
+    )?._getExporterMeta?.(format)?.extension;
+    await downloadBlob(blob, `${slug}.${declared ?? (format === "pdf" ? "pdf" : "jpg")}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -338,8 +360,17 @@ function _wireInteractions(
             if (!state.mapCanvas) return;
             const args = buildComposeArgs(_composeInputs(state));
             if (!args) return;
+            state.failure = null;
+            _showFailure(state, null);
             const blob = await _runExport(state, args, format, nativeMap);
-            if (blob) await _download(state, blob, format);
+            // 🛑 An export that produced nothing used to CLOSE the window, the failure only in
+            // the console: the user saw the modal vanish and no file arrive. It now says why,
+            // and stays open — the user can change format or retry.
+            if (!blob) {
+                _showFailure(state, state.failure ?? "print.error.render");
+                return;
+            }
+            await _download(state, blob, format);
             close(blob);
         };
     }
@@ -436,6 +467,7 @@ export async function openModal(
         session: null,
         debounceTimer: null,
         composeTimer: null,
+        failure: null,
     };
 
     return new Promise<ModalResult>((resolve) => {

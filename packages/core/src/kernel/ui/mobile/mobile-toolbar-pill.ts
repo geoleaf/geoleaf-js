@@ -14,7 +14,12 @@ import { domState } from "./mobile-toolbar-state.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { resolveRovingIndex } from "../roving-tabindex.js";
-import { lazySlotsToDraw, resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
+import {
+    lazySlotsToDraw,
+    resolveUISlotVisibility,
+    slotAvailabilityOptions,
+    UI_SLOT_SVG_TAGS,
+} from "../ui-slot-builder.js";
 import type { IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 
 type MobileIconDef = NonNullable<IModuleUISlot["mobileIcon"]>;
@@ -292,6 +297,8 @@ function _buildMobileIconButton(
         useDefaultVisible: boolean;
         hasDesktopTabButton: boolean;
         moduleGateId?: string;
+        requiresCapability?: string;
+        availability?: { owner: string; predicate: () => boolean };
     }
 ): HTMLButtonElement | null {
     // Idempotent — skip if already rendered (e.g. after a re-render call)
@@ -358,6 +365,7 @@ function _appendRegistryIcons(scroll: HTMLElement): void {
             checkRequiresPlugin: true,
             useDefaultVisible: true,
             hasDesktopTabButton: !!mod.ui.desktopTabButton,
+            ...slotAvailabilityOptions(mod.id, mod.ui),
         });
         if (btn) scroll.appendChild(btn);
     }
@@ -382,6 +390,7 @@ function _appendRegistryIcons(scroll: HTMLElement): void {
             // undefined" are not the same contract. The first draft wrote the
             // ternary, and the build went red (TS2379).
             ...(slot.gateOnModuleEnabled ? { moduleGateId: slot.pluginName } : {}),
+            ...(slot.requiresCapability ? { requiresCapability: slot.requiresCapability } : {}),
         });
         if (btn) scroll.appendChild(btn);
     }

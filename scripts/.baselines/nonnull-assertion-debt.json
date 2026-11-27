@@ -1,7 +1,7 @@
 {
     "_comment": "NONNULL-ASSERTION-DEBT — assertions `!` et `as unknown` gelées. Cette liste ne peut que RÉTRÉCIR (NNA-02). Elle NE contient PAS les `arr[i]!` : ceux-là sont interdits sans exception (NNA-04), parce qu'une lecture indexée assertée est une erreur `noUncheckedIndexedAccess` qu'on a tue. Le reste est de la dette `strictNullChecks` (palier Q3), instruite dans le registre de dette interne. Régénérer avec --update-baseline UNIQUEMENT après avoir corrigé, jamais pour faire taire.",
     "_generated": "node scripts/check-nonnull-assertion-debt.cjs --update-baseline",
-    "count": 244,
+    "count": 236,
     "entries": [
         "packages/core/src/adapters/maplibre/maplibre-hatch-patterns.ts::ctx::!::canvas.getContext(\"2d\")",
         "packages/core/src/app/app-types.ts::asGeoLeafConfig::as-unknown::config",
@@ -223,11 +223,6 @@
         "packages/plugins/measure/src/tools/tool-polygon.ts::activatePolygon::!::_container",
         "packages/plugins/offline-ui/src/cache/cache-control-dom.ts::bodyEl::!::self._bodyEl",
         "packages/plugins/offline-ui/src/cache/cache-control-dom.ts::container::!::self._container",
-        "packages/plugins/offline-ui/src/cache/download-handler.ts::DownloadHandler::!::this._downloadBtn",
-        "packages/plugins/offline-ui/src/cache/download-handler.ts::DownloadHandler::!::this._progressEl",
-        "packages/plugins/offline-ui/src/cache/download-handler.ts::DownloadHandler::!::this._progressFill",
-        "packages/plugins/offline-ui/src/cache/download-handler.ts::DownloadHandler::!::this._progressText",
-        "packages/plugins/offline-ui/src/cache/download-handler.ts::btnText::!::this._downloadBtn",
         "packages/plugins/offline-ui/src/cache/layer-selector/core.ts::<module>::as-unknown::null",
         "packages/plugins/offline-ui/src/cache/layer-selector/selection-cache.ts::handleSelectAllChange::!::this._selectAllCheckbox",
         "packages/plugins/offline-ui/src/core/sync-seam.ts::g::as-unknown::globalThis",

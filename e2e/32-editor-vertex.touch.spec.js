@@ -29,12 +29,16 @@
 import { test, expect } from "./helpers/test.js";
 import { baseURL } from "./helpers/base-url.js";
 import { serveBasemapTilesLocally } from "./helpers/basemap.js";
+import { acceptEveryGeometry } from "./helpers/editor.js";
 
 test.use({ baseURL: baseURL("full") });
 
-// The basemap is not this spec's subject: its third-party latency must not decide it.
+// The basemap is not this spec's subject: its third-party latency must not decide it. Nor is
+// the profile: its only editable layer takes points, so the line and polygon tools would be
+// greyed — the editable layer is widened to the three geometries the engine draws.
 test.beforeEach(async ({ context }) => {
     await serveBasemapTilesLocally(context);
+    await acceptEveryGeometry(context);
 });
 
 /** Number of Point features Terra Draw currently renders. -1 = not measurable. */

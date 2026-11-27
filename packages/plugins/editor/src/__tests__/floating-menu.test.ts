@@ -44,6 +44,25 @@ describe("floating-menu", () => {
     // initEditorMenu / DOM creation
     // -------------------------------------------------------------------------
 
+    it("a creation tool no editable layer accepts is offered DISABLED, and says why", () => {
+        // The only editable layer takes points: the line and polygon tools opened an empty form
+        // on « (Aucune couche disponible) », whose save was refused.
+        (globalThis as any).GeoLeaf.Config = {
+            ...((globalThis as any).GeoLeaf.Config ?? {}),
+            getActiveProfile: () => ({
+                layers: [{ id: "sites", geometry: "point", edition: { create: true } }],
+            }),
+        };
+        initEditorMenu(getEditorConfig(), {});
+        const btn = (tool: string) =>
+            container.querySelector<HTMLButtonElement>(
+                `button.gl-editor-tool-btn[data-tool="${tool}"]`
+            );
+        expect(btn("point")?.disabled).toBe(false);
+        expect(btn("polygon")?.disabled).toBe(true);
+        expect(btn("line")?.disabled).toBe(true);
+    });
+
     it("initEditorMenu creates .gl-editor-root in the map container", () => {
         initEditorMenu(getEditorConfig(), {});
         expect(container.querySelector(".gl-editor-root")).not.toBeNull();

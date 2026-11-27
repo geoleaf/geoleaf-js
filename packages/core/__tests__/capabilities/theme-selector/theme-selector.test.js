@@ -400,6 +400,31 @@ describe("theme-selector", () => {
             expect(ThemeSelector.isInitialized()).toBe(false);
         });
 
+        it("empties the host's containers — the bar does not outlive the unmount", async () => {
+            // The containers belong to the host page: the bar they held stayed on screen, over a
+            // map that was gone, until the next mount rebuilt it.
+            mockConfigGet.mockReturnValueOnce({ "theme-selector": { enabled: true } });
+            mockLoadThemesConfig.mockReturnValueOnce(
+                Promise.resolve({
+                    config: {
+                        primaryThemes: { enabled: true },
+                        secondaryThemes: { enabled: false },
+                    },
+                    themes: [{ id: "t", type: "primary", label: "T" }],
+                    defaultTheme: "t",
+                })
+            );
+            const primary = document.createElement("div");
+            document.body.appendChild(primary);
+            await ThemeSelector.init({ profileId: "p", primaryContainer: primary });
+            expect(primary.childElementCount).toBeGreaterThan(0);
+
+            ThemeSelector.destroy();
+
+            expect(primary.childElementCount).toBe(0);
+            expect(primary.classList.contains("gl-theme-selector-primary")).toBe(false);
+        });
+
         it("clears themes/currentTheme/DOM refs — no stale state survives a destroy → recreate cycle (PA-2)", async () => {
             mockConfigGet.mockReturnValueOnce({ "theme-selector": { enabled: true } });
             mockLoadThemesConfig.mockReturnValueOnce(

@@ -12,6 +12,7 @@ import { getMeasureConfig } from "./config.js";
 import { _getNativeMap, _el, _getLabel } from "./internal.js";
 import { wireDrag, wireTooltips, wireTouchDrag, positionMenuNear } from "@geoleaf/host-runtime";
 import { initRecapBox, setRecapMenuOpen, destroyRecapBox } from "./recap-box.js";
+import { nextUnit, unitButtonName, unitButtonText, type UnitButtonType } from "./unit-labels.js";
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -84,39 +85,29 @@ function _makeIcon(paths: string): DocumentFragment {
 // Unit cycling
 // ---------------------------------------------------------------------------
 
-const _DIST_CYCLE: Array<"m" | "km"> = ["m", "km"];
-const _AREA_CYCLE: Array<"m2" | "ha" | "km2"> = ["m2", "ha", "km2"];
-const _DIST_LABEL: Record<string, string> = { m: "m", km: "km", auto: "~" };
-const _AREA_LABEL: Record<string, string> = { m2: "m²", ha: "ha", km2: "km²", auto: "~" };
-
-function _distLabel(): string {
-    return _DIST_LABEL[_units.distance] ?? _units.distance;
-}
-function _areaLabel(): string {
-    return _AREA_LABEL[_units.area] ?? _units.area;
-}
-
 function _cycleDistUnit(): void {
-    const idx = _DIST_CYCLE.indexOf(_units.distance as "m" | "km");
-    // The modulo keeps the index in range, so the default never fires — it states that
-    // invariant rather than asserting it (qualite Q5).
-    const next = _DIST_CYCLE[(idx < 0 ? 0 : idx + 1) % _DIST_CYCLE.length] ?? "m";
-    _units.distance = next;
+    _units.distance = nextUnit("dist", _units.distance);
     _syncUnitBtns();
-    _onUnitsChange?.({ distance: next });
+    _onUnitsChange?.({ distance: _units.distance });
 }
 
 function _cycleAreaUnit(): void {
-    const idx = _AREA_CYCLE.indexOf(_units.area as "m2" | "ha" | "km2");
-    const next = _AREA_CYCLE[(idx < 0 ? 0 : idx + 1) % _AREA_CYCLE.length] ?? "m2";
-    _units.area = next;
+    _units.area = nextUnit("area", _units.area);
     _syncUnitBtns();
-    _onUnitsChange?.({ area: next });
+    _onUnitsChange?.({ area: _units.area });
+}
+
+function _syncUnitBtn(btn: HTMLButtonElement | null, type: UnitButtonType): void {
+    if (!btn) return;
+    const unit = type === "dist" ? _units.distance : _units.area;
+    btn.textContent = unitButtonText(type, unit);
+    btn.dataset.tooltip = unitButtonName(type, unit);
+    btn.setAttribute("aria-label", btn.dataset.tooltip);
 }
 
 function _syncUnitBtns(): void {
-    if (_distUnitBtn) _distUnitBtn.textContent = _distLabel();
-    if (_areaUnitBtn) _areaUnitBtn.textContent = _areaLabel();
+    _syncUnitBtn(_distUnitBtn, "dist");
+    _syncUnitBtn(_areaUnitBtn, "area");
 }
 
 // ---------------------------------------------------------------------------
@@ -449,18 +440,11 @@ function _buildToolBtn(tool: ToolDef): HTMLButtonElement {
     return btn;
 }
 
-function _buildUnitBtn(type: "dist" | "area"): HTMLButtonElement {
+function _buildUnitBtn(type: UnitButtonType): HTMLButtonElement {
     const btn = _el("button", "gl-measure-unit-btn");
     btn.type = "button";
     btn.dataset.unitType = type;
-    btn.dataset.tooltip = _getLabel(
-        type === "dist" ? "measure.unit.distance.label" : "measure.unit.area.label"
-    );
-    btn.setAttribute(
-        "aria-label",
-        _getLabel(type === "dist" ? "measure.unit.distance.label" : "measure.unit.area.label")
-    );
-    btn.textContent = type === "dist" ? _distLabel() : _areaLabel();
+    _syncUnitBtn(btn, type);
     btn.addEventListener("click", type === "dist" ? _cycleDistUnit : _cycleAreaUnit);
     return btn;
 }

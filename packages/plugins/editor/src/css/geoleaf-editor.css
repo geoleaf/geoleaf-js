@@ -184,6 +184,13 @@
     color: var(--gl-color-accent-text, var(--gl-color-accent, #2563eb));
 }
 
+/* A tool no layer accepts reads unavailable, as the disabled action buttons do: the hover and
+   focus rules above already skip it. */
+.gl-editor-tool-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    Action buttons (undo/redo/delete/close)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -262,6 +269,15 @@
 .gl-editor-queue-badge:focus-visible {
     background: var(--gl-color-accent, #2563eb);
     color: var(--gl-color-accent-contrast, #f9fafb);
+}
+
+/* The pending-queue window reuses the form modal's panel class without the inline max-width the
+   form's own modal sets on it (`responsive-modal.ts`) — it spread over the whole width, its title
+   against the edge. Its own width and padding. */
+.gl-form-modal-panel.gl-editor-queue-detail {
+    width: min(32rem, calc(100vw - 32px));
+    padding: 16px;
+    box-sizing: border-box;
 }
 
 /* Pending-queue detail modal rows */

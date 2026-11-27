@@ -11,7 +11,7 @@
 
 import { getCogInfo, loadViewportRasters, selectOverview } from "./cog-loader.js";
 import {
-    canvasToDataUrl,
+    canvasToImageUrl,
     injectImageSource,
     rastersToCanvas,
     removeImageSource,
@@ -52,8 +52,13 @@ async function executeCogPipeline(
             ? selectOverview(cachedInfo, resolveViewportWidth())
             : opts.overview;
     const rasterData = await loadViewportRasters(url, loadOpts, overviewIdx);
-    const canvas = rastersToCanvas(rasterData, opts);
-    const dataUrl = await canvasToDataUrl(canvas);
+    // The explicit option wins; otherwise the value the file declares (GDAL_NODATA).
+    const nodata = opts.nodata ?? cachedInfo.nodata;
+    const canvas = rastersToCanvas(rasterData, {
+        ...opts,
+        ...(nodata !== null && { nodata }),
+    });
+    const dataUrl = await canvasToImageUrl(canvas, layerId);
     injectImageSource(map, layerId, dataUrl, rasterData.bounds, opts);
 }
 
@@ -65,7 +70,8 @@ async function executeCogPipeline(
  *
  * @param url - Absolute http/https URL pointing to the COG file.
  * @param map - MapLibre `Map` instance.
- * @param opts - Layer options (id, opacity, overview, bands, colorMap, nodata).
+ * @param opts - Layer options (id, opacity, overview, bands, colorMap, nodata). Without
+ *   `nodata`, the value declared by the file is used; pixels at that value stay transparent.
  * @returns A handle exposing `.id`, `.remove()`, and `.update()`.
  */
 export async function addLayer(
@@ -82,7 +88,7 @@ export async function addLayer(
     // 1. Fetch COG metadata — cached so update() does not re-fetch file headers
     const info = await getCogInfo(url, loadOpts);
 
-    // 2–6. Overview selection → raster decode → canvas → data URL → MapLibre inject
+    // 2–6. Overview selection → raster decode → canvas → image URL → MapLibre inject
     await executeCogPipeline(url, map, layerId, opts, info);
 
     return {

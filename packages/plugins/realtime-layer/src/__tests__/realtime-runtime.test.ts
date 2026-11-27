@@ -311,3 +311,43 @@ describe("bootFromProfile", () => {
         expect(getStatus("bad-rt").active).toBe(false);
     });
 });
+
+describe("the status says what the source could do", () => {
+    afterEach(() => {
+        stopAll();
+        vi.unstubAllGlobals();
+    });
+
+    it("a websocket source without GeoLeaf.Ws is NOT active", () => {
+        // It used to report `active: true` for a stream that never opened.
+        _layers["ws"] = {
+            id: "ws",
+            config: {
+                realtime: { enabled: true, source: "websocket", channel: "c", decoder: "json" },
+            },
+        };
+        const err = vi.spyOn(console, "error").mockImplementation(() => {});
+        start("ws");
+        expect(getStatus("ws").active).toBe(false);
+        err.mockRestore();
+    });
+
+    it("a polling source that opens IS active — the witness", () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise(() => {}))
+        );
+        _layers["poll"] = { id: "poll", config: pollingLayerConfig() };
+        start("poll");
+        expect(getStatus("poll").active).toBe(true);
+    });
+
+    it("a non-boolean `enabled` is said, and the layer stays off", () => {
+        _layers["str"] = { id: "str", config: pollingLayerConfig({ enabled: "true" }) };
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+        bootFromProfile();
+        expect(warn).toHaveBeenCalledWith(expect.stringContaining("must be a boolean"));
+        expect(getStatus("str").active).toBe(false);
+        warn.mockRestore();
+    });
+});

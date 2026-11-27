@@ -90,6 +90,22 @@ describe("what the facts mean together", () => {
         expect((await buildPreflight(facts(o))).verdict).toBe("notReady");
     });
 
+    // Every layer pulled, the origin persistent, nothing owed — and the profile never prepared
+    // on the device. The application does not start off-network without it: « Départ
+    // possible » here sent a technician away on a device that showed « profile not found ».
+    it("not ready: a device never prepared, even with every layer pulled", async () => {
+        const r = await buildPreflight(facts({ manifest: async () => null }));
+        expect(r.preparation).toBeNull();
+        expect(r.verdict).toBe("notReady");
+    });
+
+    it("not ready: a preparation that cannot be read cannot vouch for the device", async () => {
+        const unreadable = async () => {
+            throw new Error("base fermée");
+        };
+        expect((await buildPreflight(facts({ manifest: unreadable }))).verdict).toBe("notReady");
+    });
+
     it.each([
         ["an unfinished pull", { syncReport: async () => [layer("sites", "pulledPartial")] }],
         ["a stale pull", { syncReport: async () => [layer("sites", "pulledStale")] }],

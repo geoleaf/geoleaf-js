@@ -10,6 +10,9 @@ import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
 import { StorageContract } from "../shared/storage-contract.js";
 import { updateSelection } from "./selection-writer.js";
+import { LayerSelectorCore } from "./layer-selector/core.js";
+// Mounts `saveSelection` / `updateWarning` on the selector.
+import "./layer-selector/selection-cache.js";
 // LOCAL module: the symbol was pruned from the core's published bundle, which
 // calls it nowhere. See the header of `sync/vector-zone-estimate.ts`.
 import { estimateVectorZone } from "../sync/vector-zone-estimate.js";
@@ -339,7 +342,26 @@ function currentCeiling(self: CacheControlState): number {
     return Number.isFinite(parsed) ? parsed : DEFAULT_CEILING;
 }
 
-/** Renders the bbox summary + size estimate. */
+/**
+ * Whether a basemap will draw its tiles from the zone: a VECTOR basemap declared `offline: true`
+ * — the core's own test when it prepares (`resource-enumerator.ts`, `_addBasemapResources`). A
+ * raster offline basemap reads its own bounds, not the zone.
+ */
+function zoneFeedsABasemap(): boolean {
+    const basemaps = configGet<unknown>("basemaps", {});
+    if (!basemaps || typeof basemaps !== "object") return false;
+    return Object.values(basemaps as Record<string, unknown>).some((raw) => {
+        const bm = raw as { offline?: unknown; type?: unknown; style?: unknown; url?: unknown };
+        return bm?.offline === true && (bm.type === "maplibre" || (!!bm.style && !bm.url));
+    });
+}
+
+/**
+ * Renders the bbox summary + size estimate.
+ *
+ * 🛑 No basemap fed by the zone, no tile estimate: the preparation fetches none, and
+ * « ~1.10 GB (38409 tiles) » was announced for 18 MB downloaded. The reason is said instead.
+ */
 function renderZone(self: CacheControlState, zone: VectorZone): void {
     if (self._zoneSummaryEl) {
         const b = zone.bounds;
@@ -348,11 +370,19 @@ function renderZone(self: CacheControlState, zone: VectorZone): void {
             `N ${b.north.toFixed(3)}, S ${b.south.toFixed(3)}, ` +
             `E ${b.east.toFixed(3)}, W ${b.west.toFixed(3)} · z${zone.cacheMinZoom}–${zone.cacheMaxZoom}`;
     }
-    if (self._zoneEstimateEl) {
-        const { tiles, bytes } = estimateVectorZone(zone);
-        self._zoneEstimateEl.textContent = `${t("storage.zone.estimate")}: ~${formatFileSize(
-            bytes
-        )} (${tiles} ${t("storage.zone.tiles")})`;
+    if (self._zoneEstimateEl && !zoneFeedsABasemap()) {
+        self._zoneEstimateEl.textContent = t("storage.zone.noOfflineBasemap");
+    } else if (self._zoneEstimateEl) {
+        const { tiles, bytes, skippedZooms, capped } = estimateVectorZone(zone);
+        // What the preparation will leave out is said beside the figure, not discovered after.
+        const omitted =
+            skippedZooms.length > 0
+                ? ` · ${t("storage.zone.skippedZooms").replace("{0}", skippedZooms.join(", "))}`
+                : "";
+        const cut = capped ? ` · ${t("storage.zone.capped")}` : "";
+        self._zoneEstimateEl.textContent =
+            `${t("storage.zone.estimate")}: ~${formatFileSize(bytes)} ` +
+            `(${tiles} ${t("storage.zone.tiles")})${omitted}${cut}`;
     }
 }
 
@@ -390,14 +420,17 @@ async function persistZone(zone: VectorZone): Promise<void> {
     }
 }
 
-/** Triggers the layer-selector to recompute totals + warnings after a zone change. */
+/**
+ * Triggers the layer-selector to recompute totals + warnings after a zone change.
+ *
+ * 🛑 The plugin's OWN selector, called directly: the core wires `Cache` with its `Storage`
+ * alone, so a refresh routed through the cache namespace never ran.
+ */
 function refreshSelectionTotals(): void {
-    const LayerSelector = StorageContract.Cache?.LayerSelector as
-        { saveSelection?: () => Promise<void>; updateWarning?: () => Promise<void> } | undefined;
-    LayerSelector?.saveSelection?.().catch(() => {
+    LayerSelectorCore.saveSelection().catch(() => {
         /* best-effort */
     });
-    LayerSelector?.updateWarning?.().catch(() => {
+    LayerSelectorCore.updateWarning().catch(() => {
         /* best-effort */
     });
 }

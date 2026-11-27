@@ -10,12 +10,8 @@
  * @version 3.0.1
  */
 
-import { Log, fetchWithTimeout } from "@geoleaf/host-runtime";
+import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet as configGet } from "@geoleaf/host-runtime";
-// Through the core's published `exports` map, no longer via an alias to its
-// SOURCES. PURE, import-free function: embedding it in the bundle is safe (no
-// identity to share, unlike the singletons that go through the namespace).
-import { resolveProfileLayers } from "@geoleaf/core/kernel/config/profile-layers.js";
 import { DOMSecurity } from "../../utils/core-utils.js";
 import { StorageContract } from "../../shared/storage-contract.js";
 import { updateSelection } from "../selection-writer.js";
@@ -376,24 +372,12 @@ Object.assign(LS, {
             // keep serving the pre-download pass and never turn green.
             beginCacheStatusPass();
 
-            const profilesBasePath = configGet("data.profilesBasePath", "profiles") as string;
-            const profileResponse = await fetchWithTimeout(
-                fetch,
-                `${profilesBasePath}/${profileId}/profile.json`,
-                {},
-                10000
-            );
-            if (!profileResponse.ok) return;
-            const profile = (await profileResponse.json()) as {
-                layers?: LayerLike[];
-                Files?: { layersFile?: string };
-            };
-
-            // profile.json does not inline layers; resolve from Files.layersFile.
-            profile.layers = await resolveProfileLayers(profile, profileId, profilesBasePath, {
-                onWarn: (message) => Log.warn(message),
-            });
-            if (!profile.layers || profile.layers.length === 0) return;
+            // 🛑 The layers `populate()` rendered, not a fresh read of the profile: only those
+            // carry the `layerDir` / `dataFile` it derives for a templated (`inlineConfig`)
+            // layer. Re-read raw, such a layer had nothing to match the manifest against and
+            // its row stayed ✗ after every download, until the window was reopened.
+            const layers = this._layers;
+            if (!layers || layers.length === 0) return;
 
             const rows = this._layersContent.querySelectorAll(".gl-cache-layers__row");
             Log.debug(`[LayerSelector] Refreshing cache icons for ${rows.length} rows`);
@@ -403,7 +387,7 @@ Object.assign(LS, {
                 if (!checkbox) continue;
 
                 const layerId = (checkbox as HTMLInputElement).dataset.layerId;
-                const layer = profile.layers.find((l) => l.id === layerId);
+                const layer = layers.find((l) => l.id === layerId);
                 if (!layer) continue;
 
                 Log.debug(`[LayerSelector] Checking cache status for ${layerId}`);

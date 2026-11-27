@@ -48,7 +48,6 @@ the heavier half of the two.
 | Key                       | Type      | Default | Meaning                                                            |
 | ------------------------- | --------- | ------- | ------------------------------------------------------------------ |
 | `enabled`                 | `boolean` | `true`  | Turns the plugin on.                                               |
-| `showButton`              | `boolean` | `false` | Shows the toolbar entry point.                                     |
 | `arrivalRadiusMetres`     | `number`  | `30`    | Within this distance, a stop counts as reached.                    |
 | `offRouteThresholdMetres` | `number`  | `40`    | Beyond this distance from the line, a reading counts as off-route. |
 | `confirmExit`             | `number`  | `3`     | Consecutive off readings needed to confirm a departure.            |
@@ -62,9 +61,7 @@ the heavier half of the two.
 | `followPitch`             | `number`  | `60`    | Tilt held while following, in degrees. Capped at 80 by the engine. |
 | `cameraMaxTransitionMs`   | `number`  | `1000`  | Ceiling on a camera transition, in milliseconds.                   |
 
-`showButton` defaults to `false` while there is no panel to open: a visible control that does
-nothing is worse than an absent one, because it does not announce itself — it gets clicked.
-Guidance is entered from the **route**, in the panel of `@geoleaf-plugins/routing`, because there
+There is no toolbar entry point: guidance is entered from the **route**, in the panel of `@geoleaf-plugins/routing`, because there
 is nothing to guide along until a route exists.
 
 🛑 **These thresholds live here and nowhere else.** The engine modules take every one of them as a

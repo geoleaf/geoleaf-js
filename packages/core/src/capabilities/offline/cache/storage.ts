@@ -492,3 +492,39 @@ const CacheStorage = {
 
 // Public export
 export { CacheStorage };
+
+/**
+ * The bytes a profile already holds in the `layers` store — each record carries its `size`,
+ * written when it is cached (the eviction reads the same field).
+ *
+ * 🛑 The manifest's resources carry no size, and the preparation counted what was already on
+ * the device as 0: a first preparation over resources the runtime had cached ended on
+ * « Profil téléchargé : 0.00 MB », read as a failure. This is the size to announce.
+ *
+ * @param {string} profileId - Profile ID
+ * @returns {Promise<number>} Bytes held — `0` without a store.
+ * @example
+ * const bytes = await readCachedBytes("tourism");
+ */
+export async function readCachedBytes(profileId: string): Promise<number> {
+    const rawDb = IndexedDB?._db;
+    if (!rawDb || "_isStub" in rawDb) return 0;
+    try {
+        const store = rawDb.transaction(["layers"], "readonly").objectStore("layers");
+        return await new Promise<number>((resolve) => {
+            let total = 0;
+            // Walked through the `profileId` index: only this profile's records are read.
+            const request = store.index("profileId").openCursor(IDBKeyRange.only(profileId));
+            request.onsuccess = (event: Event) => {
+                const cursor = (event.target as IDBRequest).result as IDBCursorWithValue | null;
+                if (!cursor) return resolve(total);
+                const val = cursor.value as { size?: unknown };
+                if (typeof val.size === "number") total += val.size;
+                cursor.continue();
+            };
+            request.onerror = () => resolve(total);
+        });
+    } catch {
+        return 0;
+    }
+}

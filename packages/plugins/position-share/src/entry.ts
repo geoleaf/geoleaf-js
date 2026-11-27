@@ -109,6 +109,8 @@ registerPluginModule({
     id: "position-share",
     destroy: () => destroyLifecycle(),
     ui: {
+        // Not offered without the geolocation capability: there would be no position to share.
+        requiresCapability: "geolocation",
         mobileIcon: {
             icon: _ICON,
             labelKey: "position-share.toolbar.button",

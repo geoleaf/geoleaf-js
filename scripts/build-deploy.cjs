@@ -125,6 +125,7 @@ const {
     extractEagerChunks,
     deriveBootCriticalAssets,
 } = require("./lib/boot-assets.cjs");
+const { deriveLazyPluginAssets } = require("./lib/lazy-plugin-assets.cjs");
 
 // Profile-data slimming at deployment time. The module lives apart because
 // it is measurable alone: its two settings are FIGURES one wants to
@@ -2255,7 +2256,28 @@ function main() {
                     process.exit(1);
                 }
 
+                // ── LAZY_PLUGIN_ASSETS: the plugins loaded on demand ────────────────
+                //
+                // Fetched by the worker only when the user prepares a zone for offline use
+                // (`PRECACHE_LAZY_PLUGINS`) — never at install. Motive and derivation:
+                // `lib/lazy-plugin-assets.cjs`. A marker that stopped matching would ship a
+                // worker with an empty list, and the editor would again be unreachable offline
+                // after a preparation that reports success: refuse to build instead.
+                const lazyAssets = deriveLazyPluginAssets({ outDir, bootAssets });
+                const beforeLazy = swOut;
+                swOut = swOut.replace(
+                    /\/\*\s*__GEOLEAF_LAZY_PLUGIN_ASSETS__\s*\*\//,
+                    lazyAssets.map((u) => JSON.stringify(u)).join(", ")
+                );
+                if (swOut === beforeLazy) {
+                    log.err(
+                        "sw-core.js no longer carries the __GEOLEAF_LAZY_PLUGIN_ASSETS__ marker."
+                    );
+                    process.exit(1);
+                }
+
                 fs.writeFileSync(swPath, swOut);
+                log.ok(`SW LAZY_PLUGIN_ASSETS injected — ${lazyAssets.length} files (derived)`);
                 log.ok(
                     `SW STATIC_ASSETS injected — ${bootAssets.length} assets ` +
                         `(${eagerChunks.length} eager chunks, derived) · CACHE_VERSION +${cacheFingerprint}`

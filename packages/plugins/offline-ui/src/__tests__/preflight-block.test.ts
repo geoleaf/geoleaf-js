@@ -120,6 +120,27 @@ describe("the check says what the core read", () => {
         cleanup(self);
     });
 
+    test("a device never prepared is said — the verdict alone did not name what is missing", async () => {
+        check.layers = [layer("sites", "pulled")];
+        check.preparation = null;
+        const self = await mount();
+        const tiles = self._container.querySelector(".gl-cache-preflight__tiles");
+        expect(tiles?.hidden).toBe(false);
+        expect(tiles?.textContent).toBe("storage.preflight.notPrepared");
+        cleanup(self);
+    });
+
+    test("a prepared device does not say it was never prepared", async () => {
+        check.verdict = "ready";
+        check.layers = [layer("sites", "pulled")];
+        check.preparation = { cachedAt: 1, failedResources: 0, tiles: null };
+        const self = await mount();
+        const tiles = self._container.querySelector(".gl-cache-preflight__tiles");
+        expect(tiles?.hidden).toBe(true);
+        expect(tiles?.textContent).toBe("");
+        cleanup(self);
+    });
+
     test("zooms a preparation left out are named", async () => {
         check.verdict = "degraded";
         check.layers = [layer("sites", "pulled")];

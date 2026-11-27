@@ -301,6 +301,25 @@ describe("createWaypointInput — la source, vue depuis le DOM", () => {
         await vi.waitFor(() => expect(message.textContent).toBe("refus:no-match"));
     });
 
+    it("deux choix au même libellé se distinguent par le complément du géocodeur", async () => {
+        // Two « Saint-Denis » were indistinguishable in the list.
+        withGeocoding();
+        searchMock.mockResolvedValue([
+            { label: "Saint-Denis", lat: -20.88, lng: 55.45, detail: "97400 · La Réunion" },
+            { label: "Saint-Denis", lat: 48.93, lng: 2.36, detail: "93200 · Île-de-France" },
+        ]);
+        const { field, add } = mount();
+        field.value = "Saint-Denis";
+        add.click();
+        await vi.waitFor(() =>
+            expect(host.querySelectorAll(".gl-routing-add__result-detail")).toHaveLength(2)
+        );
+        const details = [...host.querySelectorAll(".gl-routing-add__result-detail")].map(
+            (d) => d.textContent
+        );
+        expect(details).toEqual(["97400 · La Réunion", "93200 · Île-de-France"]);
+    });
+
     it("une recherche qui échoue le dit AUTREMENT qu'une recherche vide", async () => {
         withGeocoding();
         searchMock.mockRejectedValue(new Error("réseau"));

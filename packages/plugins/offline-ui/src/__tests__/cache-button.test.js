@@ -75,6 +75,9 @@ describe("registerCacheToolbar", () => {
         expect(register).toHaveBeenCalledTimes(1);
         const arg = register.mock.calls[0][0];
         expect(arg.id).toBe("offline-ui");
+        // Not offered without the offline engine: the kernel withholds the slot when the
+        // capability is not embarked or is switched off.
+        expect(arg.ui.requiresCapability).toBe("offline");
         for (const slot of [arg.ui.mobileIcon, arg.ui.desktopTabButton]) {
             expect(slot.action).toBe("offline-ui");
             // INV-CONFIG / PC-14 — the canonical key lives under

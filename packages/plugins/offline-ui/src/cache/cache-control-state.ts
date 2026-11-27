@@ -5,6 +5,8 @@
  * https://geoleaf.dev
  */
 
+import { getActiveLang } from "@geoleaf/host-runtime";
+import { formatSize } from "../utils/size-format.js";
 import { Log } from "@geoleaf/host-runtime";
 import { coreConfigGet } from "@geoleaf/host-runtime";
 import { StorageContract } from "../shared/storage-contract.js";
@@ -53,8 +55,7 @@ export async function updateStatus(self: CacheControlState): Promise<void> {
                 stateEl.classList.remove("gl-cache-state--missing");
             }
             if (sizeEl) {
-                const sizeMB = ((status.size || 0) / 1024 / 1024).toFixed(2);
-                sizeEl.textContent = `${sizeMB} MB`;
+                sizeEl.textContent = formatSize(status.size || 0);
             }
             if (self._clearBtn) self._clearBtn.disabled = false;
         } else {
@@ -63,15 +64,15 @@ export async function updateStatus(self: CacheControlState): Promise<void> {
                 stateEl.classList.add("gl-cache-state--missing");
                 stateEl.classList.remove("gl-cache-state--ok");
             }
-            if (sizeEl) sizeEl.textContent = "0 MB";
+            if (sizeEl) sizeEl.textContent = formatSize(0);
             if (self._clearBtn) self._clearBtn.disabled = true;
         }
 
         if (quotaEl) {
-            const usedMB = (quota.usage / 1024 / 1024).toFixed(2);
-            const totalMB = (quota.quota / 1024 / 1024).toFixed(2);
-            const percentage = quota.percentage.toFixed(1);
-            quotaEl.textContent = `${usedMB} MB / ${totalMB} MB (${percentage}%)`;
+            const percentage = new Intl.NumberFormat(getActiveLang() || undefined, {
+                maximumFractionDigits: 1,
+            }).format(quota.percentage);
+            quotaEl.textContent = `${formatSize(quota.usage)} / ${formatSize(quota.quota)} (${percentage} %)`;
         }
     } catch (error) {
         if (Log) Log.error(`[CacheControl] Failed to update status: ${(error as Error).message}`);
@@ -111,8 +112,7 @@ export function updateProgress(self: CacheControlState, progress: CacheProgressD
 
     // Instantaneous speed
     if (progress.speed) {
-        const speedMB = (progress.speed / 1024 / 1024).toFixed(2);
-        text += ` \u2022 ${speedMB} MB/s`;
+        text += ` \u2022 ${formatSize(progress.speed)}/s`;
     }
 
     // Remaining time (with validation)

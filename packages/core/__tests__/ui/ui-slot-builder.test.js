@@ -6,7 +6,12 @@
  * `profileKey`/`requiresPlugin`, so both guard bodies were dead to coverage —
  * visible only once extracted (28 % file). These tests drive both guards directly.
  */
-import { resolveUISlotVisibility } from "../../src/kernel/ui/ui-slot-builder.js";
+import {
+    resolveUISlotVisibility,
+    slotAvailabilityOptions,
+} from "../../src/kernel/ui/ui-slot-builder.js";
+import { CapabilityRegistry } from "../../src/kernel/api/capability-registry.js";
+import { Log } from "../../src/utils/log/index.js";
 
 const BOTH = { checkRequiresPlugin: true, useDefaultVisible: true };
 
@@ -210,5 +215,118 @@ describe("resolveUISlotVisibility", () => {
             false
         );
         expect(isLoaded).not.toHaveBeenCalled();
+    });
+});
+
+// Guards 4 and 5 — a slot whose control can only fail is not offered. Driven against the
+// REAL capability registry: the verdict is the registry's (embarked, gate, dependencies), and
+// a stub here would only restate what the guard is meant to read.
+describe("guard 4 — requiresCapability", () => {
+    /** Declares a capability as an installer would, gated on `modules.<id>.enabled`. */
+    function declare(id, { embarked = true, dependencies } = {}) {
+        CapabilityRegistry.register({
+            id,
+            gate: { configPath: `modules.${id}.enabled`, enableWhenAbsent: true },
+            ...(dependencies ? { dependencies } : {}),
+        });
+        if (embarked) CapabilityRegistry.noteInstaller(id, { hasModule: true });
+    }
+
+    afterEach(() => {
+        CapabilityRegistry._reset();
+        delete globalThis.GeoLeaf;
+    });
+
+    const LAZY = { checkRequiresPlugin: false, useDefaultVisible: false };
+
+    it("keeps the slot while nothing is declared — unknown is not absent", () => {
+        stubGeoLeaf({ configGet: (_k, d) => d });
+        expect(resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "offline" })).toBe(true);
+    });
+
+    it("hides the slot when the bundle does not embark the capability", () => {
+        stubGeoLeaf({ configGet: (_k, d) => d });
+        declare("legend");
+        expect(resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "offline" })).toBe(false);
+    });
+
+    it("hides the slot when the profile switches the capability off", () => {
+        stubGeoLeaf({ configGet: (k, d) => (k === "modules.offline.enabled" ? false : d) });
+        declare("offline");
+        expect(resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "offline" })).toBe(false);
+    });
+
+    it("hides the slot when a dependency of the capability is off", () => {
+        stubGeoLeaf({ configGet: (k, d) => (k === "modules.pwa.enabled" ? false : d) });
+        declare("pwa");
+        declare("offline", { dependencies: ["pwa"] });
+        expect(resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "offline" })).toBe(false);
+    });
+
+    // A slot withheld for its capability used to vanish without a word: the integrator who
+    // forgot `geolocation` saw no position-share button and no reason. Said once per capability.
+    it("says, once, that a control is withheld for a missing capability", () => {
+        const warn = vi.spyOn(Log, "warn").mockImplementation(() => {});
+        stubGeoLeaf({ configGet: (_k, d) => d });
+        declare("legend");
+        resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "geolocation-absent-probe" });
+        resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "geolocation-absent-probe" });
+        const lines = warn.mock.calls.filter((c) =>
+            String(c[0]).includes("geolocation-absent-probe")
+        );
+        expect(lines).toHaveLength(1);
+        warn.mockRestore();
+    });
+
+    it("shows the slot when the capability is embarked and on", () => {
+        stubGeoLeaf({ configGet: (_k, d) => d });
+        declare("offline");
+        expect(resolveUISlotVisibility({}, { ...LAZY, requiresCapability: "offline" })).toBe(true);
+    });
+});
+
+describe("guard 5 — the owner's isAvailable()", () => {
+    afterEach(() => {
+        delete globalThis.GeoLeaf;
+    });
+
+    it("hides the registry slot when its module answers false", () => {
+        stubGeoLeaf();
+        const opts = {
+            ...BOTH,
+            ...slotAvailabilityOptions("routing", { isAvailable: () => false }),
+        };
+        expect(resolveUISlotVisibility({}, opts)).toBe(false);
+    });
+
+    it("reads the predicate at render time, with the slot as receiver", () => {
+        stubGeoLeaf();
+        const slot = {
+            enabled: true,
+            isAvailable() {
+                return this.enabled;
+            },
+        };
+        const opts = { ...BOTH, ...slotAvailabilityOptions("routing", slot) };
+        expect(resolveUISlotVisibility({}, opts)).toBe(true);
+        slot.enabled = false;
+        expect(resolveUISlotVisibility({}, opts)).toBe(false);
+    });
+
+    it("keeps the slot when the predicate throws — a defect of its owner, logged", () => {
+        stubGeoLeaf();
+        const opts = {
+            ...BOTH,
+            ...slotAvailabilityOptions("routing", {
+                isAvailable: () => {
+                    throw new Error("boom");
+                },
+            }),
+        };
+        expect(resolveUISlotVisibility({}, opts)).toBe(true);
+    });
+
+    it("passes neither option on for a slot that declares neither", () => {
+        expect(slotAvailabilityOptions("x", {})).toEqual({});
     });
 });

@@ -42,6 +42,7 @@ import "./css/cache-sync.css";
 import "./css/cache-preflight.css";
 import "./css/cache-quarantine.css";
 import "./css/cache-log-export.css";
+import "./css/cache-simple.css";
 import "./css/sw-update-banner.css";
 // Offline UI only — the engine (IndexedDB / cache / download / sync / poi-restore) now
 // lives in-core (`@geoleaf/core` `capabilities/offline`) and is loaded on demand by the
@@ -142,6 +143,5 @@ export type {
     StorageContractDB,
     StorageContractCacheManager,
     StorageContractCacheStorage,
-    StorageContractLayerSelector,
     StorageContractCache,
 } from "./shared/storage-contract.js";

@@ -17,6 +17,9 @@ const langConnectorDe = {
     "connector.error.noEndpoint": "Ungültige Konfiguration: Endpunkt fehlt.",
     "connector.error.invalidCredentials": "Benutzername oder Passwort falsch.",
     "connector.error.networkUnavailable": "Server nicht erreichbar. Prüfen Sie Ihre Verbindung.",
+    "connector.error.invalidResponse":
+        "Der Server hat ohne Sitzungstoken geantwortet. Wenden Sie sich an den Administrator.",
+    "connector.session.hostManaged": "Die Sitzung wird von der Anwendung verwaltet.",
     "connector.error.generic": "Fehler: ",
     "connector.error.unexpected": "Ein unerwarteter Fehler ist aufgetreten.",
     "connector.error.tooManyAttempts": "Zu viele Versuche. Erneut versuchen in {seconds} s.",

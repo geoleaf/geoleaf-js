@@ -33,7 +33,7 @@ vi.mock("../cog-loader.js", () => ({
 
 vi.mock("../cog-renderer.js", () => ({
     rastersToCanvas: mockRastersToCanvas,
-    canvasToDataUrl: mockCanvasToDataUrl,
+    canvasToImageUrl: mockCanvasToDataUrl,
     injectImageSource: mockInjectImageSource,
     removeImageSource: mockRemoveImageSource,
 }));
@@ -87,7 +87,7 @@ beforeEach(() => {
 // ─── addLayer ─────────────────────────────────────────────────────────────────
 
 describe("addLayer", () => {
-    it("calls the full pipeline: getCogInfo → selectOverview → loadViewportRasters → rastersToCanvas → canvasToDataUrl → injectImageSource", async () => {
+    it("calls the full pipeline: getCogInfo → selectOverview → loadViewportRasters → rastersToCanvas → canvasToImageUrl → injectImageSource", async () => {
         const map = makeMockMap();
         await addLayer("https://example.com/test.tif", map);
 
@@ -102,7 +102,7 @@ describe("addLayer", () => {
             1
         );
         expect(mockRastersToCanvas).toHaveBeenCalledWith(MOCK_RASTER_DATA, expect.any(Object));
-        expect(mockCanvasToDataUrl).toHaveBeenCalledWith(MOCK_CANVAS);
+        expect(mockCanvasToDataUrl).toHaveBeenCalledWith(MOCK_CANVAS, expect.any(String));
         expect(mockInjectImageSource).toHaveBeenCalledWith(
             map,
             expect.stringContaining("cog-layer-"),

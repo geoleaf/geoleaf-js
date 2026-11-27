@@ -14,9 +14,10 @@ import { Log } from "../../../utils/log/index.js";
 import { RetryHandler } from "./retry-handler.js";
 import { ProgressTracker, type ProgressData } from "./progress-tracker.js";
 import { FetchManager } from "./fetch-manager.js";
-import { CacheStorage } from "./storage.js";
+import { CacheStorage, readCachedBytes } from "./storage.js";
 import { CacheMetrics } from "./metrics.js";
 import { IndexedDB } from "../db/indexeddb.js";
+import { keepPluginCode } from "./plugin-code.js";
 
 const ESTIMATED_RESOURCE_SIZE_BYTES = 15 * 1024;
 
@@ -170,8 +171,20 @@ const CacheDownloader = {
                 return { cancelled: true, profileId };
             }
 
+            // The code of the plugins loaded on demand, kept with the zone (`plugin-code.ts`):
+            // without it, a plugin not opened online does not open offline.
+            const pluginCode = await keepPluginCode();
+
             const summary = ProgressTracker.getSummary() as Record<string, unknown>;
             summary.profileId = profileId;
+            summary.pluginCode = pluginCode;
+            // What this run fetched, and whether there was anything to fetch at all — a second
+            // preparation of the same zone is « already up to date », not a download.
+            summary.downloadedThisRun = Math.max(
+                0,
+                Number(summary.totalSize ?? 0) - Number(cachedSize ?? 0)
+            );
+            summary.upToDate = resourcesToDownload.length === 0;
             const successfulUrls = (summary.successfulDownloads as string[]) ?? [];
             const allCachedUrls = [...Array.from(cachedUrls), ...successfulUrls];
             summary.cached = allCachedUrls;
@@ -377,11 +390,10 @@ const CacheDownloader = {
      */
     async _getCachedSize(profileId: string): Promise<number> {
         try {
-            const manifest = (await CacheStorage.getManifest(profileId)) as {
-                resources?: Array<{ size?: number }>;
-            } | null;
-            if (!manifest?.resources) return 0;
-            return manifest.resources.reduce((total, res) => total + (res.size ?? 0), 0);
+            // Measured in the store, record by record: the manifest's resources carry no size,
+            // and summing them counted what the device already held as 0 — a first preparation
+            // over resources the runtime had cached announced « 0.00 MB ».
+            return await readCachedBytes(profileId);
         } catch (error: unknown) {
             Log.warn("[CacheDownloader] Failed to calculate cached size:", error);
             return 0;

@@ -5,6 +5,7 @@
  * https://geoleaf.dev
  */
 
+import { formatSize } from "../utils/size-format.js";
 import { Log, tLabel as t } from "@geoleaf/host-runtime";
 import { createElement } from "../utils/dom-helpers.js";
 import { buildZoneSelectionSection } from "./cache-control-zone.js";
@@ -12,6 +13,7 @@ import { buildSyncStatusBlock } from "./sync-status-block.js";
 import { buildQuarantineBlock } from "./quarantine-block.js";
 import { buildLogExportBlock } from "./log-export-block.js";
 import { buildPreflightBlock } from "./preflight-block.js";
+import { buildSimpleModeBlock } from "./simple-mode-block.js";
 
 import type { CacheControlState } from "./cache-control-types.js";
 
@@ -74,7 +76,42 @@ export function buildStructure(self: CacheControlState): void {
 /** Builds the cache content (status rows, layer section, sync section, actions, progress). */
 function buildContent(self: CacheControlState): void {
     const bodyEl = self._bodyEl!;
+    // The field window: what a technician needs to prepare a zone, and nothing that
+    // administers the cache. The rest is not built — except the layer section, kept hidden,
+    // because it is what writes the default selection the download and the quota check read.
+    const simple = self.options.mode === "simple";
+    if (simple) {
+        buildSimpleModeBlock(self, bodyEl);
+    } else {
+        buildAdministrationBlocks(self, bodyEl);
+    }
 
+    buildLayerSelectionSection(self, bodyEl).hidden = simple;
+    buildZoneSelectionSection(self, bodyEl);
+    if (simple) {
+        // The zoom ceiling and its note are tuning, not a choice of zone.
+        for (const el of bodyEl.querySelectorAll<HTMLElement>(
+            ".gl-cache-zone__row, .gl-cache-zone__note"
+        )) {
+            el.hidden = true;
+        }
+    }
+
+    const warningSection = createElement("div", "gl-cache-warning", bodyEl);
+    warningSection.id = "gl-cache-warning";
+    warningSection.style.display = "none";
+
+    const actionsSection = createElement("div", "gl-cache-actions", bodyEl);
+    buildDownloadButton(self, actionsSection);
+    if (!simple) buildClearButton(self, actionsSection);
+    buildProgress(self, bodyEl);
+
+    // Last: the journal of what happened, for whoever has to report it.
+    if (!simple) buildLogExportBlock(bodyEl);
+}
+
+/** The sync, quarantine and pre-departure blocks, then the STATUT accordion — full mode only. */
+function buildAdministrationBlocks(self: CacheControlState, bodyEl: HTMLElement): void {
     // 🛑 FIRST, so it lands ABOVE the STATUT accordion — and built here rather than inserted
     // into `#gl-cache-modal-body` from outside. Both tab initialisers call
     // `clearElementFast()` on that node, so anything posted there is wiped by the first tab
@@ -123,7 +160,7 @@ function buildContent(self: CacheControlState): void {
             id: "gl-cache-state",
             value: t("storage.layers.notCached"),
         },
-        { key: t("storage.layers.col.size"), id: "gl-cache-size", value: "0 MB" },
+        { key: t("storage.layers.col.size"), id: "gl-cache-size", value: formatSize(0) },
         // "Quota" is the word in each of the six languages; the value is painted by the
         // first status update.
         { key: "Quota", id: "gl-cache-quota", value: "-" },
@@ -142,18 +179,10 @@ function buildContent(self: CacheControlState): void {
         valueEl.id = row.id;
         valueEl.textContent = row.value;
     });
+}
 
-    if (bodyEl) {
-        buildLayerSelectionSection(self, bodyEl);
-        buildZoneSelectionSection(self, bodyEl);
-    }
-
-    const warningSection = createElement("div", "gl-cache-warning", bodyEl);
-    warningSection.id = "gl-cache-warning";
-    warningSection.style.display = "none";
-
-    const actionsSection = createElement("div", "gl-cache-actions", bodyEl);
-
+/** The download button. */
+function buildDownloadButton(self: CacheControlState, actionsSection: HTMLElement): void {
     const downloadBtn = createElement(
         "button",
         "gl-btn gl-btn--primary gl-cache-btn",
@@ -170,7 +199,10 @@ function buildContent(self: CacheControlState): void {
     dlText.textContent = t("storage.download.btn");
     downloadBtn.appendChild(dlIcon);
     downloadBtn.appendChild(dlText);
+}
 
+/** The purge button — full mode only. */
+function buildClearButton(self: CacheControlState, actionsSection: HTMLElement): void {
     const clearBtn = createElement(
         "button",
         "gl-btn gl-btn--secondary gl-cache-btn",
@@ -188,7 +220,10 @@ function buildContent(self: CacheControlState): void {
     clearText.textContent = t("storage.download.clearBtn");
     clearBtn.appendChild(clearIcon);
     clearBtn.appendChild(clearText);
+}
 
+/** The progress bar, its text and the stop button. */
+function buildProgress(self: CacheControlState, bodyEl: HTMLElement): void {
     const progressEl = createElement("div", "gl-cache-progress", bodyEl);
     self._progressEl = progressEl;
     progressEl.id = "gl-cache-progress";
@@ -216,13 +251,10 @@ function buildContent(self: CacheControlState): void {
     stopText.textContent = t("storage.download.stop");
     stopBtn.appendChild(stopIcon);
     stopBtn.appendChild(stopText);
-
-    // Last: the journal of what happened, for whoever has to report it.
-    buildLogExportBlock(bodyEl);
 }
 
 /** Builds the layer selection section (CONFIG accordion). */
-function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLElement): void {
+function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLElement): HTMLElement {
     const layersSection = createElement("div", "gl-cache-layers", parentEl);
 
     // Header with CONFIG title and toggle button
@@ -251,4 +283,5 @@ function buildLayerSelectionSection(self: CacheControlState, parentEl: HTMLEleme
     // Placeholder - will be populated by _populateLayerSelection
     const loading = createElement("div", "gl-cache-layers__loading", self._layersContent);
     loading.textContent = t("storage.sync.loading");
+    return layersSection;
 }

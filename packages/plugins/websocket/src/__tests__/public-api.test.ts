@@ -92,6 +92,23 @@ describe("buildPublicApi() — subscribe / unsubscribe", () => {
         expect(handler).toHaveBeenCalledWith({ lat: 48.8, lng: 2.3 });
     });
 
+    it("a subscribe() made BEFORE init() is delivered once connected", async () => {
+        // A fresh channel manager at init used to drop it: the handler never fired.
+        const handler = vi.fn();
+        api.subscribe("early-ch", handler);
+        await api.init(baseConfig());
+        mockTransport.simulateMessage("early-ch", { ok: true });
+        expect(handler).toHaveBeenCalledWith({ ok: true });
+    });
+
+    it("a send() made before init() is reported as dropped, not lost in silence", () => {
+        const dropped = vi.fn();
+        document.addEventListener("geoleaf:ws:send-dropped", dropped);
+        api.send("early", { x: 1 });
+        document.removeEventListener("geoleaf:ws:send-dropped", dropped);
+        expect(dropped).toHaveBeenCalledTimes(1);
+    });
+
     it("returned unsubscribe function stops handler calls", async () => {
         await api.init(baseConfig());
         const handler = vi.fn();

@@ -65,8 +65,10 @@ describe("getMeasureConfig — defaults", () => {
         const cfg = getMeasureConfig();
         expect(cfg.enabled).toBe(true);
         expect(cfg.showButton).toBe(true);
-        expect(cfg.defaultDistanceUnit).toBe("m");
-        expect(cfg.defaultAreaUnit).toBe("m2");
+        // `auto` by default: the unit follows the magnitude (square metres printed a field's
+        // area as « 311708308915 m² »).
+        expect(cfg.defaultDistanceUnit).toBe("auto");
+        expect(cfg.defaultAreaUnit).toBe("auto");
         expect(cfg.snapPx).toBe(12);
         expect(cfg.circleSteps).toBe(64);
         expect(cfg.maxFeatures).toBe(500);
@@ -180,8 +182,8 @@ describe("getMeasureConfig — validation & clamping", () => {
             measureConfig: { defaultDistanceUnit: "miles", defaultAreaUnit: "acres" },
         });
         const cfg = getMeasureConfig();
-        expect(cfg.defaultDistanceUnit).toBe("m");
-        expect(cfg.defaultAreaUnit).toBe("m2");
+        expect(cfg.defaultDistanceUnit).toBe("auto");
+        expect(cfg.defaultAreaUnit).toBe("auto");
     });
 
     it("accepts the 'auto' unit values", () => {

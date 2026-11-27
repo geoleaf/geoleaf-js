@@ -103,6 +103,14 @@ describe("emprise-selector — mouse (non-regression net)", () => {
         expect(okBtn.style.display).toBe("none");
     });
 
+    it("once drawn, the hint says what to do next — the adjust instruction is shown", () => {
+        // `print.emprise.hint.adjust` was in the six dictionaries and was never shown.
+        const { overlay } = setup();
+        drawWithMouse(overlay);
+        const hint = container.querySelector(".gl-emprise-hint") as HTMLElement;
+        expect(hint.textContent).toMatch(/adjust|ajust/i);
+    });
+
     it("a right button does not start a drawing", () => {
         const { overlay } = setup();
         mouse("mousedown", overlay, 50, 50, 2);

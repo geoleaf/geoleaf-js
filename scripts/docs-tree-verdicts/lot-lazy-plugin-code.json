@@ -1,0 +1,38 @@
+{
+    "schemaVersion": 2,
+    "lot": "lazy-plugin-code",
+    "scope": [
+        "scripts/lib/lazy-plugin-assets.cjs",
+        "packages/core/src/capabilities/offline/cache/plugin-code.ts"
+    ],
+    "verdicts": {
+        "scripts/lib/lazy-plugin-assets.cjs": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Dérive du `init.js` déployé la clôture de chaque plugin chargé à la demande (entrée avec son `?v=`, puis ses imports statiques et dynamiques), moins le pré-cache du boot ; injectée dans le worker sous `LAZY_PLUGIN_ASSETS`",
+            "confidence": "haute",
+            "rationale": "Séparé de `boot-assets.cjs` à dessein : celui-ci est la source unique du pré-cache du boot ET de la pesée de `check-app-payload.cjs`, et y ajouter les plugins à la demande les aurait pré-cachés à chaque installation et pesés comme coût du boot. Né d'un défaut mesuré : une zone préparée hors ligne laissait l'éditeur injoignable s'il n'avait pas été ouvert en ligne. Refuse une URL dérivée sans fichier. Tenu par `packages/core/__tests__/storage/lazy-plugin-assets.test.ts` et `e2e/106-offline-lazy-plugins.spec.js`, vus rougir"
+        },
+        "packages/core/src/capabilities/offline/cache/plugin-code.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Demande au worker qui contrôle la page de garder le code des plugins chargés à la demande (`PRECACHE_LAZY_PLUGINS`), à la fin d'une préparation hors ligne ; ne lève jamais, rend le rapport du worker ou `null`",
+            "confidence": "haute",
+            "rationale": "Vit dans `capabilities/offline/cache/` parce que c'est la préparation qui l'appelle (`downloader.ts`), et à part parce que `cache-manager.ts` est au plafond de taille. La page ne connaît aucun nom haché : la liste vit dans le worker, dérivée au build. Tenu par `__tests__/capabilities/offline/plugin-code.test.ts` (vu rougir sur le type du message) et `e2e/106`"
+        }
+    }
+}

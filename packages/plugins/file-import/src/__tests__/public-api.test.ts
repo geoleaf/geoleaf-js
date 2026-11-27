@@ -141,6 +141,25 @@ describe("public-api", () => {
         expect(opts.visible).toBe(false);
     });
 
+    it("importAsLayer paints a READABLE default, and lets the caller restyle it", async () => {
+        // Without a style the adapter's own default applied: #cccccc, 5 px, no outline.
+        const addGeoJSONLayer = vi.fn();
+        (globalThis as Record<string, unknown>).GeoLeaf = {
+            Core: { getMap: () => ({ addGeoJSONLayer }) },
+        };
+        const gpx = `<?xml version="1.0"?><gpx version="1.1"><wpt lat="48" lon="2"><name>A</name></wpt></gpx>`;
+        await importAsLayer(makeFile("a.gpx", gpx));
+        const plain = addGeoJSONLayer.mock.calls[0]![2];
+        expect(plain.fillColor).toBeDefined();
+        expect(plain.color).toBeDefined();
+        expect(plain.fillColor).not.toBe("#cccccc");
+
+        await importAsLayer(makeFile("b.gpx", gpx), { style: { fillColor: "#3b82f6" } });
+        const styled = addGeoJSONLayer.mock.calls[1]![2];
+        expect(styled.fillColor).toBe("#3b82f6");
+        expect(styled.color).toBe(plain.color);
+    });
+
     it("importAsLayer honours an explicit layerId", async () => {
         const addGeoJSONLayer = vi.fn();
         (globalThis as Record<string, unknown>).GeoLeaf = {

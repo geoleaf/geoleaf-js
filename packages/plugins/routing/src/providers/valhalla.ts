@@ -107,7 +107,15 @@ export function createValhallaProvider(
             // the map. Reporting it as a malfunction would tell the user to retry something that
             // will never work. The usual form of that answer is the HTTP error `classifyRefusal`
             // reads; this branch covers the same answer inside a success.
-            return route ? { ok: true, route } : { ok: false, reason: "no-route" };
+            if (route) return { ok: true, route };
+            // ⚠️ Only a NUMERIC non-zero status is that answer. A body without `trip`, without
+            // `status` or without usable legs is a malfunction of the engine — said « aucun
+            // itinéraire », it sent the user to move their points for a fault that was not theirs.
+            const status = (res.body as { trip?: { status?: unknown } } | null)?.trip?.status;
+            return {
+                ok: false,
+                reason: typeof status === "number" && status !== 0 ? "no-route" : "malformed",
+            };
         },
     };
 }

@@ -41,6 +41,12 @@ export interface ComposeInputs {
     lockedScale: number;
     center: { lng: number; lat: number };
     dpi: number;
+    /**
+     * Ceiling on the composed canvas, in pixels — set on a phone (`maxCanvasPxMobile`). The map
+     * zone alone was bounded: an A3 plate composed on a Pixel 7 came out at 17.4 Mpx, past the
+     * 16 Mpx a mobile canvas accepts. Absent: no ceiling.
+     */
+    maxCanvasPx?: number;
     title: string;
     description: string;
     includeLegend: boolean;
@@ -74,6 +80,17 @@ interface MapViewport {
 // ---------------------------------------------------------------------------
 
 /**
+ * The DPI at which the WHOLE page stays under `maxPx` — the composition, not only its map zone.
+ *
+ * @returns `dpi` unchanged when no ceiling is set or the page already fits.
+ */
+function pageBoundedDpi(widthMm: number, heightMm: number, dpi: number, maxPx?: number): number {
+    if (!maxPx) return dpi;
+    const px = ((widthMm / 25.4) * dpi * (heightMm / 25.4) * dpi) as number;
+    return px <= maxPx ? dpi : Math.floor(dpi * Math.sqrt(maxPx / px));
+}
+
+/**
  * Derives the zones, pixel targets and composition options for the current form
  * state. Returns `null` when the paper format is not registered — callers treat
  * that as "nothing to draw", as they did before this was factored out.
@@ -94,7 +111,8 @@ export function buildComposeArgs(inputs: ComposeInputs): ComposeArgs | null {
     };
 
     const zones = computeZones(inputs.format, inputs.orientation, zoneOpts);
-    const targetPx = computeTargetPixels(zones, inputs.dpi);
+    const dpi = pageBoundedDpi(dims.widthMm, dims.heightMm, inputs.dpi, inputs.maxCanvasPx);
+    const targetPx = computeTargetPixels(zones, dpi);
     const bbox = computeBbox(
         inputs.format,
         inputs.lockedScale,
@@ -113,7 +131,7 @@ export function buildComposeArgs(inputs: ComposeInputs): ComposeArgs | null {
             title: inputs.title,
             description: inputs.description,
             scaleDenominator: inputs.lockedScale,
-            dpi: inputs.dpi,
+            dpi,
             includeScale: inputs.includeScale,
             includeNorthArrow: inputs.includeNorthArrow,
             includeLegend: inputs.includeLegend,

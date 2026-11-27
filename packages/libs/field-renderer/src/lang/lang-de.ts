@@ -22,6 +22,7 @@ const lang_de: Record<string, string> = {
     "form.aria.latitude": "Breitengrad",
     "form.aria.listMoveDown": "Element nach unten verschieben",
     "form.aria.listMoveUp": "Element nach oben verschieben",
+    "form.list.add": "+ Hinzufügen",
     "form.aria.listRemove": "Element entfernen",
     "form.aria.longitude": "Längengrad",
     "form.aria.reviewRemove": "Bewertung entfernen",

@@ -23,6 +23,8 @@ vi.mock("../ui/itinerary-panel.js", () => ({
         // The list this double holds, so `addWaypoint` can report a REAL one back.
         let list: readonly Waypoint[] = [...(initial ?? [])];
         const p: ItineraryPanel = {
+            // A destination is appended like any stop here: this double measures the controller.
+            setDestination: (w) => p.addWaypoint(w),
             setWaypoints: (w) => {
                 list = w;
                 setTo = w;
@@ -65,6 +67,8 @@ vi.mock("../publish.js", () => ({
 const _fits: unknown[][] = [];
 
 let _origin: unknown = { ok: false, reason: "unavailable" };
+/** What the doubled capability accessor answers. */
+let _capabilityOn = true;
 vi.mock("../origin.js", () => ({ originFromUserPosition: async () => _origin }));
 /**
  * The plugin registry the double returns.
@@ -94,6 +98,9 @@ vi.mock("@geoleaf/host-runtime", () => ({
     // makes the wiring observable here without reproducing view geometry.
     getNativeMap: () => ({ fitBounds: (...a: unknown[]) => _fits.push(a) }),
     Log: { warn: () => {}, error: () => {}, info: () => {} },
+    // The guidance entry point needs the geolocation capability; this file measures the
+    // registry's side of the decision, so the capability answers present.
+    isCapabilityOn: () => _capabilityOn,
 }));
 
 const { clearRouteCache } = await import("../route-cache.js");
@@ -287,6 +294,15 @@ describe("your position", () => {
 describe("le point d'entrée du guidage", () => {
     afterEach(() => {
         _plugins = undefined;
+        _capabilityOn = true;
+    });
+
+    it("ne fournit aucun handler sans la capacité de géolocalisation", () => {
+        // The guidance follows the GPS: without it, a session could only wait for a fix.
+        _plugins = { isLoaded: () => false, isLazyAvailable: (n: string) => n === "navigation" };
+        _capabilityOn = false;
+        openPanel();
+        expect(captured?.handlers.onStartGuidance).toBeUndefined();
     });
 
     it("🛑 ne fournit AUCUN handler quand `navigation` est introuvable", () => {

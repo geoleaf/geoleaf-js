@@ -174,7 +174,11 @@ describe("the entry registers that teardown on both loading paths", () => {
             destroy: () => void;
         };
         expect(module.id).toBe("table");
-        expect(Object.keys(module.ui ?? {}).sort()).toEqual(["desktopTabButton", "mobileIcon"]);
+        expect(Object.keys(module.ui ?? {}).sort()).toEqual([
+            "desktopTabButton",
+            "isAvailable",
+            "mobileIcon",
+        ]);
 
         TableLifecycle.ensureInitialized();
         module.destroy();

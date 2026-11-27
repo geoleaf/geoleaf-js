@@ -220,3 +220,33 @@ describe("targetLayerId", () => {
         expect(_store["test"].features).toHaveLength(2); // test layer unchanged
     });
 });
+
+// ── identity carried by `feature.id` ──────────────────────────────────────────
+
+describe("the identity a feed carries in `feature.id`", () => {
+    // The decoder takes the identity from `feature.id`; the lookup read `properties` only, and the
+    // working copy dropped `id` — every refresh added beside the features the boot drew.
+    it("an upsert REPLACES the boot's feature instead of adding beside it", () => {
+        _store = {
+            test: {
+                type: "FeatureCollection",
+                features: [
+                    { type: "Feature", id: "bus-1", properties: { line: "12" }, geometry: null },
+                    { type: "Feature", id: "bus-2", properties: { line: "7" }, geometry: null },
+                ] as unknown as Feature[],
+            },
+        };
+        const updates: DecodedUpdate[] = [
+            { id: "bus-1", properties: { line: "12", speed: 30 }, action: "upsert" },
+        ];
+        applyUpdates("test", updates, makeConfig({ updateMode: "upsert", idField: undefined }));
+        applyUpdates("test", updates, makeConfig({ updateMode: "upsert", idField: undefined }));
+
+        const features = getFeatures() as unknown as {
+            id?: string;
+            properties: { speed?: number };
+        }[];
+        expect(features).toHaveLength(2);
+        expect(features.find((f) => f.id === "bus-1")?.properties.speed).toBe(30);
+    });
+});

@@ -339,3 +339,34 @@ test("rejects an invalid URL and a non-http(s) URL", async ({ page }) => {
     expect(res.invalidErr).toMatch(/COG|URL/i);
     expect(res.ftpErr).toMatch(/http|protocol/i);
 });
+
+// ── The image is PAINTED under the deliverable's CSP ──────────────────────────────
+//
+// 🛑 Every case above held the STYLE — a source and a layer declared — and none held the image.
+// Under `connect-src 'self' https:` the drawn raster was refused: MapLibre 6 loads an `image`
+// source through `fetch()`, and the plugin handed it a `blob:` URL. The source stayed
+// unloaded, the tile never showed, and the style said everything was in place. A `data:` URL
+// would have been refused the same way — same directive.
+test("the drawn raster is loaded by the engine, with no CSP violation", async ({ page }) => {
+    const { errors } = await boot(page);
+    const res = await page.evaluate(async (path) => {
+        const violations = [];
+        document.addEventListener("securitypolicyviolation", (e) =>
+            violations.push(`${e.violatedDirective} ${e.blockedURI}`)
+        );
+        const map = /** @type {any} */ (window).GeoLeaf.Core.getMap().getNativeMap();
+        const handle = await /** @type {any} */ (window).GeoLeaf.COG.addLayer(
+            location.origin + path,
+            map,
+            { id: "e2e-cog-painted" }
+        );
+        const deadline = Date.now() + 10_000;
+        while (!map.getSource(handle.id)?.loaded?.() && Date.now() < deadline) {
+            await new Promise((r) => setTimeout(r, 100));
+        }
+        return { loaded: !!map.getSource(handle.id)?.loaded?.(), violations };
+    }, COG_PATH);
+    expect(res.violations, "the raster crossed the CSP").toEqual([]);
+    expect(res.loaded, "the engine never loaded the drawn image").toBe(true);
+    expect(errors).toEqual([]);
+});

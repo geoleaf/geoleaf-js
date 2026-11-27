@@ -28,6 +28,7 @@ const FR: Record<string, string> = {
     "ui.sync.pending_one": "1 en attente",
     "ui.sync.pending_many": "{0} en attente",
     "ui.sync.all_sent": "Tout est envoyé",
+    "ui.sync.none_pending": "Rien en attente",
     "ui.sync.quarantined": "{0} bloquée(s)",
     "ui.sync.last_never": "jamais synchronisé",
     "ui.sync.last_at": "synchro {0}",
@@ -150,7 +151,9 @@ describe("bloc de statut de synchronisation dans la modale du cache", () => {
 
         // The core's strip goes silent in this state. This is exactly where one comes to ask
         // the question once it has, so it answers even when the answer is reassuring.
-        expect(text("pending")).toBe("Tout est envoyé");
+        // Never synchronised: « Tout est envoyé » beside « jamais synchronisé » said two contrary
+        // things — nothing was sent, there is simply nothing waiting.
+        expect(text("pending")).toBe("Rien en attente");
         expect(text("last")).toBe("jamais synchronisé");
         expect(action().disabled).toBe(true);
     });
@@ -218,15 +221,18 @@ describe("bloc de statut de synchronisation dans la modale du cache", () => {
     });
 
     test("🛑 il se rafraîchit sur les deux événements de file du cœur", async () => {
+        // A device that has synchronised before: « Tout est envoyé » is then the truth.
+        const synced = Date.now() - 60_000;
+        status = { online: true, owed: 0, quarantined: 0, lastSyncAt: synced };
         await mount();
         expect(text("pending")).toBe("Tout est envoyé");
 
-        status = { online: true, owed: 1, quarantined: 0, lastSyncAt: null };
+        status = { online: true, owed: 1, quarantined: 0, lastSyncAt: synced };
         document.dispatchEvent(new CustomEvent("geoleaf:offline:outbox-queued"));
         await settle();
         expect(text("pending")).toBe("1 en attente");
 
-        status = { online: true, owed: 0, quarantined: 0, lastSyncAt: null };
+        status = { online: true, owed: 0, quarantined: 0, lastSyncAt: synced };
         document.dispatchEvent(new CustomEvent("geoleaf:offline:outbox-drained"));
         await settle();
         expect(text("pending")).toBe("Tout est envoyé");

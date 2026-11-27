@@ -17,6 +17,11 @@
 const langTemplateEn = {
     "position-share.toolbar.button": "Share",
     "position-share.status.emitting": "Sharing my position",
+    "position-share.error.noGeolocation":
+        "Sharing your position needs geolocation, which this application does not have.",
+    "position-share.error.modeOff": "Position sharing is switched off by the profile.",
+    "position-share.error.noChannel":
+        "The real-time channel is not connected: the position cannot be shared.",
 } satisfies Record<string, string>;
 
 export default langTemplateEn;

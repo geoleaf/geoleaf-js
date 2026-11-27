@@ -18,6 +18,7 @@ import {
 } from "../floating-menu.js";
 import { getMeasureConfig } from "../config.js";
 import { renderRecap } from "../recap-box.js";
+import langFr from "../lang/lang-fr.js";
 import { installMockGeoLeaf, uninstallMockGeoLeaf, makeMockMaplibreMap } from "./setup.js";
 
 // Make requestAnimationFrame synchronous so drag tests are deterministic.
@@ -232,7 +233,7 @@ describe("floating-menu", () => {
         expect(btn.textContent).toBe("km");
     });
 
-    it("clicking distance toggle cycles m → km and calls onUnitsChange", () => {
+    it("clicking distance toggle cycles m → km → auto → m and calls onUnitsChange", () => {
         const onUnitsChange = vi.fn();
         initMenu({ ...getMeasureConfig(), defaultDistanceUnit: "m" }, { onUnitsChange });
         const btn = container.querySelector<HTMLButtonElement>(
@@ -242,9 +243,46 @@ describe("floating-menu", () => {
         btn.click(); // m → km
         expect(onUnitsChange).toHaveBeenCalledWith({ distance: "km" });
         expect(btn.textContent).toBe("km");
-        btn.click(); // km → m
+        // `auto` is reachable again: once left, the button could not come back to it.
+        btn.click(); // km → auto
+        expect(onUnitsChange).toHaveBeenLastCalledWith({ distance: "auto" });
+        expect(btn.textContent).toBe("~ m");
+        btn.click(); // auto → m
         expect(onUnitsChange).toHaveBeenLastCalledWith({ distance: "m" });
         expect(btn.textContent).toBe("m");
+    });
+
+    it("in auto mode the two unit buttons stay distinct to the eye", () => {
+        initMenu(
+            { ...getMeasureConfig(), defaultDistanceUnit: "auto", defaultAreaUnit: "auto" },
+            {}
+        );
+        const distBtn = container.querySelector<HTMLButtonElement>(
+            ".gl-measure-unit-btn[data-unit-type='dist']"
+        )!;
+        const areaBtn = container.querySelector<HTMLButtonElement>(
+            ".gl-measure-unit-btn[data-unit-type='area']"
+        )!;
+        expect(distBtn.textContent).toBe("~ m");
+        expect(areaBtn.textContent).toBe("~ m²");
+    });
+
+    it("the unit buttons' accessible name says the quantity and the CURRENT unit", () => {
+        const dict = langFr as Record<string, string>;
+        (globalThis as any).GeoLeaf.I18n.getLabel.mockImplementation((k: string) => dict[k] ?? k);
+        initMenu({ ...getMeasureConfig(), defaultDistanceUnit: "auto", defaultAreaUnit: "ha" }, {});
+        const distBtn = container.querySelector<HTMLButtonElement>(
+            ".gl-measure-unit-btn[data-unit-type='dist']"
+        )!;
+        const areaBtn = container.querySelector<HTMLButtonElement>(
+            ".gl-measure-unit-btn[data-unit-type='area']"
+        )!;
+        expect(distBtn.getAttribute("aria-label")).toBe("Unité des distances : automatique");
+        expect(areaBtn.getAttribute("aria-label")).toBe("Unité des surfaces : ha");
+        distBtn.click(); // auto → m: the name follows the cycle
+        expect(distBtn.getAttribute("aria-label")).toBe("Unité des distances : m");
+        setCurrentUnits({ area: "km2" });
+        expect(areaBtn.getAttribute("aria-label")).toBe("Unité des surfaces : km²");
     });
 
     it("setCurrentUnits updates the unit toggle button text", () => {
@@ -378,7 +416,7 @@ describe("floating-menu", () => {
     // Branch coverage — area selector, no-map guard, no-surface-tools, post-destroy guards
     // -------------------------------------------------------------------------
 
-    it("clicking area toggle cycles m² → ha → km² → m²", () => {
+    it("clicking area toggle cycles m² → ha → km² → auto → m²", () => {
         const onUnitsChange = vi.fn();
         initMenu({ ...getMeasureConfig(), defaultAreaUnit: "m2" }, { onUnitsChange });
         const btn = container.querySelector<HTMLButtonElement>(
@@ -391,7 +429,10 @@ describe("floating-menu", () => {
         btn.click(); // ha → km2
         expect(btn.textContent).toBe("km²");
         expect(onUnitsChange).toHaveBeenLastCalledWith({ area: "km2" });
-        btn.click(); // km2 → m2
+        btn.click(); // km2 → auto
+        expect(btn.textContent).toBe("~ m²");
+        expect(onUnitsChange).toHaveBeenLastCalledWith({ area: "auto" });
+        btn.click(); // auto → m2
         expect(btn.textContent).toBe("m²");
     });
 

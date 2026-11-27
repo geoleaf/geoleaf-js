@@ -9,6 +9,7 @@
  * https://geoleaf.dev
  */
 
+import type { FrameableMap } from "./frame-zones.js";
 import { getGeoLeaf } from "@geoleaf/host-runtime";
 import type { IsochroneGeometry, IsochroneLayer } from "./model.js";
 
@@ -19,7 +20,7 @@ import type { IsochroneGeometry, IsochroneLayer } from "./model.js";
  * members its own consumers need. Every member is checked to be a function before the slice is
  * handed out, so a core missing one reads as "no map" rather than failing mid-gesture.
  */
-export interface IsochroneMap {
+export interface IsochroneMap extends FrameableMap {
     addGeoJSONLayer(id: string, data: unknown, options: Record<string, unknown>): void;
     removeLayer(id: string): void;
     hasLayer(id: string): boolean;

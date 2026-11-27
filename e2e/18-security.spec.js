@@ -406,3 +406,39 @@ test.describe("18-security — en-têtes de sécurité servis", () => {
         expect(response.headers()["x-frame-options"]).toBe("DENY");
     });
 });
+
+// ── connect-src admits wss: ───────────────────────────────────────────────────────
+//
+// The websocket plugin's own spec answers through `routeWebSocket`, which bypasses the page's
+// policy: under `connect-src 'self' https:` every real connection was refused, and nothing in
+// the suite saw it. This reads the verdict of the SHIPPED policy, on both variants.
+//
+// ⚠️ `ws:` is not the witness, though it is not listed: `upgrade-insecure-requests` rewrites a
+// `ws:` URL to `wss:` BEFORE the policy is checked — measured, no violation. The witness is a
+// `fetch()` of a `data:` URL, which the same directive must refuse: without it, a listener that
+// saw nothing would pass this test.
+for (const variant of /** @type {const} */ (["core", "full"])) {
+    test.describe(`18-security — connect-src et WebSocket (${variant})`, () => {
+        test.use({ baseURL: baseURL(variant) });
+
+        test("une connexion wss: n'est pas refusée par la CSP", async ({ page }) => {
+            await page.goto("/");
+            await expect(page.locator("#geoleaf-map")).toBeVisible({ timeout: 20_000 });
+            const verdict = await page.evaluate(async () => {
+                const violations = [];
+                document.addEventListener("securitypolicyviolation", (e) =>
+                    violations.push(`${e.violatedDirective} ${e.blockedURI}`)
+                );
+                new WebSocket("wss://ws.geoleaf.invalid/").close();
+                await fetch("data:text/plain,witness").catch(() => {});
+                await new Promise((r) => setTimeout(r, 300));
+                return violations;
+            });
+            expect(
+                verdict.some((v) => v.startsWith("connect-src data")),
+                "le témoin n'a pas été refusé — l'écouteur ne voit rien"
+            ).toBe(true);
+            expect(verdict.filter((v) => v.includes("wss"))).toEqual([]);
+        });
+    });
+}

@@ -46,9 +46,12 @@ describe("loadFgbBbox", () => {
 
         expect(result.featureCount).toBe(2);
         expect(result.data.type).toBe("FeatureCollection");
+        // The third argument is the header callback (FG-01): the library sets no `header` on
+        // the iterator, so the header can only be read through it.
         expect(mockDeserialize).toHaveBeenCalledWith(
             "https://example.com/data.fgb",
-            expect.objectContaining({ minX: -1, minY: -1, maxX: 1, maxY: 1 })
+            expect.objectContaining({ minX: -1, minY: -1, maxX: 1, maxY: 1 }),
+            expect.any(Function)
         );
     });
 

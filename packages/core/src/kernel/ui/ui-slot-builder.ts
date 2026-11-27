@@ -16,6 +16,7 @@
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import type { IModuleUISlot } from "../../contracts/core-module.contract.ts";
+import { isCapabilityOffered, isOwnerAvailable } from "./slot-availability.js";
 
 /**
  * SVG tags allowed in module-provided icon markup.
@@ -71,7 +72,7 @@ interface UISlotGuards {
     requiresPlugin?: string;
 }
 
-/** How the caller wants the three guards evaluated. */
+/** How the caller wants the guards evaluated. */
 interface UISlotVisibilityOptions {
     /** Evaluate the `requiresPlugin` guard. Lazy slots skip it — they are the plugin. */
     checkRequiresPlugin: boolean;
@@ -97,12 +98,40 @@ interface UISlotVisibilityOptions {
      * The guard is therefore set HERE, at RENDER, the only moment the merged
      * configuration exists.
      *
-     * ⚠️ **Useless on the registry path**: `entry.ts` already filtered at
-     * registration there, and in-core capabilities have their own grid
-     * (`presets/apply-preset.ts`). Adding it would double a guard instead of
-     * filling one.
+     * ⚠️ **Not used on the registry path**: in-core capabilities have their own
+     * grid (`presets/apply-preset.ts`), and a plugin registered there before the
+     * profile loads says `enabled: false` through `IModuleUISlot.isAvailable()`,
+     * read at render like this one. A uniform gate there would hide the slots of
+     * plugins whose `enabled` does not mean "feature absent".
      */
     moduleGateId?: string;
+    /** Capability the slot needs — `IModuleUISlot.requiresCapability`, both paths. */
+    requiresCapability?: string;
+    /** The owner's predicate and id — `IModuleUISlot.isAvailable`, registry path. */
+    availability?: { owner: string; predicate: () => boolean };
+}
+
+/**
+ * The capability and availability guards of a slot, as the two toolbar builders pass them on.
+ *
+ * Conditional spreads, not `: undefined` — `exactOptionalPropertyTypes` refuses an explicit
+ * `undefined` on an optional property.
+ *
+ * @param id - The slot id, named in the log line of a throwing predicate.
+ * @param slot - The slot declaration.
+ * @returns The two options, each present only when the slot declares it.
+ */
+export function slotAvailabilityOptions(
+    id: string,
+    slot: Pick<IModuleUISlot, "requiresCapability" | "isAvailable">
+): Pick<UISlotVisibilityOptions, "requiresCapability" | "availability"> {
+    const predicate = slot.isAvailable;
+    return {
+        ...(slot.requiresCapability ? { requiresCapability: slot.requiresCapability } : {}),
+        ...(predicate
+            ? { availability: { owner: id, predicate: () => predicate.call(slot) } }
+            : {}),
+    };
 }
 
 /** A lazy-plugin UI slot — an `IModuleUISlot` paired with the action and the plugin it belongs to. */
@@ -200,10 +229,12 @@ function _configuredVisibility(
 /**
  * Resolves whether a registry / lazy-plugin UI slot button should be rendered.
  *
- * Three guards, in order:
+ * Five guards, in order:
  * 1. `profileKey` — hidden when `Config.get(profileKey)` is explicitly `false`.
  * 2. `requiresPlugin` — hidden unless the plugin is loaded OR lazy-available.
  * 3. `moduleGateId` — hidden when `modules.<id>.enabled` is explicitly `false` (lazy slots only).
+ * 4. `requiresCapability` — hidden when the capability is known absent or switched off.
+ * 5. `availability` — hidden when the owner's `isAvailable()` answers `false` (registry path).
  *
  * @param def - The slot definition carrying the guard fields.
  * @param opts - Which guards to apply and how to resolve the config fallback.
@@ -232,6 +263,12 @@ export function resolveUISlotVisibility(def: UISlotGuards, opts: UISlotVisibilit
     if (opts.moduleGateId) {
         const cfg = getGeoLeaf()?.Config as SlotConfigLike | undefined;
         if (cfg?.get?.(`modules.${opts.moduleGateId}.enabled`, undefined) === false) return false;
+    }
+
+    // Guards 4 and 5 — a slot that can only fail is not offered (`slot-availability.ts`).
+    if (opts.requiresCapability && !isCapabilityOffered(opts.requiresCapability)) return false;
+    if (opts.availability) {
+        return isOwnerAvailable(opts.availability.owner, opts.availability.predicate);
     }
 
     return true;

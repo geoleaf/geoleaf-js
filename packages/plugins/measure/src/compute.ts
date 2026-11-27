@@ -6,6 +6,7 @@
  * All functions are stateless and side-effect-free.
  * https://geoleaf.dev
  */
+import { getActiveLang } from "@geoleaf/host-runtime";
 import turfDistance from "@turf/distance";
 import turfArea from "@turf/area";
 import turfCircle from "@turf/circle";
@@ -192,9 +193,17 @@ export function formatArea(m2: number, unit: AreaUnit, decimals: number): string
 // Internal
 // ---------------------------------------------------------------------------
 
-function _round(value: number, decimals: number): number {
+function _round(value: number, decimals: number): string {
     const factor = Math.pow(10, decimals);
-    return Math.round(value * factor) / factor;
+    const rounded = Math.round(value * factor) / factor;
+    // Grouped in the active language: « 311708308915 m² » could not be read at a glance.
+    try {
+        return new Intl.NumberFormat(getActiveLang() || undefined, {
+            maximumFractionDigits: decimals,
+        }).format(rounded);
+    } catch {
+        return String(rounded);
+    }
 }
 
 // Re-exported for use by other modules (avoids direct @turf/helpers import)

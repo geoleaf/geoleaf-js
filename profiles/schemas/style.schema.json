@@ -31,8 +31,7 @@
                         },
                         "visibleByDefault": {
                             "type": "boolean",
-                            "default": false,
-                            "description": "Labels visible on layer load without user action."
+                            "description": "Labels visible on layer load without user action. When set, it WINS over the caller: a plugin asking for its labels (routing's step numbers) is overridden by `false`. When absent, the caller decides — shown if it asks for them, hidden until the user toggles them otherwise."
                         },
                         "field": {
                             "type": "string",

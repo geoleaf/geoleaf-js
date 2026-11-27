@@ -15,6 +15,7 @@
  */
 
 import type { GeocodingConfig, GeocodingResult } from "./types.js";
+import { tLabel } from "@geoleaf/host-runtime";
 
 // ── Provider interface ────────────────────────────────────────────────────────
 
@@ -184,7 +185,80 @@ function _parseGeoJSON(data: unknown): GeocodingResult[] {
         if (result) results.push(result);
     }
 
+    _separateHomonyms(results);
     return results;
+}
+
+/**
+ * Two results that still read the same — same label, same detail — get their administrative level
+ * appended when the provider gives one (Nominatim `geocoding.admin`): a commune and the
+ * arrondissement of the same name otherwise come back as two identical lines. The level is named
+ * through `geocoding.detail.adminLevel<N>` (8 municipality, 7 district, 6 county); a level without
+ * such a key falls back to the numbered `geocoding.detail.adminLevel`. Only the colliding results
+ * get it, so the common case stays short.
+ * @internal
+ */
+function _separateHomonyms(results: GeocodingResult[]): void {
+    const groups = new Map<string, GeocodingResult[]>();
+    for (const r of results) {
+        const key = `${r.label}\u0000${r.detail ?? ""}`;
+        const group = groups.get(key);
+        if (group) group.push(r);
+        else groups.set(key, [r]);
+    }
+    const template = tLabel("geocoding.detail.adminLevel", "");
+    if (!template) return;
+    for (const group of groups.values()) {
+        if (group.length < 2) continue;
+        const levels = group.map((r) => _ownAdminLevel(r.raw));
+        if (new Set(levels).size < 2) continue;
+        group.forEach((r, i) => {
+            const level = levels[i];
+            if (level === undefined) return;
+            const part =
+                tLabel(`geocoding.detail.adminLevel${level}`, "") ||
+                template.replace("{level}", String(level));
+            r.detail = (r.detail ? `${r.detail} · ${part}` : part).slice(0, 120);
+        });
+    }
+}
+
+/**
+ * The administrative level a Nominatim result stands at: the deepest `geocoding.admin.levelN`
+ * that carries the result's own name, else the deepest one given. Undefined without `admin`.
+ * @internal
+ */
+function _ownAdminLevel(raw: unknown): number | undefined {
+    const props = (raw as { properties?: Record<string, unknown> } | undefined)?.properties;
+    const geo = props?.["geocoding"] as Record<string, unknown> | undefined;
+    const admin = geo?.["admin"];
+    if (!admin || typeof admin !== "object") return undefined;
+    const name = geo?.["name"];
+    let deepest: number | undefined;
+    let named: number | undefined;
+    for (const [k, v] of Object.entries(admin as Record<string, unknown>)) {
+        const m = /^level(\d{1,2})$/.exec(k);
+        if (!m || typeof v !== "string") continue;
+        const n = Number(m[1]);
+        if (deepest === undefined || n > deepest) deepest = n;
+        if (v === name && (named === undefined || n > named)) named = n;
+    }
+    return named ?? deepest;
+}
+
+/**
+ * The provider's kind (`type`, `osm_value`, `addresstype` — English words such as `municipality`
+ * or `city`) in the active language, through the `geocoding.kind.<kind>` keys. A kind the
+ * dictionaries do not translate is left out rather than shown raw.
+ * @internal
+ */
+function _translatedKind(values: Array<unknown>): string | undefined {
+    for (const v of values) {
+        if (typeof v !== "string" || !/^[a-z_]{1,40}$/.test(v)) continue;
+        const label = tLabel(`geocoding.kind.${v}`, "");
+        if (label) return label;
+    }
+    return undefined;
 }
 
 /**
@@ -210,6 +284,8 @@ function _parseGeocodingFeature(feature: unknown): GeocodingResult | null {
     const label = _resolveGeocodingLabel(properties, lat, lng);
 
     const result: GeocodingResult = { label, lat, lng, raw: feature };
+    const detail = _resolveGeocodingDetail(properties, label);
+    if (detail) result.detail = detail;
 
     // Optional bounding box for broad results (cities, departments, etc.)
     const bbox = f["bbox"] as number[] | undefined;
@@ -223,6 +299,36 @@ function _parseGeocodingFeature(feature: unknown): GeocodingResult | null {
     }
 
     return result;
+}
+
+/**
+ * What distinguishes two results with the same label: « Saint-Denis » came back twice from BAN and
+ * from Photon, « Saint-Denis, Réunion, France » twice from Nominatim, and nothing told them apart.
+ * Built from what the three providers carry — postcode, kind (translated, or left out), then the
+ * wider context — leaving out any part the label already says. Capped, and rendered as text only.
+ * @internal
+ */
+function _resolveGeocodingDetail(
+    properties: Record<string, unknown> | undefined,
+    label: string
+): string | undefined {
+    const geo = (properties?.["geocoding"] as Record<string, unknown> | undefined) ?? {};
+    const pick = (...keys: string[]): string | undefined => {
+        for (const k of keys) {
+            const v = properties?.[k] ?? geo[k];
+            if (typeof v === "string" && v.trim() !== "") return v.trim();
+            if (typeof v === "number") return String(v);
+        }
+        return undefined;
+    };
+    const kindKeys = ["type", "osm_value", "addresstype"];
+    const parts = [
+        pick("postcode"),
+        _translatedKind(kindKeys.flatMap((k) => [properties?.[k], geo[k]])),
+        pick("context", "county", "state", "city"),
+    ].filter((p): p is string => !!p && !label.includes(p));
+    const unique = [...new Set(parts)];
+    return unique.length > 0 ? unique.join(" · ").slice(0, 120) : undefined;
 }
 
 /**

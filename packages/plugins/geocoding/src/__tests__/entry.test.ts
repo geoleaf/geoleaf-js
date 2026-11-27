@@ -85,7 +85,7 @@ describe("@geoleaf-plugins/geocoding entry — lifecycle", () => {
         try {
             await import("../entry.js");
             const module = register.mock.calls[0]![0] as { ui?: Record<string, unknown> };
-            expect(Object.keys(module.ui ?? {})).toEqual(["mobileIcon"]);
+            expect(Object.keys(module.ui ?? {}).sort()).toEqual(["isAvailable", "mobileIcon"]);
         } finally {
             host.GeoLeaf = previous;
         }

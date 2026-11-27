@@ -2,12 +2,7 @@
  * GeoLeaf COG Plugin â€” Tests: cog-renderer
  */
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-    canvasToDataUrl,
-    injectImageSource,
-    rastersToCanvas,
-    removeImageSource,
-} from "../cog-renderer.js";
+import { injectImageSource, rastersToCanvas, removeImageSource } from "../cog-renderer.js";
 import type { CogRasterData } from "../types.js";
 
 // â”€â”€â”€ jsdom canvas mock â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -255,13 +250,63 @@ describe("rastersToCanvas — OffscreenCanvas present but unusable", () => {
     });
 });
 
-describe("canvasToDataUrl", () => {
-    it("returns a string from HTMLCanvasElement.toDataURL", async () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = 2;
-        canvas.height = 2;
-        const url = await canvasToDataUrl(canvas);
-        expect(typeof url).toBe("string");
+describe("canvasToImageUrl — the raster goes to the engine by protocol, never by URL", () => {
+    // MapLibre 6 fetches an `image` source, `blob:` and `data:` alike: under the shipped
+    // `connect-src 'self' https:` both were refused. The protocol answers with the image.
+    //
+    // ⚠️ The module registers its protocol ONCE per page: each case reloads it
+    // (`vi.resetModules`) so that "registered" and "no registry" are both reachable.
+    type Handler = (p: { url: string }) => Promise<{ data: unknown }>;
+    let handler: Handler | undefined;
+    const bitmap = { close: vi.fn() };
+
+    async function load(withRegistry: boolean) {
+        vi.resetModules();
+        handler = undefined;
+        if (withRegistry) {
+            (globalThis as Record<string, unknown>).maplibregl = {
+                addProtocol: vi.fn((_name: string, h: Handler) => {
+                    handler = h;
+                }),
+            };
+        }
+        return import("../cog-renderer.js");
+    }
+
+    beforeEach(() => {
+        bitmap.close.mockClear();
+        vi.stubGlobal(
+            "createImageBitmap",
+            vi.fn(async () => bitmap)
+        );
+    });
+
+    afterEach(() => {
+        delete (globalThis as Record<string, unknown>).maplibregl;
+        vi.unstubAllGlobals();
+    });
+
+    it("hands out a protocol URL whose handler answers with the drawn image", async () => {
+        const mod = await load(true);
+        const url = await mod.canvasToImageUrl(document.createElement("canvas"), "cog-a");
+        expect(url).toMatch(/^geoleaf-cog:\/\/cog-a\/\d+$/);
+        expect(handler).toBeTypeOf("function");
+        await expect(handler!({ url })).resolves.toEqual({ data: bitmap });
+    });
+
+    it("releases the layer's images when its source is removed", async () => {
+        const mod = await load(true);
+        const url = await mod.canvasToImageUrl(document.createElement("canvas"), "cog-b");
+        mod.removeImageSource(makeMockMap(), "cog-b");
+        expect(bitmap.close).toHaveBeenCalledTimes(1);
+        await expect(handler!({ url })).rejects.toThrow(/No drawn image/);
+    });
+
+    it("falls back to the data URL path when the host exposes no protocol registry", async () => {
+        const mod = await load(false);
+        const url = await mod.canvasToImageUrl(document.createElement("canvas"), "cog-c");
+        // HTMLCanvasElement here (jsdom), so the data URL of `toDataURL`.
+        expect(url.startsWith("geoleaf-cog://")).toBe(false);
         expect(url.length).toBeGreaterThan(0);
     });
 });

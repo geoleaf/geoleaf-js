@@ -22,6 +22,7 @@ const lang_pt: Record<string, string> = {
     "editor.tool.polyline.hint":
         "Clique para colocar vértices. Duplo clique ou Enter para terminar.",
     "editor.tool.polygon.label": "Polígono",
+    "editor.tool.noTarget": "Nenhuma camada aceita esta geometria",
     "editor.tool.polygon.hint":
         "Clique para colocar vértices. Encaixe no primeiro vértice, duplo clique ou Enter para fechar.",
     "editor.tool.select.label": "Seleção",
@@ -110,6 +111,8 @@ const lang_pt: Record<string, string> = {
     // Errors
     "editor.error.networkTimeout": "Tempo limite de rede excedido.",
     "editor.error.editionNotPermitted": "Esta camada não permite esta operação.",
+    "editor.error.noWriteTarget":
+        "Esta camada não declara nenhum endereço de escrita: nada foi enviado.",
     "editor.error.operationNotSupported":
         "O servidor não suporta esta operação. Contacte o administrador.",
     "editor.error.server": "Erro do servidor. Tente novamente.",

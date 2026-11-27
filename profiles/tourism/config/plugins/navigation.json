@@ -1,6 +1,5 @@
 {
     "enabled": true,
-    "showButton": false,
     "arrivalRadiusMetres": 30,
     "offRouteThresholdMetres": 40,
     "confirmExit": 3,

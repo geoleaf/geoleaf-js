@@ -282,22 +282,40 @@ fait passer une clé vivante pour une clé morte.
 
 ### `gateOnModuleEnabled` — opt-in, jamais uniforme
 
-Ce drapeau masque le créneau quand `modules.<plugin>.enabled` vaut explicitement `false`. Il
-n'est posé que sur les créneaux dont le `entry.ts` porte **déjà** la même condition : `print`,
-`measure`, `editor` — et les trois créneaux du plugin `editor` (`editor`, l'export de session,
-l'ajout de POI), que son `entry.ts` imbrique dans le même test.
+Ce drapeau masque le créneau paresseux quand `modules.<plugin>.enabled` vaut explicitement
+`false`. Il n'est posé que sur les créneaux des plugins pour qui `enabled` veut dire « fonction
+absente » : la table ci-dessous dit, plugin par plugin, ce que la clé gouverne, et le code la tient
+(tranché au tri des écarts de la recette des plugins, 26/11/2026).
 
-🛑 **Ne pas en faire une règle uniforme.** Quatre des sept plugins à créneau paresseux
-s'enregistrent sans condition — `table`, `geocoding`, `position-share`, `isochrone` — et ce n'est pas un
-oubli : leur `enabled` ne veut pas dire « fonctionnalité absente ». Le profil `tourism` déclare
+| Plugin           | Ce que `enabled: false` gouverne                                      | Où le code le tient                                                                                                   |
+| ---------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `print`          | le créneau est masqué                                                 | `gateOnModuleEnabled` (`init.js`) · condition de l'`entry.ts`                                                         |
+| `measure`        | le créneau est masqué                                                 | `gateOnModuleEnabled` · condition de l'`entry.ts`                                                                     |
+| `editor`         | ses trois créneaux sont masqués                                       | `gateOnModuleEnabled` · condition de l'`entry.ts`                                                                     |
+| `table`          | le créneau est masqué                                                 | `gateOnModuleEnabled` · `isAvailable()` du créneau eager                                                              |
+| `isochrone`      | le créneau est masqué                                                 | `gateOnModuleEnabled` · `isAvailable()` du créneau eager                                                              |
+| `geocoding`      | la barre de recherche et son bouton n'existent pas — **opt-in**       | préchargé par `beforeBoot` seulement si `enabled: true` ; `isAvailable()` en `=== true` ; aucun créneau paresseux     |
+| `routing`        | ni créneau ni volet ; un profil sans couche du tracé non plus         | `isAvailable()` du créneau et du volet (`offered.ts`), lu au rendu — le plugin est eager et s'inscrit avant le profil |
+| `navigation`     | « Démarrer le guidage » n'est pas offert ; `start()` refuse           | `guidanceHandler` de `routing` · `startSession` ; le plugin n'a pas de créneau                                        |
+| `position-share` | l'**émission au démarrage** (`auto`) ; le bouton reste l'interrupteur | `startEmission` : le geste de l'utilisateur passe outre `enabled`, `mode: "off"` refuse tout                          |
+
+🛑 **Ne pas en faire une règle uniforme.** Le profil `tourism` déclare
 `position-share: { enabled: false, showButton: true }` : pour ce plugin, `enabled` gouverne
-l'**émission**, et le bouton **est** l'interrupteur qui l'allume. Une garde appliquée à tous
-masque un bouton que le profil demande explicitement, et retire le seul moyen d'activer la
-fonction. Mesuré : le bouton avait disparu des quatre variantes.
+l'**émission**, et le bouton **est** l'interrupteur qui l'allume. Une garde appliquée à tous masque
+un bouton que le profil demande explicitement, et retire le seul moyen d'activer la fonction.
+Mesuré : le bouton avait disparu des quatre variantes. Le défaut inverse existait aussi : le bouton
+offert ne faisait rien, parce que l'émetteur refusait dès que `enabled` n'était pas vrai.
 
 ⚠️ **La garde est OPT-OUT une fois posée** (`enabled === false`, pas `!== true`) : un profil qui
 ne déclare pas le module garde son bouton. Le profil `tourism` ne déclare ni `print`, ni
-`measure`, ni `editor`, et leurs trois boutons sont légitimes.
+`measure`, ni `editor`, et leurs trois boutons sont légitimes. `geocoding` est l'exception, et
+c'est pourquoi il n'a pas de créneau paresseux : son contrôle se monte sur `geoleaf:map:ready`,
+il ne fonctionne que préchargé, et un créneau paresseux n'était dessiné que lorsqu'il ne l'avait
+pas été.
+
+⚠️ **Un plugin eager ne peut pas poser la garde à la déclaration** : il s'inscrit avant la fusion
+du profil. Son créneau porte `isAvailable()` (`IModuleUISlot`, core ≥ 3.21.0), que le cœur lit au
+rendu — et `routing` le pose aussi sur son volet (`PanelPane.isAvailable`).
 
 📌 **Pourquoi au rendu et non à la déclaration** : `registerLazyForAction` s'exécute avant le
 chargement du profil. `init.js` ne peut pas lire `enabled` au moment de déclarer le créneau —

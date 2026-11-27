@@ -4,8 +4,8 @@ title: navigation — le guidage temps réel, et les trois adaptateurs qui le re
 plugin_id: navigation
 package: "@geoleaf-plugins/navigation"
 statut: gelé — se met à jour en même temps que le code qu'il décrit
-verifie_contre: 8e5c93ae8
-date: 31 octobre 2026
+verifie_contre: 2e8f93a34
+date: 26 novembre 2026
 ---
 
 # navigation — le guidage temps réel, et les trois adaptateurs qui le rendent portable
@@ -70,9 +70,11 @@ Ce que `src/entry.ts` déclare réellement. **Table gatée** par
 
 🛑 **`requires` n'est PAS vide, et c'est le seul cas de la flotte.** Aucun autre plugin de ce dépôt
 n'en dépend d'un autre. La déclaration est ici parce que la dépendance est **réelle et
-asymétrique** : le guidage sans calcul n'a aucun objet. L'écrire dans `entry.ts` plutôt que dans ce
-seul document la rend vérifiable — `PluginRegistry` la lit
-(`packages/core/src/kernel/api/plugin-registry.ts:212`).
+asymétrique** : le guidage sans calcul n'a aucun objet. 🛑 **Le registre la stocke et ne l'applique
+nulle part** : chargé sans `routing`, le plugin montait `GeoLeaf.Navigation` et se taisait. Elle est
+TENUE dans `entry.ts` (1.0.5) : sans `routing` chargé, l'évaluation lève une erreur qui nomme la
+dépendance, avant de monter quoi que ce soit, et `plugins.load("navigation")` rejette. Le littéral
+`requires: ["routing"]` reste écrit — la garde du manifeste le lit.
 
 ⚠️ **Le partage de code entre les deux paquets ne passe QUE par des types.** La spec d'architecture
 autorise le partage inter-plugins « via dépendance npm déclarée » ; ses exemples sont des
@@ -260,22 +262,21 @@ l'intégrateur.
 
 Le plugin lit **`modules.navigation`**, et cette branche est la seule (INV-CONFIG).
 
-| Clé                       | Type      | Défaut  | Rôle                                                            |
-| ------------------------- | --------- | ------- | --------------------------------------------------------------- |
-| `enabled`                 | `boolean` | `true`  | active le plugin                                                |
-| `showButton`              | `boolean` | `false` | affiche le point d'entrée dans la barre                         |
-| `arrivalRadiusMetres`     | `number`  | `30`    | sous cette distance, une étape compte comme atteinte            |
-| `offRouteThresholdMetres` | `number`  | `40`    | au-delà, un relevé compte comme hors tracé                      |
-| `confirmExit`             | `number`  | `3`     | relevés consécutifs avant de confirmer une sortie               |
-| `confirmReturn`           | `number`  | `2`     | relevés consécutifs avant de confirmer un retour                |
-| `retryAfterFixes`         | `number`  | `2`     | attente avant la première nouvelle tentative de recalcul        |
-| `maxRetryFixes`           | `number`  | `8`     | plafond de l'attente, qui double à chaque échec                 |
-| `voiceEnabled`            | `boolean` | `true`  | état de **départ** des annonces — reste commutable en session   |
-| `voiceAnnounceAtMetres`   | `number`  | `200`   | distance à laquelle une manœuvre est annoncée une première fois |
-| `keepScreenAwake`         | `boolean` | `true`  | maintient l'écran allumé pendant le guidage                     |
-| `followZoom`              | `number`  | `17.5`  | zoom tenu pendant le suivi — réappliqué à **chaque** relevé     |
-| `followPitch`             | `number`  | `60`    | inclinaison tenue pendant le suivi, en degrés                   |
-| `cameraMaxTransitionMs`   | `number`  | `1000`  | plafond d'une transition de caméra, en millisecondes            |
+| Clé                       | Type      | Défaut | Rôle                                                                      |
+| ------------------------- | --------- | ------ | ------------------------------------------------------------------------- |
+| `enabled`                 | `boolean` | `true` | `false` : « Démarrer le guidage » n'est pas offert, `startSession` refuse |
+| `arrivalRadiusMetres`     | `number`  | `30`   | sous cette distance, une étape compte comme atteinte                      |
+| `offRouteThresholdMetres` | `number`  | `40`   | au-delà, un relevé compte comme hors tracé                                |
+| `confirmExit`             | `number`  | `3`    | relevés consécutifs avant de confirmer une sortie                         |
+| `confirmReturn`           | `number`  | `2`    | relevés consécutifs avant de confirmer un retour                          |
+| `retryAfterFixes`         | `number`  | `2`    | attente avant la première nouvelle tentative de recalcul                  |
+| `maxRetryFixes`           | `number`  | `8`    | plafond de l'attente, qui double à chaque échec                           |
+| `voiceEnabled`            | `boolean` | `true` | état de **départ** des annonces — reste commutable en session             |
+| `voiceAnnounceAtMetres`   | `number`  | `200`  | distance à laquelle une manœuvre est annoncée une première fois           |
+| `keepScreenAwake`         | `boolean` | `true` | maintient l'écran allumé pendant le guidage                               |
+| `followZoom`              | `number`  | `17.5` | zoom tenu pendant le suivi — réappliqué à **chaque** relevé               |
+| `followPitch`             | `number`  | `60`   | inclinaison tenue pendant le suivi, en degrés                             |
+| `cameraMaxTransitionMs`   | `number`  | `1000` | plafond d'une transition de caméra, en millisecondes                      |
 
 🛑 **C'est le SEUL endroit où un seuil de guidage reçoit une valeur.** `snap.ts`, `off-route.ts`,
 `state-machine.ts` et `runtime.ts` prennent tous les leurs en paramètres et n'en défaussent aucun :
@@ -315,14 +316,21 @@ contrôle des bornes ; l'inverse comparerait une valeur qu'on allait jeter.
 à une livraison est couramment plus loin de la route que de l'étape ; si les deux se croisent,
 chaque arrivée se lit comme une sortie de tracé.
 
-⚠️ **`showButton` est à `false`, contre le gabarit, et c'est un choix de produit.** Le panneau
-n'existe pas encore : un bouton visible par défaut serait un contrôle **mort** chez tout
-intégrateur qui active le module — et un contrôle mort ne se signale pas, il se clique. Il
-repassera à `true` avec ce qu'il ouvre.
+🛑 **Pas de `showButton`, ni de créneau de barre d'outils (1.0.5).** La clé gouvernait un point
+d'entrée dont l'écouteur appelait `Navigation.open()`, membre que ce namespace n'a jamais eu : il
+n'a jamais rien ouvert, en chargement paresseux comme eager. Clé, créneau et clé de dictionnaire
+sont retirés ; un profil qui la porte encore ne gouverne plus rien. Le guidage s'ouvre depuis le
+panneau d'itinéraire de `routing`. `enabled: false` y retire « Démarrer le guidage », et
+`startSession` refuse aussi pour un appel d'API.
 
 ---
 
 ## L'interface — bandeau de manœuvre et caméra suivie
+
+📱 **Au téléphone (≤ 40 rem), le bandeau se lit (1.0.5).** La distance et son unité sont insécables
+(« 250 m » se coupait en deux lignes), la rue passe sur sa propre ligne, et les commandes avec la
+ligne d'état descendent en bas, au-dessus de la barre mobile : à une hauteur fixe, elles
+chevauchaient un bandeau dont la hauteur dépend du nom de rue.
 
 `src/ui/{maneuver-banner,maneuver-labels,camera}.ts`, livrés le 21/08/2026,
 **câblés le 22/08/2026** par `src/ui/session-view.ts`.
@@ -561,7 +569,7 @@ l'application ; le bouton qui le charge vit dans le panneau de `@geoleaf-plugins
 
 🛑 **Aucun `registerLazyForAction`, délibérément.** Un guidage n'a rien à suivre tant qu'aucun
 itinéraire n'existe : un créneau de barre d'outils serait un contrôle qui ne fait rien la plupart du
-temps, et `modules.navigation.showButton` reste `false` pour exactement cette raison. Le point
+temps, et c'est pour exactement cette raison qu'il n'y en a pas. Le point
 d'entrée vit là où vit l'itinéraire.
 
 🛑 **Le panneau ne crée AUCUN bouton quand le handler n'est pas fourni** — plus fort qu'un bouton

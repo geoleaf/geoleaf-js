@@ -37,14 +37,14 @@ export class SseSource implements IRealtimeSource {
         this._handler = handler;
     }
 
-    start(): void {
-        if (this._es) return;
+    start(): boolean {
+        if (this._es) return true;
         if (typeof EventSource === "undefined") {
             console.error(
                 `[realtime-layer][sse] EventSource is not available in this environment. ` +
                     `Cannot open SSE connection to ${this._url}.`
             );
-            return;
+            return false;
         }
         const es = new EventSource(this._url);
         this._es = es;
@@ -59,6 +59,7 @@ export class SseSource implements IRealtimeSource {
                     `EventSource will attempt to reconnect automatically.`
             );
         };
+        return true;
     }
 
     stop(): void {

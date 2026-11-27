@@ -55,7 +55,12 @@ const langStorageIt: StorageLangDict = {
     "storage.zone.note": "Più alto = più nitido ma più pesante.",
     "storage.zone.noZone": "Nessuna area selezionata.",
     "storage.zone.summary": "Area",
+    "storage.zone.skippedZooms": "zoom {0} omessi (troppe tessere)",
+    "storage.zone.capped": "totale limitato",
+    "storage.notif.download.skippedZooms": "{0} livello/i di zoom omesso/i (troppe tessere)",
     "storage.zone.estimate": "Stima",
+    "storage.zone.noOfflineBasemap":
+        "Nessuna mappa di base offline in questo profilo: nessuna tessera verrà preparata per questa zona",
     "storage.zone.tiles": "tessere",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Seleziona tutto / deseleziona",
@@ -114,6 +119,7 @@ const langStorageIt: StorageLangDict = {
     "storage.notif.offline.unavailable": "Archiviazione offline non disponibile",
     "storage.notif.noProfile": "Nessun profilo attivo",
     "storage.notif.download.success": "Profilo scaricato",
+    "storage.notif.download.upToDate": "Zona già aggiornata",
     "storage.notif.download.partial":
         "Profilo scaricato, tranne {0} origine/i non dichiarata/e per la preparazione",
     "storage.notif.download.error": "Errore di download",
@@ -185,6 +191,9 @@ const langStorageIt: StorageLangDict = {
     "storage.preflight.persistence.bestEffort":
         "Archiviazione non garantita: il browser può cancellare i dati",
     "storage.preflight.persistence.unsupported": "Persistenza dell'archiviazione sconosciuta",
+    "storage.simple.ready": "Zona pronta offline, aggiornata: {0}",
+    "storage.simple.readyNoTime": "Zona pronta offline",
+    "storage.simple.none": "Nessuna zona preparata",
     "storage.preflight.layer.declaredNeverPulled": "mai scaricato",
     "storage.preflight.layer.pullFailed": "scaricamento non riuscito",
     "storage.preflight.layer.pulledPartial": "scaricamento incompleto",
@@ -193,6 +202,8 @@ const langStorageIt: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Livelli di zoom non preparati: {0}",
     "storage.preflight.tiles.capped": "Preparazione interrotta al limite di tasselli",
     "storage.preflight.failed": "{0} risorsa/e non scaricata/e",
+    "storage.preflight.notPrepared":
+        "Profilo mai preparato su questo dispositivo: l'applicazione non si avvierà offline",
     "storage.preflight.session.valid": "Sessione di scrittura valida fino al {0}",
     "storage.preflight.session.validNoExpiry": "Sessione di scrittura aperta",
     "storage.preflight.session.expired":

@@ -8,7 +8,7 @@
  * https://geoleaf.dev
  */
 import { _el, _getLabel } from "../internal.js";
-import { createFocusTrap } from "@geoleaf/host-runtime";
+import { createFocusTrap, getGeoLeaf } from "@geoleaf/host-runtime";
 import type { EditorQueueEntry } from "../persistence/editor-sync-replay.js";
 
 /**
@@ -105,13 +105,25 @@ interface PendingQueueActions {
     requeueable?: readonly string[];
 }
 
+/** The label the active profile gives a layer, else its id. */
+function _layerLabel(layerId: string): string {
+    const layers = (
+        getGeoLeaf()?.Config as
+            | { getActiveProfile?(): { layers?: { id?: string; label?: string }[] } | null }
+            | undefined
+    )?.getActiveProfile?.()?.layers;
+    const label = layers?.find((l) => l?.id === layerId)?.label;
+    return typeof label === "string" && label !== "" ? label : layerId;
+}
+
 /** Builds one list row: "{kind} — {layer} — {state}{, motive}". */
 function _row(entry: EditorQueueEntry): HTMLElement {
     const row = _el("div", "gl-editor-queue-detail__row");
     const kind = _el("span", "gl-editor-queue-detail__kind");
     kind.textContent = _kindLabel(entry.kind);
     const layer = _el("span", "gl-editor-queue-detail__layer");
-    layer.textContent = entry.layerId || "—";
+    // The layer's LABEL, as the profile names it — « sites_rosario » is an identifier.
+    layer.textContent = _layerLabel(entry.layerId) || "—";
     const state = _el("span", "gl-editor-queue-detail__state");
     const stateText = _stateLabel(entry.state);
     const reasonText = _reasonLabel(entry.quarantine);
@@ -276,7 +288,10 @@ export function openPendingQueueModal(
     const btnClose = _btn("editor.sync.detail.close");
     footer.appendChild(btnClose);
     let btnRetry: HTMLButtonElement | null = null;
-    if (entries.length > 0) {
+    // « Réessayer maintenant » replays what is pending or failed. Beside a set-aside group alone,
+    // it stood next to that group's « Tout réessayer » and did nothing for it: offered only when
+    // something it can replay is listed.
+    if (entries.some((e) => e.state !== "quarantined")) {
         btnRetry = _btn("editor.sync.detail.retry");
         footer.appendChild(btnRetry);
     }

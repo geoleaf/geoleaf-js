@@ -16,7 +16,12 @@ import { DOMSecurity } from "../../security/dom-security.js";
 import { getGeoLeaf } from "../../../utils/general/geoleaf-global.js";
 import { getLabel } from "../../../utils/i18n/i18n.js";
 import { dispatchToolbarAction } from "../toolbar-dispatch.js";
-import { lazySlotsToDraw, resolveUISlotVisibility, UI_SLOT_SVG_TAGS } from "../ui-slot-builder.js";
+import {
+    lazySlotsToDraw,
+    resolveUISlotVisibility,
+    slotAvailabilityOptions,
+    UI_SLOT_SVG_TAGS,
+} from "../ui-slot-builder.js";
 import type { IModuleUISlot } from "../../../contracts/core-module.contract.ts";
 
 type DesktopTabButtonDef = NonNullable<IModuleUISlot["desktopTabButton"]>;
@@ -56,7 +61,13 @@ function _buildDesktopTabButton(
     tabs: HTMLElement,
     id: string,
     btnDef: DesktopTabButtonDef,
-    opts: { checkRequiresPlugin: boolean; useDefaultVisible: boolean; moduleGateId?: string }
+    opts: {
+        checkRequiresPlugin: boolean;
+        useDefaultVisible: boolean;
+        moduleGateId?: string;
+        requiresCapability?: string;
+        availability?: { owner: string; predicate: () => boolean };
+    }
 ): HTMLButtonElement | null {
     // Idempotent
     if (tabs.querySelector(`[data-gl-desktop-tab="${id}"]`)) return null;
@@ -148,6 +159,7 @@ export function appendRegistryTabButtons(tabs: HTMLElement): void {
         const btn = _buildDesktopTabButton(tabs, mod.id, btnDef, {
             checkRequiresPlugin: true,
             useDefaultVisible: true,
+            ...slotAvailabilityOptions(mod.id, mod.ui ?? {}),
         });
         if (btn) _insertTabButton(tabs, btn, btnDef.variant);
     }
@@ -170,6 +182,7 @@ export function appendRegistryTabButtons(tabs: HTMLElement): void {
             // undefined" are not the same contract. The first draft wrote the
             // ternary, and the build went red (TS2379).
             ...(slot.gateOnModuleEnabled ? { moduleGateId: slot.pluginName } : {}),
+            ...(slot.requiresCapability ? { requiresCapability: slot.requiresCapability } : {}),
         });
         if (btn) _insertTabButton(tabs, btn, btnDef.variant);
     }

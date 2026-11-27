@@ -14,6 +14,10 @@ const lang_it: LangDict = {
     "toast.geoloc.error.timeout": "Timeout geolocalizzazione",
     "toast.init.loading": "Caricamento dati in corso, attendere.",
     "toast.layer.truncated.known": "{0}: {1} entità visualizzate su {2} — il livello è troncato.",
+    "toast.plugin.load_failed": "Impossibile caricare questa funzione.",
+    "toast.plugin.load_failed_offline":
+        "Questa funzione non è disponibile offline: prepara una zona online per portarla con te.",
+    "toast.layer.load_failed": "Impossibile caricare il livello «{0}».",
     "toast.layer.style_missing":
         "Stile predefinito non trovato per «{0}»: visualizzazione con uno stile neutro.",
     "toast.layer.truncated.unknown": "{0}: {1} entità visualizzate, il livello ne contiene altre.",

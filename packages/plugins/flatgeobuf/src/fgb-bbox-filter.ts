@@ -64,9 +64,13 @@ export async function loadFgbBbox(
 
     // flatgeobuf bbox mode: pass the URL string + rect object, it handles Range requests internally
     const fgbRect = { minX: bbox.minX, minY: bbox.minY, maxX: bbox.maxX, maxY: bbox.maxY };
-    const iter = deserialize(url, fgbRect) as AsyncIterable<Feature>;
+    // The header through the library's callback, as in `fgb-loader.ts` (FG-01).
+    let header: Record<string, unknown> | undefined;
+    const iter = deserialize(url, fgbRect, (meta) => {
+        header = { ...meta };
+    }) as AsyncIterable<Feature>;
 
-    return collectFeatures(iter, options);
+    return collectFeatures(iter, options, () => header);
 }
 
 // ─── Auto-refresh ─────────────────────────────────────────────────────────────

@@ -485,3 +485,52 @@ body.gl-theme-dark .gl-cache-status__value.gl-cache-state--ok {
 body.gl-theme-dark .gl-cache-status__value.gl-cache-state--missing {
     color: #ef4444;
 }
+
+/* ========================================================================
+   The two selects' colours, scoped under their section on purpose: (0,2,0)
+   ⚠️ Here and not in `cache-control.css`, which is at its size ceiling.
+   ======================================================================== */
+/* These sheets are adopted outside the cascade layers, and the core's host guard
+   (`geoleaf-host-guard.css`, unlayered too) writes `color` and `background: revert-layer` on
+   every `gl-*` select at (0,1,1). At the single class of their base rules the guard won and
+   dropped these declarations; no `gl.*` layer styles these selects, so the browser's white
+   field and black text came back — in the dark theme too. Only the colours move here. */
+.gl-cache-layers .gl-cache-layers__style-select,
+.gl-cache-zone .gl-cache-zone__zoom-select {
+    background: var(--gl-color-bg-surface, #fff);
+    color: var(--gl-color-text-main, #0f172a);
+}
+
+/* ========================================================================
+   Phone (≤ 480 px) — what a technician reads before leaving
+   ⚠️ Here and not in `cache-control.css`, which is at its size ceiling.
+   🛑 Scoped under `.gl-cache-modal`, the window every one of these blocks lives in: this sheet
+   is imported BEFORE `cache-control.css` (`entry.ts`), so a rule of a single class lost every
+   tie with the base rule there — a media query adds no weight — and did nothing. (0,2,0) wins.
+   ======================================================================== */
+@media (max-width: 480px) {
+    /* The status row scrolled sideways by design, and on a phone that meant « Tout est envoyé
+       ja… » — the facts cut mid-word. It wraps here: two short lines are read, a hidden half is
+       not. */
+    .gl-cache-modal .gl-cache-sync-status {
+        flex-wrap: wrap;
+        white-space: normal;
+        overflow-x: visible;
+    }
+
+    /* The layer table lost its columns (« TA… », empty style lists): it keeps its width and the
+       box scrolls instead, so every column stays readable. */
+    .gl-cache-modal .gl-cache-layers__content {
+        overflow-x: auto;
+    }
+
+    .gl-cache-modal .gl-cache-layers__table {
+        min-width: 30rem;
+    }
+
+    /* `width: 100%` of a 57 px column cut « défaut » to « défa »: the list keeps the room of
+       its longest default word plus its arrow, and the table, which scrolls, absorbs it. */
+    .gl-cache-modal .gl-cache-layers__style-select {
+        min-width: 5rem;
+    }
+}

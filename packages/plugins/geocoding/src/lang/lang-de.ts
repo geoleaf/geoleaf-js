@@ -11,6 +11,18 @@ const langGeocodingDe = {
     "geocoding.control.submitAriaLabel": "Suche starten",
     "geocoding.control.clearAriaLabel": "Suche löschen",
     "geocoding.control.noResults": "Keine Ergebnisse",
+    "geocoding.kind.housenumber": "Hausnummer",
+    "geocoding.kind.street": "Straße",
+    "geocoding.kind.locality": "Ort",
+    "geocoding.kind.municipality": "Gemeinde",
+    "geocoding.kind.city": "Stadt",
+    "geocoding.kind.town": "Stadt",
+    "geocoding.kind.village": "Dorf",
+    "geocoding.kind.suburb": "Stadtteil",
+    "geocoding.detail.adminLevel": "Verwaltungsebene {level}",
+    "geocoding.detail.adminLevel8": "Gemeinde",
+    "geocoding.detail.adminLevel7": "Bezirk",
+    "geocoding.detail.adminLevel6": "Kreis",
 } satisfies Record<string, string>;
 
 export default langGeocodingDe;

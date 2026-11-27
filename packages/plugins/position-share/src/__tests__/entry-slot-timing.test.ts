@@ -77,7 +77,15 @@ describe("chemin EAGER — le bundle est chargé avant boot()", () => {
         expect(registerSlot).toHaveBeenCalledTimes(1);
         const module = registeredModule();
         expect(module.id).toBe("position-share");
-        expect(Object.keys(module.ui ?? {}).sort()).toEqual(["desktopTabButton", "mobileIcon"]);
+        expect(Object.keys(module.ui ?? {}).sort()).toEqual([
+            "desktopTabButton",
+            "mobileIcon",
+            "requiresCapability",
+        ]);
+        // Not offered without geolocation: there would be no position to share.
+        expect((module.ui as { requiresCapability?: string }).requiresCapability).toBe(
+            "geolocation"
+        );
         expect(module.destroy).toBeTypeOf("function");
     });
 

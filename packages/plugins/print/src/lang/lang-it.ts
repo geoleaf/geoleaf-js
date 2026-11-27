@@ -7,6 +7,7 @@
 const langPrintIt = {
     "print.toolbar.button": "Stampa / Esporta",
     "print.emprise.hint": "Fai clic e trascina per definire l'area di stampa",
+    "print.emprise.hint.touch": "Trascina il dito per definire l'area di stampa",
     "print.emprise.hint.adjust": "Regola i punti di controllo e fai clic su OK",
     "print.modal.title": "Stampa / Esportazione",
     "print.modal.field.title": "Titolo",
@@ -30,8 +31,6 @@ const langPrintIt = {
     "print.error.serverEndpoint": "L'URL del server di rendering non è valido.",
     "print.error.serverFailed": "Il server di rendering ha restituito un errore.",
     "print.spinner.rendering": "Rendering in corso…",
-    "print.orientation.portrait": "Ritratto",
-    "print.orientation.landscape": "Paesaggio",
     "print.aria.scaleLocked": "Scala bloccata a",
     "print.aria.toolbar.print": "Stampa / Esporta la mappa",
 } satisfies Record<string, string>;

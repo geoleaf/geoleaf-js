@@ -74,6 +74,17 @@ export interface GeocodingResult {
     /** Display label shown in the dropdown and set as input value on selection. */
     label: string;
 
+    /**
+     * What tells this result apart from another with the same label — postcode, kind, county —
+     * when the provider gives it. The kind is translated in the active language, and left out when
+     * no dictionary translates it; two results that still read the same get their administrative
+     * level when the provider gives one. Shown under the label in the dropdown, never set as input
+     * value. Absent when the provider says nothing beyond the label.
+     *
+     * @example `"97400 · commune · La Réunion"`
+     */
+    detail?: string;
+
     /** WGS-84 latitude of the result. */
     lat: number;
 

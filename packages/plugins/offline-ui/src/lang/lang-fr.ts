@@ -55,7 +55,12 @@ const langStorageFr = {
     "storage.zone.note": "Plus haut = plus net mais plus volumineux.",
     "storage.zone.noZone": "Aucune zone sélectionnée.",
     "storage.zone.summary": "Zone",
+    "storage.zone.skippedZooms": "zooms {0} omis (trop de tuiles)",
+    "storage.zone.capped": "total plafonné",
+    "storage.notif.download.skippedZooms": "{0} niveau(x) de zoom omis (trop de tuiles)",
     "storage.zone.estimate": "Estimation",
+    "storage.zone.noOfflineBasemap":
+        "Aucun fond de carte hors ligne dans ce profil : aucune tuile ne sera préparée pour cette zone",
     "storage.zone.tiles": "tuiles",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Tout sélectionner / désélectionner",
@@ -114,6 +119,7 @@ const langStorageFr = {
     "storage.notif.offline.unavailable": "Stockage hors ligne non disponible",
     "storage.notif.noProfile": "Aucun profil actif",
     "storage.notif.download.success": "Profil téléchargé",
+    "storage.notif.download.upToDate": "Zone déjà à jour",
     "storage.notif.download.partial":
         "Profil téléchargé, sauf {0} origine(s) non déclarée(s) pour la préparation",
     "storage.notif.download.error": "Erreur de téléchargement",
@@ -186,6 +192,9 @@ const langStorageFr = {
     "storage.preflight.persistence.bestEffort":
         "Stockage non garanti : le navigateur peut effacer les données",
     "storage.preflight.persistence.unsupported": "Persistance du stockage inconnue",
+    "storage.simple.ready": "Zone prête pour le hors-ligne, mise à jour : {0}",
+    "storage.simple.readyNoTime": "Zone prête pour le hors-ligne",
+    "storage.simple.none": "Aucune zone préparée",
     "storage.preflight.layer.declaredNeverPulled": "jamais téléchargée",
     "storage.preflight.layer.pullFailed": "téléchargement en échec",
     "storage.preflight.layer.pulledPartial": "téléchargement incomplet",
@@ -194,6 +203,8 @@ const langStorageFr = {
     "storage.preflight.tiles.skipped": "Zooms non préparés : {0}",
     "storage.preflight.tiles.capped": "Préparation arrêtée au plafond de tuiles",
     "storage.preflight.failed": "{0} ressource(s) non téléchargée(s)",
+    "storage.preflight.notPrepared":
+        "Profil jamais préparé sur cet appareil : l'application ne démarrera pas hors ligne",
     "storage.preflight.session.valid": "Session d'écriture valide jusqu'au {0}",
     "storage.preflight.session.validNoExpiry": "Session d'écriture ouverte",
     "storage.preflight.session.expired":

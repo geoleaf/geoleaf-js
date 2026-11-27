@@ -46,13 +46,21 @@
     min-width: 0;
     border: none;
     outline: none;
-    background: transparent;
-    color: var(--gl-color-text-main, #1e293b);
     font-size: 0.9rem;
     line-height: 1.4;
     padding: 0.2rem 0;
     appearance: none;
     -webkit-appearance: none;
+}
+
+/* The input's colours, under the pill on purpose: (0,2,0). This sheet is adopted outside the
+   cascade layers, and the core's host guard (unlayered too) reverts `color` and `background`
+   on every `gl-*` input at (0,1,1): at a single class the guard won, and only the filter
+   capability's layered copy of this rule, when embedded, kept the input from the browser's
+   white field. Placed before the loading rule below, which must still win its background. */
+.gl-pill-search .gl-pill-search__input {
+    background: transparent;
+    color: var(--gl-color-text-main, #1e293b);
 }
 
 .gl-pill-search__input::placeholder {
@@ -226,6 +234,13 @@
     overflow: hidden;
     text-overflow: ellipsis;
     transition: background 0.1s;
+}
+
+/* What tells two same-named results apart (postcode, kind, county), under the label. */
+.gl-geocoding-result-detail {
+    display: block;
+    font-size: 0.85em;
+    color: var(--gl-color-text-muted, #64748b);
 }
 
 .gl-geocoding-result-item:last-child {

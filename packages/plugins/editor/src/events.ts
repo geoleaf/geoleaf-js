@@ -221,7 +221,8 @@ function _handleCreate(
     // The layer dropdown header in the modal lets the user pick the target layer.
     draft.opened(
         openForm({
-            title: "", // empty — modal title uses layer dropdown
+            // Names the gesture: an empty title left the dialog without an accessible name.
+            title: _getLabel("editor.modal.title.create"),
             schema: [], // schema resolved per target layer by the modal's getSchemaForLayer
             geometryType,
             initialValues: {},

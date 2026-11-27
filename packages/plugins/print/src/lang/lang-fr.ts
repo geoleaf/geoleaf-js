@@ -8,6 +8,7 @@
 const langPrintFr = {
     "print.toolbar.button": "Imprimer / Exporter",
     "print.emprise.hint": "Cliquez-glissez pour définir la zone d'impression",
+    "print.emprise.hint.touch": "Faites glisser le doigt pour définir la zone d'impression",
     "print.emprise.hint.adjust": "Ajustez les poignées puis cliquez OK",
     "print.modal.title": "Impression / Export",
     "print.modal.field.title": "Titre",
@@ -31,8 +32,6 @@ const langPrintFr = {
     "print.error.serverEndpoint": "L'URL du serveur de rendu est invalide.",
     "print.error.serverFailed": "Le serveur de rendu a renvoyé une erreur.",
     "print.spinner.rendering": "Rendu en cours…",
-    "print.orientation.portrait": "Portrait",
-    "print.orientation.landscape": "Paysage",
     "print.aria.scaleLocked": "Échelle verrouillée à",
     "print.aria.toolbar.print": "Imprimer / Exporter la carte",
 } satisfies Record<string, string>;

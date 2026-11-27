@@ -1,0 +1,21 @@
+{
+    "schemaVersion": 2,
+    "lot": "size-format",
+    "scope": ["packages/plugins/offline-ui/src/utils/size-format.ts"],
+    "verdicts": {
+        "packages/plugins/offline-ui/src/utils/size-format.ts": {
+            "kind": "file",
+            "name": "ok",
+            "nameTarget": null,
+            "location": "ok",
+            "locationTarget": null,
+            "existence": "justifie",
+            "existenceTarget": null,
+            "rule": "N/A",
+            "severity": null,
+            "description": "Une taille en octets dans la langue active — séparateur décimal et symbole d'unité (« 18,07 Mo »), l'unité choisie selon la grandeur",
+            "confidence": "haute",
+            "rationale": "Un seul formateur pour les affichages de la fenêtre hors ligne, qui écrivaient chacun « .toFixed(2) MB » : un point et le symbole anglais dans une interface française. Distinct de `formatFileSize` du cœur, qui ne parle pas la langue. Tenu par les tests de la vue de la fenêtre et du sélecteur de couches, réécrits sur le format local"
+        }
+    }
+}

@@ -13,6 +13,7 @@ const fetchFn = vi.fn();
 const retryFn = vi.fn();
 const getCachedUrls = vi.fn();
 const getManifest = vi.fn();
+const readCachedBytes = vi.fn();
 const metricsEstimate = vi.fn();
 const trackerInit = vi.fn();
 const getSummary = vi.fn();
@@ -35,6 +36,7 @@ vi.mock("../../../src/capabilities/offline/cache/fetch-manager.js", () => ({
 }));
 vi.mock("../../../src/capabilities/offline/cache/storage.js", () => ({
     CacheStorage: { getCachedUrls, getManifest },
+    readCachedBytes,
 }));
 vi.mock("../../../src/capabilities/offline/cache/metrics.js", () => ({
     CacheMetrics: { estimateProfileSize: metricsEstimate },
@@ -60,6 +62,7 @@ beforeEach(async () => {
     fetchFn.mockResolvedValue({ skipped: false, size: 100, data: { x: 1 }, metadata: {} });
     getCachedUrls.mockResolvedValue(new Set());
     getManifest.mockResolvedValue(null);
+    readCachedBytes.mockResolvedValue(0);
     metricsEstimate.mockResolvedValue({ totalSize: 200 });
     getSummary.mockReturnValue({ successful: 2, failed: 0, successfulDownloads: ["a", "t1"] });
 });
@@ -95,6 +98,31 @@ describe("cacheProfile — flux nominal", () => {
         await Downloader.cacheProfile("t", {}, [{ url: "a", type: "layer" }], {});
         // "a" is already cached → no fetch
         expect(fetchFn).not.toHaveBeenCalled();
+    });
+
+    test("ce que l'appareil tient déjà compte dans la taille, et une zone sans rien à télécharger est « à jour »", async () => {
+        // The manifest carries no size: the bytes held come from the store's records. Summing
+        // the manifest announced « 0.00 MB » on a first preparation over cached resources.
+        getCachedUrls.mockResolvedValue(new Set(["a"]));
+        getManifest.mockResolvedValue({ resources: [{ url: "a", cached: true }] });
+        readCachedBytes.mockResolvedValue(4096);
+        getSummary.mockReturnValue({ successful: 0, failed: 0, totalSize: 4096 });
+
+        const result = await Downloader.cacheProfile("t", {}, [{ url: "a", type: "layer" }], {});
+
+        expect(trackerInit).toHaveBeenCalledWith(
+            expect.objectContaining({ alreadyCachedSize: 4096 })
+        );
+        expect(result).toMatchObject({ upToDate: true, downloadedThisRun: 0 });
+    });
+
+    test("une zone qui télécharge n'est pas « à jour », et dit ce que ce passage a apporté", async () => {
+        readCachedBytes.mockResolvedValue(1000);
+        getSummary.mockReturnValue({ successful: 1, failed: 0, totalSize: 1300 });
+
+        const result = await Downloader.cacheProfile("t", {}, [{ url: "a", type: "layer" }], {});
+
+        expect(result).toMatchObject({ upToDate: false, downloadedThisRun: 300, totalSize: 1300 });
     });
 });
 

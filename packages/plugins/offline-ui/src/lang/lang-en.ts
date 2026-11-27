@@ -54,7 +54,12 @@ const langStorageEn: StorageLangDict = {
     "storage.zone.note": "Higher = sharper but larger.",
     "storage.zone.noZone": "No area selected.",
     "storage.zone.summary": "Area",
+    "storage.zone.skippedZooms": "zooms {0} left out (too many tiles)",
+    "storage.zone.capped": "total capped",
+    "storage.notif.download.skippedZooms": "{0} zoom level(s) left out (too many tiles)",
     "storage.zone.estimate": "Estimate",
+    "storage.zone.noOfflineBasemap":
+        "No offline basemap in this profile: no tiles will be prepared for this zone",
     "storage.zone.tiles": "tiles",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Select all / deselect all",
@@ -111,6 +116,7 @@ const langStorageEn: StorageLangDict = {
     "storage.notif.offline.unavailable": "Offline storage unavailable",
     "storage.notif.noProfile": "No active profile",
     "storage.notif.download.success": "Profile downloaded",
+    "storage.notif.download.upToDate": "Zone already up to date",
     "storage.notif.download.partial":
         "Profile downloaded, except {0} origin(s) not declared for preparation",
     "storage.notif.download.error": "Download error",
@@ -182,6 +188,9 @@ const langStorageEn: StorageLangDict = {
     "storage.preflight.persistence.bestEffort":
         "Storage not guaranteed: the browser may erase the data",
     "storage.preflight.persistence.unsupported": "Storage persistence unknown",
+    "storage.simple.ready": "Zone ready for offline use, updated: {0}",
+    "storage.simple.readyNoTime": "Zone ready for offline use",
+    "storage.simple.none": "No zone prepared",
     "storage.preflight.layer.declaredNeverPulled": "never downloaded",
     "storage.preflight.layer.pullFailed": "download failed",
     "storage.preflight.layer.pulledPartial": "download incomplete",
@@ -190,6 +199,8 @@ const langStorageEn: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Zoom levels not prepared: {0}",
     "storage.preflight.tiles.capped": "Preparation stopped at the tile cap",
     "storage.preflight.failed": "{0} resource(s) not downloaded",
+    "storage.preflight.notPrepared":
+        "Profile never prepared on this device: the application will not start offline",
     "storage.preflight.session.valid": "Write session valid until {0}",
     "storage.preflight.session.validNoExpiry": "Write session open",
     "storage.preflight.session.expired":

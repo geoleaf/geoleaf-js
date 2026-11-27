@@ -9,7 +9,13 @@
  * Stopping: Space key, re-click GPS button, or external geoloc deactivation.
  * https://geoleaf.dev
  */
-import { enterExclusiveMode, exitExclusiveMode, isGeolocationActive } from "@geoleaf/host-runtime";
+import {
+    enterExclusiveMode,
+    exitExclusiveMode,
+    isCapabilityOn,
+    isGeolocationActive,
+    warnCapabilityMissing,
+} from "@geoleaf/host-runtime";
 import type { MeasureConfig, MeasureMap, MeasureMapMouseEvent } from "../types.js";
 import { getMeasureConfig } from "../config.js";
 import { _el, _getLabel } from "../internal.js";
@@ -44,6 +50,14 @@ let _closeModalShown = false;
 let _modalEl: HTMLElement | null = null;
 /** True if this tool clicked the geoloc button to activate it. */
 let _weActivatedGeoloc = false;
+/**
+ * Whether this tool centres the map itself on its first vertex — when no core control does it.
+ *
+ * The core's geolocation control centres the map on its first fix and draws the position dot.
+ * Without it (the capability not in the bundle, or switched off), the tool still measures on its
+ * own watch, but it used to trace three vertices off screen, the map left on the continent.
+ */
+let _centreOnFirstVertex = false;
 
 // ---------------------------------------------------------------------------
 // GeoLeaf geolocation control helpers
@@ -143,6 +157,7 @@ function _onPosition(pos: GeolocationPosition): void {
     }
 
     addVertex(coord);
+    if (_centreOnFirstVertex && !_lastAccepted) _centreOn(coord);
     _lastAccepted = { coord, timestamp: ts };
 
     // Proximity-to-start detection: prompt to close as polygon
@@ -152,6 +167,20 @@ function _onPosition(pos: GeolocationPosition): void {
         const distToStart = start ? (segmentLengths([coord, start])[0] ?? Infinity) : Infinity;
         if (distToStart < _cfg.gpsCloseThresholdM) _showCloseModal();
     }
+}
+
+/**
+ * Zoom of the camera on the first vertex when no core control does it — the core's own
+ * first-fix zoom: a few metres of trace are readable there.
+ */
+const FIRST_VERTEX_ZOOM = 16;
+
+/** Centres AND zooms onto `coord`; a map already closer than {@link FIRST_VERTEX_ZOOM} keeps its zoom. */
+function _centreOn(coord: [number, number]): void {
+    const current = _map?.getZoom?.();
+    const zoom =
+        typeof current === "number" ? Math.max(FIRST_VERTEX_ZOOM, current) : FIRST_VERTEX_ZOOM;
+    _map?.easeTo?.({ center: coord, zoom });
 }
 
 function _onError(_err: GeolocationPositionError): void {
@@ -240,11 +269,16 @@ export function activateGps(map: MeasureMap, onStop?: () => void): void {
     // Activate the GeoLeaf geolocation control if not already on.
     // This triggers permission request, centers the map on first fix,
     // and shows the user location dot — all handled by the existing control.
+    _centreOnFirstVertex = false;
     if (!_isGeolocActive()) {
         const link = _getGeolocLink();
         if (link) {
             link.click();
             _weActivatedGeoloc = true;
+        } else {
+            // No core control to centre the map: this tool does it on its first vertex.
+            _centreOnFirstVertex = true;
+            if (!isCapabilityOn("geolocation")) warnCapabilityMissing("measure", "geolocation");
         }
     }
 

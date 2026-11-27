@@ -154,6 +154,16 @@ describe("submitFeature — error mapping", () => {
     // branch would leave the machine right and the user misled:
     // `editor.error.server` says « Veuillez réessayer » ("please retry"), the
     // one thing that will achieve nothing against a server that does not know the verb.
+    it("maps a missing write target to noWriteTarget — nothing was sent, retrying is pointless", async () => {
+        const ctx = makeCtx({
+            save: vi.fn().mockRejectedValue(new PersistenceError("no-target", "x")),
+        });
+        await expect(
+            submitFeature(ctx, { feature: FEATURE, layerId: "L", isUpdate: false })
+        ).rejects.toThrow();
+        expect(notify.error).toHaveBeenCalledWith("editor.error.noWriteTarget");
+    });
+
     it("maps a 501 capability refusal to operationNotSupported, jamais à error.server", async () => {
         const ctx = makeCtx({
             save: vi

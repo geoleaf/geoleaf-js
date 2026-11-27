@@ -56,7 +56,12 @@ const langStorageDe: StorageLangDict = {
     "storage.zone.note": "Höher = schärfer, aber größer.",
     "storage.zone.noZone": "Kein Bereich ausgewählt.",
     "storage.zone.summary": "Bereich",
+    "storage.zone.skippedZooms": "Zoomstufen {0} ausgelassen (zu viele Kacheln)",
+    "storage.zone.capped": "Gesamtzahl begrenzt",
+    "storage.notif.download.skippedZooms": "{0} Zoomstufe(n) ausgelassen (zu viele Kacheln)",
     "storage.zone.estimate": "Schätzung",
+    "storage.zone.noOfflineBasemap":
+        "Keine Offline-Basiskarte in diesem Profil: für diese Zone werden keine Kacheln vorbereitet",
     "storage.zone.tiles": "Kacheln",
     // Layer selection table (S7)
     "storage.layers.selectAll": "Alle aus-/abwählen",
@@ -115,6 +120,7 @@ const langStorageDe: StorageLangDict = {
     "storage.notif.offline.unavailable": "Offline-Speicher nicht verfügbar",
     "storage.notif.noProfile": "Kein aktives Profil",
     "storage.notif.download.success": "Profil heruntergeladen",
+    "storage.notif.download.upToDate": "Bereich bereits aktuell",
     "storage.notif.download.partial":
         "Profil heruntergeladen, außer {0} nicht für die Vorbereitung deklarierte(n) Ursprung/Ursprünge",
     "storage.notif.download.error": "Downloadfehler",
@@ -188,6 +194,9 @@ const langStorageDe: StorageLangDict = {
     "storage.preflight.persistence.bestEffort":
         "Speicher nicht garantiert: der Browser kann die Daten löschen",
     "storage.preflight.persistence.unsupported": "Speicherpersistenz unbekannt",
+    "storage.simple.ready": "Bereich offline bereit, aktualisiert: {0}",
+    "storage.simple.readyNoTime": "Bereich offline bereit",
+    "storage.simple.none": "Kein Bereich vorbereitet",
     "storage.preflight.layer.declaredNeverPulled": "nie heruntergeladen",
     "storage.preflight.layer.pullFailed": "Herunterladen fehlgeschlagen",
     "storage.preflight.layer.pulledPartial": "Herunterladen unvollständig",
@@ -196,6 +205,8 @@ const langStorageDe: StorageLangDict = {
     "storage.preflight.tiles.skipped": "Nicht vorbereitete Zoomstufen: {0}",
     "storage.preflight.tiles.capped": "Vorbereitung an der Kachelgrenze gestoppt",
     "storage.preflight.failed": "{0} Ressource(n) nicht heruntergeladen",
+    "storage.preflight.notPrepared":
+        "Profil auf diesem Gerät nie vorbereitet: die Anwendung startet nicht offline",
     "storage.preflight.session.valid": "Schreibsitzung gültig bis {0}",
     "storage.preflight.session.validNoExpiry": "Schreibsitzung offen",
     "storage.preflight.session.expired":

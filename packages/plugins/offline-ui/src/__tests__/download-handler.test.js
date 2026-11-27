@@ -13,6 +13,7 @@ import { vi, describe, test, expect, beforeEach, afterEach } from "vitest";
 
 import { DownloadHandler } from "../cache/download-handler.js";
 import { StorageContract } from "../shared/storage-contract.js";
+import { LayerSelectorCore } from "../cache/layer-selector/core.js";
 import { confirmDialog } from "@geoleaf/host-runtime";
 
 // The tests plant `GeoLeaf.Storage` the way PRODUCTION does. They used to drive
@@ -69,7 +70,11 @@ function installStorage({
         return cacheProfileResult;
     });
     const clearCache = vi.fn(async () => 7);
-    const refreshCacheIcons = vi.fn(async () => {});
+    // The handler refreshes the plugin's OWN selector: the core's `Cache` bag carries no
+    // `LayerSelector`, so the double below does not plant one either.
+    const refreshCacheIcons = vi
+        .spyOn(LayerSelectorCore, "refreshCacheIcons")
+        .mockImplementation(async () => {});
     const loadLayerSelection = vi.fn(async () => selection);
 
     const storage = {
@@ -77,7 +82,6 @@ function installStorage({
         CacheManager: { cacheProfile, clearCache },
         Cache: {
             Storage: { loadLayerSelection },
-            LayerSelector: { refreshCacheIcons },
         },
     };
     _installGeoLeafStorage(storage);
@@ -184,6 +188,36 @@ describe("handleDownload", () => {
         expect(elements.progressText.textContent).toContain("5");
     });
 
+    test("des zooms omis par la préparation sont dits — pas un succès plein", async () => {
+        // The core skips a zoom past its per-zoom tile cap and records it; « profile downloaded »
+        // over it read as a complete zone.
+        installStorage({
+            cacheProfileResult: {
+                profileId: "prof-1",
+                resourcesCount: 5,
+                totalSize: 2048,
+                preparation: {
+                    zone: null,
+                    skippedZooms: [
+                        { source: "fond", zoom: 13, tiles: 41000 },
+                        { source: "fond", zoom: 14, tiles: 160000 },
+                    ],
+                    capped: false,
+                    refusedOrigins: [],
+                },
+            },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(notif.success).not.toHaveBeenCalled();
+        expect(notif.warning).toHaveBeenCalledTimes(1);
+        expect(notif.warning.mock.calls[0][0]).toContain("2");
+    });
+
     test("sans rien de refusé, le succès s'annonce comme avant", async () => {
         installStorage({
             cacheProfileResult: {
@@ -201,6 +235,32 @@ describe("handleDownload", () => {
 
         expect(notif.success).toHaveBeenCalledTimes(1);
         expect(notif.warning).not.toHaveBeenCalled();
+    });
+
+    test("une zone déjà sur l'appareil se dit « à jour », avec sa taille réelle", async () => {
+        // The core says `upToDate` when nothing was left to fetch, and counts the bytes already
+        // held: a second preparation announced « 12 ressources téléchargées » over nothing.
+        installStorage({
+            cacheProfileResult: {
+                profileId: "prof-1",
+                resourcesCount: 12,
+                totalSize: 2_097_152,
+                upToDate: true,
+                downloadedThisRun: 0,
+                preparation: { zone: null, skippedZooms: [], capped: false, refusedOrigins: [] },
+            },
+        });
+        vi.useFakeTimers();
+
+        const p = DownloadHandler.handleDownload();
+        await vi.runAllTimersAsync();
+        await p;
+
+        expect(notif.success).toHaveBeenCalledTimes(1);
+        const said = notif.success.mock.calls[0][0];
+        expect(said).toContain("upToDate");
+        expect(said).not.toMatch(/\b0(\.0+)?\s?(B|o|MB|Mo)\b/);
+        expect(elements.progressText.textContent).not.toContain("12");
     });
 
     test("🛑 un téléchargement ARRÊTÉ ne s'annonce pas réussi", async () => {
@@ -255,6 +315,28 @@ describe("handleDownload", () => {
         expect(notif.error).toHaveBeenCalled();
     });
 
+    test("moteur NON EMBARQUÉ, configuration à vrai → notifie au lieu d'attendre à jamais", async () => {
+        // The bundle without the offline capability: the profile still says `offline` and
+        // `pwa` are on, and `whenReady()` never settles. The verdict comes from the core's
+        // introspection, not from the keys.
+        const store = installStorage({ available: false });
+        setConfig({ "modules.offline.enabled": true, "modules.pwa.enabled": true });
+        globalThis.GeoLeaf.Introspection = {
+            getCapabilityStatus: () => [{ id: "legend", embarked: true, enabled: true }],
+        };
+        store.whenReady = () => new Promise(() => {});
+
+        const settled = await Promise.race([
+            DownloadHandler.handleDownload().then(() => "settled"),
+            new Promise((r) => setTimeout(() => r("hung"), 500)),
+        ]);
+
+        expect(settled).toBe("settled");
+        expect(store.cacheProfile).not.toHaveBeenCalled();
+        expect(notif.error).toHaveBeenCalled();
+        delete globalThis.GeoLeaf.Introspection;
+    });
+
     test("sans profil actif → notifie et sort", async () => {
         const store = installStorage();
         setConfig({ "data.activeProfile": "" });
@@ -304,12 +386,11 @@ describe("handleDownload", () => {
         expect(elements.progressText.textContent).toContain("3");
     });
 
-    test("chemins alternatifs : résultat vide, contrôle sans _updateStatus, sans LayerSelector, bouton sans libellé", async () => {
+    test("chemins alternatifs : résultat vide, contrôle sans _updateStatus, bouton sans libellé", async () => {
         const cacheProfile = vi.fn(async () => ({})); // ni resourcesCount ni total ni cached → 0
         _installGeoLeafStorage({
             isAvailable: () => true,
             CacheManager: { cacheProfile, clearCache: vi.fn() },
-            // no Cache.LayerSelector → `if (layerSelector)` false
             Cache: {
                 Storage: { loadLayerSelection: vi.fn(async () => ({ totalEstimatedSize: 1 })) },
             },

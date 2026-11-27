@@ -16,6 +16,8 @@
 
 import { getGeoLeaf } from "../../utils/general/geoleaf-global.js";
 import { Log } from "../../utils/log/index.js";
+import { notifyPrimitive } from "../../utils/notify/notify.primitive.js";
+import { getLabel } from "../../utils/i18n/i18n.js";
 
 /** Subset of `GeoLeaf.plugins` consumed when resolving a lazy action. */
 interface DispatchPluginsLike {
@@ -38,7 +40,7 @@ function _emit(action: string, element: HTMLElement): void {
  *
  * When the action belongs to a lazy plugin, the bundle is loaded first and the
  * event is emitted afterwards, so the plugin's listener is registered by the
- * time it fires. Load failures are logged, not thrown.
+ * time it fires. Load failures are logged and notified to the user, not thrown.
  *
  * Fire-and-forget: returns immediately in the lazy case. Callers that guard on
  * `action` must keep their own control flow (early `return`) around the call —
@@ -52,7 +54,19 @@ export function dispatchToolbarAction(action: string, element: HTMLElement): voi
     if (plugins?.isLazyAction?.(action)) {
         plugins.ensureLoadedForAction!(action)
             .then(() => _emit(action, element))
-            .catch((err: unknown) => Log.error("[GeoLeaf] lazy plugin load failed:", err));
+            .catch((err: unknown) => {
+                Log.error("[GeoLeaf] lazy plugin load failed:", err);
+                // 🛑 SAID TO THE USER, not only to the console. A click that loads nothing
+                // looked like a dead button — measured offline, after a preparation that had
+                // not kept the plugin. Offline, the message says what to do about it.
+                const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+                notifyPrimitive.notify(
+                    getLabel(
+                        offline ? "toast.plugin.load_failed_offline" : "toast.plugin.load_failed"
+                    ),
+                    "error"
+                );
+            });
         return;
     }
     _emit(action, element);

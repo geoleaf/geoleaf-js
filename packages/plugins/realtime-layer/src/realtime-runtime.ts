@@ -212,6 +212,15 @@ export function bootFromProfile(): void {
         const rawRealtime = _extractRealtime(layerData?.config);
         if (!rawRealtime || typeof rawRealtime !== "object") continue;
         const rt = rawRealtime as Record<string, unknown>;
+        // RT-03: `enabled` is a boolean. A string `"true"` used to switch the layer off without
+        // a word — said now, the layer staying off.
+        if (rt["enabled"] !== undefined && typeof rt["enabled"] !== "boolean") {
+            console.warn(
+                `[realtime-layer] "${id}": data.realtime.enabled must be a boolean, got ` +
+                    `${JSON.stringify(rt["enabled"])} — the layer is not started.`
+            );
+            continue;
+        }
         if (rt["enabled"] !== true) continue;
 
         let config: RealtimeConfig;
@@ -296,5 +305,10 @@ function _wire(layerId: string, config: RealtimeConfig, decoder: IDecoder): void
         startTracking(targetLayerId, config);
     }
 
-    source.start();
+    // 🛑 A source that could not open is not an active layer: `getStatus` said `active: true`
+    // for an SSE source without `EventSource` and a websocket source without `GeoLeaf.Ws`.
+    if (source.start() === false) {
+        _active.delete(layerId);
+        if (config.staleTimeoutMs) stopTracking(targetLayerId);
+    }
 }

@@ -32,16 +32,22 @@ function idMatches(value: unknown, id: string): boolean {
  *
  * @param props   - The feature's `properties` bag (may be null/undefined).
  * @param idField - The configured id field, if any.
+ * @param featureId - The feature's own `id` member: read after `idField`, before the
+ *   `id` / `_id` / `_realtimeId` properties — it is where the decoder reads the identity.
  */
 export function resolveFeatureId(
     props: Record<string, unknown> | null | undefined,
-    idField: string | undefined
+    idField: string | undefined,
+    featureId?: unknown
 ): string {
-    if (!props) return "";
-    if (idField && props[idField] !== undefined) {
+    if (idField && props && props[idField] !== undefined) {
         const v = props[idField];
         return typeof v === "string" || typeof v === "number" ? String(v) : "";
     }
+    // The feature's own `id` first: it is where the decoder reads the identity
+    // (`json-decoder.ts`), so a lookup that skipped it never found the features the boot drew.
+    if (typeof featureId === "string" || typeof featureId === "number") return String(featureId);
+    if (!props) return "";
     const fallback = props["id"] ?? props["_id"] ?? props["_realtimeId"] ?? "";
     return typeof fallback === "string" || typeof fallback === "number" ? String(fallback) : "";
 }
@@ -54,17 +60,19 @@ export function resolveFeatureId(
  * @param id       - Target id (as produced by the decoder).
  * @param idField  - The configured id field, if any.
  */
-export function findFeatureIndex<T extends { properties?: Record<string, unknown> | null }>(
-    features: T[],
-    id: string,
-    idField: string | undefined
-): number {
+export function findFeatureIndex<
+    T extends { id?: unknown; properties?: Record<string, unknown> | null },
+>(features: T[], id: string, idField: string | undefined): number {
     return features.findIndex((f) => {
         const props = f.properties;
-        if (!props) return false;
-        if (idField && props[idField] !== undefined) {
+        if (idField && props && props[idField] !== undefined) {
             return idMatches(props[idField], id);
         }
+        // 🛑 `feature.id` FIRST, and its absence here was the duplicates: the decoder takes the
+        // identity from `feature.id`, this lookup read only `properties`, so not one of the
+        // features the boot drew was ever found — each refresh added beside them.
+        if (f.id !== undefined && f.id !== null) return idMatches(f.id, id);
+        if (!props) return false;
         const fallback = props["id"] ?? props["_id"] ?? props["_realtimeId"] ?? "";
         return idMatches(fallback, id);
     });

@@ -101,10 +101,15 @@
     padding: 0.375rem 0.5rem !important;
     border: 1px solid var(--gl-color-border-soft);
     border-radius: 4px;
-    background: var(--gl-color-bg-surface);
-    color: var(--gl-color-text-main);
     font-size: 0.875rem;
-    width: 150px !important;
+    /* As wide as its widest option, so the prompt reads whole in every dictionary: at a fixed
+       150px the French one was cut to « Sélectionner une » on a desktop too. The floor keeps
+       the old width for short names; the ceiling is the room the phone rule below gives the
+       prompt, so a long layer name cannot stretch the toolbar. */
+    width: auto !important;
+    min-width: 150px;
+    max-width: 15rem;
+    text-overflow: ellipsis;
     margin-right: 0.5rem !important;
     cursor: pointer;
 }
@@ -128,10 +133,21 @@
     padding: 0.375rem 0.5rem !important;
     border: 1px solid var(--gl-color-border-soft);
     border-radius: 4px;
-    background: var(--gl-color-bg-surface);
-    color: var(--gl-color-text-main);
     font-size: 0.8125rem !important;
     position: relative !important;
+}
+
+/* The two fields' colours, scoped under the panel on purpose: (0,2,0). This sheet is adopted
+   outside the cascade layers, and the core's host guard (`geoleaf-host-guard.css`, unlayered
+   too) writes `color` and `background: revert-layer` on every `gl-*` select and input at
+   (0,1,1). At the single-class specificity of the rules above, the guard won and dropped these
+   declarations; no `gl.*` layer styles these fields, so the browser's grey and white came
+   back — over a black panel in the dark theme. Only the colours move here: raising the base
+   rules would also raise their `!important` widths over the phone rule's. */
+.gl-table-panel .gl-table-panel__select,
+.gl-table-panel .gl-table-panel__search-input {
+    background: var(--gl-color-bg-surface);
+    color: var(--gl-color-text-main);
 }
 
 .gl-table-panel__search-input::placeholder {
@@ -365,6 +381,15 @@
     height: 16px;
 }
 
+/* A finger needs a larger target than a pointer: 16 × 16 px could not be hit on a phone. */
+@media (pointer: coarse) {
+    .gl-table-panel__checkbox-all,
+    .gl-table-panel__checkbox {
+        width: 24px;
+        height: 24px;
+    }
+}
+
 /* Force minimale pour la colonne checkbox - règle la plus spécifique */
 .gl-table-panel__table .gl-table-panel__th--checkbox,
 .gl-table-panel__table .gl-table-panel__td--checkbox {
@@ -420,8 +445,11 @@
 
     /* Position gérée dynamiquement par JavaScript */
 
+    /* `!important` against the base rule's `nowrap !important` / `overflow-x: auto !important`,
+       which won here: the bar scrolled with no hint, and the close button ended off screen. */
     .gl-table-panel__toolbar {
-        flex-wrap: wrap;
+        flex-wrap: wrap !important;
+        overflow-x: visible !important;
         gap: 0.5rem;
         padding: 0.5rem;
     }
@@ -431,8 +459,24 @@
         flex: 1 1 100%;
     }
 
+    /* The toolbar wraps here, so the layer selector may take the room its prompt needs: at the
+       fixed 150px the base rule once carried, the prompt was cut to « Sélectionner une » on a
+       412px phone.
+       It grows from a 15rem basis (room for the longest prompt of the six dictionaries, arrow
+       included) and shrinks back to 150px when the row is short, never past the panel's width. */
+    .gl-table-panel__layer-selector {
+        flex: 1 1 15rem !important;
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .gl-table-panel__select {
+        width: 100% !important;
         min-width: 150px;
+        /* The wrapper is bounded by the panel here; the desktop ceiling would leave a gap. */
+        max-width: none;
+        margin-right: 0 !important;
+        text-overflow: ellipsis;
     }
 
     .gl-table-panel__th,

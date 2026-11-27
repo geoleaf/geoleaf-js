@@ -267,7 +267,7 @@ describe("buildStructure — section STATUT", () => {
 
         expect(document.getElementById("gl-cache-profile").textContent).toBe("-");
         expect(document.getElementById("gl-cache-state").textContent).toBe("Not downloaded");
-        expect(document.getElementById("gl-cache-size").textContent).toBe("0 MB");
+        expect(document.getElementById("gl-cache-size").textContent).toBe("0 o");
         expect(document.getElementById("gl-cache-quota").textContent).toBe("-");
     });
 
@@ -383,7 +383,7 @@ describe("updateStatus", () => {
         const state = document.getElementById("gl-cache-state");
         expect(state.textContent).toContain("Cached");
         expect(state.classList.contains("gl-cache-state--ok")).toBe(true);
-        expect(document.getElementById("gl-cache-size").textContent).toBe("5.00 MB");
+        expect(document.getElementById("gl-cache-size").textContent).toBe("5 Mo");
         expect(self._clearBtn.disabled).toBe(false);
     });
 
@@ -402,7 +402,7 @@ describe("updateStatus", () => {
         const state = document.getElementById("gl-cache-state");
         expect(state.textContent).toContain("Not downloaded");
         expect(state.classList.contains("gl-cache-state--missing")).toBe(true);
-        expect(document.getElementById("gl-cache-size").textContent).toBe("0 MB");
+        expect(document.getElementById("gl-cache-size").textContent).toBe("0 o");
         expect(self._clearBtn.disabled).toBe(true);
     });
 
@@ -434,7 +434,7 @@ describe("updateStatus", () => {
         await updateStatus(self);
 
         expect(document.getElementById("gl-cache-quota").textContent).toBe(
-            "25.00 MB / 200.00 MB (12.5%)"
+            "25 Mo / 200 Mo (12,5 %)"
         );
     });
 
@@ -571,7 +571,7 @@ describe("updateProgress", () => {
 
         updateProgress(self, { current: 1, total: 2, speed: 2 * 1024 * 1024 });
 
-        expect(self._progressText.textContent).toContain("2.00 MB/s");
+        expect(self._progressText.textContent).toContain("2 Mo/s");
     });
 
     test("des compteurs absents valent 0 sur 1", () => {

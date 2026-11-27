@@ -17,12 +17,6 @@ import { buildPublicApi } from "./public-api.js";
 // `@geoleaf-plugins/routing` REAL rather than declared: the contract types against its model.
 export type { GuidanceRuntime, GuidanceListener } from "./guidance-contract.js";
 
-// The toolbar seam is the canonical extension path, and it is TYPED — import the shape from
-// the core instead of re-declaring `{ action: string }` inline. Before API publique S3 this
-// type was reachable by no channel, so every plugin guessed it, and the guesses diverged
-// (`action` vs `action?`, `element?: Element` vs `HTMLElement` vs omitted).
-import type { GeoLeafRawEventMap } from "@geoleaf/core";
-
 // Same reasoning for reaching the namespace: `getGeoLeaf()` replaces the
 // `const _g = globalThis as any` accessor that the 13 plugins each re-declared their own
 // way (STRUCT S2, F6). ⚠️ This file carried that pattern until 31/07/2026, and it was
@@ -55,6 +49,19 @@ declare global {
     }
 }
 
+// 1 bis — `requires: ["routing"]`, HELD rather than declared.
+//
+// The registry stores `requires` and applies it nowhere: loaded on a bundle without `routing`,
+// this plugin mounted `GeoLeaf.Navigation`, said nothing, and its guidance had no route to
+// follow — ever. It refuses here, before mounting anything, and names the dependency; the
+// throw rejects `plugins.load("navigation")`, which the core reports as a failed load.
+// ⚠️ `=== false`, not `!== true`: a host without `isLoaded` cannot answer, and is not refused.
+if (getGeoLeaf()?.plugins?.isLoaded?.("routing") === false) {
+    throw new Error(
+        "[navigation] requires the routing plugin — load @geoleaf-plugins/routing before it"
+    );
+}
+
 // 2 — Mount the GeoLeaf.Navigation namespace.
 //
 // ⚠️ The assignment must read `.<Namespace> = buildPublicApi()` LITERALLY, on ONE
@@ -77,66 +84,19 @@ getGeoLeaf()?.plugins?.register?.("navigation", {
     healthCheck: () => typeof getGeoLeaf()?.Navigation === "object",
 });
 
-// Toolbar icon (22 px, stroke currentColor) — sanitised by core DOMSecurity.
-const _ICON =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"' +
-    ' stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>';
-
-// 4 & 5 — Register toolbar slot + wire the action event listener.
+// 4 — The teardown, and NO toolbar slot.
 //
-// ⚠️ `profileKey` MUST sit under `modules.<id>.*` — the SAME namespace `config.ts` reads.
-// This file wrote `ui.showNavigation` until 08/08/2026, and the two tokens do not
-// even substitute alike: `Navigation` is PascalCase, `navigation` kebab-case
-// (`create-plugin.cjs`). A plugin scaffolded as `mon-plugin` therefore read its config at
-// `modules.mon-plugin` while its button obeyed `ui.showMonPlugin` — two keys, two casings,
-// two branches of the profile. Filling the profile the way `config.ts` documents left the
-// button INVISIBLE, with nothing in the output to say why. `selfValidate()` now rejects any
-// `profileKey` outside `modules.<id>.`. Reference shape: `packages/plugins/table/src/entry.ts`.
-// The slot is declared only on the EAGER path — when the integrator loads this bundle before
-// `GeoLeaf.boot()`, as the package README prescribes. There is no `init.js` on that path, so
-// THIS call is the ONLY declaration of the slot and it is honoured.
+// 🛑 The slot is gone, with `modules.navigation.showButton`: it never opened anything — its
+// listener called `Navigation.open()`, which this namespace has never had. Guidance is entered
+// from the route, in `routing`'s panel, where the button exists only when there is a line to
+// follow.
 //
-// After `init()` — the LAZY path, where a host declares the slot itself with
-// `registerLazyForAction()` and loads the bundle on demand — the toolbar is already built: a
-// slot registered now would be stored, never drawn. `registerPluginModule` tells the two
-// paths apart (`@geoleaf/host-runtime`) and leaves the slot out on the second.
-//
-// 🛑 AND A TEARDOWN ON BOTH. This registration carried the slot and nothing else, so a
-// guidance session did not end with the application: measured in a browser, after an
-// `unmount()` the banner stayed in the page, the position watch and the screen wake lock
-// stayed held, and the session kept reading fixes for a map that was gone. `stop()` is read
-// off the namespace, like the toolbar listener below: it is idempotent, and a no-op when no
-// session runs. A module registered after `init()` is torn down by a core ≥ 3.14.2.
+// 🛑 A TEARDOWN ON BOTH PATHS. A guidance session did not end with the application: measured in
+// a browser, after an `unmount()` the banner stayed in the page, the position watch and the screen
+// wake lock stayed held, and the session kept reading fixes for a map that was gone. `stop()` is
+// read off the namespace: it is idempotent, and a no-op when no session runs. A module registered
+// after `init()` is torn down by a core ≥ 3.14.2.
 registerPluginModule({
     id: "navigation",
     destroy: () => (getGeoLeaf()?.Navigation as { stop?: () => void } | undefined)?.stop?.(),
-    ui: {
-        mobileIcon: {
-            icon: _ICON,
-            labelKey: "navigation.toolbar.button",
-            profileKey: "modules.navigation.showButton",
-            requiresPlugin: "navigation",
-            action: "navigation",
-        },
-        desktopTabButton: {
-            icon: _ICON,
-            labelKey: "navigation.toolbar.button",
-            profileKey: "modules.navigation.showButton",
-            requiresPlugin: "navigation",
-            action: "navigation",
-        },
-    },
 });
-
-if (typeof document !== "undefined") {
-    document.addEventListener("geoleaf:toolbar:action", (e: Event) => {
-        const ce = e as CustomEvent<GeoLeafRawEventMap["geoleaf:toolbar:action"]>;
-        if (ce.detail?.action !== "navigation") return;
-        // Read the surface back OFF the namespace, never from a local — the local is what
-        // the scaffold used, and removing it is what makes the namespace mount match the
-        // literal form the guards require. Same shape as the rest of the fleet.
-        // The optional call is not defensive padding: the panel lands with the feature, and
-        // until then this listener must be a no-op rather than a crash.
-        (getGeoLeaf()?.Navigation as { open?: () => void } | undefined)?.open?.();
-    });
-}
