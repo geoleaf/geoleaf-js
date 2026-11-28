@@ -11,7 +11,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) — [Semantic V
 
 ---
 
-## [Unreleased]
+## [3.21.0] - 2026-11-27
+
+Published with `@geoleaf-plugins/offline-ui` 1.8.0, `@geoleaf-plugins/print` 1.4.0,
+`@geoleaf-plugins/geocoding` 1.2.0, `@geoleaf-plugins/file-import` 1.1.0,
+`@geoleaf-plugins/connector` 1.5.1, `@geoleaf-plugins/editor` 1.6.5,
+`@geoleaf-plugins/routing` 1.1.1, `@geoleaf-plugins/table` 1.2.3,
+`@geoleaf-plugins/measure` 1.0.15, `@geoleaf-plugins/realtime-layer` 1.0.9,
+`@geoleaf-plugins/cog` 1.0.7, `@geoleaf-plugins/flatgeobuf` 1.0.6,
+`@geoleaf-plugins/navigation` 1.0.5, `@geoleaf-plugins/isochrone` 1.0.4,
+`@geoleaf-plugins/position-share` 1.0.4, `@geoleaf-plugins/websocket` 1.0.4 and
+`@geoleaf/field-renderer` 1.4.6.
 
 ### Added
 
